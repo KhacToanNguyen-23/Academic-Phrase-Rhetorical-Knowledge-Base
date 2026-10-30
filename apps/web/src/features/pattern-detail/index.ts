@@ -1,2 +1,2 @@
 // WB-02 Pattern Detail
-export {};
+export { PatternDetailPage } from "./components/PatternDetailPage";

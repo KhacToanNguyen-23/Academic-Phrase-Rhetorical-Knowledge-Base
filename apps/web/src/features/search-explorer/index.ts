@@ -1,2 +1,2 @@
 // WB-01 Search Explorer
-export {};
+export { SearchExplorerPage } from "./components/SearchExplorerPage";

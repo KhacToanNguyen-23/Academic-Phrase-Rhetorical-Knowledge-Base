@@ -1,2 +1,2 @@
 // WB-03 Sentence Composer
-export {};
+export { SentenceComposerPage } from "./components/SentenceComposerPage";

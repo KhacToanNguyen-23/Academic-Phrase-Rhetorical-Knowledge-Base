@@ -3,10 +3,11 @@
 import { FIELDS, INTENTS, JOURNALS, PATTERNS } from "./mock-data";
 import { recommend, validate } from "./mock-engine";
 import { CLIENTS, LOGS, SUBMISSIONS } from "./mock-integration";
-import type { PatternStatus, RecommendationRequest, Section, SubmissionStatus, ValidationRequest } from "./types";
+import type { PatternStatus, RecommendationRequest, Section, SubmissionStatus, ValidationRequest } from "./mock-types";
 import { renderFrame } from "@/shared/lib";
 
-export * from "./types";
+export { createBackendClient } from "./contract-client";
+export * from "./mock-types";
 
 const delay = <T,>(value: T, ms = 180) => new Promise<T>((r) => setTimeout(() => r(value), ms));
 

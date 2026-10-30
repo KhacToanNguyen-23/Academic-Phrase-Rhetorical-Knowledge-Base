@@ -1,6 +1,6 @@
 # AP-RKB — Academic Phrase & Rhetorical Knowledge Base
 
-AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. It does not implement the excluded admin console, production NLP extraction, or taxonomy publishing.
+AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. It does not implement the excluded admin console, production NLP extraction, or taxonomy publishing. The existing web app is a prototype UI that uses local mock data; its admin screen is not a production admin console and is outside this scaffold's backend scope.
 
 ## Architecture
 
@@ -54,15 +54,15 @@ OpenAPI is available at <http://localhost:8000/docs>. To process uploaded articl
 
 | Requirement | Implementation | Verification |
 | --- | --- | --- |
-| BR-01: approved patterns only | `apps/backend/src/aprkb/modules/recommendation/gates/` | `tests/unit/test_phase03_pipelines.py`; `tests/integration/test_phase04_api_contract.py` |
-| BR-10: license-aware corpus use | `apps/backend/src/aprkb/modules/corpus/`; `apps/backend/src/aprkb/worker/handlers.py` | `tests/integration/test_phase05_ingestion.py` |
-| Claim strength does not exceed evidence | `apps/backend/src/aprkb/policies/evidence.py`; `modules/validation/rules/` | `tests/unit/test_phase03_pipelines.py`; Phase 04 API integration |
-| Journal guidance remains distinct from observations | `modules/journals/guideline_policy.py`; recommendation gates | Phase 03 unit tests; Phase 04 API integration |
-| Explainable weighted ranking and fallback | `apps/backend/src/aprkb/modules/recommendation/`; versioned YAML under `apps/backend/src/aprkb/policies/` | Phase 03 unit tests; Phase 04 API integration |
-| Human review requires two rounds | `modules/review/service.py` | `tests/integration/test_phase04_api_contract.py` |
+| BR-01: approved patterns only | `apps/backend/src/aprkb/modules/recommendation/gates/` | `tests/unit/recommendation/test_recommendation_pipeline.py`; `tests/integration/api/test_routes.py` |
+| BR-10: license-aware corpus use | `apps/backend/src/aprkb/modules/corpus/`; `apps/backend/src/aprkb/worker/handlers.py` | `tests/integration/corpus/test_ingestion_jobs.py` |
+| Claim strength does not exceed evidence | `apps/backend/src/aprkb/policies/evidence.py`; `modules/validation/rules/` | `tests/unit/validation/test_validation_pipeline.py`; API integration |
+| Journal guidance remains distinct from observations | `modules/journals/guideline_policy.py`; recommendation gates | `tests/unit/recommendation/test_recommendation_pipeline.py`; API integration |
+| Explainable weighted ranking and fallback | `apps/backend/src/aprkb/modules/recommendation/`; versioned YAML under `apps/backend/src/aprkb/policies/` | `tests/unit/recommendation/test_recommendation_pipeline.py`; API integration |
+| Human review requires two rounds | `modules/review/service.py` | `tests/integration/api/test_routes.py` |
 | RBAC and transactional audit | `modules/identity/`; `modules/audit/` | Phase 02 and Phase 04 integration tests |
-| Mining creates sourced candidates only | `modules/mining/`; `worker/handlers.py` | `tests/integration/test_phase05_ingestion.py` |
-| Database migration and seed bootstrap | `apps/backend/migrations/`; `apps/backend/src/aprkb/seeds/` | `tests/test_foundation.py`; Phase 02 integration tests |
-| Discipline data remains an optional P2 adapter | `apps/backend/src/aprkb/modules/discipline/null_source.py` | Phase 03 unit tests; null source returns no classification |
+| Mining creates sourced candidates only | `modules/mining/`; `worker/handlers.py` | `tests/integration/corpus/test_ingestion_jobs.py` |
+| Database migration and seed bootstrap | `apps/backend/migrations/`; `apps/backend/src/aprkb/seeds/` | `tests/integration/core/test_database_setup.py`; Phase 02 integration tests |
+| Discipline data remains an optional P2 adapter | `apps/backend/src/aprkb/modules/discipline/null_source.py` | `tests/unit/discipline/test_null_source.py`; null source returns no classification |
 
 The original acceptance cases that depend on excluded product behavior remain skipped with `TODO(owner)` in `apps/backend/tests/acceptance/`. Cases already covered by scaffold behavior reuse the Phase 04/05 integration tests.

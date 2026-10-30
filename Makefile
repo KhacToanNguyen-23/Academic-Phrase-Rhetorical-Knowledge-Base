@@ -31,3 +31,8 @@ lint:
 
 bootstrap-key:
 	$(UV) run --directory apps/backend python -m aprkb.cli bootstrap-key
+
+.PHONY: contracts
+contracts:
+	$(UV) run --directory apps/backend python -m aprkb.cli export-openapi
+	npm --prefix apps/web run gen:api

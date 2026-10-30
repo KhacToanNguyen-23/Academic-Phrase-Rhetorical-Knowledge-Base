@@ -2,6 +2,9 @@
 
 import argparse
 import asyncio
+import json
+import sys
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -38,12 +41,36 @@ async def _bootstrap_key() -> None:
         await engine.dispose()
 
 
+def _export_openapi(*, check: bool) -> None:
+    from aprkb.api.main import app
+
+    output = Path(__file__).resolve().parents[4] / "packages/contracts/openapi/openapi.json"
+    rendered = json.dumps(app.openapi(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if check:
+        if not output.exists() or output.read_text(encoding="utf-8") != rendered:
+            print(
+                "OpenAPI contract is stale; run `make contracts` and commit the result.",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        print("OpenAPI contract is up to date.")
+        return
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(rendered, encoding="utf-8")
+    print(f"Wrote {output}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="aprkb")
-    parser.add_argument("command", choices=["bootstrap-key"])
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("bootstrap-key")
+    openapi = commands.add_parser("export-openapi")
+    openapi.add_argument("--check", action="store_true")
     args = parser.parse_args()
     if args.command == "bootstrap-key":
         asyncio.run(_bootstrap_key())
+    elif args.command == "export-openapi":
+        _export_openapi(check=args.check)
 
 
 if __name__ == "__main__":

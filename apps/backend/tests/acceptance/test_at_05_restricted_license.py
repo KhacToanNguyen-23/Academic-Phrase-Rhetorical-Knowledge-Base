@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from tests.integration.test_phase05_ingestion import (
+from tests.integration.corpus.test_ingestion_jobs import (
     test_non_mining_license_is_recorded_as_rejected_without_sentences as covered_case,
 )
 

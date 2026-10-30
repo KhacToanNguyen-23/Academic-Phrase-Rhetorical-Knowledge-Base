@@ -1,6 +1,6 @@
 // Dữ liệu mẫu cho luồng tích hợp Writing ⇄ Wordbank và màn Admin.
 // Toàn bộ câu là tự biên soạn; claim_id/evidence là mã giả, không phải citation thật.
-import type { ApiClient, Endpoint, RequestLog, Submission } from "./types";
+import type { ApiClient, Endpoint, RequestLog, Submission } from "./mock-types";
 
 export const CLIENTS: ApiClient[] = [
   { client_id: "cli_writing_prod", name: "Writing Engine", owner: "Writing team", scopes: ["recommend", "render", "validate", "submit"], created_at: "2026-09-02", last_seen: "2026-10-30T09:41:00Z", status: "active" },

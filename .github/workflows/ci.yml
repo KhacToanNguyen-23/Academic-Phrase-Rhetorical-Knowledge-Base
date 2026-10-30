@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
       - run: uv sync
+      - run: uv run python -m aprkb.cli export-openapi --check
       - run: uv run ruff check .
       - run: uv run pyright
       - run: uv run pytest
@@ -35,5 +36,7 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install
+      - run: pnpm gen:api
+      - run: git diff --exit-code -- src/shared/api/schema.d.ts
       - run: pnpm typecheck
       - run: pnpm build

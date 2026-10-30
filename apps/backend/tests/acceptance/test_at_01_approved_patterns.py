@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from tests.integration.test_phase04_api_contract import (
+from tests.integration.api.test_routes import (
     test_recommendation_pipeline_filters_seed_and_persists_explainable_log as covered_case,
 )
 

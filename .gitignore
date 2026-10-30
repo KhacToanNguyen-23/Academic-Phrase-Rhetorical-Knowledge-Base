@@ -1,0 +1,106 @@
+# ==========================================
+# 1. Environment & Secrets (Bảo mật & Cấu hình máy cá nhân)
+# ==========================================
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
+*.pem
+*.key
+*.cert
+credentials.json
+
+# ==========================================
+# 2. Python Backend (FastAPI / Celery / uv)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+htmlcov/
+.tox/
+*.egg-info/
+build/
+dist/
+
+# ==========================================
+# 3. Node & Frontend (Vite / pnpm / React)
+# ==========================================
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+playwright-report/
+test-results/
+.turbo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==========================================
+# 4. Data, Corpus & NLP Cache (Dung lượng lớn & Bản quyền)
+# ==========================================
+data/corpus/
+data/raw/
+data/processed/
+data/cache/
+data/embeddings/
+data/index/
+*.sqlite
+*.sqlite3
+*.db
+# Chỉ giữ lại PDF tài liệu đặc tả trong doc/
+*.pdf
+!doc/*.pdf
+# Model weights nếu tải về local
+*.pt
+*.bin
+*.onnx
+*.safetensors
+models/
+
+# ==========================================
+# 5. Docker & Runtime Local Overrides
+# ==========================================
+# Tránh ghi đè cấu hình docker của máy dev khác
+docker-compose.override.yml
+*.log
+logs/
+
+# ==========================================
+# 6. IDEs & Hệ điều hành (OS Junk & Local Editor Settings)
+# ==========================================
+# JetBrains (PyCharm / WebStorm / IDEA)
+.idea/
+
+# VS Code (Giữ lại extension gợi ý & debug config chung nếu có, bỏ setting giao diện cá nhân)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~

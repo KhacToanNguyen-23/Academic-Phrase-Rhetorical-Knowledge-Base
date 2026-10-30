@@ -9,13 +9,14 @@ src/aprkb/
   api/          FastAPI app and /v1 route mounting
   core/         settings, database, auth, and shared dependencies
   modules/      domain models, schemas, repositories, services, and routers
+    discipline/ optional adapter only; no API router or public endpoints
   policies/     versioned YAML policies and validators
   seeds/        idempotent local reference/taxonomy/pattern loader
   worker/       PostgreSQL polling runner and job handlers
 migrations/     Alembic revision(s)
 tests/
-  unit/         pure pipelines and policy behavior
-  integration/  PostgreSQL-backed API and worker behavior
+  unit/         grouped by domain (identity, mining, recommendation, validation, ...)
+  integration/  grouped by domain (API, identity, corpus, core, ...)
   acceptance/   covered AT cases and explicit TODO skips
 ```
 
@@ -45,6 +46,8 @@ Replace `<your-local-password>` and the port with the same local values used by 
 ## API and permissions
 
 OpenAPI is served at `/docs`. Routes are mounted below `/v1`; corpus upload, mining enqueue, review, API-key administration, and taxonomy administration are grouped below `/v1/admin`. Curator and admin roles can upload; workers require no API key. Every successful state-changing API operation records an audit event in the same transaction. Full article text and API secrets are excluded from audit snapshots and worker error messages.
+
+`modules/discipline/` contains an optional classification adapter interface and a null implementation. It does not define an API router or expose endpoints.
 
 ## Policy and data notes
 

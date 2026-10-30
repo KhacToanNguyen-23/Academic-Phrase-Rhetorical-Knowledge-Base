@@ -10,13 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aprkb.core.deps import get_db_session
 from aprkb.core.security import require_role
 from aprkb.modules.audit.service import record_event
-from aprkb.modules.identity.http_schemas import (
+from aprkb.modules.identity.models import ApiClient
+from aprkb.modules.identity.schemas import (
     ApiKeyCreate,
     ApiKeyCreated,
     ApiKeyRevoked,
     ApiKeySummary,
 )
-from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.identity.service import ADMIN_LIFECYCLE_LOCK_ID, create_api_key
 
 router = APIRouter(tags=["identity"])

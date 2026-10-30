@@ -12,7 +12,7 @@
 credentials.json
 
 # ==========================================
-# 2. Python Backend (FastAPI / Celery / uv)
+# 2. Python Backend (FastAPI / uv)
 # ==========================================
 __pycache__/
 *.py[cod]
@@ -87,6 +87,19 @@ logs/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/launch.json
+
+# Local AI plugins, session state, and per-machine guard configuration
+.agents/plugins/
+.codex/session-data/
+.ck.json
+
+# Personal AI skills kept locally but not shared by this project
+.agents/skills/gpt-taste/
+.agents/skills/high-end-visual-design/
+.agents/skills/redesign-existing-projects/
+.agents/skills/short-clip/
+.agents/skills/sequential-thinking/
+.agents/skills/skill-creator/
 
 # macOS
 .DS_Store

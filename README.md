@@ -1,6 +1,6 @@
 # AP-RKB — Academic Phrase & Rhetorical Knowledge Base
 
-AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. It does not implement the excluded admin console, production NLP extraction, or taxonomy publishing.
+AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. It does not implement the excluded admin console, production NLP extraction, or taxonomy publishing. The existing web app is a prototype UI that uses local mock data; its admin screen is not a production admin console and is outside this scaffold's backend scope.
 
 ## Architecture
 

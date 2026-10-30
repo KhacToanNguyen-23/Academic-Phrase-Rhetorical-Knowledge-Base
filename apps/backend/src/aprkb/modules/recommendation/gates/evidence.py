@@ -1,0 +1,21 @@
+"""Fail-closed evidence gate backed by the shared EvidencePolicy."""
+
+from aprkb.modules.recommendation.context import RecommendationContext
+from aprkb.modules.recommendation.gates.base import GateResult, HardGate
+from aprkb.modules.recommendation.pattern_view import PatternView
+from aprkb.policies.evidence import EvidencePolicy
+
+
+class EvidenceGate(HardGate):
+    code = "GATE_EVIDENCE"
+
+    def __init__(self, evidence_policy: EvidencePolicy) -> None:
+        self._evidence_policy = evidence_policy
+
+    def check(self, pattern: PatternView, ctx: RecommendationContext) -> GateResult:
+        claim_type = ctx.claim_type or pattern.claim_type
+        if not ctx.evidence_level or not self._evidence_policy.is_allowed(
+            claim_type, ctx.evidence_level, pattern.epistemic_strength
+        ):
+            return GateResult(False, "Evidence is missing, unknown, or insufficient")
+        return GateResult(True)

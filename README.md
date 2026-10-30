@@ -1,59 +1,68 @@
 # AP-RKB — Academic Phrase & Rhetorical Knowledge Base
 
-Academic Wordbank: gợi ý và kiểm định câu học thuật theo rhetorical intent, discipline,
-journal/genre và evidence. Tài liệu yêu cầu: [doc/](doc/).
+AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. It does not implement the excluded admin console, production NLP extraction, or taxonomy publishing.
 
-## Kiến trúc
+## Architecture
 
-```
-                ┌────────────────────────── apps/web (React SPA) ──────────────────────────┐
-                │ WB-01 … WB-09                                                            │
-                └───────────────────────────────┬──────────────────────────────────────────┘
-                                                │ REST /v1 (OpenAPI)
- Writing Engine ───── scoped token ─────────────┤
-                                                ▼
-        ┌──────────────────── apps/backend (modular monolith, package aprkb) ─────────────┐
-        │  api (FastAPI)                               worker (Celery)                     │
-        │  taxonomy · patterns · journals              corpus ingest · mining · fingerprint│
-        │  recommendation · validation · review        openalex sync (optional adapter)    │
-        │  identity · audit · analytics                                                    │
-        └───────────────┬──────────────────────────────────────┬───────────────────────────┘
-                        ▼                                      ▼
-            PostgreSQL 16 (+pgvector, pg_trgm, ltree)        Redis
-                                                  (M2) GROBID · LanguageTool · OpenAlex API
+```text
+apps/web (existing React + TypeScript SPA; outside this scaffold runtime)
+               │ REST /v1 + OpenAPI
+apps/backend (FastAPI modular monolith)
+  API ── domain services ── PostgreSQL 16 + pgvector
+  worker ── PostgreSQL jobs table (FOR UPDATE SKIP LOCKED)
+  corpus blobs ── local ./data/blobs via BlobStore
 ```
 
-Nguyên tắc chốt (xem [doc/adr/](doc/adr/)):
-- Modular monolith; tách module theo domain trong PRD.
-- OpenAlex là adapter tùy chọn, chỉ chạy trong worker và ghi vào DB local; core không gọi trực tiếp.
-- Hard gates chạy trước ranking; version đã approved là bất biến; mọi quyết định đều được audit.
+The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker is started separately with `make worker`; no Redis or Celery service is used. Text ingestion is implemented; JATS and PDF parsers remain explicit stubs. OpenAlex is optional and inactive. See [ADR-0001](doc/adr/0001-modular-monolith.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
 
-## Cấu trúc repo
+## Quick start
 
-```
-apps/backend/        FastAPI + Celery (Python 3.12, uv)
-apps/web/            React + TypeScript + Vite (pnpm)
-packages/contracts/  OpenAPI + JSON Schema (import/export, Writing API)
-data/seed/           Taxonomy, pattern tự biên soạn, journal profile khởi tạo
-infra/               Cấu hình hạ tầng (Postgres init...)
-doc/                 PRD, System Design, ADR
-```
+Requirements: Python 3.12, `uv`, Docker Desktop, and GNU Make. Before starting Postgres, replace the example `POSTGRES_PASSWORD` and keep `DATABASE_URL` in sync. Compose binds Postgres to `127.0.0.1` only.
 
-## Bắt đầu
-
-```bash
-cp .env.example .env
-docker compose up -d postgres redis      # hạ tầng
-docker compose up api worker             # backend
-cd apps/web && pnpm install && pnpm dev  # frontend
-docker compose --profile nlp up -d       # (M2) GROBID + LanguageTool
+```powershell
+Copy-Item .env.example .env
+make up
+make install
+make migrate
+make seed
+make bootstrap-key
+make lint
+$env:TEST_DATABASE_URL = "postgresql+asyncpg://aprkb:<your-local-password>@localhost:5432/aprkb_test"
+make test
+make run
 ```
 
-## Roadmap
+`make bootstrap-key` prints the initial admin API key once. Keep it private. The test fixture requires a dedicated database named `aprkb_test`; it creates and removes isolated schemas there and never migrates the application's public schema. Set `TEST_DATABASE_URL` to that database before running tests, using the same local password and host port as `DATABASE_URL`. Replace `<your-local-password>` with the password you configured. `make down` stops the PostgreSQL service and preserves its named volume.
 
-| Release | Phạm vi |
-|---|---|
-| M0 Data foundation | taxonomy, canonical schema, rights policy, editor workflow |
-| M1 Core MVP | patterns, search/recommendation, composer, validation, journal profile |
-| M2 Corpus Intelligence | corpus, mining & review, fingerprint theo genre |
-| M3 Discipline Intelligence | OpenAlex sync/affinity, ablation evaluation |
+OpenAPI is available at <http://localhost:8000/docs>. To process uploaded articles, run `make worker` in another terminal. Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `make up` / `make down` | Start or stop PostgreSQL |
+| `make install` | Sync backend dependencies with `uv` |
+| `make migrate` | Apply the Alembic migration |
+| `make seed` | Idempotently load reference enums, taxonomy, and self-authored patterns |
+| `make bootstrap-key` | Create the first admin API key and print it once |
+| `make run` | Start FastAPI with reload |
+| `make worker` | Poll PostgreSQL jobs and process ingestion/mining |
+| `make test` | Run backend unit, integration, and scaffold acceptance tests |
+| `make lint` | Run Ruff, format verification, and mypy |
+
+## PRD traceability
+
+| Requirement | Implementation | Verification |
+| --- | --- | --- |
+| BR-01: approved patterns only | `apps/backend/src/aprkb/modules/recommendation/gates/` | `tests/unit/test_phase03_pipelines.py`; `tests/integration/test_phase04_api_contract.py` |
+| BR-10: license-aware corpus use | `apps/backend/src/aprkb/modules/corpus/`; `apps/backend/src/aprkb/worker/handlers.py` | `tests/integration/test_phase05_ingestion.py` |
+| Claim strength does not exceed evidence | `apps/backend/src/aprkb/policies/evidence.py`; `modules/validation/rules/` | `tests/unit/test_phase03_pipelines.py`; Phase 04 API integration |
+| Journal guidance remains distinct from observations | `modules/journals/guideline_policy.py`; recommendation gates | Phase 03 unit tests; Phase 04 API integration |
+| Explainable weighted ranking and fallback | `apps/backend/src/aprkb/modules/recommendation/`; versioned YAML under `apps/backend/src/aprkb/policies/` | Phase 03 unit tests; Phase 04 API integration |
+| Human review requires two rounds | `modules/review/service.py` | `tests/integration/test_phase04_api_contract.py` |
+| RBAC and transactional audit | `modules/identity/`; `modules/audit/` | Phase 02 and Phase 04 integration tests |
+| Mining creates sourced candidates only | `modules/mining/`; `worker/handlers.py` | `tests/integration/test_phase05_ingestion.py` |
+| Database migration and seed bootstrap | `apps/backend/migrations/`; `apps/backend/src/aprkb/seeds/` | `tests/test_foundation.py`; Phase 02 integration tests |
+| Discipline data remains an optional P2 adapter | `apps/backend/src/aprkb/modules/discipline/null_source.py` | Phase 03 unit tests; null source returns no classification |
+
+The original acceptance cases that depend on excluded product behavior remain skipped with `TODO(owner)` in `apps/backend/tests/acceptance/`. Cases already covered by scaffold behavior reuse the Phase 04/05 integration tests.

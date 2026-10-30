@@ -1,8 +1,9 @@
-# Seed data (M0)
+# Seed data
 
-- `taxonomy/`: taxonomy tu từ khởi tạo (lấy cảm hứng từ Manchester nhưng tự định nghĩa).
-- `patterns/`: phrase pattern **tự biên soạn** (`license_status = own_authored`).
-- `journals/`: journal profile thí điểm (Computer Science Review, IEEE Access) kèm guideline URL đã xác minh.
+These development seeds are deliberately small and self-authored:
 
-Không commit văn bản trích từ Academic Phrasebank hay từ corpus có bản quyền (BR-10, §7.1).
-Corpus thật đặt trong `data/corpus/` (đã có trong .gitignore).
+- `reference_enums.json`: evidence, epistemic strength, claim type, roles, and sample license enums.
+- `taxonomy.json`: a published `0.1.0` draft with INTRO and DISCUSSION paths. `TODO(owner)`: replace with the approved taxonomy.
+- `patterns.json`: six generic academic phrase frames covering approval, epistemic strength, provenance, and section gating.
+
+The backend command `python -m aprkb.seeds.load` loads these files in reference enum, taxonomy, then pattern order. It is safe to rerun. Do not add text copied from Academic Phrasebank or copyrighted corpora.

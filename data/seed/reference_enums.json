@@ -1,0 +1,31 @@
+{
+  "claim_type": [
+    {"code": "descriptive", "label": "Descriptive", "order": 1},
+    {"code": "causal", "label": "Causal", "order": 2},
+    {"code": "comparative", "label": "Comparative", "order": 3},
+    {"code": "generalization", "label": "Generalization", "order": 4}
+  ],
+  "evidence_level": [
+    {"code": "none", "label": "None", "order": 1},
+    {"code": "anecdotal", "label": "Anecdotal", "order": 2},
+    {"code": "single_study", "label": "Single study", "order": 3},
+    {"code": "multiple_consistent", "label": "Multiple consistent studies", "order": 4},
+    {"code": "systematic_synthesis", "label": "Systematic synthesis", "order": 5}
+  ],
+  "epistemic_strength": [
+    {"code": "low", "label": "Low", "order": 1},
+    {"code": "moderate", "label": "Moderate", "order": 2},
+    {"code": "high", "label": "High", "order": 3},
+    {"code": "absolute", "label": "Absolute", "order": 4}
+  ],
+  "role": [
+    {"code": "client", "label": "Client", "order": 1},
+    {"code": "reviewer", "label": "Reviewer", "order": 2},
+    {"code": "curator", "label": "Curator", "order": 3},
+    {"code": "admin", "label": "Admin", "order": 4}
+  ],
+  "license": [
+    {"code": "CC-BY", "label": "Creative Commons Attribution", "order": 1},
+    {"code": "PROPRIETARY", "label": "Proprietary", "order": 2}
+  ]
+}

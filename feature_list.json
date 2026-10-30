@@ -1,0 +1,42 @@
+[
+  {
+    "id": "bootstrap-backend",
+    "title": "Start and seed the backend",
+    "user_visible_behavior": "Run and test the project from a clean checkout",
+    "verification_command": "PRD section 12 command sequence succeeds and /docs lists section 7 endpoints",
+    "status": "passing",
+    "evidence": "uv sync installed 45 packages including greenlet. .env.example parsed with Settings and its asyncpg URL, JSON CORS list, BLOB_DIR and LOG_LEVEL were verified. Ruff check/format and mypy passed; PostgreSQL 16 + pgvector 0.8.7 online Alembic upgrade passed; database-backed pytest 4/4 with 0 skipped and 0 leftover test schemas. Verified 28 entity tables, 59 foreign keys, vector columns, migration revision, mutable updated_at fields, upgrade/downgrade cleanup, and alembic check: No new upgrade operations detected.",
+    "notes": "Phase 01 code review approved. Project Compose PostgreSQL remains healthy; disposable verification containers were stopped. Phase 02 is also complete and review approved.",
+    "priority": "P1"
+  },
+  {
+    "id": "recommendation-validation",
+    "title": "Get recommendations and validation results",
+    "user_visible_behavior": "Receive explanations for recommendations and validation",
+    "verification_command": "Pipeline returns breakdown and fallback tier; V02 blocks prove with single_study",
+    "status": "passing",
+    "evidence": "Phase 03 unit tests 29 passed; Phase 04 HTTP/API integration tests 16 passed; full PostgreSQL-backed suite 63 passed. Ruff check/format, mypy, and fresh-process pure-import checks pass.",
+    "notes": "Implements ordered recommendation gates, fallback deduplication and limit, weighted score breakdown, V01-V08 with shared-policy V02, and database-backed recommendation/validation endpoints with audit logs. Phases 03-04 code review approved.",
+    "priority": "P1"
+  },
+  {
+    "id": "access-audit",
+    "title": "Manage access and audit writes",
+    "user_visible_behavior": "Control access and trace write operations",
+    "verification_command": "Missing key returns 401; wrong role returns 403; writes produce audit events; plaintext key appears only once",
+    "status": "passing",
+    "evidence": "Phase 02 identity tests and Phase 04 role/audit integration tests pass: client/reviewer/curator/admin hierarchy, API-key create/list/revoke, authenticated route access, and atomic audit writes.",
+    "notes": "Policy loader validates versioned YAML; EvidencePolicy fails closed on unknown values. Seed CLI is idempotent. Last admin cannot be revoked and bootstrap recovers when existing admin keys are inactive. Phases 02-04 code review approved.",
+    "priority": "P1"
+  },
+  {
+    "id": "text-mining",
+    "title": "Ingest and mine text into sourced candidates",
+    "user_visible_behavior": "Create candidates with traceable sources",
+    "verification_command": "Upload .txt and run worker; at least one Candidate has source_sentence_ids and no direct pattern/version writes",
+    "status": "passing",
+    "evidence": "Phase 05 PostgreSQL integration and unit tests pass; upload→ingest→mine produces sourced candidates without pattern/version writes. License refusal, stale-lock recovery, concurrent claims, offsets, parser failures and blob compensation are verified. Final suite: 76 passed, 9 acceptance cases skipped; Ruff, format, mypy and diff checks pass.",
+    "notes": "Phases 05-06 code review approved. Text parser is implemented; JATS and PDF remain explicit TODO stubs. Docs include the D3/D4 decisions and PRD traceability table.",
+    "priority": "P1"
+  }
+]

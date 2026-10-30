@@ -8,16 +8,14 @@ dependencies = [
   "uvicorn[standard]>=0.32",
   "pydantic>=2.9",
   "pydantic-settings>=2.6",
-  "sqlalchemy>=2.0",
+  "sqlalchemy[asyncio]>=2.0",
   "alembic>=1.14",
-  "psycopg[binary]>=3.2",
+  "asyncpg>=0.30",
   "pgvector>=0.3",
-  "celery[redis]>=5.4",
-  "httpx>=0.28",
-  "tenacity>=9.0",
+  "PyYAML>=6.0",
   "structlog>=24.4",
-  "pyjwt>=2.10",
-  "argon2-cffi>=23.1",
+  "python-multipart>=0.0.20",
+  "httpx>=0.28",
 ]
 
 [project.optional-dependencies]
@@ -31,9 +29,9 @@ nlp = [
 [dependency-groups]
 dev = [
   "pytest>=8.3",
-  "testcontainers[postgres]>=4.8",
+  "pytest-asyncio>=0.25",
   "ruff>=0.8",
-  "pyright>=1.1.390",
+  "mypy>=1.14",
 ]
 
 [build-system]
@@ -57,3 +55,10 @@ typeCheckingMode = "standard"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src/aprkb"]

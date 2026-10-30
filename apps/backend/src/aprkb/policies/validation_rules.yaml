@@ -1,0 +1,5 @@
+version: 0.1.0
+rules:
+  V01: {enabled: true, severity: warn}
+  V02: {enabled: true, severity: block}
+  # V03–V08: enabled=true, severity=warn — TODO(owner, PRD-6.2).

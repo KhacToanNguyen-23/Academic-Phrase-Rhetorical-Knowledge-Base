@@ -107,7 +107,7 @@ export function Card({ title, aside, confirm, children }: { title?: ReactNode; a
         </div>
       )}
       {children}
-      {confirm && <div className="confirm">{confirm}</div>}
+      {confirm && <div className="confirm"><div className="confirm-inner">{confirm}</div></div>}
     </section>
   );
 }
@@ -127,3 +127,44 @@ export function Empty({ children }: { children: ReactNode }) {
 export function Loading() {
   return <div className="loading" aria-busy="true" aria-label="Loading"><span /><span /><span /></div>;
 }
+
+/** Ô số liệu tổng quan (Admin/Overview). */
+export function Stat({ label, value, note, tone }: { label: string; value: ReactNode; note?: string; tone?: "ok" | "warn" | "bad" }) {
+  return (
+    <div className={`stat ${tone ? `stat-${tone}` : ""}`}>
+      <span className="stat-label">{label}</span>
+      <span className="stat-value">{value}</span>
+      {note && <span className="stat-note">{note}</span>}
+    </div>
+  );
+}
+
+/** Khối JSON request/response — tài liệu sống cho nhóm Writing. */
+export function JsonBlock({ title, value }: { title: string; value: unknown }) {
+  return (
+    <figure className="json">
+      <figcaption>{title}</figcaption>
+      <pre><code>{JSON.stringify(value, null, 2)}</code></pre>
+    </figure>
+  );
+}
+
+export function Tabs<T extends string>({ value, onChange, items, label }: { value: T; onChange: (v: T) => void; items: { id: T; label: string; count?: number }[]; label: string }) {
+  return (
+    <div className="tabs" role="tablist" aria-label={label}>
+      {items.map((t) => (
+        <button key={t.id} type="button" role="tab" aria-selected={t.id === value} className="tab" onClick={() => onChange(t.id)}>
+          {t.label}{t.count !== undefined && <span className="tab-count">{t.count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function StatusBadge({ status }: { status: string }) {
+  const tone = ({ approved: "ok", active: "ok", pending: "warn", in_review: "warn", revision: "warn", draft: "neutral", rejected: "bad", retired: "bad", suspended: "bad" } as const)[status] ?? "neutral";
+  return <Badge tone={tone}>{status.replace("_", " ")}</Badge>;
+}
+
+export const fmtTime = (iso: string) =>
+  new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });

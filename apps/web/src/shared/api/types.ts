@@ -157,3 +157,53 @@ export interface ValidationResult {
   violations: Violation[];
   suggestion?: string;
 }
+
+// ── Tích hợp với Writing Engine (System Design §6, FR-09) ──────────────
+
+/** Dữ liệu Writing gửi sang: luôn là candidate, phải qua review (WB-07) mới vào bank. */
+export type SubmissionStatus = "pending" | "approved" | "revision" | "rejected";
+
+export interface Submission {
+  id: string;
+  client_id: string;
+  received_at: string;
+  kind: "sentence" | "frame";
+  text: string;
+  context: { section: Section; intent_id: string; genre?: Genre; field?: string };
+  claim_id?: string;
+  license_status: LicenseStatus;
+  user_opt_in: boolean; // FR-09.6
+  near_duplicate?: { pattern_id: string; similarity: number }; // FR-02.5
+  status: SubmissionStatus;
+  decided_by?: string;
+}
+
+export interface ApiClient {
+  client_id: string;
+  name: string;
+  owner: string;
+  scopes: string[];
+  created_at: string;
+  last_seen: string;
+  status: "active" | "suspended";
+}
+
+export type Endpoint = "POST /v1/recommendations" | "POST /v1/render" | "POST /v1/validate" | "POST /v1/submissions" | "GET /v1/taxonomy";
+
+export interface RequestLog {
+  request_id: string;
+  at: string;
+  client_id: string;
+  endpoint: Endpoint;
+  status: number;
+  latency_ms: number;
+  claim_id?: string;
+  /** Pattern/variant đã trả ra (data out). */
+  returned_ids: string[];
+  /** Submission đã nhận (data in). */
+  received_ids: string[];
+  fallback_tier?: FallbackTier;
+  verdict?: Severity;
+  request: unknown;
+  response: unknown;
+}

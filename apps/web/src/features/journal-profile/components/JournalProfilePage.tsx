@@ -13,7 +13,7 @@ export function JournalProfilePage({ journalId }: { journalId?: string }) {
   return (
     <>
       <PageHeader
-        code="Section IV · WB-04"
+        code="Journal intelligence · WB-04"
         title="Journal Profiles"
         lead="Verified author guidelines are reported separately from stylistic tendencies observed in the corpus. Corpus statistics are never presented as journal requirements."
       />
@@ -104,7 +104,7 @@ function Fingerprint({ f, field }: { f: JournalFingerprint; field: string }) {
         </tbody>
       </table>
       <p className="legend small"><span className="swatch swatch-journal" /> Journal <span className="swatch swatch-field" /> Field baseline</p>
-      <p className="caption">Table {1}. Descriptive statistics used for soft ranking only; they do not constitute journal policy.</p>
+      <p className="caption">Descriptive statistics used for soft ranking only; they do not constitute journal policy.</p>
     </Card>
   );
 }

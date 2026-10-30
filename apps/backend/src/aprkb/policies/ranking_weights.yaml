@@ -1,0 +1,8 @@
+version: 0.1.0
+weights:
+  intent: 0.25
+  discipline: 0.20
+  journal_genre: 0.20
+  evidence: 0.15
+  linguistic: 0.10
+  provenance: 0.10

@@ -1,17 +1,22 @@
 """Cấu hình ứng dụng, đọc từ biến môi trường (.env)."""
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_ROOT_ENV_FILE = Path(__file__).resolve().parents[5] / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ROOT_ENV_FILE, extra="ignore")
 
     app_env: str = "local"
     app_secret_key: str = "change-me"
     api_cors_origins: list[str] = ["http://localhost:5173"]
 
-    database_url: str = "postgresql+psycopg://aprkb:aprkb@localhost:5432/aprkb"
-    redis_url: str = "redis://localhost:6379/0"
+    database_url: str = "postgresql+asyncpg://aprkb:aprkb@localhost:5432/aprkb"
+    blob_dir: str = "./data/blobs"
+    log_level: str = "INFO"
 
     # OpenAlex là adapter tùy chọn (BR-06): tắt mặc định, core vẫn chạy.
     openalex_enabled: bool = False

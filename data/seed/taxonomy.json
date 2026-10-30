@@ -1,0 +1,50 @@
+{
+  "version": "0.1.0",
+  "status": "published",
+  "sections": [
+    {
+      "code": "INTRO",
+      "name": "Introduction",
+      "order": 1,
+      "moves": [
+        {
+          "code": "INTRO_GAP",
+          "name": "Establish a research gap",
+          "steps": [
+            {
+              "code": "INTRO_INDICATE",
+              "name": "Indicate an unresolved area",
+              "intents": [
+                {"code": "INTRO_GAP_INDICATE", "name": "Indicate a research gap", "description": "Describe an unresolved area."}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "DISCUSSION",
+      "name": "Discussion",
+      "order": 2,
+      "moves": [
+        {
+          "code": "DISCUSSION_FINDING",
+          "name": "Interpret findings",
+          "steps": [
+            {
+              "code": "DISCUSSION_RESULT",
+              "name": "State a result cautiously",
+              "intents": [
+                {"code": "DISCUSSION_FINDING", "name": "Interpret a finding", "description": "Relate a finding to prior research."}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "article_genres": [
+    {"code": "RESEARCH_ARTICLE", "name": "Research article"}
+  ],
+  "todo": "TODO(owner): replace this draft taxonomy with the approved taxonomy."
+}

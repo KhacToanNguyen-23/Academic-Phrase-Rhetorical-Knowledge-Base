@@ -59,6 +59,17 @@ def test_hard_gates_are_registered_in_prd_order(context, evidence_policy):
     assert all(gate.check(pattern(), context).passed for gate in gates)
 
 
+@pytest.mark.parametrize(
+    ("overrides", "expected_gate"),
+    [
+        ({"status": "draft"}, "ApprovalGate"),
+        ({"status": "retired"}, "RetiredGate"),
+        ({"source_type": "mined", "license_allows_display": False}, "LicenseGate"),
+        ({"source_type": "unknown", "license_allows_display": True}, "LicenseGate"),
+        ({"allowed_sections": ["discussion"]}, "IntentSectionGate"),
+        ({"epistemic_strength": "high"}, "EvidenceGate"),
+    ],
+)
 def test_each_hard_gate_has_a_fail_case(context, evidence_policy, overrides, expected_gate):
     gates = build_gates(evidence_policy=evidence_policy)
     result = next(gate for gate in gates if type(gate).__name__ == expected_gate).check(

@@ -21,7 +21,7 @@ export function PlaygroundPage({ patternId }: { patternId?: string }) {
   const preset = useQuery({ queryKey: ["pattern", patternId], queryFn: () => api.pattern(patternId!), enabled: !!patternId });
 
   const [ctx, setCtx] = useState<Ctx>({ section: "Introduction", intent_id: "INT-GAP", genre: "Original Research", claim_id: "A3-C07", evidence_level: "moderate", evidence_ids: "A3-E12" });
-  const set = (k: keyof Ctx, v: string) => setCtx((c) => ({ ...c, [k]: v || undefined }));
+  const set = (k: keyof Ctx, v: string) => setCtx((c) => ({ ...c, [k]: k === "evidence_ids" || k === "claim_id" ? v : v || undefined }));
 
   // Mở từ Library: đặt sẵn ngữ cảnh theo pattern được chọn
   useEffect(() => {

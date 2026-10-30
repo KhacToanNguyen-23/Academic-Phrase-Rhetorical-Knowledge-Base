@@ -1,9 +1,9 @@
 from typing import Annotated
 
-from aprkb.core.deps import get_current_client
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
+from aprkb.core.deps import get_current_client
 from aprkb.core.security import require_role, role_allows
 from aprkb.modules.identity.models import ApiClient
 

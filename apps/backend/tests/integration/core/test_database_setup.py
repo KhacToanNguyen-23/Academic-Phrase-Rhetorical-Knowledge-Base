@@ -14,7 +14,7 @@ def test_database_url_is_async_for_postgres() -> None:
 
 
 def test_settings_loads_root_env_file_independent_of_working_directory() -> None:
-    expected = Path(__file__).resolve().parents[3] / ".env"
+    expected = Path(__file__).resolve().parents[5] / ".env"
     assert Settings.model_config["env_file"] == expected
 
 

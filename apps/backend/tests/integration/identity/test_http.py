@@ -129,7 +129,7 @@ async def test_api_errors_use_standard_envelope_and_request_id_header(
 
 @pytest.mark.asyncio
 async def test_invalid_policy_prevents_application_startup(tmp_path: Path) -> None:
-    policy_source = Path(__file__).parents[2] / "src" / "aprkb" / "policies"
+    policy_source = Path(__file__).parents[3] / "src" / "aprkb" / "policies"
     policy_dir = tmp_path / "policies"
     copytree(policy_source, policy_dir)
     (policy_dir / "ranking_weights.yaml").write_text(

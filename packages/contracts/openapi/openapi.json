@@ -1,0 +1,2947 @@
+{
+  "components": {
+    "schemas": {
+      "ApiKeyCreate": {
+        "properties": {
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "curator",
+              "reviewer",
+              "client"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "role"
+        ],
+        "title": "ApiKeyCreate",
+        "type": "object"
+      },
+      "ApiKeyCreated": {
+        "properties": {
+          "api_key": {
+            "title": "Api Key",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key_prefix": {
+            "title": "Key Prefix",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role",
+          "key_prefix",
+          "api_key"
+        ],
+        "title": "ApiKeyCreated",
+        "type": "object"
+      },
+      "ApiKeyRevoked": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "is_active"
+        ],
+        "title": "ApiKeyRevoked",
+        "type": "object"
+      },
+      "ApiKeySummary": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "key_prefix": {
+            "title": "Key Prefix",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role",
+          "key_prefix",
+          "is_active"
+        ],
+        "title": "ApiKeySummary",
+        "type": "object"
+      },
+      "Body_upload_article_v1_admin_corpus_articles_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "license_code": {
+            "title": "License Code",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "file",
+          "license_code"
+        ],
+        "title": "Body_upload_article_v1_admin_corpus_articles_post",
+        "type": "object"
+      },
+      "CandidateSummary": {
+        "properties": {
+          "canonical_frame": {
+            "title": "Canonical Frame",
+            "type": "string"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "epistemic_strength": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent Id"
+          },
+          "slots": {
+            "additionalProperties": true,
+            "title": "Slots",
+            "type": "object"
+          },
+          "source_sentence_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Source Sentence Ids",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "canonical_frame",
+          "slots",
+          "intent_id",
+          "confidence",
+          "epistemic_strength",
+          "source_sentence_ids",
+          "status"
+        ],
+        "title": "CandidateSummary",
+        "type": "object"
+      },
+      "CreatedRecord": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "CreatedRecord",
+        "type": "object"
+      },
+      "FeedbackCreate": {
+        "properties": {
+          "pattern_version_id": {
+            "format": "uuid",
+            "title": "Pattern Version Id",
+            "type": "string"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload"
+          },
+          "recommendation_id": {
+            "format": "uuid",
+            "title": "Recommendation Id",
+            "type": "string"
+          },
+          "signal": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "edited"
+            ],
+            "title": "Signal",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recommendation_id",
+          "pattern_version_id",
+          "signal"
+        ],
+        "title": "FeedbackCreate",
+        "type": "object"
+      },
+      "GuidelineCreate": {
+        "properties": {
+          "active_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active From"
+          },
+          "active_to": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active To"
+          },
+          "is_mandatory": {
+            "default": false,
+            "title": "Is Mandatory",
+            "type": "boolean"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "rule_type": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Rule Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_type"
+        ],
+        "title": "GuidelineCreate",
+        "type": "object"
+      },
+      "GuidelineRead": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_mandatory": {
+            "title": "Is Mandatory",
+            "type": "boolean"
+          },
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "rule_type": {
+            "title": "Rule Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "journal_id",
+          "rule_type",
+          "payload",
+          "is_mandatory"
+        ],
+        "title": "GuidelineRead",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "JournalRead": {
+        "properties": {
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issn"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "similar_journal_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Similar Journal Ids",
+            "type": "array"
+          },
+          "subfield": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subfield"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "issn",
+          "publisher",
+          "field",
+          "subfield",
+          "similar_journal_ids"
+        ],
+        "title": "JournalRead",
+        "type": "object"
+      },
+      "OverrideCreate": {
+        "properties": {
+          "rationale": {
+            "minLength": 1,
+            "title": "Rationale",
+            "type": "string"
+          },
+          "rule_code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Rule Code",
+            "type": "string"
+          },
+          "validation_id": {
+            "format": "uuid",
+            "title": "Validation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "validation_id",
+          "rule_code",
+          "rationale"
+        ],
+        "title": "OverrideCreate",
+        "type": "object"
+      },
+      "PatternCreate": {
+        "properties": {
+          "allowed_genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Genres",
+            "type": "array"
+          },
+          "allowed_sections": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Allowed Sections",
+            "type": "array"
+          },
+          "canonical_frame": {
+            "minLength": 1,
+            "title": "Canonical Frame",
+            "type": "string"
+          },
+          "change_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Note"
+          },
+          "claim_type": {
+            "enum": [
+              "descriptive",
+              "causal",
+              "comparative",
+              "generalization"
+            ],
+            "title": "Claim Type",
+            "type": "string"
+          },
+          "epistemic_strength": {
+            "enum": [
+              "low",
+              "moderate",
+              "high",
+              "absolute"
+            ],
+            "title": "Epistemic Strength",
+            "type": "string"
+          },
+          "intent_code": {
+            "title": "Intent Code",
+            "type": "string"
+          },
+          "slots": {
+            "additionalProperties": true,
+            "title": "Slots",
+            "type": "object"
+          },
+          "source_type": {
+            "const": "authored",
+            "default": "authored",
+            "title": "Source Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canonical_frame",
+          "epistemic_strength",
+          "claim_type",
+          "intent_code",
+          "allowed_sections"
+        ],
+        "title": "PatternCreate",
+        "type": "object"
+      },
+      "PatternDetail": {
+        "properties": {
+          "allowed_genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Genres",
+            "type": "array"
+          },
+          "allowed_sections": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Sections",
+            "type": "array"
+          },
+          "canonical_frame": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Frame"
+          },
+          "claim_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Type"
+          },
+          "current_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Version Id"
+          },
+          "epistemic_strength": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intent_code": {
+            "title": "Intent Code",
+            "type": "string"
+          },
+          "slots": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slots"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version No"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "intent_code",
+          "canonical_frame",
+          "version_no",
+          "current_version_id",
+          "slots",
+          "epistemic_strength",
+          "claim_type",
+          "allowed_sections",
+          "allowed_genres"
+        ],
+        "title": "PatternDetail",
+        "type": "object"
+      },
+      "PatternSummary": {
+        "properties": {
+          "canonical_frame": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Frame"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intent_code": {
+            "title": "Intent Code",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version No"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "intent_code",
+          "canonical_frame",
+          "version_no"
+        ],
+        "title": "PatternSummary",
+        "type": "object"
+      },
+      "PatternVersionCreate": {
+        "properties": {
+          "canonical_frame": {
+            "minLength": 1,
+            "title": "Canonical Frame",
+            "type": "string"
+          },
+          "change_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Note"
+          },
+          "claim_type": {
+            "enum": [
+              "descriptive",
+              "causal",
+              "comparative",
+              "generalization"
+            ],
+            "title": "Claim Type",
+            "type": "string"
+          },
+          "epistemic_strength": {
+            "enum": [
+              "low",
+              "moderate",
+              "high",
+              "absolute"
+            ],
+            "title": "Epistemic Strength",
+            "type": "string"
+          },
+          "slots": {
+            "additionalProperties": true,
+            "title": "Slots",
+            "type": "object"
+          }
+        },
+        "required": [
+          "canonical_frame",
+          "epistemic_strength",
+          "claim_type"
+        ],
+        "title": "PatternVersionCreate",
+        "type": "object"
+      },
+      "PatternVersionRead": {
+        "properties": {
+          "canonical_frame": {
+            "title": "Canonical Frame",
+            "type": "string"
+          },
+          "change_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Note"
+          },
+          "claim_type": {
+            "title": "Claim Type",
+            "type": "string"
+          },
+          "epistemic_strength": {
+            "title": "Epistemic Strength",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "pattern_id": {
+            "format": "uuid",
+            "title": "Pattern Id",
+            "type": "string"
+          },
+          "slots": {
+            "additionalProperties": true,
+            "title": "Slots",
+            "type": "object"
+          },
+          "version_no": {
+            "title": "Version No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "pattern_id",
+          "version_no",
+          "canonical_frame",
+          "slots",
+          "epistemic_strength",
+          "claim_type",
+          "change_note"
+        ],
+        "title": "PatternVersionRead",
+        "type": "object"
+      },
+      "RecommendationItemResponse": {
+        "properties": {
+          "breakdown": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Breakdown",
+            "type": "object"
+          },
+          "canonical_frame": {
+            "title": "Canonical Frame",
+            "type": "string"
+          },
+          "explanations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Explanations",
+            "type": "array"
+          },
+          "fallback_tier": {
+            "title": "Fallback Tier",
+            "type": "string"
+          },
+          "pattern_version_id": {
+            "format": "uuid",
+            "title": "Pattern Version Id",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "pattern_version_id",
+          "canonical_frame",
+          "score",
+          "breakdown",
+          "fallback_tier",
+          "explanations"
+        ],
+        "title": "RecommendationItemResponse",
+        "type": "object"
+      },
+      "RecommendationRequest": {
+        "properties": {
+          "claim_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Type"
+          },
+          "discipline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discipline"
+          },
+          "evidence_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Level"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "intent": {
+            "title": "Intent",
+            "type": "string"
+          },
+          "journal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal Id"
+          },
+          "limit": {
+            "default": 10,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "section": {
+            "title": "Section",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent",
+          "section"
+        ],
+        "title": "RecommendationRequest",
+        "type": "object"
+      },
+      "RecommendationResponse": {
+        "properties": {
+          "excluded": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Excluded",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "policy_versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Policy Versions",
+            "type": "object"
+          },
+          "recommendation_id": {
+            "format": "uuid",
+            "title": "Recommendation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "excluded",
+          "policy_versions",
+          "recommendation_id"
+        ],
+        "title": "RecommendationResponse",
+        "type": "object"
+      },
+      "ReleaseSummary": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "status",
+          "published_at"
+        ],
+        "title": "ReleaseSummary",
+        "type": "object"
+      },
+      "ReviewDecisionCreate": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "ReviewDecisionCreate",
+        "type": "object"
+      },
+      "ReviewDecisionResult": {
+        "properties": {
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "candidate_status": {
+            "title": "Candidate Status",
+            "type": "string"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          },
+          "pattern_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pattern Version Id"
+          },
+          "round": {
+            "title": "Round",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "round",
+          "decision",
+          "candidate_status",
+          "pattern_version_id"
+        ],
+        "title": "ReviewDecisionResult",
+        "type": "object"
+      },
+      "TaxonomyIntent": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description"
+        ],
+        "title": "TaxonomyIntent",
+        "type": "object"
+      },
+      "TaxonomyMove": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/TaxonomyStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "steps"
+        ],
+        "title": "TaxonomyMove",
+        "type": "object"
+      },
+      "TaxonomySection": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "moves": {
+            "items": {
+              "$ref": "#/components/schemas/TaxonomyMove"
+            },
+            "title": "Moves",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "order": {
+            "title": "Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "order",
+          "moves"
+        ],
+        "title": "TaxonomySection",
+        "type": "object"
+      },
+      "TaxonomyStep": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intents": {
+            "items": {
+              "$ref": "#/components/schemas/TaxonomyIntent"
+            },
+            "title": "Intents",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "intents"
+        ],
+        "title": "TaxonomyStep",
+        "type": "object"
+      },
+      "TaxonomyTree": {
+        "properties": {
+          "article_genres": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Article Genres",
+            "type": "array"
+          },
+          "release_id": {
+            "format": "uuid",
+            "title": "Release Id",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/TaxonomySection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "release_id",
+          "version",
+          "sections",
+          "article_genres"
+        ],
+        "title": "TaxonomyTree",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationRequest": {
+        "properties": {
+          "claim_type": {
+            "title": "Claim Type",
+            "type": "string"
+          },
+          "epistemic_strength": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
+          },
+          "evidence_level": {
+            "title": "Evidence Level",
+            "type": "string"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "claim_type",
+          "evidence_level"
+        ],
+        "title": "ValidationRequest",
+        "type": "object"
+      },
+      "ValidationResponse": {
+        "properties": {
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationRuleResponse"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "validation_id": {
+            "format": "uuid",
+            "title": "Validation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "validation_id",
+          "severity",
+          "rules"
+        ],
+        "title": "ValidationResponse",
+        "type": "object"
+      },
+      "ValidationRuleResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "span": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message",
+          "span"
+        ],
+        "title": "ValidationRuleResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "AP-RKB API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/admin/api-keys": {
+      "delete": {
+        "operationId": "revoke_key_v1_admin_api_keys_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "client_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Client Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyRevoked"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Key",
+        "tags": [
+          "admin api keys"
+        ]
+      },
+      "get": {
+        "operationId": "list_keys_v1_admin_api_keys_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKeySummary"
+                  },
+                  "title": "Response List Keys V1 Admin Api Keys Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Keys",
+        "tags": [
+          "admin api keys"
+        ]
+      },
+      "post": {
+        "operationId": "create_key_v1_admin_api_keys_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Key",
+        "tags": [
+          "admin api keys"
+        ]
+      }
+    },
+    "/v1/admin/corpus/articles": {
+      "post": {
+        "operationId": "upload_article_v1_admin_corpus_articles_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_article_v1_admin_corpus_articles_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Upload Article V1 Admin Corpus Articles Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Article",
+        "tags": [
+          "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/corpus/articles/{article_id}/mine": {
+      "post": {
+        "operationId": "mine_article_v1_admin_corpus_articles__article_id__mine_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "article_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Article Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Mine Article V1 Admin Corpus Articles  Article Id  Mine Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mine Article",
+        "tags": [
+          "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/jobs/{job_id}": {
+      "get": {
+        "operationId": "get_job_v1_admin_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Job V1 Admin Jobs  Job Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Job",
+        "tags": [
+          "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/releases/{release_id}/publish": {
+      "post": {
+        "operationId": "publish_release_v1_admin_releases__release_id__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "release_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Release Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Publish Release",
+        "tags": [
+          "admin releases"
+        ]
+      }
+    },
+    "/v1/admin/review-queue": {
+      "get": {
+        "operationId": "list_queue_v1_admin_review_queue_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CandidateSummary"
+                  },
+                  "title": "Response List Queue V1 Admin Review Queue Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Queue",
+        "tags": [
+          "candidate review"
+        ]
+      }
+    },
+    "/v1/admin/review-queue/{candidate_id}/decisions": {
+      "post": {
+        "operationId": "decide_candidate_v1_admin_review_queue__candidate_id__decisions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecisionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDecisionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Candidate",
+        "tags": [
+          "candidate review"
+        ]
+      }
+    },
+    "/v1/feedback": {
+      "post": {
+        "operationId": "create_feedback_v1_feedback_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Feedback",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "operationId": "health_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health V1 Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/v1/journals": {
+      "get": {
+        "operationId": "list_journals_v1_journals_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JournalRead"
+                  },
+                  "title": "Response List Journals V1 Journals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Journals",
+        "tags": [
+          "journals"
+        ]
+      }
+    },
+    "/v1/journals/{journal_id}": {
+      "get": {
+        "operationId": "get_journal_v1_journals__journal_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "journal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Journal Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Journal",
+        "tags": [
+          "journals"
+        ]
+      }
+    },
+    "/v1/journals/{journal_id}/guidelines": {
+      "post": {
+        "operationId": "create_guideline_v1_journals__journal_id__guidelines_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "journal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Journal Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidelineCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidelineRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Guideline",
+        "tags": [
+          "journals"
+        ]
+      }
+    },
+    "/v1/overrides": {
+      "post": {
+        "operationId": "create_override_v1_overrides_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Override",
+        "tags": [
+          "overrides"
+        ]
+      }
+    },
+    "/v1/patterns": {
+      "get": {
+        "operationId": "list_patterns_v1_patterns_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "section",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Section"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PatternSummary"
+                  },
+                  "title": "Response List Patterns V1 Patterns Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Patterns",
+        "tags": [
+          "patterns"
+        ]
+      },
+      "post": {
+        "operationId": "create_pattern_v1_patterns_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatternCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Pattern",
+        "tags": [
+          "patterns"
+        ]
+      }
+    },
+    "/v1/patterns/{pattern_id}": {
+      "get": {
+        "operationId": "get_pattern_v1_patterns__pattern_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pattern_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pattern Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Pattern",
+        "tags": [
+          "patterns"
+        ]
+      }
+    },
+    "/v1/patterns/{pattern_id}/retire": {
+      "post": {
+        "operationId": "retire_pattern_v1_patterns__pattern_id__retire_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pattern_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pattern Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retire Pattern",
+        "tags": [
+          "patterns"
+        ]
+      }
+    },
+    "/v1/patterns/{pattern_id}/versions": {
+      "get": {
+        "operationId": "get_versions_v1_patterns__pattern_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pattern_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pattern Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PatternVersionRead"
+                  },
+                  "title": "Response Get Versions V1 Patterns  Pattern Id  Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Versions",
+        "tags": [
+          "patterns"
+        ]
+      },
+      "post": {
+        "operationId": "append_version_v1_patterns__pattern_id__versions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pattern_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pattern Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatternVersionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternVersionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Append Version",
+        "tags": [
+          "patterns"
+        ]
+      }
+    },
+    "/v1/recommendations": {
+      "post": {
+        "operationId": "create_recommendation_v1_recommendations_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Recommendation",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/v1/taxonomy": {
+      "get": {
+        "operationId": "get_taxonomy_v1_taxonomy_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomyTree"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Taxonomy",
+        "tags": [
+          "taxonomy"
+        ]
+      }
+    },
+    "/v1/taxonomy/releases": {
+      "get": {
+        "operationId": "get_releases_v1_taxonomy_releases_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReleaseSummary"
+                  },
+                  "title": "Response Get Releases V1 Taxonomy Releases Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Releases",
+        "tags": [
+          "taxonomy"
+        ]
+      }
+    },
+    "/v1/validate": {
+      "post": {
+        "operationId": "validate_text_v1_validate_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate Text",
+        "tags": [
+          "validation"
+        ]
+      }
+    }
+  }
+}

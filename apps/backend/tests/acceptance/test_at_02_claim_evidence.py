@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from tests.integration.test_phase04_api_contract import (
+from tests.integration.api.test_routes import (
     test_validation_http_runs_v02_and_blocks_prove_with_single_study as covered_case,
 )
 

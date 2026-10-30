@@ -9,7 +9,7 @@ import type {
   ValidationRequest,
   ValidationResult,
   Violation,
-} from "./types";
+} from "./mock-types";
 
 const WEIGHTS = { intent_section: 0.25, disciplinary_fit: 0.2, journal_genre: 0.2, evidence_alignment: 0.15, linguistic_quality: 0.1, provenance_confidence: 0.1 };
 const STRENGTH_RANK: Record<EpistemicStrength, number> = { low: 0, moderate: 1, high: 2 };

@@ -1,18 +1,11 @@
-"""TDD contracts for the PRD's pure recommendation, validation and mining pipelines."""
+"""Unit tests for the recommendation domain."""
 
 from dataclasses import FrozenInstanceError, replace
 from uuid import uuid4
 
 import pytest
 
-from aprkb.modules.corpus.parsers.base import DocumentParser
-from aprkb.modules.corpus.parsers.pdf_parser import PdfParserStub
 from aprkb.modules.discipline.null_source import NullDisciplineSource
-from aprkb.modules.journals.fingerprint import JournalFingerprintService
-from aprkb.modules.mining.candidate_writer import CandidateDraft, CandidateWriter
-from aprkb.modules.mining.stages import build_stages
-from aprkb.modules.mining.stages.base import MiningItem
-from aprkb.modules.mining.stages.sentence_filter import SentenceFilter
 from aprkb.modules.recommendation.context import RecommendationContext
 from aprkb.modules.recommendation.diversifier import PassThroughDiversifier
 from aprkb.modules.recommendation.fallback import FallbackTierLoader
@@ -21,46 +14,6 @@ from aprkb.modules.recommendation.pattern_view import PatternView
 from aprkb.modules.recommendation.pipeline import RecommendationPipeline
 from aprkb.modules.recommendation.scorers import build_scorers
 from aprkb.modules.recommendation.scorers.aggregator import aggregate_scores
-from aprkb.modules.validation.context import ValidationContext
-from aprkb.modules.validation.pipeline import ValidationPipeline
-from aprkb.modules.validation.rules import build_rules
-from aprkb.policies.evidence import EvidencePolicy
-from aprkb.policies.loader import load_policy_bundle
-from aprkb.policies.schemas import EpistemicMarkersPolicy, MiningFilterPolicy
-from aprkb.shared.models import RefEnum
-
-
-@pytest.fixture
-def policy_bundle():
-    return load_policy_bundle()
-
-
-@pytest.fixture
-def evidence_policy(policy_bundle):
-    return EvidencePolicy.from_reference_enums(
-        policy_bundle.evidence_matrix,
-        [
-            RefEnum(group="epistemic_strength", code="low", label="Low", order=1),
-            RefEnum(group="epistemic_strength", code="moderate", label="Moderate", order=2),
-            RefEnum(group="epistemic_strength", code="high", label="High", order=3),
-            RefEnum(group="epistemic_strength", code="absolute", label="Absolute", order=4),
-        ],
-    )
-
-
-@pytest.fixture
-def context():
-    return RecommendationContext(
-        intent_code="report_finding",
-        section_code="results",
-        genre_code=None,
-        journal_id=None,
-        claim_type="causal",
-        evidence_level="single_study",
-        discipline_code=None,
-        client_id=uuid4(),
-        limit=10,
-    )
 
 
 def pattern(**overrides) -> PatternView:
@@ -92,22 +45,6 @@ def test_pattern_view_is_read_only():
         view.status = "draft"
 
 
-def test_null_discipline_source_and_fingerprint_remain_stubs():
-    journal = object()
-
-    assert NullDisciplineSource().classify_journal(journal) is None
-    assert JournalFingerprintService().compute(journal) is None
-
-
-def test_pdf_parser_implements_document_parser_interface_as_a_stub():
-    parser = PdfParserStub()
-
-    assert isinstance(parser, DocumentParser)
-    assert parser.supports("application/pdf")
-    with pytest.raises(NotImplementedError):
-        parser.parse(b"%PDF-1.7")
-
-
 def test_hard_gates_are_registered_in_prd_order(context, evidence_policy):
     gates = build_gates(evidence_policy=evidence_policy)
 
@@ -122,17 +59,6 @@ def test_hard_gates_are_registered_in_prd_order(context, evidence_policy):
     assert all(gate.check(pattern(), context).passed for gate in gates)
 
 
-@pytest.mark.parametrize(
-    ("overrides", "expected_gate"),
-    [
-        ({"status": "draft"}, "ApprovalGate"),
-        ({"status": "retired"}, "RetiredGate"),
-        ({"source_type": "mined", "license_allows_display": False}, "LicenseGate"),
-        ({"source_type": "unknown", "license_allows_display": True}, "LicenseGate"),
-        ({"allowed_sections": ["discussion"]}, "IntentSectionGate"),
-        ({"epistemic_strength": "high"}, "EvidenceGate"),
-    ],
-)
 def test_each_hard_gate_has_a_fail_case(context, evidence_policy, overrides, expected_gate):
     gates = build_gates(evidence_policy=evidence_policy)
     result = next(gate for gate in gates if type(gate).__name__ == expected_gate).check(
@@ -321,157 +247,3 @@ def test_recommendation_applies_limit_after_diversification(
     )
 
     assert len(pipeline.recommend(replace(context, limit=1)).items) == 1
-
-
-def test_v02_blocks_prove_with_single_study_and_matches_evidence_gate(
-    context, evidence_policy, policy_bundle
-):
-    validation_context = ValidationContext(
-        claim_type="causal",
-        evidence_level="single_study",
-        epistemic_strength="absolute",
-    )
-    rules = build_rules(
-        evidence_policy=evidence_policy,
-        lexicon=policy_bundle.epistemic_markers,
-        policy=policy_bundle.validation_rules,
-    )
-    v02 = next(rule for rule in rules if rule.code == "V02")
-    result = v02.evaluate("This proves the intervention caused the outcome.", validation_context)
-    gate = next(
-        gate
-        for gate in build_gates(evidence_policy=evidence_policy)
-        if gate.code == "GATE_EVIDENCE"
-    ).check(pattern(epistemic_strength="absolute"), context)
-
-    assert result.severity.value == "block"
-    assert not gate.passed
-    assert (result.severity.value == "block") == (not gate.passed)
-
-
-def test_v02_fails_closed_when_marker_strength_is_missing_from_reference_enums(policy_bundle):
-    evidence_policy = EvidencePolicy.from_reference_enums(
-        policy_bundle.evidence_matrix,
-        [
-            RefEnum(group="epistemic_strength", code="low", label="Low", order=1),
-            RefEnum(group="epistemic_strength", code="moderate", label="Moderate", order=2),
-            RefEnum(group="epistemic_strength", code="high", label="High", order=3),
-        ],
-    )
-    rule = next(
-        item
-        for item in build_rules(
-            evidence_policy=evidence_policy,
-            lexicon=policy_bundle.epistemic_markers,
-            policy=policy_bundle.validation_rules,
-        )
-        if item.code == "V02"
-    )
-
-    result = rule.evaluate(
-        "This proves the intervention caused the outcome.",
-        ValidationContext(claim_type="causal", evidence_level="single_study"),
-    )
-
-    assert result.severity.value == "block"
-
-
-def test_validation_pipeline_runs_v01_through_v08_and_todo_rules_pass(
-    evidence_policy, policy_bundle
-):
-    rules = build_rules(
-        evidence_policy=evidence_policy,
-        lexicon=policy_bundle.epistemic_markers,
-        policy=policy_bundle.validation_rules,
-    )
-    pipeline = ValidationPipeline(rules=rules)
-    context = ValidationContext(
-        claim_type="descriptive",
-        evidence_level="single_study",
-        epistemic_strength="moderate",
-    )
-
-    results = pipeline.validate("The study suggests a possible relationship.", context)
-
-    assert [result.code for result in results] == [f"V{i:02}" for i in range(1, 9)]
-    assert all(result.severity.value == "pass" for result in results if result.code != "V02")
-
-
-def test_mining_registry_has_deterministic_order_and_requirement_tags(policy_bundle):
-    stages = build_stages(policy=policy_bundle.mining_filter)
-
-    assert [stage.name for stage in stages] == [
-        "sentence_filter",
-        "move_classifier",
-        "epistemic_tagger",
-        "slot_abstractor",
-        "frame_normalizer",
-        "clusterer",
-        "dedup_matcher",
-    ]
-    for stage in stages[1:]:
-        assert stage.requirement_id
-
-
-def test_sentence_filter_removes_inline_citations_but_keeps_remaining_sentence():
-    stage = SentenceFilter(min_words=1, max_words=100)
-    item = MiningItem(
-        text="The result was stable [12] (Nguyen, 2020).",
-        source_sentence_ids=[uuid4()],
-    )
-
-    results = stage.process([item])
-
-    assert len(results) == 1
-    assert "[12]" not in results[0].text
-    assert "(Nguyen, 2020)" not in results[0].text
-    assert "The result was stable" in results[0].text
-
-
-def test_sentence_filter_applies_configured_word_bounds():
-    stage = SentenceFilter(min_words=2, max_words=4)
-    items = [
-        MiningItem(text="Short.", source_sentence_ids=[uuid4()]),
-        MiningItem(text="One two three four five.", source_sentence_ids=[uuid4()]),
-        MiningItem(text="One two three.", source_sentence_ids=[uuid4()]),
-    ]
-
-    results = stage.process(items)
-
-    assert [item.text for item in results] == ["One two three."]
-
-
-def test_mining_filter_thresholds_come_from_validated_policy():
-    policy = MiningFilterPolicy.model_validate(
-        {"version": "0.1.0", "sentence_filter": {"min_words": 1, "max_words": 10}}
-    )
-    stage = build_stages(policy=policy)[0]
-
-    assert stage.process([MiningItem(text="Short sentence.", source_sentence_ids=[uuid4()])])
-
-
-def test_invalid_filter_bounds_and_blank_lexicon_entries_are_rejected():
-    with pytest.raises(ValueError, match="min_words"):
-        MiningFilterPolicy.model_validate(
-            {"version": "0.1.0", "sentence_filter": {"min_words": 11, "max_words": 10}}
-        )
-    with pytest.raises(ValueError, match="markers"):
-        EpistemicMarkersPolicy.model_validate(
-            {
-                "version": "0.1.0",
-                "markers": {
-                    "low": [" "],
-                    "moderate": ["suggest"],
-                    "high": ["show"],
-                    "absolute": ["prove"],
-                },
-            }
-        )
-
-
-def test_candidate_writer_rejects_missing_source_sentence_ids():
-    writer = CandidateWriter(repository=None)
-    draft = CandidateDraft(canonical_frame="The results {verb}.", source_sentence_ids=[])
-
-    with pytest.raises(ValueError, match="source_sentence_ids"):
-        writer.write(draft)

@@ -21,7 +21,7 @@ def test_policy_bundle_loads_versioned_sample_policies() -> None:
 
 
 def test_policy_loader_rejects_invalid_schema(tmp_path) -> None:
-    source = Path(__file__).parents[2] / "src" / "aprkb" / "policies"
+    source = Path(__file__).parents[3] / "src" / "aprkb" / "policies"
     policy_dir = tmp_path / "policies"
     copytree(source, policy_dir)
     (policy_dir / "ranking_weights.yaml").write_text(

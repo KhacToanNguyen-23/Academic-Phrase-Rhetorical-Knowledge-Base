@@ -15,6 +15,8 @@ apps/backend (FastAPI modular monolith)
 
 The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker is started separately with `make worker`; no Redis or Celery service is used. Text and Markdown ingestion are implemented; JATS and PDF parsers remain explicit stubs. Articles can also be imported from an external article API through the `import_articles` worker job (`POST /v1/admin/corpus/imports`); mining rights are checked on listed metadata before any content is downloaded. Only the `null` source is registered until the real HTTP adapter is written (`ARTICLE_SOURCE`). OpenAlex is not used. See [ADR-0001](doc/adr/0001-modular-monolith.md), [ADR-0005](doc/adr/0005-external-article-source.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
 
+The owner approved runtime rule-based slot extraction on 2026-10-31. Its implementation is in progress; production classifiers, spaCy, NER, embeddings and live LLM remain deferred. Real-article gold and quality evaluation await the external article API. See [ADR-0006](doc/adr/0006-rule-based-slot-abstraction.md).
+
 ## Quick start
 
 Requirements: Python 3.12, `uv`, Docker Desktop, and GNU Make. Before starting Postgres, replace the example `POSTGRES_PASSWORD` and keep `DATABASE_URL` in sync. Compose binds Postgres to `127.0.0.1` only.

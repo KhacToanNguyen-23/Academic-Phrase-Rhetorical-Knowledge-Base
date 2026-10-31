@@ -18,10 +18,9 @@ class Settings(BaseSettings):
     blob_dir: str = "./data/blobs"
     log_level: str = "INFO"
 
-    # OpenAlex là adapter tùy chọn (BR-06): tắt mặc định, core vẫn chạy.
-    openalex_enabled: bool = False
-    openalex_api_key: str | None = None
-    openalex_mailto: str | None = None
+    # Nguồn bài báo ngoài (ADR-0005): chỉ worker gọi, mặc định "null" (không nhập gì).
+    article_source: str = "null"
+    article_import_batch_limit: int = 20
 
     grobid_url: str = "http://localhost:8070"
     languagetool_url: str = "http://localhost:8010"

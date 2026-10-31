@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.audit.service import record_event
+from aprkb.modules.corpus.importer import IMPORT_JOB_TYPE
 from aprkb.modules.corpus.models import Article, License
 from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.mining.models import Job
@@ -31,6 +32,7 @@ async def create_upload(
 ) -> tuple[Article, Job]:
     article = Article(
         id=article_id,
+        source="upload",
         title=title,
         license_id=license_row.id,
         blob_key=blob_key,
@@ -56,6 +58,38 @@ async def create_upload(
     )
     await session.commit()
     return article, job
+
+
+async def enqueue_import(
+    session: AsyncSession,
+    *,
+    source_name: str,
+    cursor: str | None,
+    limit: int,
+    actor: ApiClient,
+    request_id: str,
+) -> Job:
+    if source_name == "null":
+        raise HTTPException(status_code=409, detail="No article source is configured")
+    job = Job(
+        type=IMPORT_JOB_TYPE,
+        payload={"source": source_name, "cursor": cursor, "limit": limit},
+        status="queued",
+        created_by=actor.id,
+    )
+    session.add(job)
+    await session.flush()
+    await record_event(
+        session,
+        actor_id=actor.id,
+        action="corpus.import.enqueue",
+        entity_type="job",
+        entity_id=job.id,
+        after={"source": source_name, "cursor": cursor, "limit": limit},
+        request_id=request_id,
+    )
+    await session.commit()
+    return job
 
 
 async def enqueue_mining(

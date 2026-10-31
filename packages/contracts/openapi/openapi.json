@@ -114,6 +114,37 @@
         "title": "ApiKeySummary",
         "type": "object"
       },
+      "ArticleImportCreate": {
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          }
+        },
+        "title": "ArticleImportCreate",
+        "type": "object"
+      },
       "Body_upload_article_v1_admin_corpus_articles_post": {
         "properties": {
           "file": {
@@ -1725,6 +1756,69 @@
           }
         },
         "summary": "Mine Article",
+        "tags": [
+          "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/corpus/imports": {
+      "post": {
+        "operationId": "import_articles_v1_admin_corpus_imports_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleImportCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Import Articles V1 Admin Corpus Imports Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Articles",
         "tags": [
           "admin corpus and jobs"
         ]

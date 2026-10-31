@@ -9,11 +9,14 @@ from aprkb.core.config import settings
 from aprkb.modules.corpus.blobstore import BlobStore
 from aprkb.modules.mining.models import Job
 from aprkb.modules.mining.queue import claim_next
-from aprkb.worker.handlers import handle_job, local_blob_store
+from aprkb.worker.handlers import ArticleSourceFactory, handle_job, local_blob_store
 
 
 async def run_once(
-    session_factory: async_sessionmaker[AsyncSession], *, blob_store: BlobStore | None = None
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    blob_store: BlobStore | None = None,
+    article_source_factory: ArticleSourceFactory | None = None,
 ) -> bool:
     """Claim and handle at most one job. Return False when the queue is empty."""
     async with session_factory() as session:
@@ -31,7 +34,12 @@ async def run_once(
             job = await session.scalar(select(Job).where(Job.id == job_id).with_for_update())
             if job is None or job.status != "processing":
                 return True
-            error = await handle_job(session, job, store)
+            if article_source_factory is None:
+                error = await handle_job(session, job, store)
+            else:
+                error = await handle_job(
+                    session, job, store, article_source_factory=article_source_factory
+                )
             job.status = "failed" if error else "succeeded"
             job.error = error
             job.locked_at = None

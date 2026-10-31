@@ -53,7 +53,7 @@
 ### Không làm
 
 - Thuật toán mining thật (classifier, NER, LLM, clustering). Chỉ làm stage stub.
-- Tích hợp OpenAlex thật. Chỉ làm interface + `NullDisciplineSource`.
+- Tích hợp API nguồn bài báo thật. Chỉ làm interface `ArticleSource` + `NullArticleSource` + job `import_articles` (ADR-0005). Không dùng OpenAlex; phân loại ngành giữ interface + `NullDisciplineSource`.
 - Journal fingerprint. Chỉ làm stub, trả `None`.
 - Parse PDF thật (GROBID). Chỉ làm interface + parser stub.
 - Giao diện admin console.
@@ -469,6 +469,7 @@ Mọi response có header `X-Request-ID`. Mọi thao tác ghi đều ghi `AuditE
 | POST | `/v1/admin/review-queue/{candidate_id}/decisions` | reviewer+ | Ghi ReviewDecision |
 | POST | `/v1/admin/corpus/articles` | curator+ | Upload, tạo job ingest → trả `202` |
 | POST | `/v1/admin/corpus/articles/{id}/mine` | curator+ | Tạo job mine → trả `202` |
+| POST | `/v1/admin/corpus/imports` | curator+ | Tạo job `import_articles` từ nguồn ngoài → `202`; `409` khi `ARTICLE_SOURCE=null` |
 | GET | `/v1/admin/jobs/{id}` | curator+ | Trạng thái job |
 | POST/GET/DELETE | `/v1/admin/api-keys` | admin | Tạo key (chỉ trả plaintext **một lần**), list, thu hồi |
 | POST | `/v1/admin/releases/{id}/publish` | admin | `501` |
@@ -667,7 +668,7 @@ Và:
 ## 14. Để sau scaffold (không làm bây giờ)
 
 - Thuật toán mining thật: slot abstraction (luật → NER khoa học → LLM có kiểm tra lại), move classifier, clustering bằng embedding.
-- OpenAlex adapter thật, chế độ degraded mode.
+- Adapter HTTP thật cho API nguồn bài báo (ADR-0005).
 - Journal fingerprint, `JournalGenreScorer` thật.
 - Diversifier thật (FR-07.6).
 - Admin console UI.

@@ -5,56 +5,16 @@ services:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-aprkb}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aprkb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-aprkb}
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:${POSTGRES_PORT:-5432}:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aprkb}"]
       interval: 5s
       retries: 10
-
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
-
-  api:
-    build: ./apps/backend
-    command: uvicorn aprkb.api.main:app --host 0.0.0.0 --port 8000 --reload
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-aprkb}:${POSTGRES_PASSWORD:-aprkb}@postgres:5432/${POSTGRES_DB:-aprkb}
-      REDIS_URL: redis://redis:6379/0
-    ports: ["8000:8000"]
-    volumes: ["./apps/backend/src:/app/src"]
-    depends_on:
-      postgres: { condition: service_healthy }
-      redis: { condition: service_started }
-
-  worker:
-    build: ./apps/backend
-    command: celery -A aprkb.worker.app worker -l info
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-aprkb}:${POSTGRES_PASSWORD:-aprkb}@postgres:5432/${POSTGRES_DB:-aprkb}
-      REDIS_URL: redis://redis:6379/0
-    volumes: ["./apps/backend/src:/app/src"]
-    depends_on:
-      postgres: { condition: service_healthy }
-      redis: { condition: service_started }
-
-  # ---- M2: chỉ bật khi cần (docker compose --profile nlp up) ----
-  grobid:
-    image: lfoppiano/grobid:0.8.1
-    profiles: ["nlp"]
-    ports: ["8070:8070"]
-
-  languagetool:
-    image: erikvl87/languagetool:latest
-    profiles: ["nlp"]
-    ports: ["8010:8010"]
 
 volumes:
   pgdata:

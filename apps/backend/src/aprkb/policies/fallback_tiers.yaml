@@ -1,0 +1,2 @@
+version: 0.1.0
+tiers: [journal_genre, similar_journal_genre, subfield_genre, field_genre, generic_genre]

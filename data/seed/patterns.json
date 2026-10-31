@@ -1,0 +1,69 @@
+[
+  {
+    "seed_key": "approved-low",
+    "status": "approved",
+    "intent_code": "INTRO_GAP_INDICATE",
+    "canonical_frame": "The role of {topic} in {context} remains underexplored.",
+    "slots": {"topic": "noun_phrase", "context": "noun_phrase"},
+    "epistemic_strength": "low",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["INTRO", "DISCUSSION"]
+  },
+  {
+    "seed_key": "approved-high",
+    "status": "approved",
+    "intent_code": "DISCUSSION_FINDING",
+    "canonical_frame": "These results demonstrate that {finding} in {context}.",
+    "slots": {"finding": "clause", "context": "noun_phrase"},
+    "epistemic_strength": "high",
+    "claim_type": "causal",
+    "source_type": "authored",
+    "allowed_sections": ["DISCUSSION"]
+  },
+  {
+    "seed_key": "draft",
+    "status": "draft",
+    "intent_code": "INTRO_GAP_INDICATE",
+    "canonical_frame": "There is limited evidence about {topic}.",
+    "slots": {"topic": "noun_phrase"},
+    "epistemic_strength": "low",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["INTRO"]
+  },
+  {
+    "seed_key": "retired",
+    "status": "retired",
+    "intent_code": "DISCUSSION_FINDING",
+    "canonical_frame": "The findings may relate to {context}.",
+    "slots": {"context": "noun_phrase"},
+    "epistemic_strength": "low",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["DISCUSSION"]
+  },
+  {
+    "seed_key": "mined-proprietary",
+    "status": "approved",
+    "intent_code": "INTRO_GAP_INDICATE",
+    "canonical_frame": "Prior work has rarely examined {topic}.",
+    "slots": {"topic": "noun_phrase"},
+    "epistemic_strength": "moderate",
+    "claim_type": "descriptive",
+    "source_type": "mined",
+    "license_code": "PROPRIETARY",
+    "allowed_sections": ["INTRO"]
+  },
+  {
+    "seed_key": "approved-other-section",
+    "status": "approved",
+    "intent_code": "INTRO_GAP_INDICATE",
+    "canonical_frame": "An unresolved issue concerns {topic}.",
+    "slots": {"topic": "noun_phrase"},
+    "epistemic_strength": "moderate",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["DISCUSSION"]
+  }
+]

@@ -1,6 +1,6 @@
 // Dữ liệu mẫu tự biên soạn (own_authored) để chạy UI khi chưa có backend.
 // Không sao chép Manchester Academic Phrasebank (BR-01).
-import type { Intent, JournalProfile, PhrasePattern } from "./types";
+import type { Intent, JournalProfile, PhrasePattern } from "./mock-types";
 
 export const INTENTS: Intent[] = [
   { intent_id: "INT-GAP", name: "Identify research gap", move: "M2 Establish a niche", sections: ["Introduction"] },

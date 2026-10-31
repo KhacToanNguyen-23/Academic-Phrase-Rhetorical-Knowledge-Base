@@ -1,5 +1,7 @@
 # AP-RKB Web
 
+This frontend is a prototype UI and remains outside the scaffold's backend runtime scope. Its current screens use local mock data and mock API behavior. The admin screen is not a completed or in-scope production admin console.
+
 React + TypeScript + Vite (SPA). Gọi backend qua client sinh từ OpenAPI.
 
 ```

@@ -1,1 +1,46 @@
-"""SQLAlchemy models của module corpus."""
+"""SQLAlchemy persistence models for the corpus domain."""
+
+from uuid import UUID
+
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from aprkb.core.db import Base, EntityMixin, MutableEntityMixin
+
+
+class License(EntityMixin, Base):
+    __tablename__ = "licenses"
+    code: Mapped[str] = mapped_column(String(64), unique=True)
+    name: Mapped[str] = mapped_column(String(255))
+    allows_mining: Mapped[bool] = mapped_column(Boolean, default=False)
+    allows_display: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class Article(MutableEntityMixin, Base):
+    __tablename__ = "articles"
+    doi: Mapped[str | None] = mapped_column(String(255), unique=True)
+    title: Mapped[str | None] = mapped_column(Text)
+    journal_id: Mapped[UUID | None] = mapped_column(ForeignKey("journal_profiles.id"))
+    genre_id: Mapped[UUID | None] = mapped_column(ForeignKey("article_genres.id"))
+    license_id: Mapped[UUID] = mapped_column(ForeignKey("licenses.id"))
+    blob_key: Mapped[str] = mapped_column(String(1024))
+    ingest_status: Mapped[str] = mapped_column(String(32), default="pending")
+
+
+class ArticleSection(EntityMixin, Base):
+    __tablename__ = "article_sections"
+    article_id: Mapped[UUID] = mapped_column(ForeignKey("articles.id"))
+    section_code: Mapped[str | None] = mapped_column(String(64))
+    heading: Mapped[str | None] = mapped_column(Text)
+    order: Mapped[int] = mapped_column(Integer)
+
+
+class Sentence(EntityMixin, Base):
+    __tablename__ = "sentences"
+    article_id: Mapped[UUID] = mapped_column(ForeignKey("articles.id"))
+    article_section_id: Mapped[UUID | None] = mapped_column(ForeignKey("article_sections.id"))
+    text: Mapped[str] = mapped_column(Text)
+    char_start: Mapped[int] = mapped_column(Integer)
+    char_end: Mapped[int] = mapped_column(Integer)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(384))

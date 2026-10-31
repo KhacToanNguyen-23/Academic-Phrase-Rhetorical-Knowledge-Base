@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.1.0",
+  "status": "example_only",
+  "input": {
+    "sentence_id": "00000000-0000-4000-8000-000000000001",
+    "text": "These results indicate that the proposed approach improves retrieval accuracy."
+  },
+  "expected_candidate": {
+    "canonical_frame": "These results indicate that the proposed approach improves retrieval accuracy.",
+    "source_sentence_ids": ["00000000-0000-4000-8000-000000000001"],
+    "status": "pending"
+  },
+  "evaluation": null
+}

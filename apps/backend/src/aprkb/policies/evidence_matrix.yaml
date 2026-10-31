@@ -1,0 +1,17 @@
+# DRAFT policy; TODO(owner, PRD-6.2): approve this evidence matrix before production use.
+version: 0.1.0
+default_max_strength: low
+matrix:
+  descriptive:
+    none: low
+    anecdotal: moderate
+    single_study: high
+    multiple_consistent: high
+    systematic_synthesis: high
+  causal:
+    none: low
+    anecdotal: low
+    single_study: moderate
+    multiple_consistent: high
+    systematic_synthesis: high
+  # comparative and generalization remain TODO(owner); unknown cells fail closed.

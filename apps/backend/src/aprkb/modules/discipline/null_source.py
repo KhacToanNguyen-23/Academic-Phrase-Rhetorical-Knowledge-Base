@@ -1,4 +1,4 @@
-"""Placeholder discipline source used until the OpenAlex adapter is implemented."""
+"""Placeholder discipline source; no external classification source is connected (ADR-0005)."""
 
 from __future__ import annotations
 

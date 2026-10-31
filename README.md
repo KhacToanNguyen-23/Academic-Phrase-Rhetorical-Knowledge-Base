@@ -13,7 +13,7 @@ apps/backend (FastAPI modular monolith)
   corpus blobs ── local ./data/blobs via BlobStore
 ```
 
-The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker is started separately with `make worker`; no Redis or Celery service is used. Text ingestion is implemented; JATS and PDF parsers remain explicit stubs. OpenAlex is optional and inactive. See [ADR-0001](doc/adr/0001-modular-monolith.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
+The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker is started separately with `make worker`; no Redis or Celery service is used. Text and Markdown ingestion are implemented; JATS and PDF parsers remain explicit stubs. Articles can also be imported from an external article API through the `import_articles` worker job (`POST /v1/admin/corpus/imports`); mining rights are checked on listed metadata before any content is downloaded. Only the `null` source is registered until the real HTTP adapter is written (`ARTICLE_SOURCE`). OpenAlex is not used. See [ADR-0001](doc/adr/0001-modular-monolith.md), [ADR-0005](doc/adr/0005-external-article-source.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
 
 ## Quick start
 

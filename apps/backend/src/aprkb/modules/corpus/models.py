@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aprkb.core.db import Base, EntityMixin, MutableEntityMixin
@@ -19,6 +19,12 @@ class License(EntityMixin, Base):
 
 class Article(MutableEntityMixin, Base):
     __tablename__ = "articles"
+    __table_args__ = (
+        UniqueConstraint("source", "external_id", name="uq_articles_source_external_id"),
+    )
+    # "upload" for manual uploads; otherwise the ArticleSource name that imported it.
+    source: Mapped[str] = mapped_column(String(64), default="upload", server_default="upload")
+    external_id: Mapped[str | None] = mapped_column(String(255))
     doi: Mapped[str | None] = mapped_column(String(255), unique=True)
     title: Mapped[str | None] = mapped_column(Text)
     journal_id: Mapped[UUID | None] = mapped_column(ForeignKey("journal_profiles.id"))

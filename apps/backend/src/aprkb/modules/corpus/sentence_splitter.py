@@ -11,7 +11,8 @@ class SentenceSpan:
     char_end: int
 
 
-_BOUNDARY = re.compile(r"(?<=[.!?])(?:[\"'”’)]*)\s+")
+# A blank line also ends a sentence, so headings and list items stay separate.
+_BOUNDARY = re.compile(r"(?<=[.!?])(?:[\"'”’)]*)\s+|\n[ \t]*\n\s*")
 
 
 def split_sentences(text: str) -> list[SentenceSpan]:

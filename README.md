@@ -13,7 +13,7 @@ apps/backend (FastAPI modular monolith)
   corpus blobs ── local ./data/blobs via BlobStore
 ```
 
-The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker is started separately with `make worker`; no Redis or Celery service is used. Text and Markdown ingestion are implemented; JATS and PDF parsers remain explicit stubs. Articles can also be imported from an external article API through the `import_articles` worker job (`POST /v1/admin/corpus/imports`); mining rights are checked on listed metadata before any content is downloaded. Only the `null` source is registered until the real HTTP adapter is written (`ARTICLE_SOURCE`). OpenAlex is not used. See [ADR-0001](doc/adr/0001-modular-monolith.md), [ADR-0005](doc/adr/0005-external-article-source.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
+The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker is started separately with `make worker`; no Redis or Celery service is used. Text and Markdown ingestion are implemented; JATS and PDF parsers remain explicit stubs. SLR imports use curator-managed profiles in `/import`: saving a profile and choosing “Lấy bài báo” creates a queued job whose filters are snapshotted in its payload. Job results report listed, imported and skipped counts. Set `ARTICLE_SOURCE=slr`, `SLR_API_BASE_URL` (default `https://slr-api.hyperdatalab.org/api`) and `SLR_API_KEY`; timeout, retry count and maximum download size use `SLR_TIMEOUT_SECONDS`, `SLR_MAX_RETRIES` and `SLR_MAX_DOWNLOAD_BYTES`. SLR enforces a limit of 120 requests per minute, handled through `Retry-After`. Imports fail closed: missing, unknown or non-mining licenses are skipped before download. The real SLR API currently returns no license data, so for development only `SLR_DEV_FALLBACK_LICENSE=DEV-UNVERIFIED` assigns that placeholder license to works whose license is missing or unknown; works with a known non-mining license stay blocked. The setting is rejected unless `APP_ENV` is `local` or `test`, and articles under `DEV-UNVERIFIED` must be deleted before production. PDF files can be stored, but the PDF parser remains a stub, so they cannot be mined yet. License aliases and rights are defined in `apps/backend/src/aprkb/policies/licenses.yaml`. OpenAlex is not queried. See [ADR-0001](doc/adr/0001-modular-monolith.md), [ADR-0005](doc/adr/0005-external-article-source.md), [ADR-0006](doc/adr/0006-slr-repository-import.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
 
 ## Quick start
 
@@ -49,6 +49,14 @@ OpenAPI is available at <http://localhost:8000/docs>. To process uploaded articl
 | `make worker` | Poll PostgreSQL jobs and process ingestion/mining |
 | `make test` | Run backend unit, integration, and scaffold acceptance tests |
 | `make lint` | Run Ruff, format verification, and mypy |
+
+### Logs
+
+The API and worker write logs to stderr under the `aprkb.*` loggers; set the level with `LOG_LEVEL` (default `INFO`).
+
+- **API**: one line per request (method, path, status, duration, `request_id`), rejected requests (4xx with error code; 422 lists field names only), import-profile create/update, import, upload, and mining enqueue events.
+- **Worker**: job claimed, succeeded or failed with duration, the import page summary (counts per skip reason), and one line per SLR work (license, chosen artifact) or skipped article.
+- **Excluded**: API keys, query strings, rejected input values, exception messages (only the type and stack frames are logged), and article or manuscript text. Match a failed response to its log line with the `X-Request-ID` header.
 
 ## PRD traceability
 

@@ -32,3 +32,4 @@ class Job(MutableEntityMixin, Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error: Mapped[str | None] = mapped_column(Text)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

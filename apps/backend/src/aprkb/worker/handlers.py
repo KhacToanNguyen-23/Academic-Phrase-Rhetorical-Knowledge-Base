@@ -1,6 +1,7 @@
 """Transactional handlers for import, ingestion, and mining jobs."""
 
 from collections.abc import Callable
+from dataclasses import asdict
 from pathlib import Path
 from uuid import UUID
 
@@ -8,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.core.config import settings
+from aprkb.core.logging import get_logger
 from aprkb.modules.corpus.blobstore import BlobStore, LocalBlobStore
 from aprkb.modules.corpus.importer import IMPORT_JOB_TYPE, MAX_IMPORT_BATCH_LIMIT, import_page
 from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
@@ -16,9 +18,11 @@ from aprkb.modules.corpus.parsers.jats_parser import JatsParserStub
 from aprkb.modules.corpus.parsers.markdown_parser import MarkdownParser
 from aprkb.modules.corpus.parsers.pdf_parser import PdfParserStub
 from aprkb.modules.corpus.parsers.text_parser import TextParser
+from aprkb.modules.corpus.schemas import DEFAULT_ARTIFACT_KINDS, SlrWorkFilters
 from aprkb.modules.corpus.section_detector import detect_section
 from aprkb.modules.corpus.sentence_splitter import split_sentences
 from aprkb.modules.corpus.sources import ArticleSource, build_article_source
+from aprkb.modules.corpus.sources.base import ImportOptions
 from aprkb.modules.mining.candidate_writer import CandidateDraft, CandidateWriter
 from aprkb.modules.mining.models import Candidate, Job
 from aprkb.modules.mining.pipeline import MiningPipeline
@@ -33,6 +37,7 @@ _PARSERS: tuple[DocumentParser, ...] = (
     PdfParserStub(),
 )
 ArticleSourceFactory = Callable[[str], ArticleSource]
+logger = get_logger(__name__)
 
 
 class _SessionCandidateRepository:
@@ -95,15 +100,64 @@ async def _import(
     if not isinstance(limit, int) or not 1 <= limit <= MAX_IMPORT_BATCH_LIMIT:
         return "Job payload contains an invalid limit"
     try:
+        raw_filters = job.payload.get("filters", {})
+        raw_kinds = job.payload.get("artifact_kinds", list(DEFAULT_ARTIFACT_KINDS))
+        profile_value = job.payload.get("profile_id")
+        if not isinstance(raw_filters, dict) or not isinstance(raw_kinds, list):
+            return "Job payload contains invalid import options"
+        filters = SlrWorkFilters.model_validate(raw_filters).model_dump(
+            by_alias=True, exclude_none=True
+        )
+        if (
+            any(kind not in DEFAULT_ARTIFACT_KINDS for kind in raw_kinds)
+            or not raw_kinds
+            or len(set(raw_kinds)) != len(raw_kinds)
+        ):
+            return "Job payload contains invalid artifact kinds"
+        profile_id = UUID(profile_value) if isinstance(profile_value, str) else None
+    except (ValueError, TypeError):
+        return "Job payload contains invalid import options"
+    try:
         source = article_source_factory(source_name)
-    except ValueError:
+    except ValueError as error:
+        if str(error) == "SLR_API_KEY is required when ARTICLE_SOURCE=slr":
+            return str(error)
         return "Unknown article source"
     # Keep a failed page atomic while leaving the outer transaction available to
     # mark the import job failed. import_page compensates any blobs it wrote.
-    async with session.begin_nested():
-        await import_page(
-            session, source=source, blob_store=blob_store, cursor=cursor, limit=limit, job_id=job.id
+    try:
+        async with session.begin_nested():
+            summary = await import_page(
+                session,
+                source=source,
+                blob_store=blob_store,
+                cursor=cursor,
+                limit=limit,
+                job_id=job.id,
+                options=ImportOptions(filters, tuple(raw_kinds)),
+                profile_id=profile_id,
+            )
+            job.result = {**asdict(summary), "profile_id": str(profile_id) if profile_id else None}
+        logger.info(
+            "Import page done job_id=%s source=%s profile_id=%s filters=%s listed=%s imported=%s "
+            "skipped_license=%s skipped_format=%s skipped_duplicate=%s "
+            "skipped_invalid_content=%s continuation_job_id=%s",
+            job.id,
+            source_name,
+            profile_id,
+            filters,
+            summary.listed,
+            summary.imported,
+            summary.skipped_license,
+            summary.skipped_format,
+            summary.skipped_duplicate,
+            summary.skipped_invalid_content,
+            summary.continuation_job_id,
         )
+    finally:
+        close = getattr(source, "aclose", None)
+        if close is not None:
+            await close()
     return None
 
 

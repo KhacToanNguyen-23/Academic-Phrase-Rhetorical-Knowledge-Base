@@ -4,20 +4,42 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.core.config import settings
 from aprkb.core.deps import get_db_session
 from aprkb.core.security import require_role
 from aprkb.modules.corpus.blobstore import LocalBlobStore
-from aprkb.modules.corpus.schemas import ArticleImportCreate
+from aprkb.modules.corpus.schemas import (
+    ArticleImportCreate,
+    ImportProfileCreate,
+    ImportProfileRead,
+    ImportProfileUpdate,
+    JobRead,
+    SlrTaxonomyPage,
+)
 from aprkb.modules.corpus.service import (
+    create_import_profile,
     create_upload,
     enqueue_import,
     enqueue_mining,
+    get_import_profile,
     get_license,
+    list_import_profiles,
+    update_import_profile,
 )
+from aprkb.modules.corpus.sources import build_article_source
 from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.mining.models import Job
 
@@ -25,6 +47,42 @@ admin_router = APIRouter(tags=["admin corpus and jobs"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 Curator = Annotated[ApiClient, Depends(require_role("curator"))]
 _ALLOWED_SUFFIXES = {".txt", ".md", ".markdown", ".xml", ".jats", ".pdf"}
+
+
+@admin_router.get("/corpus/import-profiles", response_model=list[ImportProfileRead])
+async def import_profile_list(_actor: Curator, session: DatabaseSession) -> list[ImportProfileRead]:
+    return [
+        ImportProfileRead.model_validate(profile) for profile in await list_import_profiles(session)
+    ]
+
+
+@admin_router.post("/corpus/import-profiles", response_model=ImportProfileRead, status_code=201)
+async def import_profile_create(
+    payload: ImportProfileCreate, request: Request, session: DatabaseSession, actor: Curator
+) -> ImportProfileRead:
+    profile = await create_import_profile(session, payload, actor, request.state.request_id)
+    return ImportProfileRead.model_validate(profile)
+
+
+@admin_router.get("/corpus/import-profiles/{profile_id}", response_model=ImportProfileRead)
+async def import_profile_get(
+    profile_id: UUID, _actor: Curator, session: DatabaseSession
+) -> ImportProfileRead:
+    return ImportProfileRead.model_validate(await get_import_profile(session, profile_id))
+
+
+@admin_router.patch("/corpus/import-profiles/{profile_id}", response_model=ImportProfileRead)
+async def import_profile_update(
+    profile_id: UUID,
+    payload: ImportProfileUpdate,
+    request: Request,
+    session: DatabaseSession,
+    actor: Curator,
+) -> ImportProfileRead:
+    profile = await update_import_profile(
+        session, profile_id, payload, actor, request.state.request_id
+    )
+    return ImportProfileRead.model_validate(profile)
 
 
 @admin_router.post("/corpus/articles", status_code=status.HTTP_202_ACCEPTED)
@@ -70,13 +128,21 @@ async def import_articles(
     session: DatabaseSession,
     actor: Curator,
 ) -> dict[str, str]:
+    profile = await get_import_profile(session, payload.profile_id) if payload.profile_id else None
+    if profile is not None and not profile.is_active:
+        raise HTTPException(status_code=409, detail="Import profile is inactive")
+    if profile is not None and settings.article_source == "null":
+        raise HTTPException(status_code=409, detail="No article source is configured")
     job = await enqueue_import(
         session,
         source_name=settings.article_source,
         cursor=payload.cursor,
-        limit=payload.limit or settings.article_import_batch_limit,
+        limit=profile.batch_limit
+        if profile
+        else (payload.limit or settings.article_import_batch_limit),
         actor=actor,
         request_id=request.state.request_id,
+        profile=profile,
     )
     return {"job_id": str(job.id), "status": job.status}
 
@@ -97,17 +163,39 @@ async def mine_article(
     return {"job_id": str(job.id), "status": job.status}
 
 
-@admin_router.get("/jobs/{job_id}")
-async def get_job(job_id: UUID, _actor: Curator, session: DatabaseSession) -> dict[str, object]:
+@admin_router.get("/jobs/{job_id}", response_model=JobRead)
+async def get_job(job_id: UUID, _actor: Curator, session: DatabaseSession) -> JobRead:
     job = await session.get(Job, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    return {
-        "id": job.id,
-        "type": job.type,
-        "status": job.status,
-        "attempts": job.attempts,
-        "error": job.error,
-        "created_at": job.created_at,
-        "updated_at": job.updated_at,
-    }
+    return JobRead(
+        id=job.id,
+        type=job.type,
+        status=job.status,
+        attempts=job.attempts,
+        error=job.error,
+        result=job.result,
+        created_at=job.created_at,
+        updated_at=job.updated_at,
+    )
+
+
+@admin_router.get("/corpus/sources/slr/taxonomy", response_model=SlrTaxonomyPage)
+async def slr_taxonomy(
+    _actor: Curator,
+    level: str = Query(pattern="^(domain|field|subfield|topic)$"),
+    parentId: str | None = None,
+    cursor: str | None = None,
+    limit: int = Query(default=100, ge=1, le=100),
+) -> dict[str, object]:
+    if settings.article_source != "slr":
+        raise HTTPException(status_code=409, detail="SLR article source is not configured")
+    try:
+        source = build_article_source("slr")
+        try:
+            data = await source.get_taxonomy(level, parentId, cursor, limit)
+        finally:
+            await source.aclose()
+        return data
+    except Exception as error:
+        raise HTTPException(status_code=502, detail="SLR taxonomy request failed") from error

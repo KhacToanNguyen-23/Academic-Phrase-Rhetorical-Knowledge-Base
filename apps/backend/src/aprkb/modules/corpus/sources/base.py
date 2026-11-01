@@ -1,7 +1,18 @@
 """Contracts for external article sources polled by the import worker (ADR-0005)."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
+
+
+@dataclass(frozen=True)
+class ImportOptions:
+    filters: Mapping[str, object]
+    artifact_kinds: tuple[str, ...]
+
+
+class InvalidContentError(ValueError):
+    """Downloaded content does not match its artifact manifest."""
 
 
 @dataclass(frozen=True)
@@ -13,6 +24,7 @@ class SourceArticleRef:
     doi: str | None
     license_code: str | None
     content_type: str
+    content_locator: str | None = None
 
 
 @dataclass(frozen=True)
@@ -24,9 +36,17 @@ class SourcePage:
 class ArticleSource(Protocol):
     name: str
 
-    async def list_articles(self, *, cursor: str | None, limit: int) -> SourcePage: ...
+    async def list_articles(
+        self, *, cursor: str | None, limit: int, options: ImportOptions
+    ) -> SourcePage: ...
 
     async def fetch_content(self, article: SourceArticleRef) -> bytes: ...
+
+    async def aclose(self) -> None: ...
+
+    async def get_taxonomy(
+        self, level: str, parent_id: str | None, cursor: str | None, limit: int
+    ) -> dict[str, object]: ...
 
 
 # Content types the ingest worker can store; the suffix selects the parser later.

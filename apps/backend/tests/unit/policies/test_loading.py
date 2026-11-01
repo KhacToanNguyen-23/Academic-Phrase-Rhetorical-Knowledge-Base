@@ -32,6 +32,18 @@ def test_policy_loader_rejects_invalid_schema(tmp_path) -> None:
         load_policy_bundle(policy_dir)
 
 
+def test_policy_loader_rejects_invalid_license_policy(tmp_path) -> None:
+    source = Path(__file__).parents[3] / "src" / "aprkb" / "policies"
+    policy_dir = tmp_path / "policies"
+    copytree(source, policy_dir)
+    (policy_dir / "licenses.yaml").write_text(
+        "version: 0.1.0\nlicenses: []\nsource_aliases: {}\nslr_license_paths: [license]\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="licenses.yaml"):
+        load_policy_bundle(policy_dir)
+
+
 def test_policy_rejects_empty_active_scorer_weights() -> None:
     with pytest.raises(ValueError):
         RankingWeightsPolicy.model_validate(

@@ -51,6 +51,9 @@ pnpm-debug.log*
 # 4. Data, Corpus & NLP Cache (Dung lượng lớn & Bản quyền)
 # ==========================================
 data/corpus/
+data/blobs/
+# BLOB_DIR=./data/blobs resolves under apps/backend when commands run with uv --directory
+apps/backend/data/
 data/raw/
 data/processed/
 data/cache/

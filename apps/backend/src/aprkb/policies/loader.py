@@ -10,6 +10,7 @@ from aprkb.policies.schemas import (
     EpistemicMarkersPolicy,
     EvidenceMatrixPolicy,
     FallbackTiersPolicy,
+    LicensesPolicy,
     MiningFilterPolicy,
     RankingWeightsPolicy,
     ValidationRulesPolicy,
@@ -18,6 +19,7 @@ from aprkb.policies.schemas import (
 
 @dataclass(frozen=True)
 class PolicyBundle:
+    licenses: LicensesPolicy
     ranking_weights: RankingWeightsPolicy
     fallback_tiers: FallbackTiersPolicy
     evidence_matrix: EvidenceMatrixPolicy
@@ -39,6 +41,7 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
     """Load all policy files, failing startup on missing or invalid policy data."""
     root = Path(policy_dir) if policy_dir is not None else Path(__file__).parent
     return PolicyBundle(
+        licenses=_load(root / "licenses.yaml", LicensesPolicy),
         ranking_weights=_load(root / "ranking_weights.yaml", RankingWeightsPolicy),
         fallback_tiers=_load(root / "fallback_tiers.yaml", FallbackTiersPolicy),
         evidence_matrix=_load(root / "evidence_matrix.yaml", EvidenceMatrixPolicy),

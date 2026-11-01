@@ -1,4 +1,4 @@
-# AP-RKB — PRD dựng khung (Scaffold) v0.1
+# AP-RKB — PRD dựng khung (Scaffold) v0.2
 
 > **Đối tượng đọc:** coding agent dùng để dựng bộ khung ban đầu cho dự án.
 > **Mục tiêu:** tạo ra một repo **chạy được, test được, nhưng gần như chưa có logic nghiệp vụ**. Mọi module có đủ ranh giới, interface, schema và test giữ chỗ để các bước sau chỉ còn việc "điền ruột".
@@ -30,7 +30,8 @@
 | D8 | Cấu hình nghiệp vụ | File YAML có version trong `app/policies/`, không hard-code trong code |
 | D9 | Enum nghiệp vụ | Lưu ở bảng tham chiếu trong DB (seed được), không dùng Postgres ENUM |
 | D10 | Công cụ | `uv` (quản lý package), `ruff`, `mypy --strict` (với `app/`), `pytest`, `pytest-asyncio` |
-| D11 | Admin console | Ở bước scaffold chỉ có thư mục giữ chỗ + README. Chọn stack frontend sau |
+| D11 | Admin console | Ở bước scaffold chỉ có màn hình **Import từ SLR** (D12). Các màn hình admin khác chưa làm |
+| D12 | Nguồn bài báo | SLR Repository API qua `SlrRepositorySource`. Curator cấu hình bộ lọc trên web (`ImportProfile`) rồi bấm lấy bài. License fail closed theo `policies/licenses.yaml` ([ADR-0006](doc/adr/0006-slr-repository-import.md)) |
 
 ---
 
@@ -49,14 +50,17 @@
 - Seed tối thiểu (mục 9) và lệnh nạp seed.
 - Test: unit test cho khung (phải pass) và acceptance test AT-01..AT-12 dạng skip (mục 10).
 - `Makefile` với các lệnh chuẩn (mục 11).
+- Nhập bài từ SLR Repository API (ADR-0006): adapter `SlrRepositorySource`, entity `ImportProfile` + API quản lý profile, job `import_articles` nhận `profile_id`, `policies/licenses.yaml` (danh sách license + bảng ánh xạ chuỗi license của nguồn).
+- Màn hình web **Import từ SLR** trong `apps/web`, chạy như web bình thường và gọi API thật: chọn/sửa profile, chọn ngành qua taxonomy SLR, bấm "Lấy bài báo", xem tiến độ job.
 
 ### Không làm
 
 - Thuật toán mining thật (classifier, NER, LLM, clustering). Chỉ làm stage stub.
-- Tích hợp API nguồn bài báo thật. Chỉ làm interface `ArticleSource` + `NullArticleSource` + job `import_articles` (ADR-0005). Không dùng OpenAlex; phân loại ngành giữ interface + `NullDisciplineSource`.
+- Tích hợp nguồn bài báo khác ngoài SLR. Không dùng OpenAlex API (ID taxonomy OpenAlex chỉ là giá trị bộ lọc do SLR trả về); phân loại ngành giữ interface + `NullDisciplineSource`.
+- Đẩy bài lên SLR (`POST /works/import`) và dùng kết quả phân tích của SLR (`analysis-*`).
 - Journal fingerprint. Chỉ làm stub, trả `None`.
 - Parse PDF thật (GROBID). Chỉ làm interface + parser stub.
-- Giao diện admin console.
+- Các màn hình admin console khác ngoài Import từ SLR (review queue, pattern, API key…).
 - Deploy, CI/CD, monitoring.
 
 ---
@@ -261,7 +265,8 @@ Mọi bảng có `id` (UUID), `created_at`, `created_by` (FK `api_clients.id`, n
 
 | Entity | Trường chính | Ghi chú |
 |---|---|---|
-| `License` | `code`, `name`, `allows_mining`, `allows_display` | Phục vụ BR-10 |
+| `License` | `code`, `name`, `allows_mining`, `allows_display` | Phục vụ BR-10. Nạp từ `policies/licenses.yaml` |
+| `ImportProfile` | `name`, `source` (`slr`), `filters` (JSONB, chỉ các field lọc của SLR `/works`), `artifact_kinds` (thứ tự ưu tiên), `batch_limit`, `is_active` | Curator sửa trên web. Job chụp lại `filters` vào payload |
 | `Article` | `doi`, `title`, `journal_id?`, `genre_id?`, `license_id`, `blob_key`, `ingest_status` | |
 | `ArticleSection` | `article_id`, `section_code?`, `heading`, `order` | |
 | `Sentence` | `article_id`, `article_section_id`, `text`, `char_start`, `char_end`, `embedding` (pgvector, nullable) | |
@@ -469,7 +474,10 @@ Mọi response có header `X-Request-ID`. Mọi thao tác ghi đều ghi `AuditE
 | POST | `/v1/admin/review-queue/{candidate_id}/decisions` | reviewer+ | Ghi ReviewDecision |
 | POST | `/v1/admin/corpus/articles` | curator+ | Upload, tạo job ingest → trả `202` |
 | POST | `/v1/admin/corpus/articles/{id}/mine` | curator+ | Tạo job mine → trả `202` |
-| POST | `/v1/admin/corpus/imports` | curator+ | Tạo job `import_articles` từ nguồn ngoài → `202`; `409` khi `ARTICLE_SOURCE=null` |
+| POST | `/v1/admin/corpus/imports` | curator+ | Tạo job `import_articles` từ nguồn ngoài, nhận `profile_id` (bộ lọc được chụp vào payload) → `202`; `409` khi `ARTICLE_SOURCE=null` |
+| GET/POST | `/v1/admin/corpus/import-profiles` | curator+ | List / tạo profile bộ lọc |
+| GET/PATCH | `/v1/admin/corpus/import-profiles/{id}` | curator+ | Xem / sửa profile; bộ lọc được validate theo danh sách field cho phép |
+| GET | `/v1/admin/corpus/sources/slr/taxonomy` | curator+ | Gọi qua `GET /taxonomy` của SLR (`level`, `parentId`, `cursor`) để giao diện chọn ngành |
 | GET | `/v1/admin/jobs/{id}` | curator+ | Trạng thái job |
 | POST/GET/DELETE | `/v1/admin/api-keys` | admin | Tạo key (chỉ trả plaintext **một lần**), list, thu hồi |
 | POST | `/v1/admin/releases/{id}/publish` | admin | `501` |
@@ -562,7 +570,8 @@ markers:
 
 `python -m seeds.load` nạp theo thứ tự `reference_enums → taxonomy → patterns`. Chạy lại nhiều lần không sinh dữ liệu trùng (idempotent: upsert theo `code`).
 
-- `reference_enums.json`: các thang ở mục 4.6, role, license mẫu (`CC-BY` cho phép mining + display; `PROPRIETARY` không cho cả hai).
+- `reference_enums.json`: các thang ở mục 4.6, role.
+- License nạp từ `policies/licenses.yaml`: `CC0`, `CC-BY`, `CC-BY-SA` cho phép mining + display; các biến thể NC/ND tạm chặn với `TODO(owner)`; `PROPRIETARY` không cho cả hai.
 - `taxonomy.json`: 1 release `0.1.0` published, gồm 2 section (`INTRO`, `DISCUSSION`), mỗi section 1–2 move, mỗi move 1 step, mỗi step 1–2 intent. `TODO(owner)`: thay bằng taxonomy thật.
 - `patterns.json`: khoảng 6 pattern authored để phủ test, gồm:
   - 1 pattern `approved`, strength `low`
@@ -646,6 +655,8 @@ Và:
 
 - [ ] `POST /v1/recommendations` với seed trả kết quả có `breakdown` và `fallback_tier`; `discipline` và `journal_genre` là `null`.
 - [ ] `POST /v1/validate` với câu chứa "prove" và `evidence_level=single_study` trả `V02: block`.
+- [ ] Tạo `ImportProfile`, gọi `POST /v1/admin/corpus/imports` với `profile_id` trên SLR giả lập → bài có license cho phép được nhập, bài thiếu/không rõ license bị bỏ qua và không tải nội dung.
+- [ ] Màn hình Import từ SLR lưu được profile, bấm "Lấy bài báo" tạo job và hiển thị tiến độ.
 - [ ] Upload 1 file `.txt` qua `/v1/admin/corpus/articles` rồi chạy mine → worker tạo ít nhất 1 `Candidate` có `source_sentence_ids` (các stage stub giữ nguyên câu).
 - [ ] Không file nào trong `app/` chứa trọng số, ngưỡng hay danh sách từ vựng hard-code; tất cả nằm trong `app/policies/`.
 - [ ] Mỗi stub đều có `TODO` kèm mã yêu cầu.
@@ -668,10 +679,10 @@ Và:
 ## 14. Để sau scaffold (không làm bây giờ)
 
 - Thuật toán mining thật: slot abstraction (luật → NER khoa học → LLM có kiểm tra lại), move classifier, clustering bằng embedding.
-- Adapter HTTP thật cho API nguồn bài báo (ADR-0005).
 - Journal fingerprint, `JournalGenreScorer` thật.
 - Diversifier thật (FR-07.6).
-- Admin console UI.
+- Các màn hình admin console còn lại.
+- Lịch tự động chạy import theo profile.
 - Quy trình publish taxonomy release.
 - Bộ ablation (PRD-14.2) và `eval/mining`.
 
@@ -682,7 +693,8 @@ Và:
 | Yêu cầu | Module / file | Test |
 |---|---|---|
 | BR-01 chỉ dùng pattern approved | `recommendation/gates/approval_gate.py`, `patterns/review.py` | `unit/.../test_approval_gate.py`, AT-01 |
-| BR-10 license | `recommendation/gates/license_gate.py`, `corpus/license_check.py` | AT-05 |
+| BR-10 license | `recommendation/gates/license_gate.py`, `corpus/license_check.py`, `policies/licenses.yaml` | AT-05 |
+| Import SLR theo profile | `corpus/sources/slr_source.py`, `corpus/import_profiles.py`, `apps/web/src/features/slr-import` | `unit/corpus/test_slr_source.py`, `integration/corpus/test_import_profiles.py` |
 | Claim ≤ evidence | `policy/evidence_policy.py`, `gates/evidence_gate.py`, `validation/rules/v02_*.py` | `test_policy_consistency.py`, AT-02, AT-07 |
 | Guideline journal | `policy/guideline_policy.py`, `gates/guideline_gate.py` | AT-06 |
 | Ranking có trọng số | `scorers/*`, `aggregator.py`, `policies/ranking_weights.yaml` | `test_aggregator.py` |

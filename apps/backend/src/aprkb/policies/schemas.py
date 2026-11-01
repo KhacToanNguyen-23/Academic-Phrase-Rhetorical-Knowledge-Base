@@ -12,6 +12,37 @@ class VersionedPolicy(BaseModel):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
 
 
+class LicenseEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    allows_mining: bool
+    allows_display: bool
+
+
+class LicensesPolicy(VersionedPolicy):
+    licenses: list[LicenseEntry] = Field(min_length=1)
+    source_aliases: dict[str, str]
+    slr_license_paths: list[str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_references(self) -> "LicensesPolicy":
+        codes = [entry.code for entry in self.licenses]
+        if len(codes) != len(set(codes)):
+            raise ValueError("license codes must be unique")
+        aliases = [" ".join(alias.split()).casefold() for alias in self.source_aliases]
+        if any(not alias for alias in aliases) or len(aliases) != len(set(aliases)):
+            raise ValueError("license aliases must be non-empty and unique after normalization")
+        if any(code not in codes for code in self.source_aliases.values()):
+            raise ValueError("license aliases must reference known codes")
+        if any(
+            not path or any(not part for part in path.split(".")) for path in self.slr_license_paths
+        ):
+            raise ValueError("license paths must contain non-empty keys")
+        return self
+
+
 class RankingWeightsPolicy(VersionedPolicy):
     weights: dict[str, float]
 

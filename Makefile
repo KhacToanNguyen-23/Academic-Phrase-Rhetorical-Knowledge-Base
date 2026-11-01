@@ -2,8 +2,10 @@
 
 UV ?= uv
 
+.PHONY: setup dev check web-install web be fe
+
 up:
-	docker compose up -d postgres
+	docker compose up -d --wait postgres
 
 down:
 	docker compose down
@@ -31,6 +33,23 @@ lint:
 
 bootstrap-key:
 	$(UV) run --directory apps/backend python -m aprkb.cli bootstrap-key
+
+# Short workflows for local development.
+setup: up install migrate seed
+
+dev: setup run
+
+be: dev
+
+check: lint test
+
+web-install:
+	npm --prefix apps/web install
+
+web:
+	npm --prefix apps/web run dev
+
+fe: web
 
 .PHONY: contracts
 contracts:

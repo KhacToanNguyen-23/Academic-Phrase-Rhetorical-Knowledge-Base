@@ -5,7 +5,7 @@ AP-RKB is an academic writing assistant scaffold. The backend recommends rhetori
 ## Architecture
 
 ```text
-apps/web (existing React + TypeScript SPA; outside this scaffold runtime)
+apps/web (React + TypeScript SPA; runs locally by default)
                │ REST /v1 + OpenAPI
 apps/backend (FastAPI modular monolith)
   API ── domain services ── PostgreSQL 16 + pgvector
@@ -13,34 +13,34 @@ apps/backend (FastAPI modular monolith)
   corpus blobs ── local ./data/blobs via BlobStore
 ```
 
-The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker is started separately with `make worker`; no Redis or Celery service is used. Text and Markdown ingestion are implemented; JATS and PDF parsers remain explicit stubs. Articles can also be imported from an external article API through the `import_articles` worker job (`POST /v1/admin/corpus/imports`); mining rights are checked on listed metadata before any content is downloaded. Only the `null` source is registered until the real HTTP adapter is written (`ARTICLE_SOURCE`). OpenAlex is not used. See [ADR-0001](doc/adr/0001-modular-monolith.md), [ADR-0005](doc/adr/0005-external-article-source.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
+The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The default local workflow runs PostgreSQL in Docker and the backend/frontend on the host; run the worker separately with `make worker` when processing jobs. No Redis or Celery service is used. Text and Markdown ingestion are implemented; JATS and PDF parsers remain explicit stubs. Articles can also be imported from an external article API through the `import_articles` worker job (`POST /v1/admin/corpus/imports`); mining rights are checked on listed metadata before any content is downloaded. Only the `null` source is registered until the real HTTP adapter is written (`ARTICLE_SOURCE`). OpenAlex is not used. See [ADR-0001](doc/adr/0001-modular-monolith.md), [ADR-0005](doc/adr/0005-external-article-source.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
 
 ## Quick start
 
-Requirements: Python 3.12, `uv`, Docker Desktop, and GNU Make. Before starting Postgres, replace the example `POSTGRES_PASSWORD` and keep `DATABASE_URL` in sync. Compose binds Postgres to `127.0.0.1` only.
+Requirements: Docker Desktop with Docker Compose v2 `--wait` support, Python 3.12, `uv`, Node.js/npm, and PowerShell on Windows (GNU Make on macOS/Linux). The default workflow runs PostgreSQL in Docker and the backend/frontend on the host. Set `POSTGRES_PASSWORD` and the matching password in `DATABASE_URL` in `.env`; Compose uses the former and the host backend reads the latter. PostgreSQL binds to `127.0.0.1` only.
 
 ```powershell
-Copy-Item .env.example .env
-make up
-make install
-make migrate
-make seed
-make bootstrap-key
-make lint
-$env:TEST_DATABASE_URL = "postgresql+asyncpg://aprkb:<your-local-password>@localhost:5432/aprkb_test"
-make test
-make run
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+# Set POSTGRES_PASSWORD and use the same password in DATABASE_URL.
+.\dev.ps1 be
 ```
 
-`make bootstrap-key` prints the initial admin API key once. Keep it private. The test fixture requires a dedicated database named `aprkb_test`; it creates and removes isolated schemas there and never migrates the application's public schema. Set `TEST_DATABASE_URL` to that database before running tests, using the same local password and host port as `DATABASE_URL`. Replace `<your-local-password>` with the password you configured. `make down` stops the PostgreSQL service and preserves its named volume.
+`.\dev.ps1 be` starts PostgreSQL in Docker, applies migrations and seed data, then runs the backend locally with reload and logs in that terminal. In a second terminal, run `.\dev.ps1 fe` to start the frontend locally with Vite logs and hot reload; it installs npm dependencies automatically the first time. Open <http://localhost:5173> for the web app or <http://localhost:8000/docs> for the API. Stop each terminal with `Ctrl+C`; run `.\dev.ps1 down` to stop PostgreSQL while preserving its named volume. `make bootstrap-key` creates the initial admin API key; keep it private.
 
-OpenAPI is available at <http://localhost:8000/docs>. To process uploaded articles, run `make worker` in another terminal. Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker.
+If you need to process uploaded articles, run `.\dev.ps1 worker` in a third terminal.
+
+For backend checks, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`. The test fixture creates and removes isolated schemas there and never migrates the application's public schema. Use the same local password and host port as `DATABASE_URL`, then run `make check`.
+
+Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker.
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `make up` / `make down` | Start or stop PostgreSQL |
+| `make up` / `make down` | Start PostgreSQL only / stop the Compose stack |
+| `make setup` | Start PostgreSQL, install backend dependencies, migrate, and seed |
+| `make dev` / `make be` | Start PostgreSQL, prepare backend, and run the API |
+| `make check` | Run lint and backend tests |
 | `make install` | Sync backend dependencies with `uv` |
 | `make migrate` | Apply the Alembic migration |
 | `make seed` | Idempotently load reference enums, taxonomy, and self-authored patterns |
@@ -49,6 +49,12 @@ OpenAPI is available at <http://localhost:8000/docs>. To process uploaded articl
 | `make worker` | Poll PostgreSQL jobs and process ingestion/mining |
 | `make test` | Run backend unit, integration, and scaffold acceptance tests |
 | `make lint` | Run Ruff, format verification, and mypy |
+| `make web-install` / `make web` / `make fe` | Install frontend dependencies / start the frontend dev server |
+| `.\dev.ps1 be` / `fe` / `worker` / `down` | PowerShell shortcuts for the local development workflow |
+
+## Continuous integration
+
+GitHub Actions runs on pushes to any branch and pull requests. The backend job checks the generated OpenAPI contract, Ruff lint/format, mypy, and pytest against an ephemeral PostgreSQL/pgvector service. The frontend job installs from the pnpm lockfile, checks generated API types, runs TypeScript checks, and builds the app. CI uses a disposable test database and needs no repository secrets.
 
 ## PRD traceability
 

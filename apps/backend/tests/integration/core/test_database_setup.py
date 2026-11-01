@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -60,7 +62,7 @@ async def test_session_factory_is_async() -> None:
     await factory.kw["bind"].dispose()
 
 
-async def test_initial_migration_creates_isolated_schema(postgres_test_engine) -> None:
+async def test_migrations_create_isolated_schema(postgres_test_engine) -> None:
     async with postgres_test_engine.connect() as connection:
         current_schema = await connection.scalar(text("SELECT current_schema()"))
         assert current_schema is not None and current_schema.startswith("test_")
@@ -68,5 +70,9 @@ async def test_initial_migration_creates_isolated_schema(postgres_test_engine) -
         tables = await connection.run_sync(
             lambda sync: set(inspect(sync).get_table_names(schema=current_schema))
         )
-    assert revision == "0001_initial"
+    backend_root = Path(__file__).resolve().parents[3]
+    alembic_config = Config(str(backend_root / "alembic.ini"))
+    alembic_config.set_main_option("script_location", str(backend_root / "migrations"))
+    expected_head = ScriptDirectory.from_config(alembic_config).get_current_head()
+    assert revision == expected_head
     assert {"alembic_version", "api_clients", "pattern_versions", "jobs"} <= tables

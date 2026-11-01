@@ -9,6 +9,7 @@ from uuid import UUID
 class MiningItem:
     text: str
     source_sentence_ids: list[UUID]
+    section_code: str | None = None
 
 
 class MiningStage(ABC):

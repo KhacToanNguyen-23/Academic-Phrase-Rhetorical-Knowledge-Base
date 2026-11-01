@@ -11,6 +11,7 @@ def build_stages(*, policy: MiningFilterPolicy) -> list[MiningStage]:
         SentenceFilter(
             min_words=policy.sentence_filter.min_words,
             max_words=policy.sentence_filter.max_words,
+            noise=policy.noise_filter,
         ),
         TodoMiningStage("move_classifier", "PRD-6.3"),
         TodoMiningStage("epistemic_tagger", "PRD-6.3"),

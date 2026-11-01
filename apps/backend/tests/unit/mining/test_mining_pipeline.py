@@ -57,7 +57,16 @@ def test_sentence_filter_applies_configured_word_bounds():
 
 def test_mining_filter_thresholds_come_from_validated_policy():
     policy = MiningFilterPolicy.model_validate(
-        {"version": "0.1.0", "sentence_filter": {"min_words": 1, "max_words": 10}}
+        {
+            "version": "0.1.0",
+            "sentence_filter": {"min_words": 1, "max_words": 10},
+            "noise_filter": {
+                "excluded_sections": [],
+                "min_table_pipes": 2,
+                "max_math_symbol_ratio": 0.5,
+                "max_numeric_token_ratio": 0.5,
+            },
+        }
     )
     stage = build_stages(policy=policy)[0]
 
@@ -67,7 +76,16 @@ def test_mining_filter_thresholds_come_from_validated_policy():
 def test_invalid_filter_bounds_and_blank_lexicon_entries_are_rejected():
     with pytest.raises(ValueError, match="min_words"):
         MiningFilterPolicy.model_validate(
-            {"version": "0.1.0", "sentence_filter": {"min_words": 11, "max_words": 10}}
+            {
+                "version": "0.1.0",
+                "sentence_filter": {"min_words": 11, "max_words": 10},
+                "noise_filter": {
+                    "excluded_sections": [],
+                    "min_table_pipes": 2,
+                    "max_math_symbol_ratio": 0.5,
+                    "max_numeric_token_ratio": 0.5,
+                },
+            }
         )
     with pytest.raises(ValueError, match="markers"):
         EpistemicMarkersPolicy.model_validate(

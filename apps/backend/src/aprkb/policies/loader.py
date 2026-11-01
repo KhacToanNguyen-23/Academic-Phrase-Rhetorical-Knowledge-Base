@@ -7,12 +7,14 @@ import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, ValidationError
 
 from aprkb.policies.schemas import (
+    AbbreviationsPolicy,
     EpistemicMarkersPolicy,
     EvidenceMatrixPolicy,
     FallbackTiersPolicy,
     LicensesPolicy,
     MiningFilterPolicy,
     RankingWeightsPolicy,
+    SectionHeadingsPolicy,
     ValidationRulesPolicy,
 )
 
@@ -26,6 +28,8 @@ class PolicyBundle:
     validation_rules: ValidationRulesPolicy
     epistemic_markers: EpistemicMarkersPolicy
     mining_filter: MiningFilterPolicy
+    abbreviations: AbbreviationsPolicy
+    section_headings: SectionHeadingsPolicy
 
 
 def _load[PolicyModel: BaseModel](path: Path, model: type[PolicyModel]) -> PolicyModel:
@@ -50,4 +54,6 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
             root / "lexicon" / "epistemic_markers.yaml", EpistemicMarkersPolicy
         ),
         mining_filter=_load(root / "mining_filter.yaml", MiningFilterPolicy),
+        abbreviations=_load(root / "lexicon" / "abbreviations.yaml", AbbreviationsPolicy),
+        section_headings=_load(root / "section_headings.yaml", SectionHeadingsPolicy),
     )

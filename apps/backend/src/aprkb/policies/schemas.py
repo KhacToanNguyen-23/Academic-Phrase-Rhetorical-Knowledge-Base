@@ -1,5 +1,6 @@
 """Pydantic schemas for the versioned YAML policy files."""
 
+import re
 from math import isclose, isfinite
 from typing import Literal
 
@@ -92,8 +93,70 @@ class SentenceFilterSettings(BaseModel):
         return self
 
 
+class NoiseFilterSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    excluded_sections: list[str]
+    min_table_pipes: int = Field(ge=1)
+    max_math_symbol_ratio: float = Field(gt=0, le=1)
+    max_numeric_token_ratio: float = Field(gt=0, le=1)
+
+
 class MiningFilterPolicy(VersionedPolicy):
     sentence_filter: SentenceFilterSettings
+    noise_filter: NoiseFilterSettings
+
+
+class AbbreviationsPolicy(VersionedPolicy):
+    abbreviations: list[str] = Field(min_length=1)
+
+    @field_validator("abbreviations")
+    @classmethod
+    def validate_abbreviations(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().casefold() for value in values]
+        if any(not value or value.endswith(".") or " " in value for value in normalized):
+            raise ValueError("abbreviations must be single tokens without the final period")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("abbreviations must not contain duplicates")
+        return normalized
+
+
+_SECTION_CODE = re.compile(r"^[A-Z][A-Z_]*$")
+
+
+def _validate_pattern_map(patterns: dict[str, list[str]]) -> dict[str, list[str]]:
+    for code, values in patterns.items():
+        if not _SECTION_CODE.match(code) or not values:
+            raise ValueError("section codes must be upper-case and have at least one pattern")
+        for value in values:
+            try:
+                re.compile(value)
+            except re.error as error:
+                raise ValueError(f"invalid heading pattern for {code}: {error}") from error
+    return patterns
+
+
+class SectionHeadingsPolicy(VersionedPolicy):
+    sections: dict[str, list[str]] = Field(min_length=1)
+    non_rhetorical: dict[str, list[str]]
+    reset: list[str]
+
+    @field_validator("sections", "non_rhetorical")
+    @classmethod
+    def validate_patterns(cls, patterns: dict[str, list[str]]) -> dict[str, list[str]]:
+        return _validate_pattern_map(patterns)
+
+    @field_validator("reset")
+    @classmethod
+    def validate_reset(cls, patterns: list[str]) -> list[str]:
+        _validate_pattern_map({"RESET": patterns} if patterns else {})
+        return patterns
+
+    @model_validator(mode="after")
+    def validate_disjoint_codes(self) -> "SectionHeadingsPolicy":
+        if set(self.sections) & set(self.non_rhetorical):
+            raise ValueError("a section code cannot be both rhetorical and non-rhetorical")
+        return self
 
 
 class EvidenceMatrixPolicy(VersionedPolicy):

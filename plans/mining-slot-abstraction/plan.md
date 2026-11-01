@@ -21,7 +21,7 @@ Không đổi: luồng runtime upload/import → ingest → `mine_article` → c
 
 | Phase | Nội dung | Trạng thái |
 |---|---|---|
-| [01](phase-01-ingest-quality.md) | Chất lượng ingest: tách câu với chữ viết tắt, nhận diện section, lọc câu nhiễu | Chờ duyệt |
+| [01](phase-01-ingest-quality.md) | Chất lượng ingest: tách câu với chữ viết tắt, nhận diện section, lọc câu nhiễu | Đã code, chờ chạy `reingest` (cần Docker) |
 | [02](phase-02-gold-schema-and-guideline.md) | Bảng gold, nhãn (Pydantic), hướng dẫn gán nhãn, lấy mẫu, cập nhật PRD/ADR | Chờ duyệt |
 | [03](phase-03-llm-labeling.md) | Gán nhãn bằng LLM (tạm dùng Groq) qua job worker, validate bằng Pydantic | Chờ duyệt |
 | [04](phase-04-internal-contract-and-policies.md) | Runtime: hợp đồng dữ liệu, policy | Đã duyệt G1, chưa làm |

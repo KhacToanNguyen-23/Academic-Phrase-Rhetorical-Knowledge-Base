@@ -6,6 +6,7 @@ import json
 import sys
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from aprkb.core.config import settings
@@ -41,6 +42,56 @@ async def _bootstrap_key() -> None:
         await engine.dispose()
 
 
+async def _reingest(*, source: str) -> None:
+    from aprkb.modules.corpus.models import Article
+    from aprkb.worker.handlers import local_blob_store, reingest_article
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    blob_store = local_blob_store()
+    try:
+        async with factory() as session:
+            article_ids = list(
+                await session.scalars(
+                    select(Article.id).where(Article.source == source).order_by(Article.created_at)
+                )
+            )
+        print(f"Re-ingesting {len(article_ids)} article(s) from source {source!r}")
+        for article_id in article_ids:
+            async with factory() as session:
+                article = await session.get(Article, article_id)
+                if article is None:
+                    continue
+                try:
+                    result = await reingest_article(session, article, blob_store)
+                    await record_event(
+                        session,
+                        actor_id=None,
+                        action="article.reingest",
+                        entity_type="article",
+                        entity_id=article.id,
+                        after={
+                            "status": result.status,
+                            "sentences_before": result.sentences_before,
+                            "sentences_after": result.sentences_after,
+                            "pending_candidates_removed": result.pending_candidates_removed,
+                        },
+                        request_id="cli-reingest",
+                    )
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+                    raise
+            print(
+                f"{article_id}: {result.status}, sentences {result.sentences_before}"
+                f" -> {result.sentences_after}, pending candidates removed"
+                f" {result.pending_candidates_removed}"
+                + (f", error: {result.error}" if result.error else "")
+            )
+    finally:
+        await engine.dispose()
+
+
 def _export_openapi(*, check: bool) -> None:
     from aprkb.api.main import app
 
@@ -66,11 +117,17 @@ def main() -> None:
     commands.add_parser("bootstrap-key")
     openapi = commands.add_parser("export-openapi")
     openapi.add_argument("--check", action="store_true")
+    reingest = commands.add_parser(
+        "reingest", help="Re-parse imported articles with the current splitter and policies"
+    )
+    reingest.add_argument("--source", required=True, help='Article source, e.g. "slr"')
     args = parser.parse_args()
     if args.command == "bootstrap-key":
         asyncio.run(_bootstrap_key())
     elif args.command == "export-openapi":
         _export_openapi(check=args.check)
+    elif args.command == "reingest":
+        asyncio.run(_reingest(source=args.source))
 
 
 if __name__ == "__main__":

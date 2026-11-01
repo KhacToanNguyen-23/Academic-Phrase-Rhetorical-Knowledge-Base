@@ -3,9 +3,15 @@
   "status": "published",
   "sections": [
     {
+      "code": "ABSTRACT",
+      "name": "Abstract",
+      "order": 1,
+      "moves": []
+    },
+    {
       "code": "INTRO",
       "name": "Introduction",
-      "order": 1,
+      "order": 2,
       "moves": [
         {
           "code": "INTRO_GAP",
@@ -15,7 +21,11 @@
               "code": "INTRO_INDICATE",
               "name": "Indicate an unresolved area",
               "intents": [
-                {"code": "INTRO_GAP_INDICATE", "name": "Indicate a research gap", "description": "Describe an unresolved area."}
+                {
+                  "code": "INTRO_GAP_INDICATE",
+                  "name": "Indicate a research gap",
+                  "description": "Describe an unresolved area."
+                }
               ]
             }
           ]
@@ -23,9 +33,27 @@
       ]
     },
     {
+      "code": "RELATED_WORK",
+      "name": "Related work",
+      "order": 3,
+      "moves": []
+    },
+    {
+      "code": "METHODS",
+      "name": "Methods",
+      "order": 4,
+      "moves": []
+    },
+    {
+      "code": "RESULTS",
+      "name": "Results",
+      "order": 5,
+      "moves": []
+    },
+    {
       "code": "DISCUSSION",
       "name": "Discussion",
-      "order": 2,
+      "order": 6,
       "moves": [
         {
           "code": "DISCUSSION_FINDING",
@@ -35,16 +63,29 @@
               "code": "DISCUSSION_RESULT",
               "name": "State a result cautiously",
               "intents": [
-                {"code": "DISCUSSION_FINDING", "name": "Interpret a finding", "description": "Relate a finding to prior research."}
+                {
+                  "code": "DISCUSSION_FINDING",
+                  "name": "Interpret a finding",
+                  "description": "Relate a finding to prior research."
+                }
               ]
             }
           ]
         }
       ]
+    },
+    {
+      "code": "CONCLUSION",
+      "name": "Conclusion",
+      "order": 7,
+      "moves": []
     }
   ],
   "article_genres": [
-    {"code": "RESEARCH_ARTICLE", "name": "Research article"}
+    {
+      "code": "RESEARCH_ARTICLE",
+      "name": "Research article"
+    }
   ],
   "todo": "TODO(owner): replace this draft taxonomy with the approved taxonomy."
 }

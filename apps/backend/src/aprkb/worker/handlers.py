@@ -1,11 +1,11 @@
 """Transactional handlers for import, ingestion, and mining jobs."""
 
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.core.config import settings
@@ -19,7 +19,7 @@ from aprkb.modules.corpus.parsers.markdown_parser import MarkdownParser
 from aprkb.modules.corpus.parsers.pdf_parser import PdfParserStub
 from aprkb.modules.corpus.parsers.text_parser import TextParser
 from aprkb.modules.corpus.schemas import DEFAULT_ARTIFACT_KINDS, SlrWorkFilters
-from aprkb.modules.corpus.section_detector import detect_section
+from aprkb.modules.corpus.section_detector import SectionDetector
 from aprkb.modules.corpus.sentence_splitter import split_sentences
 from aprkb.modules.corpus.sources import ArticleSource, build_article_source
 from aprkb.modules.corpus.sources.base import ImportOptions
@@ -180,11 +180,14 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
         article.ingest_status = "failed"
         return "Unsupported article format"
     document = parser.parse(content)
+    policies = load_policy_bundle()
+    section_codes = SectionDetector(policies.section_headings).detect(document.sections)
+    abbreviations = policies.abbreviations.abbreviations
     section_rows: dict[int, ArticleSection] = {}
-    for parsed_section in document.sections:
+    for parsed_section, section_code in zip(document.sections, section_codes, strict=True):
         section_row = ArticleSection(
             article_id=article.id,
-            section_code=detect_section(parsed_section),
+            section_code=section_code,
             heading=parsed_section.heading,
             order=parsed_section.order,
         )
@@ -193,7 +196,7 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
     await session.flush()
     for parsed_section in document.sections:
         section_row = section_rows[parsed_section.order]
-        for span in split_sentences(parsed_section.text):
+        for span in split_sentences(parsed_section.text, abbreviations=abbreviations):
             session.add(
                 Sentence(
                     article_id=article.id,
@@ -205,6 +208,57 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
             )
     article.ingest_status = "ready"
     return None
+
+
+@dataclass(frozen=True)
+class ReingestResult:
+    status: str
+    sentences_before: int = 0
+    sentences_after: int = 0
+    pending_candidates_removed: int = 0
+    error: str | None = None
+
+
+async def reingest_article(
+    session: AsyncSession, article: Article, blob_store: BlobStore
+) -> ReingestResult:
+    """Replace an article's sections and sentences after splitter or detector changes.
+
+    Pending candidates that point at the old sentences are removed with them. Articles
+    with reviewed candidates are left untouched so review history keeps valid sources.
+    The caller owns the transaction.
+    """
+    old_ids = list(
+        await session.scalars(select(Sentence.id).where(Sentence.article_id == article.id))
+    )
+    linked = (
+        list(
+            await session.scalars(
+                select(Candidate).where(Candidate.source_sentence_ids.overlap(old_ids))
+            )
+        )
+        if old_ids
+        else []
+    )
+    if any(candidate.status != "pending" for candidate in linked):
+        return ReingestResult(status="skipped_reviewed_candidates", sentences_before=len(old_ids))
+    for candidate in linked:
+        await session.delete(candidate)
+    await session.execute(delete(Sentence).where(Sentence.article_id == article.id))
+    await session.execute(delete(ArticleSection).where(ArticleSection.article_id == article.id))
+    await session.flush()
+    error = await _ingest(session, article, blob_store)
+    await session.flush()
+    after = len(
+        list(await session.scalars(select(Sentence.id).where(Sentence.article_id == article.id)))
+    )
+    return ReingestResult(
+        status="failed" if error else "ready",
+        sentences_before=len(old_ids),
+        sentences_after=after,
+        pending_candidates_removed=len(linked),
+        error=error,
+    )
 
 
 def _mime_from_key(blob_key: str) -> str:
@@ -222,17 +276,23 @@ def _mime_from_key(blob_key: str) -> str:
 async def _mine(session: AsyncSession, article: Article) -> str | None:
     if article.ingest_status != "ready":
         return "Article ingestion is not ready"
-    sentences = list(
-        await session.scalars(
-            select(Sentence).where(Sentence.article_id == article.id).order_by(Sentence.char_start)
+    rows = list(
+        await session.execute(
+            select(Sentence, ArticleSection.section_code)
+            .outerjoin(ArticleSection, Sentence.article_section_id == ArticleSection.id)
+            .where(Sentence.article_id == article.id)
+            .order_by(Sentence.char_start)
         )
     )
-    if not sentences:
+    if not rows:
         return "Article has no parsed sentences"
     policy = load_policy_bundle().mining_filter
     pipeline = MiningPipeline(stages=build_stages(policy=policy))
     items = pipeline.process(
-        [MiningItem(text=row.text, source_sentence_ids=[row.id]) for row in sentences]
+        [
+            MiningItem(text=sentence.text, source_sentence_ids=[sentence.id], section_code=code)
+            for sentence, code in rows
+        ]
     )
     writer = CandidateWriter(_SessionCandidateRepository(session))
     for item in items:

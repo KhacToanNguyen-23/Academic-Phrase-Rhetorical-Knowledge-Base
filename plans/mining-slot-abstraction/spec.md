@@ -1,5 +1,7 @@
 # Spec: Runtime mining slot abstraction
 
+> **Sửa đổi 2026-11-01:** phần gold trong spec này (hai editor, κ, hoãn chờ API) đã được thay bằng [plan.md](plan.md): gold dev lấy từ bài SLR thật, LLM gán nhãn, một người duyệt cuối. Phần runtime giữ nguyên.
+
 Owner decision: 2026-10-31. G1 is approved. Implement the existing upload/import → ingest → mine_article → stages → pending Candidate → two-round review flow. Mining does not create patterns or versions and adds no endpoint. New extraction is enabled. The two review rounds and pending status remain the safety boundary.
 
 ## Extraction and privacy

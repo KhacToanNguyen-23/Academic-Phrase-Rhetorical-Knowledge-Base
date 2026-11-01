@@ -1,46 +1,55 @@
-# Plan: Mining slot abstraction
+# Plan: Mining slot abstraction + gold dev từ bài SLR thật
 
-Date: 2026-10-31
-Risk: high-risk — source privacy, persistence and migration.
-Status: Owner redirected the work to runtime phases 04–06 with TDD; G1 approved.
+Ngày: 2026-11-01 (thay bản 2026-10-31)
+Rủi ro: cao — gửi câu bài báo cho LLM bên ngoài (Groq), thêm bảng và migration, thêm màn hình web.
+Trạng thái: chờ owner duyệt bản sửa đổi này.
 
-## Scope and gates
+## Thay đổi so với bản 2026-10-31
 
-G1: limited M2 scope approved and documented. It is the only entry gate for phases 04–06, implemented in that order. Upload/import → ingest → worker mine_article → stages → pending Candidate → two-round review. Mining never writes patterns or versions. No new endpoints or OpenAPI changes. The planned implementation enables the new extraction in the worker.
+SLR import đã chạy được (4 bài thật, license `DEV-UNVERIFIED`), nên điều kiện "chờ API bài báo" đã đạt. Owner quyết định ngày 2026-11-01:
 
-Use self-authored mock fixtures and an upload/ingest/mine integration test. Gold, editor annotation, evaluator, tuning and quality evaluation are deferred until the external article API exists; gold will be sampled from real articles. FR-06.6 requires two editors, disagreement reporting and adjudication. No extra role or evaluation gate is imposed now. No gold, scores or approvals are fabricated.
-
-| Phase | Status |
+| Trước | Nay |
 |---|---|
-| 01, 02, 03, 07, 09 | Deferred — awaiting article API |
-| 04 | Pending — partial implementation reverted at user request |
-| 05 | Pending — regex sentence extraction; spaCy deferred TODO(owner, FR-06.2) |
-| 06 | Pending — conservative keys and worker integration |
-| 08 | Superseded — future gold sampled from real articles replaces held-out plan |
-| [10 — AI-assisted labeling](phase-10-ai-assisted-labeling.md) | Deferred — awaiting article API, human-reviewed gold and owner approval of LLM scope |
+| Gold hoãn tới khi có API bài báo | Làm gold dev ngay, lấy mẫu khoảng 300 câu từ bài SLR thật |
+| Hai editor gán nhãn độc lập, κ, phân xử (FR-06.6) | **LLM gán nhãn nháp, một người duyệt cuối.** Chỉ nhãn được duyệt mới là gold. Không báo cáo được κ: đây là lệch FR-06.6 có chủ đích |
+| AI hỗ trợ là đề xuất, chưa có code | Tích hợp LLM vào hệ thống qua interface `GoldLabeler`; tạm dùng **Groq**, cấu hình trong policy YAML |
+| Không thêm endpoint, không thêm màn hình | Thêm API `/v1/admin/gold/*` và màn hình duyệt gold trên web |
 
-## Runtime requirements
+Không đổi: luồng runtime upload/import → ingest → `mine_article` → candidate `pending` → hai vòng review. Mining không ghi pattern/version. Gold **không** đi vào review queue và không tạo pattern.
 
-Preserve source provenance privately, use typed public slot schemas, keep confidence null, recheck allows_mining before reading sentences, and never expose source text in logs, audit or API. Use fixed conservative spans and positional names. Distinguish tense, strength, ownership and complement; normalize only reviewed synonym classes and guarded DET_OWN/DET_PRIOR. Unknowns retain literal wording and split on uncertainty. No family_id, prefix unit, alternate span/naming experiments or two-environment CI.
+## Phase
 
-Verify with TDD, self-authored negative pairs and upload integration, lint and tests. Follow the current Alembic head without editing existing migrations. Keep source/import changes untouched. No commits.
+| Phase | Nội dung | Trạng thái |
+|---|---|---|
+| [01](phase-01-ingest-quality.md) | Chất lượng ingest: tách câu với chữ viết tắt, nhận diện section, lọc câu nhiễu | Chờ duyệt |
+| [02](phase-02-gold-schema-and-guideline.md) | Bảng gold, nhãn (Pydantic), hướng dẫn gán nhãn, lấy mẫu, cập nhật PRD/ADR | Chờ duyệt |
+| [03](phase-03-llm-labeling.md) | Gán nhãn bằng LLM (tạm dùng Groq) qua job worker, validate bằng Pydantic | Chờ duyệt |
+| [04](phase-04-internal-contract-and-policies.md) | Runtime: hợp đồng dữ liệu, policy | Đã duyệt G1, chưa làm |
+| [05](phase-05-protected-extraction-engines.md) | Runtime: trích slot bằng regex | Đã duyệt G1, chưa làm |
+| [06](phase-06-keying-and-worker-integration.md) | Runtime: key bảo thủ, nối worker; thêm `epistemic_tagger` theo luật | Đã duyệt G1, chưa làm |
+| [07](phase-07-gold-review-ui.md) | Màn hình duyệt gold trên web + API | Chờ duyệt |
+| [08](phase-08-evaluator.md) | Đánh giá pipeline trên gold đã duyệt | Chờ duyệt |
+| [09](phase-09-synonym-proposals.md) | Đề xuất từ đồng nghĩa | Hoãn |
 
-## Owner actions
+Thứ tự: 01 → 02 → 03 → 07 (gán nhãn và duyệt có thể chạy trong lúc làm 04–06) → 04 → 05 → 06 → 08.
 
-External article API and future real-article sampling and FR-06.6 evaluation are deferred; no staffing or protocol freeze blocks this implementation.
+01 phải xong trước khi lấy mẫu: sửa tách câu làm thay đổi ranh giới câu, gold lập trước sẽ trỏ sai.
 
-### Deferred AI assistance — owner decisions still open
+## Ràng buộc
 
-AI may suggest, but a human makes every final decision. AI cannot approve, count as a review round, merge provenance automatically, or write a pattern/version. **[Proposal; PRD FR-06.3/06.5; System Design §9 human-in-the-loop]** In this increment, Phase 04–06 remain rule-based and `Candidate.confidence` remains null; the existing field is specified in SCAFFOLD_PRD §4.4.
+- **Bản quyền:** câu gốc không vào git, không vào log, không vào audit. Gold lưu trong DB, tham chiếu câu bằng `article_id` + `char_start/char_end` + `text_sha256`. Báo cáo đánh giá chỉ chứa số liệu.
+- **Quyền xử lý bởi AI bên ngoài:** `allows_mining` không đồng nghĩa được gửi cho bên thứ ba. Bản này chỉ cho gán nhãn khi `APP_ENV` là `local`/`test` (cùng cơ chế với `SLR_DEV_FALLBACK_LICENSE`). `TODO(owner, BR-10)`: quyết định quyền xử lý AI trước production.
+- **AI không tự chốt:** nhãn AI có trạng thái `draft`. Evaluator chỉ đọc nhãn `approved`. Mọi lần duyệt ghi `reviewed_by`, `reviewed_at` và audit (không chứa câu).
+- **Không chỉnh luật dựa trên phần đo:** khi lấy mẫu, gán ngẫu nhiên (seed cố định) 30% vào `split=test`. Viết luật chỉ xem `split=dev`; evaluator báo cáo riêng hai phần.
+- **Phạm vi dữ liệu:** 6 bài, một lĩnh vực. Kết quả chỉ gọi là "gold dev v0", không dùng để khẳng định chất lượng production.
+- Model, effort, phiên bản prompt và phiên bản hướng dẫn nằm trong `policies/gold_labeling.yaml`, giá trị tạm đánh dấu `TODO(owner)`.
 
-**[Proposal]** A future optional stage after the rule stages in `mine_article` suggests intent, strength and confidence, marks the suggestion source as AI and keeps the candidate pending. Reviewers accept, edit or reject, with batch/cluster review and confidence ordering proposed for future work; these are not current API capabilities. FR-06.5 requires per-item decisions and retained provenance. **[Proposal]** For gold sampled from real articles, AI drafts labels, then two editors independently check and correct them. Approximately 20% of sentences are annotated by editors without seeing AI drafts; compare AI and human labels with κ on this subset and examine anchoring bias. Do not claim a result until measured. Two-editor agreement, disagreement and adjudication are required by FR-06.6; AI drafts, the 20% subset and AI–human κ are proposals.
+## Owner cần làm
 
-Daily-review AI suggestions are enabled only after measuring AI against human-checked gold. The owner still must decide: whether source licenses permit sending sentences to an external AI provider or a self-hosted model will be used (`allows_mining` alone does not grant third-party processing); and whether to approve the scope expansion for LLM, currently deferred in SCAFFOLD_PRD §14. Do not log/audit source sentences, prompts containing them, or API keys. Model, prompt and thresholds must be versioned in YAML under `apps/backend/src/aprkb/policies/`, with provisional values marked `TODO(owner)`. These operational requirements are **[Proposal]**. No AI calls or implementation are included now.
+- Cấp `GROQ_API_KEY` và chọn model Groq khi tới bước chạy thật của phase 03 (mình sẽ hỏi lúc đó); key chỉ nằm trong `.env` cục bộ.
+- Chạy `bootstrap-key` để có key admin, và (sau phase 07) duyệt khoảng 300 nhãn trên web.
+- Chi phí và giới hạn tốc độ phụ thuộc model Groq được chọn; đo bằng lần chạy thử ~10 câu trước khi chạy cả 300.
 
-**Review gap [Proposal]:** `apps/backend/src/aprkb/modules/review/service.py` counts decisions but does not require different reviewers for the two rounds. Propose a separate change returning HTTP 409 when `reviewer_id` matches an earlier round, with a regression test; await owner approval. It is not implemented here.
+## Kiểm tra
 
-Source traceability: PRD FR-06.3 requires confidence and reviewer confirmation; FR-06.5 specifies batch decisions per item and provenance; FR-06.6 specifies two-editor agreement, disagreement and adjudication. The PRD roadmap lists AI-assisted annotation as deferrable at M1. System Design §9 places humans in the loop before publishing. The earlier committed SCAFFOLD_PRD §14 described the order “luật → NER khoa học → LLM có kiểm tra lại”; current §14 defers NER and LLM, so LLM scope still requires owner approval. This historical citation is to §14, not §2 or a line number.
-
-## Session Notes
-
-The partial Phase 04–06 code and migration were reverted at the user's request. The existing worker can still expose its original unmasked candidate frame via the review API; the planned privacy boundary is not yet implemented. No new extraction is enabled.
+TDD cho từng phase; unit test dùng fixture tự viết, LLM được giả lập bằng labeler giả (không gọi API thật trong test). `make lint`, `make test` với `TEST_DATABASE_URL` → `aprkb_test`, web typecheck + lint. Lần gọi LLM thật (Groq) chỉ chạy tay và báo cáo riêng.

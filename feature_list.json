@@ -44,19 +44,19 @@
     "title": "Review short phrase candidates with source context",
     "user_visible_behavior": "Review reusable language without losing provenance",
     "verification_command": "Candidate spans, rendered frames, and per-occurrence slots have distinct representations and valid source offsets",
-    "status": "not_started",
+    "status": "active",
     "evidence": "",
-    "notes": "Implementation is gated on M2 scope approval (G1) in plans/mining-slot-abstraction/plan.md.",
+    "notes": "G1 approved. Runtime implementation is in progress; PostgreSQL upload integration awaits TEST_DATABASE_URL=aprkb_test.",
     "priority": "P1"
   },
   {
     "id": "mining-conservative-variant-grouping",
     "title": "Keep uncertain phrase variants in separate groups",
     "user_visible_behavior": "Prevent grouping from weakening shared evidence or section constraints",
-    "verification_command": "Self-authored mock negative pairs for tense, strength, ownership, complement and unknowns remain separate.",
-    "status": "not_started",
+    "verification_command": "Self-authored mock negative pairs for tense, strength and ownership remain separate; same reviewed inflection class shares a key.",
+    "status": "active",
     "evidence": "",
-    "notes": "Quality evaluation deferred until the external article API; runtime behavior is tested with self-authored mock fixtures.",
+    "notes": "Runtime grouping is implemented and unit-tested with self-authored fixtures. PostgreSQL integration awaits TEST_DATABASE_URL=aprkb_test; quality evaluation awaits human-approved gold.",
     "priority": "P1"
   },
   {
@@ -74,9 +74,19 @@
     "title": "Run pure versioned mining stages in the existing worker",
     "user_visible_behavior": "Connect extraction to the worker without adding endpoints",
     "verification_command": "Extraction metadata survives every stage and persistence, while mining only writes pending candidates",
-    "status": "not_started",
+    "status": "active",
     "evidence": "",
-    "notes": "Implementation is gated on M2 scope approval (G1) in plans/mining-slot-abstraction/plan.md.",
+    "notes": "G1 approved. Typed extraction, private occurrence metadata, rights recheck and worker persistence are implemented; DB-backed verification is pending.",
+    "priority": "P1"
+  },
+  {
+    "id": "gold-ai-draft-human-review",
+    "title": "Review AI drafted gold labels as the final human reviewer",
+    "user_visible_behavior": "Inspect each gold source and accept, edit or reject the AI draft in the review page",
+    "verification_command": "Mock Groq HTTP tests validate JSON, retry-after and safe errors; one reviewer action writes final labels and text-free audit",
+    "status": "active",
+    "evidence": "",
+    "notes": "Groq remains disabled by default. Real labeling awaits owner-confirmed third-party processing rights, model choice and an explicit run request; one reviewer does not satisfy FR-06.6 two-editor validation.",
     "priority": "P1"
   },
   {

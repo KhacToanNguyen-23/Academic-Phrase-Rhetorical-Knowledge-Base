@@ -1,7 +1,17 @@
-# DEV_PROTOCOL — Deferred draft
+# Gold development protocol v0 — Deferred draft
 
-Deferred until the external article API is available. Future gold will be sampled from real articles, not written by editors. FR-06.6 requires two editors, reported disagreement and adjudication. No gold, labels, scores or human approvals have been created. Current implementation uses self-authored mock fixtures only.
+## Source and sample
 
-**[Proposal]** AI drafts labels for sampled real-article sentences; two editors independently review and correct the drafts. Approximately 20% of sentences are labeled by the editors without seeing an AI draft; use that subset to measure AI–human κ and investigate anchoring. Retain independent editor decisions, report disagreement and adjudication as required by FR-06.6. Do not infer or fabricate a score. AI never counts as an editor or reviewer and makes no final decision.
+Use the reproducible sample from real SLR articles; do not write or copy sentences into this repository. The current target is approximately 300 sentences with a fixed seed and 30% `test`, stratified within each kept section and the filtered-sentence group, with the total test count kept exact. About 10% of each batch comes from sentences the mining filter rejects, spread evenly by rejection reason; the rest is spread evenly across sections of retained sentences. If either pool is short, the other fills its quota. Proportions live in `apps/backend/src/aprkb/policies/gold_sampling.yaml`. `allows_mining` alone does not authorize sending article text to an external AI provider.
 
-Daily-review AI suggestions are enabled only after AI has been measured against human-checked gold. Before any AI processing, the owner must approve LLM scope and confirm license permission for an external provider or use a self-hosted model; `allows_mining` alone is insufficient for third-party processing. Do not log source sentences, prompts containing them or API keys; version model, prompt and thresholds in policy YAML and mark provisional values `TODO(owner)`. **[Proposal]**
+The batch creation audit records the number of filtered items and the sampling policy version. From the repo root, remove a sample with `uv run --directory apps/backend python -m aprkb.cli delete-gold-batch --sample-batch <id>`; it refuses to delete if any item has AI or final labels and records `gold.sample.delete` with the deletion.
+
+## AI draft and human decision
+
+When the owner explicitly requests a real Groq run, the labeler reads `GROQ_API_KEY` from the local `.env` and drafts labels for every sampled item. One human reviewer accepts or corrects every draft and makes the final decision. The AI never approves and never counts as a human review. No key or model is needed for mock tests.
+
+No κ, disagreement rate or quality score is to be reported until labels have been collected and analyzed. This one-reviewer development protocol does not meet FR-06.6's separate validation requirement for two editors, reported disagreement and adjudication.
+
+## Privacy and versions
+
+Never log source sentences, prompts containing them, provider responses or API keys. Keep the provider key out of code, Git, API responses and audit events. `.env` is local and gitignored. Do not build web key entry, server-side key storage, encryption, a master key, rotation or revoke for this development phase. Version model, prompt and provisional thresholds in policy YAML with `TODO(owner)` markers. `allows_mining` alone does not authorize third-party AI processing; retain `TODO(owner, BR-10)` for unclear rights.

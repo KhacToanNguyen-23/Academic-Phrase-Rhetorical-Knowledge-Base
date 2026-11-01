@@ -1,5 +1,9 @@
 # Phase 07 — Duyệt gold trên web
 
+Trạng thái: API và trang `/gold` đã triển khai; integration tests cần PostgreSQL `aprkb_test`.
+
+Gold list không trả câu nguồn. Detail chỉ trả câu và context khi `allows_display=true` và hash còn khớp. Một reviewer có thể nhận, sửa hoặc từ chối draft AI; audit chỉ lưu tên trường thay đổi và trạng thái, không lưu text.
+
 Trạng thái: chờ duyệt.
 
 ## API (role reviewer trở lên)

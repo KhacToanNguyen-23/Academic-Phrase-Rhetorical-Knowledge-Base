@@ -1,7 +1,9 @@
 """Phase 04 API contract tests derived from SCAFFOLD_PRD sections 7 and 10."""
 
 import asyncio
+import hashlib
 import re
+from collections import Counter
 from collections.abc import AsyncIterator
 from uuid import UUID, uuid4
 
@@ -15,6 +17,10 @@ from aprkb.api.main import create_app
 from aprkb.core.deps import get_db_session
 from aprkb.modules.audit.models import AuditEvent
 from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
+from aprkb.modules.gold.labelers import GoldLabelingQuotaError, GoldLabelingRequestError
+from aprkb.modules.gold.labels import GoldLabels
+from aprkb.modules.gold.models import GoldItem
+from aprkb.modules.gold.service import delete_sample_batch, label_sample_batch
 from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.identity.service import create_api_key
 from aprkb.modules.journals.models import GuidelineRule, JournalProfile
@@ -28,6 +34,7 @@ from aprkb.modules.patterns.models import (
 )
 from aprkb.modules.recommendation.models import Feedback, Override, RecommendationLog
 from aprkb.modules.taxonomy.models import Intent
+from aprkb.policies.loader import load_policy_bundle
 from aprkb.seeds.load import run_seed
 
 
@@ -95,6 +102,12 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/journals/{id}/guidelines", "post"),
         ("/v1/admin/review-queue", "get"),
         ("/v1/admin/review-queue/{id}/decisions", "post"),
+        ("/v1/admin/gold/samples", "post"),
+        ("/v1/admin/gold/samples/{id}/label", "post"),
+        ("/v1/admin/gold/items", "get"),
+        ("/v1/admin/gold/items/{id}", "get"),
+        ("/v1/admin/gold/items/{id}/review", "post"),
+        ("/v1/admin/gold/stats", "get"),
         ("/v1/admin/corpus/articles", "post"),
         ("/v1/admin/corpus/articles/{id}/mine", "post"),
         ("/v1/admin/corpus/imports", "post"),
@@ -393,6 +406,24 @@ async def test_role_hierarchy_on_client_reviewer_curator_and_admin_routes(
 
 
 @pytest.mark.asyncio
+async def test_review_queue_fails_closed_for_legacy_unmasked_candidate(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "reviewer", "legacy candidate reviewer")
+    candidate_id = await _create_candidate(session_factory, unsafe=True)
+
+    response = await api_client.get("/v1/admin/review-queue", headers={"X-API-Key": key})
+
+    assert response.status_code == 409
+    assert "The study reports a result" not in response.text
+    assert "Candidate slot schema is invalid" in response.text
+    decision = await _decision_payload(api_client, key, candidate_id, "approve")
+    assert decision.status_code == 409
+    assert "The study reports a result" not in decision.text
+
+
+@pytest.mark.asyncio
 async def test_health_checks_database_and_all_responses_have_request_id(
     api_client: AsyncClient,
 ) -> None:
@@ -583,7 +614,7 @@ async def test_validation_http_runs_v02_and_blocks_prove_with_single_study(
     assert "block" in serialized
 
 
-async def _create_candidate(session_factory: async_sessionmaker) -> UUID:
+async def _create_candidate(session_factory: async_sessionmaker, *, unsafe: bool = False) -> UUID:
     async with session_factory() as session:
         intent = await session.scalar(select(Intent).limit(1))
         license_row = await session.scalar(select(License).where(License.code == "CC-BY"))
@@ -609,8 +640,17 @@ async def _create_candidate(session_factory: async_sessionmaker) -> UUID:
         session.add(sentence)
         await session.flush()
         candidate = Candidate(
-            canonical_frame="The results {verb} that {finding}.",
-            slots={"finding": "clause"},
+            canonical_frame=(
+                "[X] The study reports a result that [Y]." if unsafe else "[X] report that [Y]."
+            ),
+            slots=(
+                {"finding": "source wording"}
+                if unsafe
+                else {
+                    "X": {"type": "noun_phrase", "signals": []},
+                    "Y": {"type": "clause", "signals": []},
+                }
+            ),
             intent_id=intent.id if intent is not None else None,
             confidence=0.8,
             epistemic_strength="moderate",
@@ -625,6 +665,132 @@ async def _create_candidate(session_factory: async_sessionmaker) -> UUID:
 async def _version_count(session_factory: async_sessionmaker) -> int:
     async with session_factory() as session:
         return await session.scalar(select(func.count()).select_from(PatternVersion)) or 0
+
+
+@pytest.mark.asyncio
+async def test_gold_sampling_stores_only_sentence_reference_hash_and_audits_counts(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "curator", "gold sampler")
+    source_text = "The sample method improves a fictional result."
+    async with session_factory() as session:
+        license_row = await session.scalar(select(License).where(License.code == "CC-BY"))
+        assert license_row is not None and license_row.allows_mining
+        article = Article(
+            source="slr",
+            license_id=license_row.id,
+            blob_key="phase02/mock-article.md",
+            title="Mock Article",
+            ingest_status="ready",
+        )
+        session.add(article)
+        await session.flush()
+        section = ArticleSection(
+            article_id=article.id,
+            section_code="RESULTS",
+            heading="Results",
+            order=1,
+        )
+        session.add(section)
+        await session.flush()
+        sentence = Sentence(
+            article_id=article.id,
+            article_section_id=section.id,
+            text=source_text,
+            char_start=0,
+            char_end=len(source_text),
+        )
+        session.add(sentence)
+        upload_article = Article(
+            source="upload",
+            license_id=license_row.id,
+            blob_key="phase02/mock-upload.md",
+            title="Mock Upload",
+            ingest_status="ready",
+        )
+        session.add(upload_article)
+        await session.flush()
+        upload_sentence = Sentence(
+            article_id=upload_article.id,
+            text="An allowed upload sentence is outside the SLR sample.",
+            char_start=0,
+            char_end=len("An allowed upload sentence is outside the SLR sample."),
+        )
+        session.add(upload_sentence)
+        blocked_license = License(
+            code="TEST-NO-MINING", name="Test license", allows_mining=False, allows_display=False
+        )
+        session.add(blocked_license)
+        await session.flush()
+        blocked_article = Article(
+            license_id=blocked_license.id,
+            blob_key="phase02/mock-restricted.md",
+            title="Restricted Mock Article",
+            ingest_status="ready",
+        )
+        session.add(blocked_article)
+        await session.flush()
+        blocked_sentence = Sentence(
+            article_id=blocked_article.id,
+            text="A restricted mock sentence remains excluded.",
+            char_start=0,
+            char_end=len("A restricted mock sentence remains excluded."),
+        )
+        session.add(blocked_sentence)
+        await session.commit()
+
+    response = await api_client.post(
+        "/v1/admin/gold/samples",
+        headers={"X-API-Key": key},
+        json={"size": 1, "seed": 741, "max_per_article": 1},
+    )
+
+    assert response.status_code == 202
+    assert source_text not in response.text
+    async with session_factory() as session:
+        item = await session.scalar(
+            select(GoldItem).where(GoldItem.sample_batch == response.json()["sample_batch"])
+        )
+        assert item is not None
+        assert item.sentence_id == sentence.id
+        assert item.sentence_id != blocked_sentence.id
+        assert item.sentence_id != upload_sentence.id
+        assert item.text_sha256
+        audit = await session.scalar(
+            select(AuditEvent).where(AuditEvent.action == "gold.sample.create")
+        )
+        assert audit is not None
+        assert source_text not in str(audit.after)
+        assert audit.after["filtered_count"] == 0
+        assert audit.after["sampling_policy_version"] == load_policy_bundle().gold_sampling.version
+        batch = response.json()["sample_batch"]
+        item.ai_labels = {"keep": True}
+        await session.commit()
+        with pytest.raises(ValueError, match="contains labels"):
+            await delete_sample_batch(
+                session, sample_batch=batch, request_id="test-gold-delete-blocked"
+            )
+
+    async with session_factory() as session:
+        item = await session.scalar(select(GoldItem).where(GoldItem.sample_batch == batch))
+        assert item is not None
+        item.ai_labels = None
+        await session.commit()
+        deleted_count = await delete_sample_batch(
+            session, sample_batch=batch, request_id="test-gold-delete"
+        )
+        assert deleted_count == 1
+
+        remaining = await session.scalar(select(GoldItem).where(GoldItem.sample_batch == batch))
+        assert remaining is None
+        delete_audit = await session.scalar(
+            select(AuditEvent).where(AuditEvent.action == "gold.sample.delete")
+        )
+        assert delete_audit is not None
+        assert delete_audit.after == {"deleted_count": 1}
+        assert source_text not in str(delete_audit.before)
+        assert source_text not in str(delete_audit.after)
 
 
 async def _decision_payload(api_client: AsyncClient, key: str, candidate_id: UUID, decision: str):
@@ -725,3 +891,189 @@ async def run_seed_in_session(session_factory: async_sessionmaker) -> None:
     async with session_factory() as session:
         await run_seed(session)
         await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_gold_review_displays_only_allowed_source_and_audits_label_fields(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    reviewer, key = await create_key(session_factory, "reviewer", "gold final reviewer")
+    source = "Our small fixture shows that the example system works reliably."
+    async with session_factory() as session:
+        license_row = await session.scalar(select(License).where(License.code == "CC-BY"))
+        assert license_row is not None and license_row.allows_display
+        article = Article(
+            source="slr",
+            license_id=license_row.id,
+            blob_key="gold/mock-review.md",
+            title="Self-authored review fixture",
+            ingest_status="ready",
+        )
+        session.add(article)
+        await session.flush()
+        section = ArticleSection(
+            article_id=article.id, section_code="RESULTS", heading="Results", order=0
+        )
+        session.add(section)
+        await session.flush()
+        sentence = Sentence(
+            article_id=article.id,
+            article_section_id=section.id,
+            text=source,
+            char_start=0,
+            char_end=len(source),
+        )
+        session.add(sentence)
+        await session.flush()
+        item = GoldItem(
+            article_id=article.id,
+            sentence_id=sentence.id,
+            char_start=0,
+            char_end=len(source),
+            text_sha256=hashlib.sha256(source.encode()).hexdigest(),
+            section_at_sampling="RESULTS",
+            split="dev",
+            sample_batch="mock-review-batch",
+            guideline_version="v0",
+            ai_labels={"keep": True, "section": "RESULTS", "slots": []},
+            status="draft",
+        )
+        session.add(item)
+        await session.commit()
+        item_id = item.id
+
+    headers = {"X-API-Key": key}
+    listed = await api_client.get("/v1/admin/gold/items?status=draft", headers=headers)
+    assert listed.status_code == 200
+    assert source not in listed.text
+    detail = await api_client.get(f"/v1/admin/gold/items/{item_id}", headers=headers)
+    assert detail.status_code == 200
+    assert detail.json()["text"] == source
+    decision = await api_client.post(
+        f"/v1/admin/gold/items/{item_id}/review",
+        headers=headers,
+        json={
+            "decision": "approve",
+            "final_labels": {"keep": True, "section": "RESULTS", "slots": []},
+        },
+    )
+    assert decision.status_code == 200
+    assert decision.json()["status"] == "approved"
+    async with session_factory() as session:
+        item = await session.get(GoldItem, item_id)
+        event = await session.scalar(
+            select(AuditEvent).where(AuditEvent.action == "gold.item.review")
+        )
+        assert item is not None and item.reviewed_by == reviewer.id
+        assert event is not None and source not in str(event.after)
+
+
+class _QuotaAfterTwoLabeler:
+    """Fake labeler: labels two sentences, then reports an exhausted daily quota."""
+
+    model = "fake-model"
+    prompt_version = "fake-v0"
+
+    def __init__(self, *, error: Exception) -> None:
+        self.calls = 0
+        self._error = error
+
+    async def label(self, **_kwargs: object) -> GoldLabels:
+        self.calls += 1
+        if self.calls > 2:
+            raise self._error
+        return GoldLabels(keep=True, section="RESULTS")
+
+
+async def _seed_unlabeled_gold_batch(session_factory: async_sessionmaker, count: int) -> str:
+    async with session_factory() as session:
+        license_row = await session.scalar(select(License).where(License.code == "CC-BY"))
+        assert license_row is not None
+        article = Article(
+            source="slr",
+            license_id=license_row.id,
+            blob_key="gold/mock-quota.md",
+            title="Self-authored quota fixture",
+            ingest_status="ready",
+        )
+        session.add(article)
+        await session.flush()
+        section = ArticleSection(
+            article_id=article.id, section_code="RESULTS", heading="Results", order=0
+        )
+        session.add(section)
+        await session.flush()
+        offset = 0
+        for index in range(count):
+            text = f"Fixture sentence number {index} describes a mock result."
+            sentence = Sentence(
+                article_id=article.id,
+                article_section_id=section.id,
+                text=text,
+                char_start=offset,
+                char_end=offset + len(text),
+            )
+            session.add(sentence)
+            await session.flush()
+            session.add(
+                GoldItem(
+                    article_id=article.id,
+                    sentence_id=sentence.id,
+                    char_start=offset,
+                    char_end=offset + len(text),
+                    text_sha256=hashlib.sha256(text.encode()).hexdigest(),
+                    section_at_sampling="RESULTS",
+                    split="dev",
+                    sample_batch="mock-quota-batch",
+                    guideline_version="v0",
+                    status="pending_ai",
+                )
+            )
+            offset += len(text) + 1
+        await session.commit()
+    return "mock-quota-batch"
+
+
+@pytest.mark.asyncio
+async def test_gold_labeling_keeps_finished_labels_when_daily_quota_runs_out(
+    session_factory: async_sessionmaker,
+) -> None:
+    await run_seed_in_session(session_factory)
+    batch = await _seed_unlabeled_gold_batch(session_factory, 5)
+    labeler = _QuotaAfterTwoLabeler(error=GoldLabelingQuotaError(7200))
+
+    async with session_factory() as session:
+        result = await label_sample_batch(
+            session, sample_batch=batch, request_id="test", labeler=labeler
+        )
+
+    assert result == {
+        "labeled_count": 2,
+        "stale_count": 0,
+        "stopped": "quota",
+        "remaining_count": 3,
+        "retry_after_seconds": 7200,
+    }
+    async with session_factory() as session:
+        statuses = Counter(await session.scalars(select(GoldItem.status)))
+    assert statuses == {"draft": 2, "pending_ai": 3}
+
+
+@pytest.mark.asyncio
+async def test_gold_labeling_keeps_finished_labels_before_raising_other_request_errors(
+    session_factory: async_sessionmaker,
+) -> None:
+    await run_seed_in_session(session_factory)
+    batch = await _seed_unlabeled_gold_batch(session_factory, 4)
+    labeler = _QuotaAfterTwoLabeler(error=GoldLabelingRequestError("Groq credentials rejected"))
+
+    async with session_factory() as session:
+        with pytest.raises(GoldLabelingRequestError):
+            await label_sample_batch(
+                session, sample_batch=batch, request_id="test", labeler=labeler
+            )
+
+    async with session_factory() as session:
+        statuses = Counter(await session.scalars(select(GoldItem.status)))
+    assert statuses == {"draft": 2, "pending_ai": 2}

@@ -1,6 +1,6 @@
 # Phase 05 — Runtime mining
 
-Status: not_started
+Status: implemented; unit tests pass. PostgreSQL upload/ingest/mine integration awaits `TEST_DATABASE_URL` for `aprkb_test`.
 Gate: G1 approved. Execute phases 04 → 05 → 06.
 
 Regex-only sentence extraction with fixed conservative span policy, positional slots, protected wording and offsets. spaCy/NER deferred TODO(owner, FR-06.2).

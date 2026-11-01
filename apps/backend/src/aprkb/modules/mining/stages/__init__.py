@@ -1,24 +1,29 @@
 """Deterministic scaffold mining stage registry."""
 
 from aprkb.modules.mining.stages.base import MiningItem, MiningStage
+from aprkb.modules.mining.stages.clusterer import Clusterer
+from aprkb.modules.mining.stages.epistemic_tagger import EpistemicTagger
+from aprkb.modules.mining.stages.frame_normalizer import FrameNormalizer
 from aprkb.modules.mining.stages.sentence_filter import SentenceFilter
+from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
 from aprkb.modules.mining.stages.todo import TodoMiningStage
-from aprkb.policies.schemas import MiningFilterPolicy
+from aprkb.policies.loader import PolicyBundle
 
 
-def build_stages(*, policy: MiningFilterPolicy) -> list[MiningStage]:
+def build_stages(*, policy_bundle: PolicyBundle) -> list[MiningStage]:
+    filter_policy = policy_bundle.mining_filter
     return [
         SentenceFilter(
-            min_words=policy.sentence_filter.min_words,
-            max_words=policy.sentence_filter.max_words,
-            noise=policy.noise_filter,
+            min_words=filter_policy.sentence_filter.min_words,
+            max_words=filter_policy.sentence_filter.max_words,
+            noise=filter_policy.noise_filter,
         ),
-        TodoMiningStage("move_classifier", "PRD-6.3"),
-        TodoMiningStage("epistemic_tagger", "PRD-6.3"),
-        TodoMiningStage("slot_abstractor", "PRD-6.3"),
-        TodoMiningStage("frame_normalizer", "PRD-6.3"),
-        TodoMiningStage("clusterer", "PRD-6.3"),
-        TodoMiningStage("dedup_matcher", "PRD-6.3"),
+        TodoMiningStage("move_classifier", "FR-06.3"),
+        EpistemicTagger(policy_bundle.epistemic_markers),
+        SlotAbstractor(policy_bundle.reporting_verbs, policy_bundle.slot_abstraction),
+        FrameNormalizer(),
+        Clusterer(policy_bundle),
+        TodoMiningStage("dedup_matcher", "FR-06.2"),
     ]
 
 

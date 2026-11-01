@@ -60,6 +60,6 @@ def test_stage_drops_noise_and_keeps_section_code() -> None:
     results = stage.process([kept, dropped])
 
     assert [(item.text, item.section_code) for item in results] == [
-        ("These findings indicate that the filter works well.", "DISCUSSION")
+        ("These findings indicate that the filter works well [4].", "DISCUSSION")
     ]
     assert stage.reject_reason(dropped) == "caption"

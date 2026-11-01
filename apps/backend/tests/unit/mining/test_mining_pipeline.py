@@ -12,7 +12,7 @@ from aprkb.policies.schemas import EpistemicMarkersPolicy, MiningFilterPolicy
 
 
 def test_mining_registry_has_deterministic_order_and_requirement_tags(policy_bundle):
-    stages = build_stages(policy=policy_bundle.mining_filter)
+    stages = build_stages(policy_bundle=policy_bundle)
 
     assert [stage.name for stage in stages] == [
         "sentence_filter",
@@ -27,7 +27,7 @@ def test_mining_registry_has_deterministic_order_and_requirement_tags(policy_bun
         assert stage.requirement_id
 
 
-def test_sentence_filter_removes_inline_citations_but_keeps_remaining_sentence():
+def test_sentence_filter_preserves_inline_citations_for_private_extraction_metadata():
     stage = SentenceFilter(min_words=1, max_words=100)
     item = MiningItem(
         text="The result was stable [12] (Nguyen, 2020).",
@@ -37,9 +37,7 @@ def test_sentence_filter_removes_inline_citations_but_keeps_remaining_sentence()
     results = stage.process([item])
 
     assert len(results) == 1
-    assert "[12]" not in results[0].text
-    assert "(Nguyen, 2020)" not in results[0].text
-    assert "The result was stable" in results[0].text
+    assert results[0].text == item.text
 
 
 def test_sentence_filter_applies_configured_word_bounds():
@@ -68,7 +66,11 @@ def test_mining_filter_thresholds_come_from_validated_policy():
             },
         }
     )
-    stage = build_stages(policy=policy)[0]
+    stage = SentenceFilter(
+        min_words=policy.sentence_filter.min_words,
+        max_words=policy.sentence_filter.max_words,
+        noise=policy.noise_filter,
+    )
 
     assert stage.process([MiningItem(text="Short sentence.", source_sentence_ids=[uuid4()])])
 
@@ -107,3 +109,29 @@ def test_candidate_writer_rejects_missing_source_sentence_ids():
 
     with pytest.raises(ValueError, match="source_sentence_ids"):
         writer.write(draft)
+
+
+def test_candidate_writer_rejects_unmasked_frame_and_untyped_slot_text(policy_bundle):
+    class Repository:
+        def create_candidate(self, _draft):
+            return object()
+
+    writer = CandidateWriter(
+        repository=Repository(), reporting_policy=policy_bundle.reporting_verbs
+    )
+    source_ids = [uuid4()]
+
+    with pytest.raises(ValueError, match="masked positional frame"):
+        writer.write(
+            CandidateDraft(
+                canonical_frame="Original sentence text.", source_sentence_ids=source_ids
+            )
+        )
+    with pytest.raises(ValueError, match="typed slot definitions"):
+        writer.write(
+            CandidateDraft(
+                canonical_frame="[X] suggests that [Y].",
+                source_sentence_ids=source_ids,
+                slots={"X": "raw source text"},  # type: ignore[dict-item]
+            )
+        )

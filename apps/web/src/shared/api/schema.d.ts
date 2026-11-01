@@ -127,6 +127,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/gold/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Gold Items */
+        get: operations["get_gold_items_v1_admin_gold_items_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/gold/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Gold Item Detail */
+        get: operations["get_gold_item_detail_v1_admin_gold_items__item_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/gold/items/{item_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Gold Item */
+        post: operations["decide_gold_item_v1_admin_gold_items__item_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/gold/samples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Gold Sample */
+        post: operations["create_gold_sample_v1_admin_gold_samples_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/gold/samples/{sample_batch}/label": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Label Gold Sample */
+        post: operations["label_gold_sample_v1_admin_gold_samples__sample_batch__label_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/gold/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Gold Item Stats */
+        get: operations["get_gold_item_stats_v1_admin_gold_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -526,7 +628,7 @@ export interface components {
             intent_id: string | null;
             /** Slots */
             slots: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["SlotDefinition"];
             };
             /** Source Sentence Ids */
             source_sentence_ids: string[];
@@ -562,6 +664,139 @@ export interface components {
              * @enum {string}
              */
             signal: "accepted" | "rejected" | "edited";
+        };
+        /** GoldItemDetail */
+        GoldItemDetail: {
+            /** Ai Labels */
+            ai_labels: {
+                [key: string]: unknown;
+            } | null;
+            /** Final Labels */
+            final_labels: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Next Text */
+            next_text?: string | null;
+            /** Previous Text */
+            previous_text?: string | null;
+            /** Sample Batch */
+            sample_batch: string;
+            /** Section */
+            section: string;
+            /** Section Heading */
+            section_heading?: string | null;
+            /** Split */
+            split: string;
+            /** Status */
+            status: string;
+            /** Text */
+            text: string;
+        };
+        /** GoldItemSummary */
+        GoldItemSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Sample Batch */
+            sample_batch: string;
+            /** Section */
+            section: string;
+            /** Split */
+            split: string;
+            /** Status */
+            status: string;
+        };
+        /** GoldLabelJobResult */
+        GoldLabelJobResult: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Sample Batch */
+            sample_batch: string;
+            /**
+             * Status
+             * @default queued
+             */
+            status: string;
+        };
+        /** GoldReviewDecision */
+        GoldReviewDecision: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+            /** Final Labels */
+            final_labels?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** GoldReviewResult */
+        GoldReviewResult: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reviewed At */
+            reviewed_at: string;
+            /** Status */
+            status: string;
+        };
+        /** GoldSampleCreate */
+        GoldSampleCreate: {
+            /**
+             * Max Per Article
+             * @default 100
+             */
+            max_per_article: number;
+            /** Seed */
+            seed: number;
+            /**
+             * Size
+             * @default 300
+             */
+            size: number;
+        };
+        /** GoldSampleResult */
+        GoldSampleResult: {
+            /** Count */
+            count: number;
+            /** Sample Batch */
+            sample_batch: string;
+            /**
+             * Status
+             * @default pending_ai
+             */
+            status: string;
+            /** Test Count */
+            test_count: number;
+        };
+        /** GoldStats */
+        GoldStats: {
+            /** By Split */
+            by_split: {
+                [key: string]: number;
+            };
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+            /** Field Edits */
+            field_edits: {
+                [key: string]: number;
+            };
+            /** Total */
+            total: number;
         };
         /** GuidelineCreate */
         GuidelineCreate: {
@@ -851,6 +1086,11 @@ export interface components {
             /** Version No */
             version_no: number;
         };
+        /**
+         * ProtectedSignal
+         * @enum {string}
+         */
+        ProtectedSignal: "citation" | "number" | "percentage" | "unit" | "year" | "acronym" | "negation" | "modal" | "comparison";
         /** RecommendationItemResponse */
         RecommendationItemResponse: {
             /** Breakdown */
@@ -951,6 +1191,17 @@ export interface components {
             /** Round */
             round: number;
         };
+        /** SlotDefinition */
+        SlotDefinition: {
+            /** Signals */
+            signals?: components["schemas"]["ProtectedSignal"][];
+            type: components["schemas"]["SlotType"];
+        };
+        /**
+         * SlotType
+         * @enum {string}
+         */
+        SlotType: "noun_phrase" | "clause" | "determiner_own" | "determiner_prior";
         /** SlrTaxonomyItem */
         SlrTaxonomyItem: {
             /** Id */
@@ -1507,6 +1758,213 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SlrTaxonomyPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_gold_items_v1_admin_gold_items_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                split?: string | null;
+                section?: string | null;
+                sample_batch?: string | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldItemSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_gold_item_detail_v1_admin_gold_items__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldItemDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_gold_item_v1_admin_gold_items__item_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoldReviewDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldReviewResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_gold_sample_v1_admin_gold_samples_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoldSampleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldSampleResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    label_gold_sample_v1_admin_gold_samples__sample_batch__label_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                sample_batch: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldLabelJobResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_gold_item_stats_v1_admin_gold_stats_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldStats"];
                 };
             };
             /** @description Validation Error */

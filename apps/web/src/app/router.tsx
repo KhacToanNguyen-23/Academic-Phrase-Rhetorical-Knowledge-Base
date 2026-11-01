@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { AdminPage } from "@/features/admin";
 import { InboxPage } from "@/features/inbox";
+import { GoldPage } from "@/features/gold";
 import { JournalProfilePage } from "@/features/journal-profile";
 import { LibraryPage } from "@/features/library";
 import { OverviewPage } from "@/features/overview";
@@ -19,6 +20,7 @@ const NAV = [
   { to: "/journals", label: "Journals" },
   { to: "/admin", label: "Admin" },
   { to: "/import", label: "Import" },
+  { to: "/gold", label: "Gold review" },
 ] as const;
 
 function Shell() {
@@ -101,6 +103,7 @@ const playground = createRoute({
 const inbox = createRoute({ getParentRoute: () => root, path: "/inbox", component: InboxPage });
 const admin = createRoute({ getParentRoute: () => root, path: "/admin", component: AdminPage });
 const slrImport = createRoute({ getParentRoute: () => root, path: "/import", component: SlrImportPage });
+const gold = createRoute({ getParentRoute: () => root, path: "/gold", component: GoldPage });
 
 const journals = createRoute({ getParentRoute: () => root, path: "/journals", component: () => <JournalProfilePage /> });
 const journal = createRoute({
@@ -110,7 +113,7 @@ const journal = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: root.addChildren([overview, library, playground, inbox, journals, journal, admin, slrImport]),
+  routeTree: root.addChildren([overview, library, playground, inbox, journals, journal, admin, slrImport, gold]),
 });
 
 declare module "@tanstack/react-router" {

@@ -1,6 +1,6 @@
 # Phase 08 — Đánh giá trên gold đã duyệt
 
-Trạng thái: chờ duyệt. Chạy sau phase 06.
+Trạng thái: evaluator và CLI đã triển khai. Chưa chạy vì chưa có nhãn `approved`; không tạo score/quality claim thay người duyệt.
 
 ## Việc
 
@@ -15,3 +15,5 @@ Lệnh `uv run --directory apps/backend python -m aprkb.cli eval-mining [--split
 ## Kiểm tra
 
 Unit: tính số liệu trên dữ liệu tự viết với kết quả biết trước. Integration: bỏ qua item `draft`/`rejected`/`stale`.
+
+Chạy sau khi có nhãn người duyệt: `uv run --directory apps/backend python -m aprkb.cli eval-mining --split dev` hoặc `--split test`. Report chỉ có metric tổng hợp, policy version, item count và số item stale; file nằm trong `apps/backend/data/eval/` (ignored).

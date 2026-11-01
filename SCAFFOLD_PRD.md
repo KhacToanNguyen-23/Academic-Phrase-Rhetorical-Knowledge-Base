@@ -30,7 +30,7 @@
 | D8 | Cấu hình nghiệp vụ | File YAML có version trong `app/policies/`, không hard-code trong code |
 | D9 | Enum nghiệp vụ | Lưu ở bảng tham chiếu trong DB (seed được), không dùng Postgres ENUM |
 | D10 | Công cụ | `uv` (quản lý package), `ruff`, `mypy --strict` (với `app/`), `pytest`, `pytest-asyncio` |
-| D11 | Admin console | Ở bước scaffold chỉ có màn hình **Import từ SLR** (D12). Các màn hình admin khác chưa làm |
+| D11 | Admin console | Ngoại lệ M2: thêm review gold tại `/gold` và API `/v1/admin/gold/*`; Groq key chỉ lấy từ `.env` local khi owner chủ động chạy thử; các màn hình admin khác chưa làm |
 | D12 | Nguồn bài báo | SLR Repository API qua `SlrRepositorySource`. Curator cấu hình bộ lọc trên web (`ImportProfile`) rồi bấm lấy bài. License fail closed theo `policies/licenses.yaml` ([ADR-0006](doc/adr/0006-slr-repository-import.md)) |
 
 ---
@@ -683,10 +683,12 @@ Và:
 - NER khoa học, LLM, production move/intent/epistemic classifiers và clustering bằng embedding. Slot abstraction theo luật có phạm vi M2 giới hạn theo mục 6.3; chưa được xem là đã triển khai hoặc áp dụng.
 - Journal fingerprint, `JournalGenreScorer` thật.
 - Diversifier thật (FR-07.6).
+
+**Ngoại lệ M2 được owner duyệt 2026-11-01:** gold dev từ câu SLR được lưu dưới dạng tham chiếu/hash trong `gold_items`; AI nháp và một người duyệt cuối qua UI. Groq key chỉ ở `.env` local, không có UI/API lưu key. Chưa có đánh giá production. LLM bên thứ ba chỉ bật local/test cho tới quyết định quyền xử lý theo `TODO(owner, BR-10)`.
 - Các màn hình admin console còn lại.
 - Lịch tự động chạy import theo profile.
 - Quy trình publish taxonomy release.
-- Gold từ bài báo thật, evaluator, tuning và đánh giá chất lượng chờ API bài báo; FR-06.6 yêu cầu hai editor, báo cáo bất đồng và adjudication. Kiểm thử mock hiện tại không chứng minh chất lượng production.
+- Mẫu gold dev 300 câu từ SLR đã được tạo; chưa có AI draft hay nhãn người duyệt. Theo quyết định owner, AI sẽ gán nhãn mọi item và một người duyệt cuối toàn bộ nhãn. Quy trình dev này không đáp ứng validation hai editor của FR-06.6. Evaluator, tuning và đánh giá chất lượng chờ nhãn người duyệt; kiểm thử mock không chứng minh chất lượng production.
 
 ---
 

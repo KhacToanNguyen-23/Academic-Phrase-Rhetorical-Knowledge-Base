@@ -107,6 +107,76 @@ class MiningFilterPolicy(VersionedPolicy):
     noise_filter: NoiseFilterSettings
 
 
+class ReportingVerbForms(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    present: list[str] = Field(min_length=1)
+    past: list[str] = Field(min_length=1)
+    present_perfect: list[str] = Field(min_length=1)
+
+
+class ReportingVerbsPolicy(VersionedPolicy):
+    classes: dict[str, ReportingVerbForms] = Field(min_length=1)
+
+    @property
+    def all_forms(self) -> set[str]:
+        return {
+            form
+            for forms in self.classes.values()
+            for form in forms.present + forms.past + forms.present_perfect
+        }
+
+    @field_validator("classes")
+    @classmethod
+    def validate_verb_forms(
+        cls, classes: dict[str, ReportingVerbForms]
+    ) -> dict[str, ReportingVerbForms]:
+        seen: set[str] = set()
+        for class_name, forms in classes.items():
+            if not class_name.isidentifier():
+                raise ValueError("reporting verb class names must be identifiers")
+            for form in forms.present + forms.past + forms.present_perfect:
+                normalized = form.strip().casefold()
+                if not normalized or normalized in seen:
+                    raise ValueError("reporting verb forms must be non-empty and unique")
+                seen.add(normalized)
+        return classes
+
+
+class SlotAbstractionPolicy(VersionedPolicy):
+    max_subject_words: int = Field(ge=1, le=16)
+    min_clause_words: int = Field(ge=1, le=20)
+    own_determiners: list[str] = Field(min_length=1)
+    prior_determiners: list[str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_determiners(self) -> "SlotAbstractionPolicy":
+        own = {value.strip().casefold() for value in self.own_determiners}
+        prior = {value.strip().casefold() for value in self.prior_determiners}
+        if not own or not prior or own & prior:
+            raise ValueError("own and prior determiners must be non-empty and disjoint")
+        return self
+
+
+class GoldSamplingPolicy(VersionedPolicy):
+    filtered_fraction: float = Field(ge=0, le=1)
+    test_fraction: float = Field(ge=0, le=1)
+
+
+class GoldLabelingPolicy(VersionedPolicy):
+    provider: Literal["null", "groq"]
+    model: str = Field(min_length=1, max_length=128)
+    temperature: float = Field(ge=0, le=2)
+    max_tokens: int = Field(ge=1, le=32768)
+    reasoning_effort: Literal["low", "medium", "high"]
+    max_rate_limit_wait_seconds: float = Field(ge=0, le=600)
+    sentences_per_request: int = Field(ge=1, le=20)
+    max_concurrency: int = Field(ge=1, le=1)
+    requests_per_minute: int = Field(ge=1, le=1000)
+    prompt_version: str = Field(min_length=1, max_length=32)
+    guideline_version: str = Field(min_length=1, max_length=32)
+
+
 class AbbreviationsPolicy(VersionedPolicy):
     abbreviations: list[str] = Field(min_length=1)
 

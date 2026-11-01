@@ -5,11 +5,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from aprkb.modules.mining.schemas import SlotDefinition
+
 
 class CandidateSummary(BaseModel):
     id: UUID
     canonical_frame: str
-    slots: dict[str, object]
+    slots: dict[str, SlotDefinition]
     intent_id: UUID | None
     confidence: float | None
     epistemic_strength: str | None

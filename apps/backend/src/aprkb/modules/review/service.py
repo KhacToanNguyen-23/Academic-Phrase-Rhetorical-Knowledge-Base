@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +11,7 @@ from aprkb.modules.audit.service import record_event
 from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
 from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.mining.models import Candidate
+from aprkb.modules.mining.schemas import SlotDefinition, is_safe_masked_frame
 from aprkb.modules.patterns.models import (
     EvidenceProvenance,
     PatternVersion,
@@ -19,6 +21,9 @@ from aprkb.modules.patterns.models import (
 )
 from aprkb.modules.review import repository
 from aprkb.modules.review.schemas import ReviewDecisionCreate
+from aprkb.policies.loader import load_policy_bundle
+
+_REPORTING_FORMS = load_policy_bundle().reporting_verbs.all_forms
 
 
 async def list_review_queue(session: AsyncSession) -> list[Candidate]:
@@ -38,6 +43,8 @@ async def decide(
         raise HTTPException(status_code=404, detail="Candidate not found")
     if candidate.status != "pending":
         raise HTTPException(status_code=409, detail="Candidate is no longer pending review")
+    if payload.decision == "approve" and not _candidate_is_safe_to_promote(candidate):
+        raise HTTPException(status_code=409, detail="Candidate abstraction schema is invalid")
     previous = await repository.decisions_for_candidate(session, candidate_id)
     if len(previous) >= 2:
         raise HTTPException(status_code=409, detail="Candidate has completed both review rounds")
@@ -167,3 +174,17 @@ async def _promote_candidate(
     )
     await session.flush()
     return version
+
+
+def _candidate_is_safe_to_promote(candidate: Candidate) -> bool:
+    if not is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS):
+        return False
+    if not isinstance(candidate.slots, dict):
+        return False
+    try:
+        slots = {
+            name: SlotDefinition.model_validate(value) for name, value in candidate.slots.items()
+        }
+    except (TypeError, ValueError, ValidationError):
+        return False
+    return not (set(slots) - {"X", "Y", "Z"})

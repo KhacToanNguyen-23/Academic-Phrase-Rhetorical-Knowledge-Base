@@ -2,7 +2,7 @@
 
 Ngày: 2026-11-01 (thay bản 2026-10-31)
 Rủi ro: cao — gửi câu bài báo cho LLM bên ngoài (Groq), thêm bảng và migration, thêm màn hình web.
-Trạng thái: chờ owner duyệt bản sửa đổi này.
+Trạng thái: owner đã chốt phạm vi triển khai ngày 2026-11-01; đang triển khai.
 
 ## Thay đổi so với bản 2026-10-31
 
@@ -11,7 +11,7 @@ SLR import đã chạy được (4 bài thật, license `DEV-UNVERIFIED`), nên 
 | Trước | Nay |
 |---|---|
 | Gold hoãn tới khi có API bài báo | Làm gold dev ngay, lấy mẫu khoảng 300 câu từ bài SLR thật |
-| Hai editor gán nhãn độc lập, κ, phân xử (FR-06.6) | **LLM gán nhãn nháp, một người duyệt cuối.** Chỉ nhãn được duyệt mới là gold. Không báo cáo được κ: đây là lệch FR-06.6 có chủ đích |
+| Hai editor gán nhãn độc lập, κ, phân xử (FR-06.6) | **AI gán nhãn mọi phrase; một người duyệt cuối tất cả nhãn AI.** Đây là quy trình gold dev theo quyết định owner, không đáp ứng yêu cầu validation hai editor của FR-06.6; không báo cáo inter-editor κ |
 | AI hỗ trợ là đề xuất, chưa có code | Tích hợp LLM vào hệ thống qua interface `GoldLabeler`; tạm dùng **Groq**, cấu hình trong policy YAML |
 | Không thêm endpoint, không thêm màn hình | Thêm API `/v1/admin/gold/*` và màn hình duyệt gold trên web |
 
@@ -22,16 +22,16 @@ Không đổi: luồng runtime upload/import → ingest → `mine_article` → c
 | Phase | Nội dung | Trạng thái |
 |---|---|---|
 | [01](phase-01-ingest-quality.md) | Chất lượng ingest: tách câu với chữ viết tắt, nhận diện section, lọc câu nhiễu | Đã code, chờ chạy `reingest` (cần Docker) |
-| [02](phase-02-gold-schema-and-guideline.md) | Bảng gold, nhãn (Pydantic), hướng dẫn gán nhãn, lấy mẫu, cập nhật PRD/ADR | Chờ duyệt |
-| [03](phase-03-llm-labeling.md) | Gán nhãn bằng LLM (tạm dùng Groq) qua job worker, validate bằng Pydantic | Chờ duyệt |
-| [04](phase-04-internal-contract-and-policies.md) | Runtime: hợp đồng dữ liệu, policy | Đã duyệt G1, chưa làm |
-| [05](phase-05-protected-extraction-engines.md) | Runtime: trích slot bằng regex | Đã duyệt G1, chưa làm |
-| [06](phase-06-keying-and-worker-integration.md) | Runtime: key bảo thủ, nối worker; thêm `epistemic_tagger` theo luật | Đã duyệt G1, chưa làm |
-| [07](phase-07-gold-review-ui.md) | Màn hình duyệt gold trên web + API | Chờ duyệt |
-| [08](phase-08-evaluator.md) | Đánh giá pipeline trên gold đã duyệt | Chờ duyệt |
+| [02](phase-02-gold-schema-and-guideline.md) | Bảng gold, nhãn (Pydantic), hướng dẫn gán nhãn, lấy mẫu, cập nhật PRD/ADR | Hoàn thành: schema/API và mẫu 300 item (90 test); chưa có nhãn |
+| [03](phase-03-llm-labeling.md) | Gán nhãn bằng LLM (tạm dùng Groq) qua job worker, validate bằng Pydantic | Đã triển khai; test HTTP giả lập. Owner đã chọn `openai/gpt-oss-120b` và báo đã cấu hình key; chưa gọi thật vì chưa xác nhận quyền gửi bài báo cho bên thứ ba |
+| [04](phase-04-internal-contract-and-policies.md) | Runtime: hợp đồng dữ liệu, policy | Đã triển khai; PostgreSQL integration đang chờ `TEST_DATABASE_URL` |
+| [05](phase-05-protected-extraction-engines.md) | Runtime: trích slot bằng regex | Đã triển khai; unit pass, PostgreSQL integration đang chờ `TEST_DATABASE_URL` |
+| [06](phase-06-keying-and-worker-integration.md) | Runtime: key bảo thủ, nối worker; thêm `epistemic_tagger` theo luật | Đã triển khai; unit pass, PostgreSQL integration đang chờ `TEST_DATABASE_URL` |
+| [07](phase-07-gold-review-ui.md) | Màn hình duyệt gold trên web + API | Đã triển khai; web typecheck/lint pass, PostgreSQL integration đang chờ `TEST_DATABASE_URL` |
+| [08](phase-08-evaluator.md) | Đánh giá pipeline trên gold đã duyệt | Đã triển khai CLI/métric; chưa chạy vì chưa có nhãn gold được duyệt |
 | [09](phase-09-synonym-proposals.md) | Đề xuất từ đồng nghĩa | Hoãn |
 
-Thứ tự: 01 → 02 → 03 → 07 (gán nhãn và duyệt có thể chạy trong lúc làm 04–06) → 04 → 05 → 06 → 08.
+Thứ tự: 01 → 02 → 03 → 07 (gán nhãn và duyệt có thể chạy trong lúc làm 04–06) → 04 → 05 → 06 → 08. Việc gọi Groq thật vẫn tắt cho tới khi owner xác nhận quyền xử lý AI bên ngoài; key/model đã được cấu hình. Evaluator chỉ chạy trên nhãn `approved`.
 
 01 phải xong trước khi lấy mẫu: sửa tách câu làm thay đổi ranh giới câu, gold lập trước sẽ trỏ sai.
 
@@ -46,7 +46,7 @@ Thứ tự: 01 → 02 → 03 → 07 (gán nhãn và duyệt có thể chạy tro
 
 ## Owner cần làm
 
-- Cấp `GROQ_API_KEY` và chọn model Groq khi tới bước chạy thật của phase 03 (mình sẽ hỏi lúc đó); key chỉ nằm trong `.env` cục bộ.
+- **Cập nhật owner 2026-11-01:** Groq key chỉ nằm trong `.env` local để chạy thử có chủ đích. Không thêm UI nhập key, API lưu key, DB credential, mã hóa server-side, master key, rotation hay revoke trong giai đoạn dev. Không commit hoặc in key; chỉ dùng khi owner yêu cầu chạy Groq thật. `TODO(owner, BR-10)` vẫn áp dụng trước khi gửi câu chưa rõ quyền cho bên thứ ba.
 - Chạy `bootstrap-key` để có key admin, và (sau phase 07) duyệt khoảng 300 nhãn trên web.
 - Chi phí và giới hạn tốc độ phụ thuộc model Groq được chọn; đo bằng lần chạy thử ~10 câu trước khi chạy cả 300.
 

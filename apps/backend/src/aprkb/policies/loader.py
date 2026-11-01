@@ -11,10 +11,14 @@ from aprkb.policies.schemas import (
     EpistemicMarkersPolicy,
     EvidenceMatrixPolicy,
     FallbackTiersPolicy,
+    GoldLabelingPolicy,
+    GoldSamplingPolicy,
     LicensesPolicy,
     MiningFilterPolicy,
     RankingWeightsPolicy,
+    ReportingVerbsPolicy,
     SectionHeadingsPolicy,
+    SlotAbstractionPolicy,
     ValidationRulesPolicy,
 )
 
@@ -30,6 +34,10 @@ class PolicyBundle:
     mining_filter: MiningFilterPolicy
     abbreviations: AbbreviationsPolicy
     section_headings: SectionHeadingsPolicy
+    gold_sampling: GoldSamplingPolicy
+    gold_labeling: GoldLabelingPolicy
+    reporting_verbs: ReportingVerbsPolicy
+    slot_abstraction: SlotAbstractionPolicy
 
 
 def _load[PolicyModel: BaseModel](path: Path, model: type[PolicyModel]) -> PolicyModel:
@@ -56,4 +64,8 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
         mining_filter=_load(root / "mining_filter.yaml", MiningFilterPolicy),
         abbreviations=_load(root / "lexicon" / "abbreviations.yaml", AbbreviationsPolicy),
         section_headings=_load(root / "section_headings.yaml", SectionHeadingsPolicy),
+        gold_sampling=_load(root / "gold_sampling.yaml", GoldSamplingPolicy),
+        gold_labeling=_load(root / "gold_labeling.yaml", GoldLabelingPolicy),
+        reporting_verbs=_load(root / "lexicon" / "reporting_verbs.yaml", ReportingVerbsPolicy),
+        slot_abstraction=_load(root / "slot_abstraction.yaml", SlotAbstractionPolicy),
     )

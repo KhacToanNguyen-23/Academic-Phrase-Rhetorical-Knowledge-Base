@@ -233,7 +233,9 @@
             "title": "Intent Id"
           },
           "slots": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SlotDefinition"
+            },
             "title": "Slots",
             "type": "object"
           },
@@ -317,6 +319,309 @@
           "signal"
         ],
         "title": "FeedbackCreate",
+        "type": "object"
+      },
+      "GoldItemDetail": {
+        "properties": {
+          "ai_labels": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Labels"
+          },
+          "final_labels": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Labels"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "next_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Text"
+          },
+          "previous_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Text"
+          },
+          "sample_batch": {
+            "title": "Sample Batch",
+            "type": "string"
+          },
+          "section": {
+            "title": "Section",
+            "type": "string"
+          },
+          "section_heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Heading"
+          },
+          "split": {
+            "title": "Split",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sample_batch",
+          "split",
+          "section",
+          "status",
+          "ai_labels",
+          "final_labels",
+          "text"
+        ],
+        "title": "GoldItemDetail",
+        "type": "object"
+      },
+      "GoldItemSummary": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "sample_batch": {
+            "title": "Sample Batch",
+            "type": "string"
+          },
+          "section": {
+            "title": "Section",
+            "type": "string"
+          },
+          "split": {
+            "title": "Split",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sample_batch",
+          "split",
+          "section",
+          "status"
+        ],
+        "title": "GoldItemSummary",
+        "type": "object"
+      },
+      "GoldLabelJobResult": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "sample_batch": {
+            "title": "Sample Batch",
+            "type": "string"
+          },
+          "status": {
+            "default": "queued",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "sample_batch"
+        ],
+        "title": "GoldLabelJobResult",
+        "type": "object"
+      },
+      "GoldReviewDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "final_labels": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Labels"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "GoldReviewDecision",
+        "type": "object"
+      },
+      "GoldReviewResult": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "title": "Reviewed At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "reviewed_at"
+        ],
+        "title": "GoldReviewResult",
+        "type": "object"
+      },
+      "GoldSampleCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "max_per_article": {
+            "default": 100,
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Max Per Article",
+            "type": "integer"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "integer"
+          },
+          "size": {
+            "default": 300,
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seed"
+        ],
+        "title": "GoldSampleCreate",
+        "type": "object"
+      },
+      "GoldSampleResult": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "sample_batch": {
+            "title": "Sample Batch",
+            "type": "string"
+          },
+          "status": {
+            "default": "pending_ai",
+            "title": "Status",
+            "type": "string"
+          },
+          "test_count": {
+            "title": "Test Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sample_batch",
+          "count",
+          "test_count"
+        ],
+        "title": "GoldSampleResult",
+        "type": "object"
+      },
+      "GoldStats": {
+        "properties": {
+          "by_split": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Split",
+            "type": "object"
+          },
+          "by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Status",
+            "type": "object"
+          },
+          "field_edits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Field Edits",
+            "type": "object"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "by_status",
+          "by_split",
+          "field_edits"
+        ],
+        "title": "GoldStats",
         "type": "object"
       },
       "GuidelineCreate": {
@@ -1103,6 +1408,21 @@
         "title": "PatternVersionRead",
         "type": "object"
       },
+      "ProtectedSignal": {
+        "enum": [
+          "citation",
+          "number",
+          "percentage",
+          "unit",
+          "year",
+          "acronym",
+          "negation",
+          "modal",
+          "comparison"
+        ],
+        "title": "ProtectedSignal",
+        "type": "string"
+      },
       "RecommendationItemResponse": {
         "properties": {
           "breakdown": {
@@ -1381,6 +1701,36 @@
         ],
         "title": "ReviewDecisionResult",
         "type": "object"
+      },
+      "SlotDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/ProtectedSignal"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "type": {
+            "$ref": "#/components/schemas/SlotType"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "SlotDefinition",
+        "type": "object"
+      },
+      "SlotType": {
+        "enum": [
+          "noun_phrase",
+          "clause",
+          "determiner_own",
+          "determiner_prior"
+        ],
+        "title": "SlotType",
+        "type": "string"
       },
       "SlrTaxonomyItem": {
         "properties": {
@@ -2648,6 +2998,440 @@
         "summary": "Slr Taxonomy",
         "tags": [
           "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/gold/items": {
+      "get": {
+        "operationId": "get_gold_items_v1_admin_gold_items_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "split",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Split"
+            }
+          },
+          {
+            "in": "query",
+            "name": "section",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Section"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sample_batch",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sample Batch"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GoldItemSummary"
+                  },
+                  "title": "Response Get Gold Items V1 Admin Gold Items Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Gold Items",
+        "tags": [
+          "admin gold"
+        ]
+      }
+    },
+    "/v1/admin/gold/items/{item_id}": {
+      "get": {
+        "operationId": "get_gold_item_detail_v1_admin_gold_items__item_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldItemDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Gold Item Detail",
+        "tags": [
+          "admin gold"
+        ]
+      }
+    },
+    "/v1/admin/gold/items/{item_id}/review": {
+      "post": {
+        "operationId": "decide_gold_item_v1_admin_gold_items__item_id__review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoldReviewDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldReviewResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Gold Item",
+        "tags": [
+          "admin gold"
+        ]
+      }
+    },
+    "/v1/admin/gold/samples": {
+      "post": {
+        "operationId": "create_gold_sample_v1_admin_gold_samples_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoldSampleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldSampleResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Gold Sample",
+        "tags": [
+          "admin gold"
+        ]
+      }
+    },
+    "/v1/admin/gold/samples/{sample_batch}/label": {
+      "post": {
+        "operationId": "label_gold_sample_v1_admin_gold_samples__sample_batch__label_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sample_batch",
+            "required": true,
+            "schema": {
+              "title": "Sample Batch",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldLabelJobResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Label Gold Sample",
+        "tags": [
+          "admin gold"
+        ]
+      }
+    },
+    "/v1/admin/gold/stats": {
+      "get": {
+        "operationId": "get_gold_item_stats_v1_admin_gold_stats_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Gold Item Stats",
+        "tags": [
+          "admin gold"
         ]
       }
     },

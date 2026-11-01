@@ -1,7 +1,7 @@
-# DRAFT lexicon; TODO(owner, PRD-6.2): approve markers before production use.
+# DRAFT lexicon; TODO(owner, FR-06.2): approve markers before production use.
 version: 0.1.0
 markers:
   low: [may, might, could, possibly, appears to]
-  moderate: [suggest, indicate, is likely]
-  high: [show, demonstrate, confirm]
-  absolute: [prove, establish beyond doubt, always]
+  moderate: [suggest, suggests, suggested, indicate, indicates, indicated, is likely]
+  high: [show, shows, showed, demonstrate, demonstrates, demonstrated, confirm, confirms, confirmed]
+  absolute: [prove, proves, proved, proven, establish beyond doubt, always]

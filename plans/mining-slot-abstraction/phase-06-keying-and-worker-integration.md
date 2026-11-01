@@ -1,6 +1,6 @@
 # Phase 06 — Runtime mining
 
-Status: not_started
+Status: implemented; unit tests pass. PostgreSQL worker and license-revocation integration tests await `TEST_DATABASE_URL` for `aprkb_test`.
 Gate: G1 approved. Execute phases 04 → 05 → 06.
 
 Conservative versioned keys and worker integration; recheck mining license before reading source, precompute same-section context, preserve variants and pending review.

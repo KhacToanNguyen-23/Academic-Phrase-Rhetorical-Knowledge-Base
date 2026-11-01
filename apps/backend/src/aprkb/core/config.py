@@ -31,8 +31,11 @@ class Settings(BaseSettings):
     # Chỉ dùng khi phát triển: gán license này cho bài SLR không có license.
     # TODO(owner, BR-10): bỏ trước khi lên production; app không khởi động nếu đặt ngoài local/test.
     slr_dev_fallback_license: str | None = None
+    gold_labeler: str = "null"
+    groq_api_key: SecretStr | None = None
+    groq_allow_external_processing: bool = False
 
-    @field_validator("slr_api_key", "slr_dev_fallback_license", mode="before")
+    @field_validator("slr_api_key", "slr_dev_fallback_license", "groq_api_key", mode="before")
     @classmethod
     def empty_value_is_missing(cls, value: object) -> object:
         return None if value == "" else value
@@ -43,6 +46,14 @@ class Settings(BaseSettings):
             raise ValueError(
                 "SLR_DEV_FALLBACK_LICENSE is only allowed when APP_ENV is local or test"
             )
+        return self
+
+    @model_validator(mode="after")
+    def gold_labeler_dev_only(self) -> "Settings":
+        if self.gold_labeler not in {"null", "groq"}:
+            raise ValueError("GOLD_LABELER must be null or groq")
+        if self.gold_labeler == "groq" and self.app_env not in DEV_APP_ENVS:
+            raise ValueError("GOLD_LABELER=groq is only allowed in local or test")
         return self
 
     grobid_url: str = "http://localhost:8070"

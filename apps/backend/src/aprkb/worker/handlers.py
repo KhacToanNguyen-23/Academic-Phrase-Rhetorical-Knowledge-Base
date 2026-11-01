@@ -48,9 +48,11 @@ class _SessionCandidateRepository:
         candidate = Candidate(
             canonical_frame=draft.canonical_frame,
             source_sentence_ids=draft.source_sentence_ids,
-            slots=draft.slots,
+            slots={name: slot.model_dump(mode="json") for name, slot in draft.slots.items()},
             confidence=draft.confidence,
             epistemic_strength=draft.epistemic_strength,
+            cluster_key=draft.cluster_key,
+            occurrences=draft.occurrences,
             status="pending",
         )
         self._session.add(candidate)
@@ -66,6 +68,16 @@ async def handle_job(
 ) -> str | None:
     if job.type == IMPORT_JOB_TYPE:
         return await _import(session, job, blob_store, article_source_factory)
+    if job.type == "label_gold":
+        sample_batch = job.payload.get("sample_batch")
+        if not isinstance(sample_batch, str):
+            return "Job payload is missing sample_batch"
+        from aprkb.modules.gold.service import label_sample_batch
+
+        job.result = await label_sample_batch(
+            session, sample_batch=sample_batch, request_id=str(job.id)
+        )
+        return None
     article_value = job.payload.get("article_id")
     if not isinstance(article_value, str):
         return "Job payload is missing article_id"
@@ -162,7 +174,9 @@ async def _import(
 
 
 async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore) -> str | None:
-    license_row = await session.get(License, article.license_id)
+    license_row = await session.scalar(
+        select(License).where(License.id == article.license_id).with_for_update()
+    )
     if license_row is None or not license_row.allows_mining:
         article.ingest_status = "rejected"
         return "Article license does not allow mining"
@@ -234,7 +248,7 @@ async def reingest_article(
     linked = (
         list(
             await session.scalars(
-                select(Candidate).where(Candidate.source_sentence_ids.overlap(old_ids))
+                select(Candidate).where(Candidate.source_sentence_ids.op("&&")(old_ids))
             )
         )
         if old_ids
@@ -276,28 +290,63 @@ def _mime_from_key(blob_key: str) -> str:
 async def _mine(session: AsyncSession, article: Article) -> str | None:
     if article.ingest_status != "ready":
         return "Article ingestion is not ready"
+    # Rights must be rechecked before querying any source sentence text.
+    license_row = await session.scalar(
+        select(License).where(License.id == article.license_id).with_for_update()
+    )
+    if license_row is None or not license_row.allows_mining:
+        return "Article license does not allow mining"
     rows = list(
         await session.execute(
             select(Sentence, ArticleSection.section_code)
             .outerjoin(ArticleSection, Sentence.article_section_id == ArticleSection.id)
             .where(Sentence.article_id == article.id)
-            .order_by(Sentence.char_start)
+            .order_by(Sentence.char_start, Sentence.id)
         )
     )
     if not rows:
         return "Article has no parsed sentences"
-    policy = load_policy_bundle().mining_filter
-    pipeline = MiningPipeline(stages=build_stages(policy=policy))
-    items = pipeline.process(
-        [
-            MiningItem(text=sentence.text, source_sentence_ids=[sentence.id], section_code=code)
-            for sentence, code in rows
-        ]
+    policies = load_policy_bundle()
+    pipeline = MiningPipeline(stages=build_stages(policy_bundle=policies))
+    mining_rows: list[MiningItem] = []
+    previous_text: str | None = None
+    previous_section: str | None = None
+    for sentence, code in rows:
+        context = previous_text if code is not None and code == previous_section else None
+        mining_rows.append(
+            MiningItem(
+                text=sentence.text,
+                source_sentence_ids=[sentence.id],
+                section_code=code,
+                char_start=sentence.char_start,
+                previous_text=context,
+            )
+        )
+        previous_text = sentence.text
+        previous_section = code
+    items = pipeline.process(mining_rows)
+    writer = CandidateWriter(
+        _SessionCandidateRepository(session), reporting_policy=policies.reporting_verbs
     )
-    writer = CandidateWriter(_SessionCandidateRepository(session))
     for item in items:
         writer.write(
-            CandidateDraft(canonical_frame=item.text, source_sentence_ids=item.source_sentence_ids)
+            CandidateDraft(
+                canonical_frame=item.text,
+                source_sentence_ids=item.source_sentence_ids,
+                slots=item.slots,
+                confidence=None,
+                epistemic_strength=item.epistemic_strength,
+                cluster_key=item.cluster_key,
+                occurrences=[
+                    {
+                        "sentence_id": str(occurrence.sentence_id),
+                        "sentence_start": occurrence.sentence_start,
+                        "sentence_end": occurrence.sentence_end,
+                        "slot_spans": occurrence.slot_spans,
+                    }
+                    for occurrence in item.occurrences
+                ],
+            )
         )
     return None
 

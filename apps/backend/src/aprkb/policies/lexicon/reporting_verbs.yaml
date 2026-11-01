@@ -1,0 +1,32 @@
+# Conservative morphology groups; no cross-lemma synonym merging without review.
+# Provisional vocabulary; TODO(owner, FR-06.2): approve before production use.
+version: 0.1.0
+classes:
+  suggest:
+    present: [suggest, suggests]
+    past: [suggested]
+    present_perfect: [has suggested, have suggested]
+  indicate:
+    present: [indicate, indicates]
+    past: [indicated]
+    present_perfect: [has indicated, have indicated]
+  report:
+    present: [report, reports]
+    past: [reported]
+    present_perfect: [has reported, have reported]
+  show:
+    present: [show, shows]
+    past: [showed]
+    present_perfect: [has shown, have shown]
+  demonstrate:
+    present: [demonstrate, demonstrates]
+    past: [demonstrated]
+    present_perfect: [has demonstrated, have demonstrated]
+  find:
+    present: [find, finds]
+    past: [found]
+    present_perfect: [has found, have found]
+  prove:
+    present: [prove, proves]
+    past: [proved, proven]
+    present_perfect: [has proved, have proved, has proven, have proven]

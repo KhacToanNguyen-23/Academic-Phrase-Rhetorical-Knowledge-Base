@@ -4,7 +4,9 @@ import argparse
 import asyncio
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -43,6 +45,7 @@ async def _bootstrap_key() -> None:
 
 
 async def _reingest(*, source: str) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401
     from aprkb.modules.corpus.models import Article
     from aprkb.worker.handlers import local_blob_store, reingest_article
 
@@ -92,6 +95,116 @@ async def _reingest(*, source: str) -> None:
         await engine.dispose()
 
 
+async def _delete_gold_batch(*, sample_batch: str) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.gold.service import delete_sample_batch
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                count = await delete_sample_batch(
+                    session,
+                    sample_batch=sample_batch,
+                    request_id="cli-gold-delete",
+                )
+            except Exception:
+                await session.rollback()
+                raise
+        print(f"Deleted {count} unlabeled gold item(s) from sample batch {sample_batch}.")
+    finally:
+        await engine.dispose()
+
+
+async def _eval_mining(*, split: str) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
+    from aprkb.modules.gold.models import GoldItem
+    from aprkb.modules.mining.evaluation import evaluate_approved_items
+    from aprkb.policies.loader import load_policy_bundle
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            gold_rows = list(
+                await session.execute(
+                    select(GoldItem, Article.id, License.allows_mining)
+                    .join(Article, Article.id == GoldItem.article_id)
+                    .join(License, License.id == Article.license_id)
+                    .where(
+                        GoldItem.status == "approved",
+                        GoldItem.split == split,
+                        GoldItem.sentence_id.is_not(None),
+                        Article.source == "slr",
+                    )
+                    .order_by(GoldItem.id)
+                    .with_for_update(of=[GoldItem, License])
+                )
+            )
+            if not gold_rows:
+                raise RuntimeError("No approved gold items exist for the requested split")
+            if any(not allows_mining for _, _, allows_mining in gold_rows):
+                raise RuntimeError("Gold evaluation source is no longer licensed for mining")
+            article_ids = {article_id for _, article_id, _ in gold_rows}
+            source_rows = (
+                list(
+                    await session.execute(
+                        select(Sentence, ArticleSection.section_code)
+                        .join(Article, Article.id == Sentence.article_id)
+                        .join(License, License.id == Article.license_id)
+                        .outerjoin(ArticleSection, ArticleSection.id == Sentence.article_section_id)
+                        .where(Article.id.in_(article_ids), License.allows_mining.is_(True))
+                        .order_by(Sentence.article_id, Sentence.char_start, Sentence.id)
+                    )
+                )
+                if article_ids
+                else []
+            )
+            source_by_id = {sentence.id: (sentence, section) for sentence, section in source_rows}
+            previous_by_id: dict[UUID, str | None] = {}
+            last_by_section: dict[tuple[UUID, str], str] = {}
+            for sentence, section in source_rows:
+                previous_by_id[sentence.id] = None
+                if section:
+                    key = (sentence.article_id, section)
+                    previous_by_id[sentence.id] = last_by_section.get(key)
+                    last_by_section[key] = sentence.text
+            prepared = []
+            stale_count = 0
+            import hashlib
+
+            for item, _article_id, _ in gold_rows:
+                source = (
+                    source_by_id.get(item.sentence_id) if item.sentence_id is not None else None
+                )
+                if source is None:
+                    stale_count += 1
+                    continue
+                sentence, section = source
+                if (
+                    sentence.article_id != item.article_id
+                    or hashlib.sha256(sentence.text.encode("utf-8")).hexdigest() != item.text_sha256
+                ):
+                    stale_count += 1
+                    continue
+                prepared.append((item, sentence, previous_by_id.get(sentence.id), section))
+            if not prepared:
+                raise RuntimeError("No current approved gold sources are available for evaluation")
+            metrics = evaluate_approved_items(prepared, load_policy_bundle(), split=split)
+            metrics["stale_count"] = stale_count
+            output_dir = Path(__file__).resolve().parents[2] / "data" / "eval"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = output_dir / f"mining-{split}-{datetime.now(UTC):%Y%m%dT%H%M%SZ}.json"
+            output_path.write_text(
+                json.dumps(metrics, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+            print(json.dumps(metrics, indent=2, sort_keys=True))
+    finally:
+        await engine.dispose()
+
+
 def _export_openapi(*, check: bool) -> None:
     from aprkb.api.main import app
 
@@ -121,6 +234,14 @@ def main() -> None:
         "reingest", help="Re-parse imported articles with the current splitter and policies"
     )
     reingest.add_argument("--source", required=True, help='Article source, e.g. "slr"')
+    delete_gold = commands.add_parser(
+        "delete-gold-batch", help="Delete a gold sample batch only while it has no labels"
+    )
+    delete_gold.add_argument("--sample-batch", required=True)
+    evaluator = commands.add_parser(
+        "eval-mining", help="Evaluate mining against approved gold only"
+    )
+    evaluator.add_argument("--split", choices=("dev", "test"), required=True)
     args = parser.parse_args()
     if args.command == "bootstrap-key":
         asyncio.run(_bootstrap_key())
@@ -128,6 +249,10 @@ def main() -> None:
         _export_openapi(check=args.check)
     elif args.command == "reingest":
         asyncio.run(_reingest(source=args.source))
+    elif args.command == "delete-gold-batch":
+        asyncio.run(_delete_gold_batch(sample_batch=args.sample_batch))
+    elif args.command == "eval-mining":
+        asyncio.run(_eval_mining(split=args.split))
 
 
 if __name__ == "__main__":

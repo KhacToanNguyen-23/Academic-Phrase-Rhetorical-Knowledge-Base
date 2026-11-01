@@ -62,12 +62,4 @@ class SentenceFilter(MiningStage):
         return None
 
     def process(self, batch: list[MiningItem]) -> list[MiningItem]:
-        return [
-            MiningItem(
-                text=_CITATION.sub("", item.text).strip(),
-                source_sentence_ids=list(item.source_sentence_ids),
-                section_code=item.section_code,
-            )
-            for item in batch
-            if self.reject_reason(item) is None
-        ]
+        return [item for item in batch if self.reject_reason(item) is None]

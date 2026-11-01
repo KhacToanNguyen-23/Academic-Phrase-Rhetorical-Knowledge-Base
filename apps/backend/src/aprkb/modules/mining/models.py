@@ -20,6 +20,7 @@ class Candidate(MutableEntityMixin, Base):
     epistemic_strength: Mapped[str | None] = mapped_column(String(32))
     source_sentence_ids: Mapped[list[UUID]] = mapped_column(ARRAY(Uuid(as_uuid=True)), default=list)
     cluster_key: Mapped[str | None] = mapped_column(String(255))
+    occurrences: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
     matched_pattern_id: Mapped[UUID | None] = mapped_column(ForeignKey("phrase_patterns.id"))
     status: Mapped[str] = mapped_column(String(16), default="pending")
 

@@ -1,7 +1,10 @@
-# ANNOTATION_STATUS — Deferred draft
+# Annotation status — Gold dev v0
 
-Deferred until the external article API is available. Future gold will be sampled from real articles, not written by editors. FR-06.6 requires two editors, reported disagreement and adjudication. No gold, labels, scores or human approvals have been created. Current implementation uses self-authored mock fixtures only.
+Status: sampling complete; annotation and AI labeling have not started.
 
-**[Proposal — not started]** After the article API is available, AI may draft labels for sampled real-article sentences; two editors independently check and correct them. Approximately 20% will be labeled without the AI draft to measure AI–human κ and investigate anchoring. Editor agreement, disagreements and adjudication remain human responsibilities under FR-06.6; no results or approvals exist.
+- A deterministic 300-item sample from real SLR articles exists in the local database, with 90 items assigned to `test`.
+- No AI drafts, human labels, scores, approvals, κ values or quality claims have been created.
+- The selected development workflow has one final human reviewer for all AI-labeled items. It does not satisfy FR-06.6's separate two-editor validation requirement.
+- AI labeling has not started. Mock tests need no key; a real Groq run requires owner direction and a local `.env` key. `TODO(owner, BR-10)` remains for unclear third-party processing rights.
 
-Daily-review AI remains disabled until measured against human-checked gold. External AI processing permission or self-hosting, LLM scope approval, privacy-safe logging and versioned model/prompt/threshold policies remain open prerequisites. **[Proposal]**
+Do not place article text, prompts, responses, provider keys or annotator names/emails in this file or the repository.

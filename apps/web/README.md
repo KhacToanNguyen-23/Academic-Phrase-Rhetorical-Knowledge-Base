@@ -8,7 +8,7 @@ React + TypeScript + Vite (SPA). Gọi backend qua client sinh từ OpenAPI.
 src/
   app/        App root, router, providers
   features/   mỗi màn hình PRD-10 một thư mục (components/ + api/)
-  shared/     api (client sinh tự động), ui (shadcn/Radix), lib
+  shared/     api (client sinh tự động), ui, lib
 e2e/          Playwright — Gate D: WB-01 → WB-08 với OpenAlex tắt
 ```
 
@@ -21,9 +21,12 @@ e2e/          Playwright — Gate D: WB-01 → WB-08 với OpenAlex tắt
 | corpus-workbench | WB-06 | Corpus Curator |
 | inbox | WB-07 | Editor |
 | admin | WB-09 | Administrator |
+| slr-import | Import from SLR | Curator |
 
 Quy tắc: feature không import lẫn nhau; dùng chung qua `shared/`.
 UI luôn phân biệt nhãn **Required by journal / Observed in corpus / Model suggestion** (BR-04, BR-09, Gate C).
+
+The `/import` screen calls the live backend API using the generated OpenAPI client. Configure `VITE_API_BASE_URL` for the API origin and enter an AP-RKB API key in the screen; it is held in `sessionStorage` for that browser session. It does not use the app mock engine. ESLint 9 uses the flat config in `eslint.config.js`.
 
 ```bash
 pnpm install

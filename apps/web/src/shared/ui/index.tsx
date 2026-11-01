@@ -83,12 +83,12 @@ export function Frame({ frame, values }: { frame: string; values?: Record<string
   );
 }
 
-export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+export function Field({ label, children, hint, error }: { label: string; children: ReactNode; hint?: string; error?: string }) {
   return (
     <label className="field">
       <span className="field-label">{label}</span>
       {children}
-      {hint && <span className="field-hint">{hint}</span>}
+      {error ? <span className="field-error" role="alert">{error}</span> : hint ? <span className="field-hint">{hint}</span> : null}
     </label>
   );
 }
@@ -162,7 +162,22 @@ export function Tabs<T extends string>({ value, onChange, items, label }: { valu
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const tone = ({ approved: "ok", active: "ok", pending: "warn", in_review: "warn", revision: "warn", draft: "neutral", rejected: "bad", retired: "bad", suspended: "bad" } as const)[status] ?? "neutral";
+  const tone = ({
+    approved: "ok",
+    active: "ok",
+    succeeded: "ok",
+    done: "ok",
+    pending: "warn",
+    in_review: "warn",
+    revision: "warn",
+    queued: "warn",
+    running: "info",
+    draft: "neutral",
+    rejected: "bad",
+    retired: "bad",
+    suspended: "bad",
+    failed: "bad",
+  } as const)[status] ?? "neutral";
   return <Badge tone={tone}>{status.replace("_", " ")}</Badge>;
 }
 

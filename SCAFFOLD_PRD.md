@@ -55,7 +55,7 @@
 
 ### Không làm
 
-- Thuật toán mining thật (classifier, NER, LLM, clustering). Chỉ làm stage stub.
+- Production move/intent/epistemic classifiers, NER, LLM và clustering bằng embedding vẫn để sau; các stage tương ứng vẫn là stub. Ngoại lệ M2 có giới hạn được ghi ở mục 6.3 không cho phép bật extraction chưa được đánh giá.
 - Tích hợp nguồn bài báo khác ngoài SLR. Không dùng OpenAlex API (ID taxonomy OpenAlex chỉ là giá trị bộ lọc do SLR trả về); phân loại ngành giữ interface + `NullDisciplineSource`.
 - Đẩy bài lên SLR (`POST /works/import`) và dùng kết quả phân tích của SLR (`analysis-*`).
 - Journal fingerprint. Chỉ làm stub, trả `None`.
@@ -431,6 +431,8 @@ Chạy mọi rule trong `build_rules()` rồi trả danh sách `RuleResult`. Sev
 
 ### 6.3 Mining (`modules/mining/pipeline.py`) — chạy trong worker
 
+**Mở rộng M2 được chủ sở hữu duyệt ngày 2026-10-31:** triển khai slot abstraction regex, protected spans, lexicon reporting/subject và keying bảo thủ, bật trong worker; candidate vẫn pending và qua hai vòng review. Kiểm thử bằng dữ liệu giả tự viết. Chưa đánh giá chất lượng trên dữ liệu thật; gold và evaluator chờ API bài báo. spaCy và NER hoãn `TODO(owner, FR-06.2)`. Xem [ADR-0006](doc/adr/0007-rule-based-slot-abstraction.md).
+
 ```
 job "ingest_article": corpus.ingest → license_check → parser → section_detector → sentence_splitter
 job "mine_article"  : Sentence[] → sentence_filter → move_classifier → epistemic_tagger
@@ -678,13 +680,13 @@ Và:
 
 ## 14. Để sau scaffold (không làm bây giờ)
 
-- Thuật toán mining thật: slot abstraction (luật → NER khoa học → LLM có kiểm tra lại), move classifier, clustering bằng embedding.
+- NER khoa học, LLM, production move/intent/epistemic classifiers và clustering bằng embedding. Slot abstraction theo luật có phạm vi M2 giới hạn theo mục 6.3; chưa được xem là đã triển khai hoặc áp dụng.
 - Journal fingerprint, `JournalGenreScorer` thật.
 - Diversifier thật (FR-07.6).
 - Các màn hình admin console còn lại.
 - Lịch tự động chạy import theo profile.
 - Quy trình publish taxonomy release.
-- Bộ ablation (PRD-14.2) và `eval/mining`.
+- Gold từ bài báo thật, evaluator, tuning và đánh giá chất lượng chờ API bài báo; FR-06.6 yêu cầu hai editor, báo cáo bất đồng và adjudication. Kiểm thử mock hiện tại không chứng minh chất lượng production.
 
 ---
 

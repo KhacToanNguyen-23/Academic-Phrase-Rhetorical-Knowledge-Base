@@ -117,6 +117,46 @@ async def _delete_gold_batch(*, sample_batch: str) -> None:
         await engine.dispose()
 
 
+async def _import_reference_library(*, file_path: Path) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.reference_library.importer import import_library, load_document
+
+    library = load_document(file_path)
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                counts = await import_library(session, library, request_id="cli-reference-import")
+            except Exception:
+                await session.rollback()
+                raise
+        print(
+            f"Imported reference library: {counts['categories']} categories, "
+            f"{counts['entries']} entries, {counts['blocks']} blocks, {counts['tables']} tables."
+        )
+    finally:
+        await engine.dispose()
+
+
+async def _purge_reference_library() -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.reference_library.importer import purge_library
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                count = await purge_library(session, request_id="cli-reference-purge")
+            except Exception:
+                await session.rollback()
+                raise
+        print(f"Purged reference-library data: {count} source(s).")
+    finally:
+        await engine.dispose()
+
+
 async def _eval_mining(*, split: str) -> None:
     from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
     from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
@@ -242,6 +282,11 @@ def main() -> None:
         "eval-mining", help="Evaluate mining against approved gold only"
     )
     evaluator.add_argument("--split", choices=("dev", "test"), required=True)
+    reference_import = commands.add_parser(
+        "import-reference-library", help="Import quarantined internal reference data"
+    )
+    reference_import.add_argument("--file", type=Path, required=True)
+    commands.add_parser("purge-reference-library", help="Remove all reference-library data")
     args = parser.parse_args()
     if args.command == "bootstrap-key":
         asyncio.run(_bootstrap_key())
@@ -253,6 +298,10 @@ def main() -> None:
         asyncio.run(_delete_gold_batch(sample_batch=args.sample_batch))
     elif args.command == "eval-mining":
         asyncio.run(_eval_mining(split=args.split))
+    elif args.command == "import-reference-library":
+        asyncio.run(_import_reference_library(file_path=args.file))
+    elif args.command == "purge-reference-library":
+        asyncio.run(_purge_reference_library())
 
 
 if __name__ == "__main__":

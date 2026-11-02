@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://aprkb:aprkb@localhost:5432/aprkb"
     blob_dir: str = "./data/blobs"
     log_level: str = "INFO"
+    reference_library_enabled: bool = False
 
     # Nguồn bài báo ngoài (ADR-0005): chỉ worker gọi, mặc định "null" (không nhập gì).
     article_source: str = "null"

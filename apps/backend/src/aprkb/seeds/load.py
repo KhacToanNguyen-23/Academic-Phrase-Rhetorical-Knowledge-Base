@@ -18,6 +18,7 @@ from aprkb.modules.patterns.models import (
     UsageConstraint,
 )
 from aprkb.modules.taxonomy.models import ArticleGenre, Intent, Move, Section, Step, TaxonomyRelease
+from aprkb.policies.loader import load_policy_bundle
 from aprkb.shared.models import RefEnum
 
 SEED_DIR = Path(__file__).resolve().parents[5] / "data" / "seed"
@@ -46,10 +47,9 @@ async def _seed_reference_enums(session: AsyncSession) -> None:
             else:
                 row.label = value["label"]
                 row.order = value["order"]
-    for code, name, allows_mining, allows_display in (
-        ("CC-BY", "Creative Commons Attribution", True, True),
-        ("PROPRIETARY", "Proprietary", False, False),
-    ):
+    for entry in load_policy_bundle().licenses.licenses:
+        code, name = entry.code, entry.name
+        allows_mining, allows_display = entry.allows_mining, entry.allows_display
         license_row = await session.scalar(select(License).where(License.code == code))
         if license_row is None:
             session.add(

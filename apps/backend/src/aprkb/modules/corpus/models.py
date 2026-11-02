@@ -1,9 +1,11 @@
 """SQLAlchemy persistence models for the corpus domain."""
 
+from typing import Any
 from uuid import UUID
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aprkb.core.db import Base, EntityMixin, MutableEntityMixin
@@ -15,6 +17,16 @@ class License(EntityMixin, Base):
     name: Mapped[str] = mapped_column(String(255))
     allows_mining: Mapped[bool] = mapped_column(Boolean, default=False)
     allows_display: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class ImportProfile(MutableEntityMixin, Base):
+    __tablename__ = "import_profiles"
+    name: Mapped[str] = mapped_column(String(255), unique=True)
+    source: Mapped[str] = mapped_column(String(64), default="slr")
+    filters: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    artifact_kinds: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    batch_limit: Mapped[int] = mapped_column(Integer, default=25)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class Article(MutableEntityMixin, Base):

@@ -3,6 +3,7 @@
 - Trạng thái: Accepted
 - Ngày: 2026-10-30
 - Thay thế: [ADR-0003](0003-openalex-optional-adapter.md)
+- Bổ sung bởi: [ADR-0006](0006-slr-repository-import.md) (nguồn SLR, bộ lọc `ImportProfile`)
 
 ## Bối cảnh
 Hệ thống không dùng OpenAlex. Bài báo để mining được lấy từ một API nguồn ngoài, trả nội dung dạng PDF hoặc Markdown kèm license của từng bài. Module `openalex` chỉ là khung rỗng, không có module nào phụ thuộc.

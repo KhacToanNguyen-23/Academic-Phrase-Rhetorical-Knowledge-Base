@@ -1,5 +1,3 @@
-# Mining evaluation placeholder
+# Mining evaluation — deferred
 
-Production mining algorithms and PRD-14.2 human evaluation are outside this scaffold. The current worker preserves source sentence IDs and writes pending candidates through pass-through mining stages. No quality or performance scores are claimed.
-
-`sample.json` is a format example only. It uses self-authored synthetic text and is not an evaluation result. Add the approved evaluation protocol and dataset only in a later phase.
+Gold, evaluator, tuning and quality assessment await the external article API. Future gold will be sampled from real articles, with two editors, disagreement reporting and adjudication as required by FR-06.6. `sample.json` is a self-authored synthetic example, not gold or a quality result. Current runtime tests use self-authored mock data.

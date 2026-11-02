@@ -16,7 +16,7 @@ from aprkb.api.main import create_app
 from aprkb.core.config import settings as core_settings
 from aprkb.core.deps import get_db_session
 from aprkb.modules.corpus import router as corpus_router
-from aprkb.modules.corpus.models import Article, Sentence
+from aprkb.modules.corpus.models import Article, License, Sentence
 from aprkb.modules.identity.service import create_api_key
 from aprkb.modules.mining.models import Candidate, Job
 from aprkb.modules.mining.queue import claim_next
@@ -88,6 +88,15 @@ async def test_upload_txt_then_worker_ingest_and_mine_creates_only_sourced_candi
     mine = await client.post(f"/v1/admin/corpus/articles/{article_id}/mine", headers=headers)
     assert mine.status_code == 202
     await run_once(phase05_sessions)
+    review_queue = await client.get("/v1/admin/review-queue", headers=headers)
+    assert review_queue.status_code == 200
+    assert source not in review_queue.text
+    assert all(item["confidence"] is None for item in review_queue.json())
+    assert all(
+        set(slot) == {"type", "signals"}
+        for candidate in review_queue.json()
+        for slot in candidate["slots"].values()
+    )
 
     async with phase05_sessions() as session:
         candidates = list(await session.scalars(select(Candidate)))
@@ -97,6 +106,19 @@ async def test_upload_txt_then_worker_ingest_and_mine_creates_only_sourced_candi
         assert candidates
         assert all(candidate.source_sentence_ids for candidate in candidates)
         assert all(set(candidate.source_sentence_ids) <= sentence_ids for candidate in candidates)
+        assert all(candidate.confidence is None for candidate in candidates)
+        assert all(candidate.cluster_key for candidate in candidates)
+        assert all(candidate.slots for candidate in candidates)
+        for candidate in candidates:
+            assert all(set(slot) == {"type", "signals"} for slot in candidate.slots.values())
+            assert candidate.occurrences
+            for occurrence in candidate.occurrences:
+                sentence = await session.get(Sentence, UUID(occurrence["sentence_id"]))
+                assert sentence is not None
+                assert sentence.char_start <= occurrence["sentence_start"]
+                assert occurrence["sentence_end"] <= sentence.char_end
+                for start, end in occurrence["slot_spans"].values():
+                    assert sentence.char_start <= start < end <= sentence.char_end
         assert (
             await session.scalar(select(func.count()).select_from(PhrasePattern)) == before_patterns
         )
@@ -148,6 +170,46 @@ async def test_upload_preserves_scholarly_sentence_boundaries_and_offsets(
             source[sentence.char_start : sentence.char_end] == sentence.text
             for sentence in sentences
         )
+
+
+@pytest.mark.asyncio
+async def test_mining_rechecks_license_before_loading_sentences(
+    phase05_client: tuple[AsyncClient, str], phase05_sessions: async_sessionmaker
+) -> None:
+    async with phase05_sessions() as session:
+        await run_seed(session)
+        await session.commit()
+    client, key = phase05_client
+    response = await client.post(
+        "/v1/admin/corpus/articles",
+        headers={"X-API-Key": key},
+        data={"title": "License changes before mining", "license_code": "CC-BY"},
+        files={
+            "file": (
+                "article.md",
+                b"Our results suggest that the mock method improves retrieval quality.",
+                "text/markdown",
+            )
+        },
+    )
+    article_id = UUID(response.json()["article_id"])
+    await run_once(phase05_sessions)
+    mine = await client.post(
+        f"/v1/admin/corpus/articles/{article_id}/mine", headers={"X-API-Key": key}
+    )
+    assert mine.status_code == 202
+    async with phase05_sessions() as session:
+        article = await session.get(Article, article_id)
+        assert article is not None
+        license_row = await session.get(License, article.license_id)
+        assert license_row is not None
+        license_row.allows_mining = False
+        await session.commit()
+
+    await run_once(phase05_sessions)
+
+    async with phase05_sessions() as session:
+        assert not list(await session.scalars(select(Candidate)))
 
 
 @pytest.mark.asyncio

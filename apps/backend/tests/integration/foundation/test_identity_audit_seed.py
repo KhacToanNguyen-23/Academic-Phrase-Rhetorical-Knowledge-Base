@@ -164,6 +164,23 @@ async def test_seed_is_idempotent_and_contains_required_reference_and_sample_dat
     async with session_factory() as session:
         licenses = await session.scalars(select(License))
         licenses_by_code = {license.code: license for license in licenses}
+        assert set(licenses_by_code) == {
+            "CC0",
+            "CC-BY",
+            "CC-BY-SA",
+            "CC-BY-NC",
+            "CC-BY-NC-SA",
+            "CC-BY-ND",
+            "CC-BY-NC-ND",
+            "PROPRIETARY",
+            "DEV-UNVERIFIED",
+        }
+        for code in ("CC0", "CC-BY", "CC-BY-SA", "DEV-UNVERIFIED"):
+            assert licenses_by_code[code].allows_mining
+            assert licenses_by_code[code].allows_display
+        for code in ("CC-BY-NC", "CC-BY-NC-SA", "CC-BY-ND", "CC-BY-NC-ND"):
+            assert not licenses_by_code[code].allows_mining
+            assert not licenses_by_code[code].allows_display
         assert licenses_by_code["CC-BY"].allows_mining
         assert licenses_by_code["CC-BY"].allows_display
         assert not licenses_by_code["PROPRIETARY"].allows_mining

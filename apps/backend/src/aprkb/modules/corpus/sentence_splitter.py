@@ -5,7 +5,9 @@ avoid requiring an NLP model while keeping source text and provenance intact.
 """
 
 import re
+from collections.abc import Collection
 from dataclasses import dataclass
+from functools import cache
 
 
 @dataclass(frozen=True)
@@ -21,29 +23,6 @@ _BLANK_LINE = re.compile(r"\r?\n[ \t]*\r?\n")
 _NEXT_WORD = re.compile(r"\w+")
 _CLOSERS = "\"'”’)]"
 _TOKEN = re.compile(r"([A-Za-z]+(?:\.[A-Za-z]+)*\.)$")
-_PREFIXES = frozenset(
-    {
-        "e.g.",
-        "i.e.",
-        "cf.",
-        "vs.",
-        "dr.",
-        "prof.",
-        "mr.",
-        "mrs.",
-        "ms.",
-        "fig.",
-        "figs.",
-        "eq.",
-        "eqs.",
-        "ref.",
-        "refs.",
-        "no.",
-        "nos.",
-        "vol.",
-        "pp.",
-    }
-)
 # An initial or acronym may end a sentence too. These common sentence openings
 # provide a limited context cue; other capitalized words can be names/entities.
 _SENTENCE_STARTERS = frozenset(
@@ -72,7 +51,14 @@ _SENTENCE_STARTERS = frozenset(
 )
 
 
-def _is_sentence_end(text: str, boundary: re.Match[str]) -> bool:
+@cache
+def _packaged_abbreviations() -> frozenset[str]:
+    from aprkb.policies.loader import load_policy_bundle
+
+    return frozenset(value.casefold() for value in load_policy_bundle().abbreviations.abbreviations)
+
+
+def _is_sentence_end(text: str, boundary: re.Match[str], abbreviations: Collection[str]) -> bool:
     if _BLANK_LINE.search(boundary.group()):
         return True
     end = boundary.start()
@@ -89,8 +75,8 @@ def _is_sentence_end(text: str, boundary: re.Match[str]) -> bool:
     token = _TOKEN.search(text, token_start, end)
     if token is None:
         return True
-    word = token.group(1).lower()
-    if word in _PREFIXES:
+    word = token.group(1).casefold()
+    if word[:-1] in abbreviations:
         return False
     following_start = boundary.end()
     while following_start < len(text) and text[following_start] in "\"'“‘([":
@@ -98,18 +84,31 @@ def _is_sentence_end(text: str, boundary: re.Match[str]) -> bool:
     next_word = _NEXT_WORD.match(text, following_start)
     if next_word is None:
         return True
-    if word in {"al.", "etc."} or "." in word[:-1] or len(word) == 2:
+    if text[following_start].islower():
+        return False
+    if word in {"etc."} or "." in word[:-1] or len(word) == 2:
         if text[following_start].isupper() and next_word.group().lower() in _SENTENCE_STARTERS:
             return True
         return text[following_start].isupper() and word in {"al.", "etc."}
     return True
 
 
-def split_sentences(text: str) -> list[SentenceSpan]:
+def split_sentences(
+    text: str, *, abbreviations: Collection[str] | None = None
+) -> list[SentenceSpan]:
+    """Split text at likely sentence ends, preserving source offsets.
+
+    A period does not end a sentence after a configured scholarly abbreviation or initial.
+    """
+    known = (
+        _packaged_abbreviations()
+        if abbreviations is None
+        else frozenset(value.casefold() for value in abbreviations)
+    )
     spans: list[SentenceSpan] = []
     start = 0
     for boundary in _BOUNDARY.finditer(text):
-        if not _is_sentence_end(text, boundary):
+        if not _is_sentence_end(text, boundary, known):
             continue
         _append_span(spans, text, start, boundary.start())
         start = boundary.end()

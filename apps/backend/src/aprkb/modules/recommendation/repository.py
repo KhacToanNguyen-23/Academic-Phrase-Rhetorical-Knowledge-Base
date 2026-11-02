@@ -70,7 +70,8 @@ async def load_pattern_rows(
         )
     if claim_type:
         statement = statement.where(PatternVersion.claim_type == claim_type)
-    return list((await session.execute(statement)).unique().all())
+    rows = (await session.execute(statement)).unique().all()
+    return [(row[0], row[1], row[2], row[3], row[4], row[5], row[6]) for row in rows]
 
 
 async def reference_strengths(session: AsyncSession) -> list[RefEnum]:

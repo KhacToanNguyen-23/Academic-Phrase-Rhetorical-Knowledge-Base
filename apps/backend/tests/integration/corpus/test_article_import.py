@@ -16,7 +16,7 @@ from aprkb.core.deps import get_db_session
 from aprkb.modules.audit.models import AuditEvent
 from aprkb.modules.corpus.blobstore import LocalBlobStore
 from aprkb.modules.corpus.models import Article, ArticleSection, Sentence
-from aprkb.modules.corpus.sources import ArticleSource, SourceArticleRef, SourcePage
+from aprkb.modules.corpus.sources import ArticleSource, ImportOptions, SourceArticleRef, SourcePage
 from aprkb.modules.identity.service import create_api_key
 from aprkb.modules.mining.models import Job
 from aprkb.seeds.load import run_seed
@@ -46,8 +46,10 @@ class FakeArticleSource:
         self._fail = fail
         self.fetched: list[str] = []
 
-    async def list_articles(self, *, cursor: str | None, limit: int) -> SourcePage:
-        del limit
+    async def list_articles(
+        self, *, cursor: str | None, limit: int, options: ImportOptions
+    ) -> SourcePage:
+        del limit, options
         if self._fail:
             raise ConnectionError("source unavailable")
         return self._pages.get(cursor, SourcePage(articles=(), next_cursor=None))
@@ -108,8 +110,10 @@ async def _enqueue(client: AsyncClient, key: str, **body: object) -> UUID:
 @pytest.mark.asyncio
 async def test_import_is_rejected_while_no_article_source_is_configured(
     import_client: tuple[AsyncClient, str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, key = import_client
+    monkeypatch.setattr(core_settings, "article_source", "null")
 
     response = await client.post("/v1/admin/corpus/imports", headers={"X-API-Key": key}, json={})
 
@@ -157,7 +161,14 @@ async def test_import_fetches_only_minable_articles_and_feeds_the_ingest_path(
             select(Job).where(Job.type == "import_articles", Job.id != import_job_id)
         )
         assert continuation is not None
-        assert continuation.payload == {"source": "fake", "cursor": "page-2", "limit": 10}
+        assert continuation.payload == {
+            "source": "fake",
+            "cursor": "page-2",
+            "limit": 10,
+            "profile_id": None,
+            "filters": {"hasFullText": True},
+            "artifact_kinds": ["FULLTEXT_MARKDOWN", "FETCHER_FULLTEXT_MARKDOWN", "SOURCE_PDF"],
+        }
         audit = await session.scalar(
             select(AuditEvent).where(AuditEvent.action == "corpus.import.page")
         )

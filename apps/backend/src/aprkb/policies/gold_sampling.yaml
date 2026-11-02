@@ -1,0 +1,7 @@
+# Gold sampling proportions (phase 02). Provisional; TODO(owner): approve.
+version: 0.1.0
+# Share of each batch drawn from sentences the mining filter rejects (references,
+# captions, math, ...), spread across reject reasons, so the filter can be evaluated.
+filtered_fraction: 0.10
+# Share of each stratum (section, or the filtered pool) assigned to split=test.
+test_fraction: 0.30

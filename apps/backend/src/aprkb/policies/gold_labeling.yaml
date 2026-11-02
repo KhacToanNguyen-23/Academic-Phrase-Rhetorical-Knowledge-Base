@@ -1,0 +1,16 @@
+# Groq model selected by owner; requests remain disabled until runtime flags and rights permit.
+# TODO(owner, FR-06.3): approve request size and rate limit before an actual run.
+version: 0.1.0
+provider: groq
+model: openai/gpt-oss-120b
+temperature: 0
+# max_tokens also covers gpt-oss reasoning tokens; too low a value truncates the JSON.
+max_tokens: 6000
+reasoning_effort: medium
+# A 429 asking for a longer wait than this means a daily quota is exhausted: stop the job.
+max_rate_limit_wait_seconds: 60
+sentences_per_request: 1
+max_concurrency: 1
+requests_per_minute: 30
+prompt_version: v1
+guideline_version: v1

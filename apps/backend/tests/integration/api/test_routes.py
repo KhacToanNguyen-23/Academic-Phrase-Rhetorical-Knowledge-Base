@@ -693,7 +693,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         "license_policy": "0.1.0",
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
-        "validation_rules": "0.1.0",
+        "validation_rules": "0.2.0",
         "epistemic_markers": "0.1.0",
         "taxonomy_release": "0.1.0",
     }
@@ -934,6 +934,33 @@ async def test_feedback_rejects_raw_writer_text(
         },
     )
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_validation_checks_writer_provided_grounding_and_keeps_v05_unavailable(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "validation grounding client")
+    response = await api_client.post(
+        "/v1/validate",
+        headers={"X-API-Key": key},
+        json={
+            "text": "The result was significant (p < 0.05) with a rate of 45%.",
+            "claim_type": "descriptive",
+            "evidence_level": "multiple_consistent",
+            "context": "study context",
+            "slots": {"topic": "language models"},
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    v03 = next(rule for rule in body["rules"] if rule["code"] == "V03")
+    assert v03["severity"] == "block"
+    assert v03["applied"] is True
+    assert v03["span"] is not None
+    assert "V05" in body["checks_unavailable"]
 
 
 async def _create_candidate(session_factory: async_sessionmaker) -> UUID:

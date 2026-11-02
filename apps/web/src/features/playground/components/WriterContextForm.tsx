@@ -16,14 +16,17 @@ export const blankContext: WriterContext = {
 };
 
 export function WriterContextForm({
-  context, taxonomy, options, journals, searching, onChange, onSearch,
+  context, taxonomy, options, journals, supportingContext, searching, onChange,
+  onSupportingContextChange, onSearch,
 }: {
   context: WriterContext;
   taxonomy: Taxonomy;
   options: Option[];
   journals: Journal[];
+  supportingContext: string;
   searching: boolean;
   onChange: (next: WriterContext) => void;
+  onSupportingContextChange: (value: string) => void;
   onSearch: () => void;
 }) {
   // FR-07.1: combine section, intent, genre, claim/evidence, journal and query in one recommendation context.
@@ -77,6 +80,17 @@ export function WriterContextForm({
         </Field>
         <Field label="Search keywords (optional)">
           <input maxLength={500} value={context.query} onChange={(event) => onChange({ ...context, query: event.target.value })} />
+        </Field>
+        <Field
+          label="Supporting context (optional)"
+          hint="Facts, numbers, DOI, or citations entered here may support V03 checks. Search keywords do not count as evidence."
+        >
+          <textarea
+            rows={2}
+            maxLength={2000}
+            value={supportingContext}
+            onChange={(event) => onSupportingContextChange(event.target.value)}
+          />
         </Field>
       </div>
       <button className="btn btn-primary" type="submit" disabled={searching}>Find patterns</button>

@@ -1879,6 +1879,17 @@
             "title": "Claim Type",
             "type": "string"
           },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
           "epistemic_strength": {
             "anyOf": [
               {
@@ -1893,6 +1904,13 @@
           "evidence_level": {
             "title": "Evidence Level",
             "type": "string"
+          },
+          "slots": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Slots",
+            "type": "object"
           },
           "text": {
             "minLength": 1,

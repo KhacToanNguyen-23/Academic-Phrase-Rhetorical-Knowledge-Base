@@ -1150,10 +1150,16 @@ export interface components {
         ValidationRequest: {
             /** Claim Type */
             claim_type: string;
+            /** Context */
+            context?: string | null;
             /** Epistemic Strength */
             epistemic_strength?: string | null;
             /** Evidence Level */
             evidence_level: string;
+            /** Slots */
+            slots?: {
+                [key: string]: string;
+            };
             /** Text */
             text: string;
         };

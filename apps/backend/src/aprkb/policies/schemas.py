@@ -116,6 +116,7 @@ class RuleSetting(BaseModel):
 
 class ValidationRulesPolicy(VersionedPolicy):
     rules: dict[str, RuleSetting]
+    style_warning_phrases: list[str] = Field(default_factory=list)
 
     @field_validator("rules")
     @classmethod
@@ -124,6 +125,13 @@ class ValidationRulesPolicy(VersionedPolicy):
         if not rules or any(code not in allowed for code in rules):
             raise ValueError("rules must contain known V01–V08 entries")
         return rules
+
+    @field_validator("style_warning_phrases")
+    @classmethod
+    def validate_style_warning_phrases(cls, phrases: list[str]) -> list[str]:
+        if any(not phrase.strip() for phrase in phrases):
+            raise ValueError("style warning phrases must not be blank")
+        return phrases
 
 
 class EpistemicMarkersPolicy(VersionedPolicy):

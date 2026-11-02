@@ -93,7 +93,11 @@ Slot definitions may include `type`, `label`, `instruction`, `example`, `require
 and `min_length`. Render returns HTTP 422 with `error.details.field_errors` for
 required empty or too-short values. Legacy type-string definitions use required
 and one-character defaults; optional empty slots remain placeholders.
-`POST /v1/validate` reports V02 and lists V01/V03–V08 as unavailable, with `complete=false`.
+`POST /v1/validate` runs V02, a deterministic V03 check for numbers, DOI, and
+parenthetical citations absent from the supplied supporting context/slots, and a limited V06
+phrase screen that warns on configured informal wording. V06 is not a grammar checker.
+V05 remains unavailable pending verified Offline guideline data; other unfinished checks
+are also listed as unavailable, so `complete` remains false.
 Validation returns text/context hashes and policy versions; it does not store the raw
 sentence. Feedback accepts only a SHA-256 context hash in its optional metadata and
 requires a version actually issued in that client's recommendation. The MVP does not

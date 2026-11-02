@@ -19,7 +19,8 @@ def test_policy_bundle_loads_versioned_sample_policies() -> None:
     assert bundle.ranking_weights.keyword_formula == "matched_keywords / query_keywords"
     assert bundle.license.internal_use_codes == ["PROPRIETARY"]
     assert bundle.evidence_matrix.version == "0.1.0"
-    assert bundle.validation_rules.version == "0.1.0"
+    assert bundle.validation_rules.version == "0.2.0"
+    assert "really" in bundle.validation_rules.style_warning_phrases
     assert "prove" in bundle.epistemic_markers.markers["absolute"]
 
 

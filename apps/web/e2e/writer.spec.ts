@@ -38,6 +38,8 @@ test("writer uses PostgreSQL-backed search, render, validate and feedback", asyn
   await intent.selectOption("INTRO_GAP_INDICATE");
   await page.getByLabel("Claim type").selectOption("descriptive");
   await page.getByLabel("Evidence level").selectOption("multiple_consistent");
+  await page.getByLabel("Search keywords (optional)").fill("45%");
+  await page.getByLabel("Supporting context (optional)").fill("The study examined language models in education.");
   await page.getByRole("button", { name: "Find patterns" }).click();
   await expect(page.getByText("The role of {topic} in {context} remains underexplored.")).toBeVisible();
   await expect(page.getByRole("table", { name: "Recommended patterns" }).getByText("Evidence alignment", { exact: true })).toBeVisible();
@@ -59,8 +61,14 @@ test("writer uses PostgreSQL-backed search, render, validate and feedback", asyn
   await expect(page.getByLabel("Draft sentence")).toHaveValue(
     "The role of language models in education remains underexplored.",
   );
+  await page.getByLabel("Draft sentence").fill(
+    "The really important result was an increase of 45%.",
+  );
   await page.getByRole("button", { name: "Validate sentence" }).click();
   await expect(page.getByText(/Claim check:/)).toBeVisible();
+  await expect(page.getByText(/Blocked: A numeric claim is not present in the supplied slots or context/)).toBeVisible();
+  await expect(page.getByText(/Warning: Potentially informal style phrase: 'really'/)).toBeVisible();
+  await expect(page.getByText("V05 not checked: verified Offline guideline data is unavailable.")).toBeVisible();
   const revised = "The role of language models in education remains poorly understood.";
   await page.getByLabel("Draft sentence").fill(revised);
   await page.getByRole("button", { name: "Validate sentence" }).click();

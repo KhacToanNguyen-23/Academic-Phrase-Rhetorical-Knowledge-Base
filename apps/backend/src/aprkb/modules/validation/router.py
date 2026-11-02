@@ -55,6 +55,7 @@ async def validate_text(
         claim_type=payload.claim_type,
         evidence_level=payload.evidence_level,
         epistemic_strength=payload.epistemic_strength,
+        source_values=tuple(value for value in (payload.context, *payload.slots.values()) if value),
     )
     result = pipeline.run(payload.text, context)
     return ValidationResponse(

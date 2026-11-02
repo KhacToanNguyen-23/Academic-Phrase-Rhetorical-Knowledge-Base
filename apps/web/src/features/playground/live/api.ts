@@ -81,10 +81,13 @@ export const liveApi = {
     }
     return required(data, response.status);
   },
-  validate: async (key: string, text: string, claimType: string, evidenceLevel: string) => {
+  validate: async (
+    key: string, text: string, claimType: string, evidenceLevel: string,
+    context: string, slots: Record<string, string>,
+  ) => {
     const { data, response } = await client.POST("/v1/validate", {
       headers: headers(key),
-      body: { text, claim_type: claimType, evidence_level: evidenceLevel },
+      body: { text, claim_type: claimType, evidence_level: evidenceLevel, context, slots },
     });
     return required(data, response.status);
   },

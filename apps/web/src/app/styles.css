@@ -138,6 +138,25 @@ nav[aria-label="Contents"] { flex: 1; min-width: 0; height: 100%; }
 @media (max-width: 720px) { .brand-name { display: none; } }
 
 .main { max-width: var(--container); margin: 0 auto; padding: 40px clamp(16px, 3vw, 32px) 96px; }
+.phrasebank-notice { position: sticky; top: 68px; z-index: 20; margin: 0; }
+.phrasebank-search-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); gap: 12px; }
+.phrasebank-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.phrasebank-category-card { min-height: 86px; padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); color: var(--color-text-primary); }
+.phrasebank-category-card:hover { border-color: var(--color-primary-border); box-shadow: var(--shadow-sm); text-decoration: none; }
+.phrasebank-index { position: sticky; top: 64px; z-index: 15; padding: 12px 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); box-shadow: var(--shadow-xs); }
+.phrasebank-index div { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 8px; }
+.phrasebank-section { scroll-margin-top: 170px; padding: 18px 0; border-bottom: 1px solid var(--color-border); }
+.phrasebank-section h2 { margin: 0 0 8px; font-size: 1.45rem; }
+.phrasebank-intro, .phrasebank-entry-list { color: var(--color-text-primary); }
+.phrasebank-entry-list > p { margin: 12px 0; }
+.phrasebank-table-wrap { overflow-x: auto; margin: 12px 0; }
+.phrasebank-table { width: 100%; border-collapse: collapse; background: var(--color-surface); }
+.phrasebank-table td { padding: 12px; vertical-align: top; border: 1px solid var(--color-border); }
+.phrasebank-table td:last-child { white-space: nowrap; }
+.phrasebank-pattern-list { list-style: none; padding: 0; }
+.phrasebank-pattern-list li { scroll-margin-top: 180px; margin: 10px 0; padding: 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); }
+.phrasebank-pattern-list p { margin: 8px 0 0; }
+@media (max-width: 720px) { .phrasebank-search-controls { grid-template-columns: 1fr; } .phrasebank-notice { top: 64px; } }
 .colophon {
   max-width: var(--container); margin: 0 auto; padding: 24px clamp(16px, 3vw, 32px) 32px;
   display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;

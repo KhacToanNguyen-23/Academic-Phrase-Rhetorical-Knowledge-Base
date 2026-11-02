@@ -529,6 +529,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reference-library/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Categories */
+        get: operations["list_categories_v1_reference_library_categories_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reference-library/categories/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Category */
+        get: operations["get_category_v1_reference_library_categories__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reference-library/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search */
+        get: operations["search_v1_reference_library_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/render": {
         parameters: {
             query?: never;
@@ -729,6 +780,19 @@ export interface components {
             source_sentence_ids: string[];
             /** Status */
             status: string;
+        };
+        /** CategoryDetailResponse */
+        CategoryDetailResponse: {
+            category: components["schemas"]["ReferenceCategoryRead"];
+            /** Headings */
+            headings: components["schemas"]["HeadingGroup"][];
+            source: components["schemas"]["SourceNotice"];
+        };
+        /** CategoryListResponse */
+        CategoryListResponse: {
+            /** Categories */
+            categories: components["schemas"]["ReferenceCategoryRead"][];
+            source: components["schemas"]["SourceNotice"];
         };
         /** CreatedRecord */
         CreatedRecord: {
@@ -952,6 +1016,15 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HeadingGroup */
+        HeadingGroup: {
+            /** Entries */
+            entries: components["schemas"]["ReferenceEntryRead"][];
+            /** Heading */
+            heading: string;
+            /** Heading Position */
+            heading_position: number;
         };
         /** ImportProfileCreate */
         ImportProfileCreate: {
@@ -1270,6 +1343,45 @@ export interface components {
             /** Warnings */
             warnings?: string[];
         };
+        /** ReferenceCategoryRead */
+        ReferenceCategoryRead: {
+            /** Entry Count */
+            entry_count: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "section" | "function";
+            /** Position */
+            position: number;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+        };
+        /** ReferenceEntryRead */
+        ReferenceEntryRead: {
+            /** Cells */
+            cells: string[][] | null;
+            /** Heading */
+            heading: string;
+            /** Heading Position */
+            heading_position: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "note" | "phrase";
+            /** Position */
+            position: number;
+            /** Text */
+            text: string | null;
+        };
         /** ReferenceOption */
         ReferenceOption: {
             /** Code */
@@ -1379,6 +1491,24 @@ export interface components {
             /** Round */
             round: number;
         };
+        /** SearchResponse */
+        SearchResponse: {
+            /** Query */
+            query: string;
+            /** Results */
+            results: components["schemas"]["SearchResult"][];
+            source: components["schemas"]["SourceNotice"];
+        };
+        /** SearchResult */
+        SearchResult: {
+            /** Category Slug */
+            category_slug: string;
+            /** Category Title */
+            category_title: string;
+            entry: components["schemas"]["ReferenceEntryRead"];
+            /** Heading */
+            heading: string;
+        };
         /** SlotDefinition */
         SlotDefinition: {
             /** Signals */
@@ -1445,6 +1575,19 @@ export interface components {
             yearFrom?: number | null;
             /** Yearto */
             yearTo?: number | null;
+        };
+        /** SourceNotice */
+        SourceNotice: {
+            /** License Status */
+            license_status: string;
+            /** Name */
+            name: string;
+            /** Notice */
+            notice: string;
+            /** Rights Status */
+            rights_status: string;
+            /** Url */
+            url: string;
         };
         /** TaxonomyIntent */
         TaxonomyIntent: {
@@ -2788,6 +2931,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecommendationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_categories_v1_reference_library_categories_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_category_v1_reference_library_categories__slug__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_v1_reference_library_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                category?: string | null;
+                limit?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResponse"];
                 };
             };
             /** @description Validation Error */

@@ -12,6 +12,14 @@ from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from aprkb.core.config import settings
+
+
+@pytest.fixture(autouse=True)
+def _disable_local_demo_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep keyless loopback demo access off; ASGITransport clients are loopback."""
+    monkeypatch.setattr(settings, "app_env", "test")
+
 
 @pytest_asyncio.fixture
 async def postgres_test_engine() -> AsyncIterator[AsyncEngine]:

@@ -47,6 +47,43 @@ function phraseRow(cells: string[][]) {
   return cells.map((alternatives) => alternatives.join(" / ")).join(" ");
 }
 
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  const terms = [...new Set(query.trim().split(/\s+/).filter(Boolean))];
+  if (!terms.length) return text;
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const termSet = new Set(terms.map((term) => term.toLocaleLowerCase()));
+  const matcher = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "gi");
+  return <>{text.split(matcher).map((part, index) => termSet.has(part.toLocaleLowerCase())
+    ? <mark className="phrasebank-match" key={index}>{part}</mark>
+    : part)}</>;
+}
+
+type SearchEntry = NonNullable<Awaited<ReturnType<typeof phrasebankSources.search>>>["results"][number]["entry"];
+
+function SearchResultEntry({ entry, query, slug, headingPosition }: {
+  entry: SearchEntry;
+  query: string;
+  slug: string;
+  headingPosition: string;
+}) {
+  const navigate = useNavigate();
+  const targetId = `heading-${slug}-${headingPosition}`;
+  const openHeading = <Link to="/phrasebank/$slug" params={{ slug }} hash={targetId} onClick={(event) => {
+    event.preventDefault();
+    void navigate({ to: "/phrasebank/$slug", params: { slug }, hash: targetId }).then(() => scrollAfterNavigation(targetId));
+  }}>Open heading</Link>;
+  if (entry.kind === "phrase" && entry.cells?.length) {
+    return <div className="phrasebank-search-phrase">
+      <div className="phrasebank-table-wrap phrasebank-search-table-wrap"><table className="phrasebank-table phrasebank-search-table"><tbody><tr>
+        {entry.cells.map((alternatives, cellIndex) => <td key={cellIndex}>{alternatives.map((text, alternativeIndex) =>
+          <div key={alternativeIndex}><HighlightedText text={text} query={query} /></div>)}</td>)}
+      </tr></tbody></table></div>
+      {openHeading}
+    </div>;
+  }
+  return <p><HighlightedText text={entry.text ?? ""} query={query} /> {openHeading}</p>;
+}
+
 function scrollToHeading(id: string) {
   const target = document.getElementById(id);
   target?.scrollIntoView({ block: "start", behavior: "instant" });
@@ -114,7 +151,6 @@ function PatternGroups({ patterns, query = "" }: { patterns: PatternDetail[]; qu
 }
 
 export function PhrasebankHome() {
-  const navigate = useNavigate();
   const [source, setSource] = useState<"all" | SourceId>("all");
   const [search, setSearch] = useState("");
   const query = useDebounced(search.trim());
@@ -143,10 +179,7 @@ export function PhrasebankHome() {
             <h3>{items?.[0]?.category_title} <Badge tone="warn">{sourceLabel("manchester-reference")}</Badge></h3>
             {groupBy(items ?? [], (item) => String(item.entry.heading_position)).map(([position, group]) => <div key={position}>
               <h4>{group[0]?.heading}</h4>
-              {group.map((item) => {
-                const targetId = `heading-${slug}-${position}`;
-                return <p key={item.entry.id}>{item.entry.text ?? item.entry.cells?.map((cell) => cell.join(" / ")).join(" ")} <Link to="/phrasebank/$slug" params={{ slug }} hash={targetId} onClick={(event) => { event.preventDefault(); void navigate({ to: "/phrasebank/$slug", params: { slug }, hash: targetId }).then(() => scrollAfterNavigation(targetId)); }}>Open heading</Link></p>;
-              })}
+              {group.map((item) => <SearchResultEntry key={item.entry.id} entry={item.entry} query={query} slug={slug} headingPosition={position} />)}
             </div>)}
           </section>)}
         </div>)}

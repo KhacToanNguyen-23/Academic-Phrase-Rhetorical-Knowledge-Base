@@ -144,18 +144,25 @@ nav[aria-label="Contents"] { flex: 1; min-width: 0; height: 100%; }
 .phrasebank-category-card { min-height: 86px; padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); color: var(--color-text-primary); }
 .phrasebank-category-card:hover { border-color: var(--color-primary-border); box-shadow: var(--shadow-sm); text-decoration: none; }
 .stack.phrasebank-home > .card { animation: ui-motion-enter 0.35s var(--ease-out) both; }
-.phrasebank-index { position: sticky; top: 68px; z-index: 15; padding: 12px 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); box-shadow: var(--shadow-xs); }
+.phrasebank-index { padding: 12px 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); box-shadow: var(--shadow-xs); }
 .phrasebank-index div { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 8px; }
 .phrasebank-section, .phrasebank-intro { scroll-margin-top: 160px; }
 .phrasebank-section { padding: 18px 0; border-bottom: 1px solid var(--color-border); }
 .phrasebank-section h2 { margin: 0 0 8px; font-size: 1.45rem; }
 .phrasebank-category-title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.phrasebank-category-title .badge { flex: 0 0 auto; font-size: 0.72rem; letter-spacing: normal; line-height: 1.4; }
 .phrasebank-intro, .phrasebank-entry-list { color: var(--color-text-primary); }
 .phrasebank-entry-list > p { margin: 12px 0; }
 .phrasebank-table-wrap { overflow-x: auto; margin: 12px 0; }
 .phrasebank-table { width: 100%; border-collapse: collapse; background: var(--color-surface); }
 .phrasebank-table td { padding: 12px; vertical-align: top; border: 1px solid var(--color-border); }
 .phrasebank-table td:last-child { white-space: nowrap; }
+.phrasebank-search-phrase { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 0 10px; margin: 10px 0; }
+.phrasebank-search-table-wrap { flex: 1 1 480px; min-width: 0; margin: 0; }
+.phrasebank-search-table { table-layout: fixed; }
+.phrasebank-search-table td:last-child { white-space: normal; }
+.phrasebank-search-phrase > a { align-self: center; white-space: nowrap; }
+.phrasebank-match { padding: 0 1px; color: inherit; background: var(--color-warning-bg); border-radius: 2px; }
 .phrasebank-pattern-list { list-style: none; padding: 0; }
 .phrasebank-pattern-list li { scroll-margin-top: 160px; margin: 10px 0; padding: 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); }
 .phrasebank-pattern-list p { margin: 8px 0 0; }

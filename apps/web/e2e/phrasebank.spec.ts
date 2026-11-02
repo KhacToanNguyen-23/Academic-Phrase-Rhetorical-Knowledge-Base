@@ -112,7 +112,10 @@ test("category keeps source order, separate table shapes, index navigation, copy
   await authenticate(page);
   await mockLibrary(page);
   await page.goto("/phrasebank/section-one");
-  await expect(page.locator(".phrasebank-category-title .badge-warn")).toHaveCount(1);
+  const titleBadge = page.locator(".phrasebank-category-title .badge-warn");
+  await expect(titleBadge).toHaveCount(1);
+  await expect.poll(() => titleBadge.evaluate((element) => getComputedStyle(element).letterSpacing)).toBe("normal");
+  await expect.poll(() => page.locator(".phrasebank-index").evaluate((element) => getComputedStyle(element).position)).not.toBe("sticky");
   const heading = page.locator("#heading-section-one-1");
   await expect(heading.locator(".phrasebank-table")).toHaveCount(2);
   await expect(heading.locator(".phrasebank-table").nth(0).locator("tr")).toHaveCount(2);
@@ -136,7 +139,7 @@ test("category keeps source order, separate table shapes, index navigation, copy
   })).toBe(true);
   const jump = await page.locator("#heading-section-one-2").evaluate((element) => ({ top: element.getBoundingClientRect().top, viewport: window.innerHeight, scrollY: window.scrollY }));
   expect(jump.scrollY).toBeGreaterThan(0);
-  expect(jump.top).toBeGreaterThanOrEqual(0);
+  expect(jump.top).toBeGreaterThanOrEqual(64);
   expect(jump.top).toBeLessThan(jump.viewport);
   await page.getByRole("button", { name: "Copy phrase row" }).first().click();
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("Alpha beta / beta");
@@ -152,6 +155,11 @@ test("search groups results by category then heading and opens the category head
   await expect(searchBox).toBeVisible();
   await searchBox.fill("alpha");
   await expect(page.getByRole("link", { name: "Open heading" }).first()).toBeVisible();
+  const searchPhrase = page.locator(".phrasebank-search-phrase").first();
+  await expect(searchPhrase.locator("td")).toHaveCount(2);
+  await expect(searchPhrase.locator("td").nth(1).locator("div")).toHaveText(["beta", "beta"]);
+  await expect(searchPhrase.locator("mark.phrasebank-match")).toHaveText("Alpha");
+  await expect(page.locator("p mark.phrasebank-match")).toHaveText("Alpha");
   const renderedGroups = await page.locator("h3").evaluateAll((headings) => headings
     .filter((heading) => ["Section One", "Function One"].includes(heading.firstChild?.textContent?.trim() ?? ""))
     .map((heading) => ({

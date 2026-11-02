@@ -89,6 +89,10 @@ current API behavior, not a claim of journal style support.
 `GET /v1/patterns/versions/{version_id}` returns slots only for the current approved
 version with display rights. `POST /v1/render` requires its `recommendation_id` and
 `pattern_version_id` from the same client, and preserves unfilled placeholders.
+Slot definitions may include `type`, `label`, `instruction`, `example`, `required`,
+and `min_length`. Render returns HTTP 422 with `error.details.field_errors` for
+required empty or too-short values. Legacy type-string definitions use required
+and one-character defaults; optional empty slots remain placeholders.
 `POST /v1/validate` reports V02 and lists V01/V03–V08 as unavailable, with `complete=false`.
 Validation returns text/context hashes and policy versions; it does not store the raw
 sentence. Feedback accepts only a SHA-256 context hash in its optional metadata and

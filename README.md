@@ -39,6 +39,8 @@ With `APP_ENV=local`, the writer connects automatically without an API key; the 
 
 Writer recommendation scores show each available criterion in its own horizontal cell with the criterion name and value; unavailable criteria display `—`.
 
+Writer slots include self-authored instructions and examples. Render rejects empty required fields and values below the slot's configured minimum length with field-specific errors; missing optional slots remain as placeholders. Older slot definitions stored as type strings remain renderable with default required/minimum-length behavior.
+
 The Writer loads approved, renderable samples into a table without requiring a filter. Genre, section, intent, claim type, evidence level, journal, and keywords are optional filters; selecting an evidence level hides stronger samples and reports the hidden count. The Writer selects article genre before section. Published taxonomy compatibility filters section choices, and changing the section refreshes rhetorical intents. Self-authored compatibility seed values remain provisional pending taxonomy-owner review.
 
 ## Commands

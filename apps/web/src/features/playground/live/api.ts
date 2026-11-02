@@ -7,6 +7,7 @@ export type Journal = components["schemas"]["JournalRead"];
 export type Recommendation = components["schemas"]["RecommendationResponse"];
 export type RecommendationRequest = components["schemas"]["RecommendationRequest"];
 export type Version = components["schemas"]["RenderableVersionRead"];
+export type SlotDefinition = components["schemas"]["SlotDefinition"];
 export type Render = components["schemas"]["RenderResponse"];
 export type Validation = components["schemas"]["ValidationResponse"];
 export type Feedback = components["schemas"]["FeedbackCreate"];
@@ -25,6 +26,12 @@ function required<T>(data: T | undefined, status: number): T {
 }
 
 const headers = (key: string) => key ? { "X-API-Key": key } : {};
+
+export class SlotValidationApiError extends Error {
+  constructor(readonly fieldErrors: Record<string, string>) {
+    super("Check the highlighted slot fields.");
+  }
+}
 
 // FR-09.1 contracts for the Writer path: taxonomy/options → recommendation → version/render → validate → feedback.
 export const liveApi = {
@@ -57,6 +64,21 @@ export const liveApi = {
       headers: headers(key),
       body: { recommendation_id: recommendationId, pattern_version_id: versionId, slots },
     });
+    if (data === undefined && response.status === 422) {
+      const body: unknown = await response.clone().json().catch(() => undefined);
+      if (body && typeof body === "object" && "error" in body) {
+        const error = body.error;
+        if (error && typeof error === "object" && "details" in error) {
+          const details = error.details;
+          if (details && typeof details === "object" && "field_errors" in details) {
+            const fields = details.field_errors;
+            if (fields && typeof fields === "object") {
+              throw new SlotValidationApiError(fields as Record<string, string>);
+            }
+          }
+        }
+      }
+    }
     return required(data, response.status);
   },
   validate: async (key: string, text: string, claimType: string, evidenceLevel: string) => {

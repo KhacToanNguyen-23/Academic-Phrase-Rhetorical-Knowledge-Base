@@ -846,7 +846,7 @@ async def test_validation_http_runs_v02_and_blocks_prove_with_single_study(
 
 
 @pytest.mark.asyncio
-async def test_render_uses_approved_version_and_keeps_missing_slots(
+async def test_render_uses_approved_version_and_validates_slots(
     api_client: AsyncClient, session_factory: async_sessionmaker
 ) -> None:
     await run_seed_in_session(session_factory)
@@ -881,18 +881,27 @@ async def test_render_uses_approved_version_and_keeps_missing_slots(
     }
     detail = await api_client.get(f"/v1/patterns/versions/{approved.id}", headers=headers)
     assert detail.status_code == 200
-    assert detail.json()["slots"] == {"topic": "noun_phrase", "context": "noun_phrase"}
+    assert detail.json()["slots"]["topic"]["type"] == "noun_phrase"
     payload = {
         "recommendation_id": recommendation.json()["recommendation_id"],
         "pattern_version_id": str(approved.id),
-        "slots": {"topic": "language models"},
+        "slots": {"topic": "language models", "context": "education"},
     }
     response = await api_client.post(endpoint, headers=headers, json=payload)
     assert response.status_code == 200
     assert response.json()["text"] == (
-        "The role of language models in {context} remains underexplored."
+        "The role of language models in education remains underexplored."
     )
-    assert response.json()["unfilled_slots"] == ["context"]
+    assert response.json()["unfilled_slots"] == []
+
+    invalid = await api_client.post(
+        endpoint, headers=headers, json={**payload, "slots": {"topic": "AI"}}
+    )
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["details"]["field_errors"] == {
+        "topic": "Enter at least 3 characters.",
+        "context": "This field is required.",
+    }
 
     extra = await api_client.post(
         endpoint, headers=headers, json={**payload, "slots": {"unexpected": "x"}}

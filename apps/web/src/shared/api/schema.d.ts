@@ -707,7 +707,7 @@ export interface components {
             intent_code: string;
             /** Slots */
             slots?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["SlotDefinition"] | string;
             };
             /**
              * Source Type
@@ -739,7 +739,7 @@ export interface components {
             intent_code: string;
             /** Slots */
             slots: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["SlotDefinition"] | string;
             } | null;
             /** Status */
             status: string;
@@ -780,7 +780,7 @@ export interface components {
             epistemic_strength: "low" | "moderate" | "high" | "absolute";
             /** Slots */
             slots?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["SlotDefinition"] | string;
             };
         };
         /** PatternVersionRead */
@@ -805,7 +805,7 @@ export interface components {
             pattern_id: string;
             /** Slots */
             slots: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["SlotDefinition"] | string;
             };
             /** Version No */
             version_no: number;
@@ -917,6 +917,29 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** RenderError */
+        RenderError: {
+            /** Code */
+            code: string;
+            details?: components["schemas"]["RenderErrorDetails"] | null;
+            /** Message */
+            message: string;
+        };
+        /** RenderErrorDetails */
+        RenderErrorDetails: {
+            /** Errors */
+            errors?: components["schemas"]["RenderValidationIssue"][] | null;
+            /** Field Errors */
+            field_errors?: {
+                [key: string]: string;
+            } | null;
+        };
+        /** RenderErrorResponse */
+        RenderErrorResponse: {
+            error: components["schemas"]["RenderError"];
+            /** Request Id */
+            request_id: string;
+        };
         /** RenderRequest */
         RenderRequest: {
             /**
@@ -946,6 +969,15 @@ export interface components {
             /** Unfilled Slots */
             unfilled_slots: string[];
         };
+        /** RenderValidationIssue */
+        RenderValidationIssue: {
+            /** Loc */
+            loc: (string | number)[];
+            /** Msg */
+            msg: string;
+            /** Type */
+            type?: string | null;
+        };
         /** RenderableVersionRead */
         RenderableVersionRead: {
             /** Canonical Frame */
@@ -968,7 +1000,7 @@ export interface components {
             pattern_id: string;
             /** Slots */
             slots: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["SlotDefinition"] | string;
             };
             /** Source Type */
             source_type: string;
@@ -1000,6 +1032,30 @@ export interface components {
             pattern_version_id: string | null;
             /** Round */
             round: number;
+        };
+        /**
+         * SlotDefinition
+         * @description Typed writer slot metadata; string values remain valid for older versions.
+         */
+        SlotDefinition: {
+            /** Example */
+            example?: string | null;
+            /** Instruction */
+            instruction?: string | null;
+            /** Label */
+            label?: string | null;
+            /**
+             * Min Length
+             * @default 1
+             */
+            min_length: number;
+            /**
+             * Required
+             * @default true
+             */
+            required: boolean;
+            /** Type */
+            type: string;
         };
         /** TaxonomyIntent */
         TaxonomyIntent: {
@@ -2005,13 +2061,13 @@ export interface operations {
                     "application/json": components["schemas"]["RenderResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid render input */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["RenderErrorResponse"];
                 };
             };
         };

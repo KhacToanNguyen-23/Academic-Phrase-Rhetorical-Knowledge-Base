@@ -44,8 +44,17 @@ test("writer uses PostgreSQL-backed search, render, validate and feedback", asyn
   await expect(page.getByRole("table", { name: "Recommended patterns" }).getByText("—", { exact: true })).toBeVisible();
   await expect(page.getByText("Score breakdown:")).toHaveCount(0);
 
-  await page.getByRole("textbox", { name: /^\{topic\}/ }).fill("language models");
-  await page.getByRole("textbox", { name: /^\{context\}/ }).fill("education");
+  const topic = page.getByRole("textbox", { name: /^\{topic\}/ });
+  const contextSlot = page.getByRole("textbox", { name: /^\{context\}/ });
+  await expect(page.getByText("Name the specific topic discussed in your evidence.")).toBeVisible();
+  await expect(page.getByText("Example: language models")).toBeVisible();
+  await page.getByRole("button", { name: "Build sentence" }).click();
+  await expect(page.getByText("This field is required.").first()).toBeVisible();
+  await topic.fill("AI");
+  await contextSlot.fill("education");
+  await page.getByRole("button", { name: "Build sentence" }).click();
+  await expect(page.getByText("Enter at least 3 characters.")).toBeVisible();
+  await topic.fill("language models");
   await page.getByRole("button", { name: "Build sentence" }).click();
   await expect(page.getByLabel("Draft sentence")).toHaveValue(
     "The role of language models in education remains underexplored.",

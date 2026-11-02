@@ -605,7 +605,16 @@
             "type": "string"
           },
           "slots": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SlotDefinition"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
             "title": "Slots",
             "type": "object"
           },
@@ -699,7 +708,16 @@
           "slots": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SlotDefinition"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
                 "type": "object"
               },
               {
@@ -827,7 +845,16 @@
             "type": "string"
           },
           "slots": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SlotDefinition"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
             "title": "Slots",
             "type": "object"
           }
@@ -876,7 +903,16 @@
             "type": "string"
           },
           "slots": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SlotDefinition"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
             "title": "Slots",
             "type": "object"
           },
@@ -1241,6 +1277,85 @@
         "title": "ReleaseSummary",
         "type": "object"
       },
+      "RenderError": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RenderErrorDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "RenderError",
+        "type": "object"
+      },
+      "RenderErrorDetails": {
+        "properties": {
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RenderValidationIssue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errors"
+          },
+          "field_errors": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Errors"
+          }
+        },
+        "title": "RenderErrorDetails",
+        "type": "object"
+      },
+      "RenderErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/RenderError"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "request_id"
+        ],
+        "title": "RenderErrorResponse",
+        "type": "object"
+      },
       "RenderRequest": {
         "properties": {
           "pattern_version_id": {
@@ -1295,6 +1410,45 @@
         "title": "RenderResponse",
         "type": "object"
       },
+      "RenderValidationIssue": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Msg",
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "loc",
+          "msg"
+        ],
+        "title": "RenderValidationIssue",
+        "type": "object"
+      },
       "RenderableVersionRead": {
         "properties": {
           "canonical_frame": {
@@ -1331,7 +1485,16 @@
             "type": "string"
           },
           "slots": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SlotDefinition"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
             "title": "Slots",
             "type": "object"
           },
@@ -1427,6 +1590,64 @@
           "pattern_version_id"
         ],
         "title": "ReviewDecisionResult",
+        "type": "object"
+      },
+      "SlotDefinition": {
+        "description": "Typed writer slot metadata; string values remain valid for older versions.",
+        "properties": {
+          "example": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "min_length": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Min Length",
+            "type": "integer"
+          },
+          "required": {
+            "default": true,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "SlotDefinition",
         "type": "object"
       },
       "TaxonomyIntent": {
@@ -3343,11 +3564,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/RenderErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid render input"
           }
         },
         "summary": "Render",

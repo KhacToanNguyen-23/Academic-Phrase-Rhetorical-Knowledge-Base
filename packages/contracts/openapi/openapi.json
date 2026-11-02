@@ -940,6 +940,10 @@
             ],
             "title": "License Code"
           },
+          "license_flag": {
+            "title": "License Flag",
+            "type": "boolean"
+          },
           "license_name": {
             "anyOf": [
               {
@@ -991,6 +995,7 @@
           "version_no",
           "license_code",
           "license_name",
+          "license_flag",
           "source_reference"
         ],
         "title": "RecommendationItemResponse",

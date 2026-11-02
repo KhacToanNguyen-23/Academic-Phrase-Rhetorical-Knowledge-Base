@@ -10,6 +10,7 @@ from aprkb.policies.schemas import (
     EpistemicMarkersPolicy,
     EvidenceMatrixPolicy,
     FallbackTiersPolicy,
+    LicensePolicy,
     MiningFilterPolicy,
     RankingWeightsPolicy,
     ValidationRulesPolicy,
@@ -19,6 +20,7 @@ from aprkb.policies.schemas import (
 @dataclass(frozen=True)
 class PolicyBundle:
     ranking_weights: RankingWeightsPolicy
+    license: LicensePolicy
     fallback_tiers: FallbackTiersPolicy
     evidence_matrix: EvidenceMatrixPolicy
     validation_rules: ValidationRulesPolicy
@@ -40,6 +42,7 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
     root = Path(policy_dir) if policy_dir is not None else Path(__file__).parent
     return PolicyBundle(
         ranking_weights=_load(root / "ranking_weights.yaml", RankingWeightsPolicy),
+        license=_load(root / "license_policy.yaml", LicensePolicy),
         fallback_tiers=_load(root / "fallback_tiers.yaml", FallbackTiersPolicy),
         evidence_matrix=_load(root / "evidence_matrix.yaml", EvidenceMatrixPolicy),
         validation_rules=_load(root / "validation_rules.yaml", ValidationRulesPolicy),

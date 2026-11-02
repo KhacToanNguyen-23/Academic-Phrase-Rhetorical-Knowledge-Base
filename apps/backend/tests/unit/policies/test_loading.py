@@ -15,6 +15,7 @@ def test_policy_bundle_loads_versioned_sample_policies() -> None:
     bundle = load_policy_bundle()
 
     assert bundle.ranking_weights.version == "0.1.0"
+    assert bundle.license.internal_use_codes == ["PROPRIETARY"]
     assert bundle.evidence_matrix.version == "0.1.0"
     assert bundle.validation_rules.version == "0.1.0"
     assert "prove" in bundle.epistemic_markers.markers["absolute"]

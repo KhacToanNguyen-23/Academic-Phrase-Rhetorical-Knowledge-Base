@@ -598,7 +598,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
     frames = {item["canonical_frame"] for item in body["items"]}
     assert "There is limited evidence about {topic}." not in frames
     assert "The findings may relate to {context}." not in frames
-    assert "Prior work has rarely examined {topic}." not in frames
+    assert "Prior work has rarely examined {topic}." in frames
     assert "Unprovenanced phrase {topic}." not in frames
     assert "Conflicting provenance phrase {topic}." not in frames
     for item in body["items"]:
@@ -613,12 +613,15 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
             "version_no",
             "license_code",
             "license_name",
+            "license_flag",
             "source_reference",
         }
         assert item["breakdown"]["discipline"] is None
         assert item["breakdown"]["journal_genre"] is None
+        assert item["license_flag"] is (item["license_code"] == "PROPRIETARY")
     assert body["policy_versions"] == {
         "ranking_weights": "0.1.0",
+        "license_policy": "0.1.0",
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
         "validation_rules": "0.1.0",
@@ -631,6 +634,70 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         assert log is not None
         assert log.request["intent"] == "INTRO_GAP_INDICATE"
         assert log.results["items"]
+
+
+@pytest.mark.asyncio
+async def test_proprietary_recommendation_is_flagged_for_internal_use(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    async with session_factory() as session:
+        await run_seed(session)
+        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        license_row = await session.scalar(select(License).where(License.code == "PROPRIETARY"))
+        assert intent is not None and license_row is not None
+        pattern = PhrasePattern(intent_id=intent.id, status="approved")
+        session.add(pattern)
+        await session.flush()
+        version = PatternVersion(
+            pattern_id=pattern.id,
+            version_no=1,
+            canonical_frame="The proprietary fixture suggests {topic}.",
+            slots={"topic": "noun_phrase"},
+            epistemic_strength="low",
+            claim_type="descriptive",
+        )
+        session.add(version)
+        await session.flush()
+        pattern.current_version_id = version.id
+        session.add_all(
+            [
+                UsageConstraint(
+                    pattern_version_id=version.id,
+                    allowed_sections=["INTRO"],
+                    allowed_genres=["RESEARCH_ARTICLE"],
+                ),
+                EvidenceProvenance(
+                    pattern_version_id=version.id,
+                    source_type="mined",
+                    sentence_ids=[],
+                    license_id=license_row.id,
+                ),
+            ]
+        )
+        _, key = await create_api_key(session, name="internal writer", role="client")
+        await session.commit()
+
+    response = await api_client.post(
+        "/v1/recommendations",
+        headers={"X-API-Key": key},
+        json={
+            "intent": "INTRO_GAP_INDICATE",
+            "section": "INTRO",
+            "genre": "RESEARCH_ARTICLE",
+            "claim_type": "descriptive",
+            "evidence_level": "multiple_consistent",
+            "limit": 10,
+        },
+    )
+
+    assert response.status_code == 200
+    item = next(
+        item
+        for item in response.json()["items"]
+        if item["canonical_frame"] == "The proprietary fixture suggests {topic}."
+    )
+    assert item["license_code"] == "PROPRIETARY"
+    assert item["license_flag"] is True
 
 
 @pytest.mark.asyncio

@@ -16,6 +16,7 @@ class PatternView:
     allowed_genres: tuple[str, ...]
     source_type: str
     license_allows_display: bool
+    license_flag: bool = False
     version_no: int = 1
     license_code: str | None = None
     license_name: str | None = None

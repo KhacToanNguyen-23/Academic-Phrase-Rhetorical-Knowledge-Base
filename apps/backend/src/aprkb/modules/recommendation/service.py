@@ -124,8 +124,15 @@ async def recommend(
                     or (
                         source_type == "mined"
                         and license_row is not None
-                        and license_row.allows_display
+                        and (
+                            license_row.allows_display
+                            or license_row.code in policy_bundle.license.internal_use_codes
+                        )
                     )
+                ),
+                license_flag=(
+                    license_row is not None
+                    and license_row.code in policy_bundle.license.internal_use_codes
                 ),
                 version_no=version.version_no,
                 license_code=license_row.code if license_row else None,
@@ -162,6 +169,7 @@ async def recommend(
     )
     versions = {
         "ranking_weights": policy_bundle.ranking_weights.version,
+        "license_policy": policy_bundle.license.version,
         "fallback_tiers": policy_bundle.fallback_tiers.version,
         "evidence_matrix": policy_bundle.evidence_matrix.version,
         "validation_rules": policy_bundle.validation_rules.version,
@@ -193,6 +201,7 @@ async def recommend(
             "version_no": item.pattern.version_no,
             "license_code": item.pattern.license_code,
             "license_name": item.pattern.license_name,
+            "license_flag": item.pattern.license_flag,
             "source_reference": item.pattern.source_reference,
             "explanations": [
                 *item.explanations,

@@ -31,7 +31,7 @@ If you need to process uploaded articles, run `.\dev.ps1 worker` in a third term
 
 For backend checks, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`. The test fixture creates and removes isolated schemas there and never migrates the application's public schema. Use the same local password and host port as `DATABASE_URL`, then run `make check`.
 
-Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker.
+Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker. In the internal `/writer` flow, an approved pattern with `PROPRIETARY` provenance can be shown with a `license_flag` marking it for internal use only. Missing license or provenance remains excluded. This policy must be changed before any public deployment.
 
 Open the staff prototype at <http://localhost:5173/> and sign in with a curator or admin API key. In Vite development mode, **Quick demo** re-runs the idempotent self-authored seed data and issues a fresh local curator key. This button is restricted to loopback requests with `APP_ENV=local`. System integrations continue using their client API keys; client/reviewer pattern reads expose only approved current versions with display rights.
 

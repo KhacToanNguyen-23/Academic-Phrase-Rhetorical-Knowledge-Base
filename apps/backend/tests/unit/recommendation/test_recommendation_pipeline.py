@@ -10,6 +10,7 @@ from aprkb.modules.recommendation.context import RecommendationContext
 from aprkb.modules.recommendation.diversifier import PassThroughDiversifier
 from aprkb.modules.recommendation.fallback import FallbackTierLoader
 from aprkb.modules.recommendation.gates import build_gates
+from aprkb.modules.recommendation.gates.license import LicenseGate
 from aprkb.modules.recommendation.pattern_view import PatternView
 from aprkb.modules.recommendation.pipeline import RecommendationPipeline
 from aprkb.modules.recommendation.scorers import build_scorers
@@ -43,6 +44,12 @@ def test_pattern_view_is_read_only():
 
     with pytest.raises(FrozenInstanceError):
         view.status = "draft"
+
+
+def test_license_gate_allows_explicit_internal_use_flag(context):
+    proprietary = pattern(source_type="mined", license_allows_display=True, license_flag=True)
+
+    assert LicenseGate().check(proprietary, context).passed
 
 
 def test_hard_gates_are_registered_in_prd_order(context, evidence_policy):

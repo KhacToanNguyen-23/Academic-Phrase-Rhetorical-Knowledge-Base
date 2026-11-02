@@ -31,6 +31,7 @@ class RecommendationItemResponse(BaseModel):
     version_no: int
     license_code: str | None
     license_name: str | None
+    license_flag: bool
     source_reference: str | None
 
 

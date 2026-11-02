@@ -824,6 +824,8 @@ export interface components {
             fallback_tier: string;
             /** License Code */
             license_code: string | null;
+            /** License Flag */
+            license_flag: boolean;
             /** License Name */
             license_name: string | null;
             /**

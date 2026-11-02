@@ -32,6 +32,7 @@ export function WriterResults({
             {(item.license_name || item.license_code) &&
               ` · License ${item.license_name ?? item.license_code}${item.license_name && item.license_code ? ` (${item.license_code})` : ""}`}
           </small><br />
+          {item.license_flag && <small className="notice">Copyrighted source — internal use only</small>}
           {item.explanations.map((explanation) => <small key={explanation}>{explanation}<br /></small>)}
           <small>Score breakdown: {Object.entries(item.breakdown).map(([key, value]) =>
             `${key.replaceAll("_", " ")}: ${value === null ? "not available" : value.toFixed(2)}`,

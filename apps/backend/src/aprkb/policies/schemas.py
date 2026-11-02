@@ -30,6 +30,17 @@ class RankingWeightsPolicy(VersionedPolicy):
         return weights
 
 
+class LicensePolicy(VersionedPolicy):
+    internal_use_codes: list[str] = Field(min_length=1)
+
+    @field_validator("internal_use_codes")
+    @classmethod
+    def validate_internal_use_codes(cls, codes: list[str]) -> list[str]:
+        if len(codes) != len(set(codes)) or any(not code.strip() for code in codes):
+            raise ValueError("internal_use_codes must contain unique non-empty license codes")
+        return codes
+
+
 class FallbackTiersPolicy(VersionedPolicy):
     tiers: list[str] = Field(min_length=1)
 

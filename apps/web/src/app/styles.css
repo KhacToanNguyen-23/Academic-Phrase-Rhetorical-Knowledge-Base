@@ -763,3 +763,8 @@ textarea[aria-invalid="true"] {
 .gold-review textarea { width: 100%; resize: vertical; font-family: var(--mono); }
 .gold-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 820px) { .gold-layout { grid-template-columns: 1fr; } }
+.phrasebank-taxonomy-filters { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.phrasebank-taxonomy-filters label { display: grid; gap: 6px; color: var(--color-text-secondary); font-size: 0.85rem; }
+.phrasebank-table caption { padding: 8px 12px; text-align: left; color: var(--color-text-secondary); font-size: 0.8rem; }
+.phrasebank-intent-label { display: block; margin-bottom: 4px; color: var(--color-text-secondary); font-size: 0.8rem; }
+@media (max-width: 720px) { .phrasebank-taxonomy-filters { grid-template-columns: 1fr; } }

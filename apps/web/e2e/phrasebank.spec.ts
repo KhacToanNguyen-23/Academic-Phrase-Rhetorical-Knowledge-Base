@@ -11,24 +11,24 @@ const notice = {
   notice: "Example source notice for tests.",
 };
 const categories = [
-  { slug: "section-one", title: "Section One", kind: "section", position: 0, entry_count: 4 },
-  { slug: "function-one", title: "Function One", kind: "function", position: 1, entry_count: 1 },
+  { slug: "section-one", title: "Section One", kind: "section", position: 0, entry_count: 4, unmapped_entry_count: 0, unmapped_section_entry_count: 0, unmapped_intent_entry_count: 1, source_url: "https://example.test/source/", resolved_url: "https://example.test/resolved/", captured_at: "2026-01-01", html_sha256: "a".repeat(64), source_category: "fixture", license_status: "unknown", rights_status: "unverified", status: "quarantined", note: "Fixture metadata", extraction_method: "fixture", section_code: "INTRO", general_function_code: null, intent_codes: ["INTRO_GAP_INDICATE"], review_status: "proposed" },
+  { slug: "function-one", title: "Function One", kind: "function", position: 1, entry_count: 1, unmapped_entry_count: 1, unmapped_section_entry_count: 1, unmapped_intent_entry_count: 1, source_url: "https://example.test/function/", resolved_url: "https://example.test/function-resolved/", captured_at: "2026-01-01", html_sha256: "b".repeat(64), source_category: "fixture", license_status: "unknown", rights_status: "unverified", status: "quarantined", note: "Fixture metadata", extraction_method: null, section_code: null, general_function_code: null, intent_codes: [], review_status: null },
 ];
 const detail = {
   source: notice,
-  category: categories[0],
+  category: categories[0]!,
   headings: [
-    { heading: "Section One", heading_position: 0, entries: [
-      { id: "intro", heading: "Section One", heading_position: 0, block_index: 0, kind: "note", text: "Intro note", cells: null, position: 0 },
+    { heading: "Section One", heading_position: 0, intent_code: null, review_status: null, entries: [
+      { id: "intro", heading: "Section One", heading_position: 0, block_index: 0, block_id: "intro-0", kind: "note", text: "Intro note", cells: null, position: 0 },
     ] },
-    { heading: "Ordered heading", heading_position: 1, entries: [
-      { id: "row-a", heading: "Ordered heading", heading_position: 1, block_index: 1, kind: "phrase", text: null, cells: [["Alpha"], ["beta", "beta"]], position: 1 },
-      { id: "row-b", heading: "Ordered heading", heading_position: 1, block_index: 1, kind: "phrase", text: null, cells: [["gamma"], ["delta"]], position: 2 },
-      { id: "note-after", heading: "Ordered heading", heading_position: 1, block_index: 2, kind: "note", text: "Paragraph after the first table.", cells: null, position: 3 },
-      { id: "row-c", heading: "Ordered heading", heading_position: 1, block_index: 3, kind: "phrase", text: null, cells: [["epsilon"], ["zeta"], ["eta"]], position: 4 },
+    { heading: "Ordered heading", heading_position: 1, intent_code: "INTRO_GAP_INDICATE", review_status: "proposed", entries: [
+      { id: "row-a", heading: "Ordered heading", heading_position: 1, block_index: 1, block_id: "table-a", kind: "phrase", text: null, cells: [["Alpha"], ["beta", "beta"]], position: 1 },
+      { id: "row-b", heading: "Ordered heading", heading_position: 1, block_index: 1, block_id: "table-a", kind: "phrase", text: null, cells: [["gamma"], ["delta"]], position: 2 },
+      { id: "note-after", heading: "Ordered heading", heading_position: 1, block_index: 2, block_id: "note-2", kind: "note", text: "Paragraph after the first table.", cells: null, position: 3 },
+      { id: "row-c", heading: "Ordered heading", heading_position: 1, block_index: 3, block_id: "table-b", kind: "phrase", text: null, cells: [["epsilon"], ["zeta"], ["eta"]], position: 4 },
     ] },
-    { heading: "Final heading", heading_position: 2, entries: [
-      { id: "final", heading: "Final heading", heading_position: 2, block_index: 0, kind: "note", text: "Final note", cells: null, position: 5 },
+    { heading: "Final heading", heading_position: 2, intent_code: null, review_status: null, entries: [
+      { id: "final", heading: "Final heading", heading_position: 2, block_index: 0, block_id: "final-0", kind: "note", text: "Final note", cells: null, position: 5 },
     ] },
   ],
 };
@@ -36,10 +36,18 @@ const search = {
   source: notice,
   query: "alpha",
   results: [
-    { category_slug: "section-one", category_title: "Section One", heading: "Ordered heading", entry: detail.headings[1]!.entries[0]! },
-    { category_slug: "section-one", category_title: "Section One", heading: "Final heading", entry: detail.headings[2]!.entries[0]! },
-    { category_slug: "function-one", category_title: "Function One", heading: "Function One", entry: { ...detail.headings[0]!.entries[0]!, id: "function-result", text: "Alpha result" } },
+    { category_slug: "section-one", category_title: "Section One", heading: "Ordered heading", entry: detail.headings[1]!.entries[0]!, section_code: "INTRO", intent_code: "INTRO_GAP_INDICATE", review_status: "proposed" },
+    { category_slug: "section-one", category_title: "Section One", heading: "Final heading", entry: detail.headings[2]!.entries[0]!, section_code: "INTRO", intent_code: null, review_status: "proposed" },
+    { category_slug: "function-one", category_title: "Function One", heading: "Function One", entry: { ...detail.headings[0]!.entries[0]!, id: "function-result", text: "Alpha result" }, section_code: null, intent_code: null, review_status: null },
   ],
+};
+const taxonomy = {
+  release_id: "release-fixture", version: "0.1.0",
+  sections: [
+    { id: "section-intro", code: "INTRO", name: "Introduction", order: 1, moves: [{ id: "move-fixture", code: "INTRO_MOVE", name: "Invented move", steps: [{ id: "step-fixture", code: "INTRO_STEP", name: "Invented step", intents: [{ id: "intent-fixture", code: "INTRO_GAP_INDICATE", name: "Invented intent", description: null }] }] }] },
+    { id: "section-results", code: "RESULTS", name: "Results", order: 2, moves: [] },
+  ],
+  article_genres: [],
 };
 const patterns = [{
   id: "pattern-1", status: "approved", intent_code: "INTRO_GAP_INDICATE", canonical_frame: "Alpha invented {topic} frame",
@@ -57,6 +65,7 @@ async function authenticate(page: Page) {
 }
 
 async function mockLibrary(page: Page) {
+  await page.route("**/v1/taxonomy", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(taxonomy) }));
   await page.route("**/v1/reference-library/categories/section-one", (route) => route.fulfill({
     status: 200, contentType: "application/json", body: JSON.stringify(detail),
   }));
@@ -84,9 +93,9 @@ test("home shows section/function counts, source filtering and a screenshot with
   await expect(page.getByRole("heading", { name: "Sections" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "General functions" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Section One/ })).toBeVisible();
-  await expect(page.getByText("4 entries")).toBeVisible();
+  await expect(page.getByText("4 reference items")).toBeVisible();
   await expect(page.getByRole("link", { name: /Function One/ })).toBeVisible();
-  await expect(page.getByText("1 entries")).toBeVisible();
+  await expect(page.getByText("1 reference item")).toBeVisible();
   const cards = page.locator(".phrasebank-category-card");
   await expect(cards).toHaveCount(2);
   await expect(cards.locator(".badge-warn")).toHaveCount(2);
@@ -195,6 +204,48 @@ test("disabled Manchester collection displays its disabled state", async ({ page
   await page.goto("/phrasebank");
   await expect(page.getByText(/Manchester reference is disabled/).first()).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Source filter" })).toHaveValue("all");
+});
+
+test("Section and Intent filters cover both sources and report unmapped reference items", async ({ page }) => {
+  await authenticate(page);
+  await mockLibrary(page);
+  await page.goto("/phrasebank");
+  await page.getByRole("combobox", { name: "Section filter" }).selectOption("INTRO");
+  await expect(page.getByRole("link", { name: /Section One/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Function One/ })).toHaveCount(0);
+  await expect(page.getByRole("status")).toContainText("1 reference items have no mapping");
+  await page.getByRole("combobox", { name: "Intent filter" }).selectOption("INTRO_GAP_INDICATE");
+  await expect(page.getByRole("link", { name: /Section One/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Function One/ })).toHaveCount(0);
+
+  await page.getByRole("combobox", { name: "Intent filter" }).selectOption("");
+  await page.getByRole("combobox", { name: "Section filter" }).selectOption("RESULTS");
+  await page.getByRole("searchbox", { name: "Search phrasebanks" }).fill("alpha");
+  await expect(page.getByRole("status")).toContainText("1 matching reference items have no mapping");
+  await page.getByRole("searchbox", { name: "Search phrasebanks" }).fill("");
+
+  await page.getByRole("combobox", { name: "Section filter" }).selectOption("INTRO");
+  await page.getByRole("combobox", { name: "Source filter" }).selectOption("aprkb-patterns");
+  await expect(page.getByRole("link", { name: "Use in Writer" })).toBeVisible();
+  await page.getByRole("combobox", { name: "Section filter" }).selectOption("RESULTS");
+  await expect(page.getByRole("link", { name: "Use in Writer" })).toHaveCount(0);
+});
+
+test("an empty reference source after purge leaves the page and AP-RKB source available", async ({ page }) => {
+  await authenticate(page);
+  await page.route("**/v1/taxonomy", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(taxonomy) }));
+  await page.route("**/v1/reference-library/categories", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: null, categories: [] }) }));
+  await page.route("**/v1/reference-library/search**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: null, query: "invented", results: [] }) }));
+  await page.route("**/v1/patterns**", (route) => {
+    const isDetail = new URL(route.request().url()).pathname.endsWith("/pattern-1");
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(isDetail ? patterns[0] : patterns) });
+  });
+  await page.goto("/phrasebank");
+  await expect(page.getByRole("heading", { name: "Sections" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "General functions" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "AP-RKB patterns" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Use in Writer" })).toBeVisible();
+  await expect(page.getByText(/Manchester reference is disabled/)).toHaveCount(0);
 });
 
 test("AP-RKB category shows the Writer cross link", async ({ page }) => {

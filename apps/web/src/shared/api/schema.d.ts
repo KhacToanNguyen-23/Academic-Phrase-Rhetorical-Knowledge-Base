@@ -786,13 +786,13 @@ export interface components {
             category: components["schemas"]["ReferenceCategoryRead"];
             /** Headings */
             headings: components["schemas"]["HeadingGroup"][];
-            source: components["schemas"]["SourceNotice"];
+            source: components["schemas"]["SourceNotice"] | null;
         };
         /** CategoryListResponse */
         CategoryListResponse: {
             /** Categories */
             categories: components["schemas"]["ReferenceCategoryRead"][];
-            source: components["schemas"]["SourceNotice"];
+            source: components["schemas"]["SourceNotice"] | null;
         };
         /** CreatedRecord */
         CreatedRecord: {
@@ -1025,6 +1025,10 @@ export interface components {
             heading: string;
             /** Heading Position */
             heading_position: number;
+            /** Intent Code */
+            intent_code?: string | null;
+            /** Review Status */
+            review_status?: string | null;
         };
         /** ImportProfileCreate */
         ImportProfileCreate: {
@@ -1345,22 +1349,58 @@ export interface components {
         };
         /** ReferenceCategoryRead */
         ReferenceCategoryRead: {
+            /** Captured At */
+            captured_at: string;
             /** Entry Count */
             entry_count: number;
+            /** Extraction Method */
+            extraction_method: string | null;
+            /** General Function Code */
+            general_function_code?: string | null;
+            /** Html Sha256 */
+            html_sha256: string;
+            /** Intent Codes */
+            intent_codes?: string[];
             /**
              * Kind
              * @enum {string}
              */
             kind: "section" | "function";
+            /** License Status */
+            license_status: string;
+            /** Note */
+            note: string;
             /** Position */
             position: number;
+            /** Resolved Url */
+            resolved_url: string;
+            /** Review Status */
+            review_status?: string | null;
+            /** Rights Status */
+            rights_status: string;
+            /** Section Code */
+            section_code?: string | null;
             /** Slug */
             slug: string;
+            /** Source Category */
+            source_category: string;
+            /** Source Url */
+            source_url: string;
+            /** Status */
+            status: string;
             /** Title */
             title: string;
+            /** Unmapped Entry Count */
+            unmapped_entry_count: number;
+            /** Unmapped Intent Entry Count */
+            unmapped_intent_entry_count: number;
+            /** Unmapped Section Entry Count */
+            unmapped_section_entry_count: number;
         };
         /** ReferenceEntryRead */
         ReferenceEntryRead: {
+            /** Block Id */
+            block_id: string | number;
             /** Block Index */
             block_index: number;
             /** Cells */
@@ -1499,7 +1539,7 @@ export interface components {
             query: string;
             /** Results */
             results: components["schemas"]["SearchResult"][];
-            source: components["schemas"]["SourceNotice"];
+            source: components["schemas"]["SourceNotice"] | null;
         };
         /** SearchResult */
         SearchResult: {
@@ -1510,6 +1550,12 @@ export interface components {
             entry: components["schemas"]["ReferenceEntryRead"];
             /** Heading */
             heading: string;
+            /** Intent Code */
+            intent_code?: string | null;
+            /** Review Status */
+            review_status?: string | null;
+            /** Section Code */
+            section_code?: string | null;
         };
         /** SlotDefinition */
         SlotDefinition: {

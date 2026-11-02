@@ -42,7 +42,7 @@ const search = {
   ],
 };
 const patterns = [{
-  id: "pattern-1", status: "approved", intent_code: "INTRO_GAP_INDICATE", canonical_frame: "Invented {topic} frame",
+  id: "pattern-1", status: "approved", intent_code: "INTRO_GAP_INDICATE", canonical_frame: "Alpha invented {topic} frame",
   version_no: 1, current_version_id: "version-1", slots: {}, epistemic_strength: "moderate", claim_type: "descriptive",
   allowed_sections: ["INTRO"], allowed_genres: ["RESEARCH_ARTICLE"],
 }];
@@ -77,6 +77,7 @@ async function mockLibrary(page: Page) {
 test("home shows section/function counts, source filtering and a screenshot without key warnings", async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await authenticate(page);
   await mockLibrary(page);
   await page.goto("/phrasebank");
@@ -86,7 +87,13 @@ test("home shows section/function counts, source filtering and a screenshot with
   await expect(page.getByText("4 entries")).toBeVisible();
   await expect(page.getByRole("link", { name: /Function One/ })).toBeVisible();
   await expect(page.getByText("1 entries")).toBeVisible();
-  await page.screenshot({ path: `${screenshots}/phrasebank-home.png`, fullPage: true });
+  const cards = page.locator(".phrasebank-category-card");
+  await expect(cards).toHaveCount(2);
+  await expect(cards.locator(".badge-warn")).toHaveCount(2);
+  for (const card of await cards.all()) await expect(card.locator(".badge-warn")).toHaveCount(1);
+  const functionsCard = page.getByRole("heading", { name: "General functions" }).locator("xpath=ancestor::section[1]");
+  await expect.poll(() => functionsCard.evaluate((element) => getComputedStyle(element).opacity)).toBe("1");
+  await page.screenshot({ path: `${screenshots}/phrasebank-home-v2.png`, fullPage: true });
 
   const filter = page.getByRole("combobox", { name: "Source filter" });
   await filter.selectOption("manchester-reference");
@@ -101,9 +108,11 @@ test("category keeps source order, separate table shapes, index navigation, copy
   const consoleErrors: string[] = [];
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await authenticate(page);
   await mockLibrary(page);
   await page.goto("/phrasebank/section-one");
+  await expect(page.locator(".phrasebank-category-title .badge-warn")).toHaveCount(1);
   const heading = page.locator("#heading-section-one-1");
   await expect(heading.locator(".phrasebank-table")).toHaveCount(2);
   await expect(heading.locator(".phrasebank-table").nth(0).locator("tr")).toHaveCount(2);
@@ -112,7 +121,12 @@ test("category keeps source order, separate table shapes, index navigation, copy
   const order = await heading.locator(":scope > .phrasebank-entry-list").evaluate((list) =>
     [...list.children].map((element) => element.matches("p") ? "paragraph" : "table"));
   expect(order).toEqual(["table", "paragraph", "table"]);
-  await page.screenshot({ path: `${screenshots}/phrasebank-category.png`, fullPage: true });
+  await expect(heading.locator(".badge")).toHaveCount(0);
+  await expect(heading.locator(".phrasebank-table .badge")).toHaveCount(0);
+  const copyButtons = heading.getByRole("button", { name: "Copy phrase row" });
+  await expect(copyButtons).toHaveCount(3);
+  await expect(copyButtons.first()).toHaveClass(/btn-ghost/);
+  await page.screenshot({ path: `${screenshots}/phrasebank-category-v2.png`, fullPage: true });
 
   await page.getByRole("link", { name: "Final heading" }).click();
   await expect(page).toHaveURL(/#heading-section-one-2$/);
@@ -130,6 +144,7 @@ test("category keeps source order, separate table shapes, index navigation, copy
 });
 
 test("search groups results by category then heading and opens the category heading", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await authenticate(page);
   await mockLibrary(page);
   await page.goto("/phrasebank");
@@ -138,15 +153,22 @@ test("search groups results by category then heading and opens the category head
   await searchBox.fill("alpha");
   await expect(page.getByRole("link", { name: "Open heading" }).first()).toBeVisible();
   const renderedGroups = await page.locator("h3").evaluateAll((headings) => headings
-    .filter((heading) => ["Section One", "Function One"].includes(heading.textContent?.trim() ?? ""))
+    .filter((heading) => ["Section One", "Function One"].includes(heading.firstChild?.textContent?.trim() ?? ""))
     .map((heading) => ({
-      category: heading.textContent?.trim(),
+      category: heading.firstChild?.textContent?.trim(),
       headings: [...(heading.closest("section")?.querySelectorAll("h4") ?? [])].map((item) => item.textContent?.trim()),
     })));
   expect(renderedGroups).toEqual([
     { category: "Section One", headings: ["Ordered heading", "Final heading"] },
     { category: "Function One", headings: ["Function One"] },
   ]);
+  const manchesterGroups = page.locator("section").filter({ has: page.getByRole("link", { name: "Open heading" }) });
+  await expect(manchesterGroups.locator(":scope > h3 .badge-warn")).toHaveCount(2);
+  await expect(manchesterGroups.locator("p .badge")).toHaveCount(0);
+  const aprkbGroupTitle = page.locator("h3").filter({ hasText: "AP-RKB patterns" });
+  await expect(aprkbGroupTitle.locator(".badge-info")).toHaveCount(1);
+  await expect(page.locator(".phrasebank-pattern-list .badge")).toHaveCount(0);
+  await page.screenshot({ path: `${screenshots}/phrasebank-search-all-sources-v2.png`, fullPage: true });
   await page.getByRole("link", { name: "Open heading" }).first().click();
   await expect(page).toHaveURL(/\/phrasebank\/section-one#heading-section-one-1$/);
   await expect.poll(() => page.locator("#heading-section-one-1").evaluate((element) => {
@@ -171,7 +193,9 @@ test("AP-RKB category shows the Writer cross link", async ({ page }) => {
   await authenticate(page);
   await mockLibrary(page);
   await page.goto("/phrasebank/aprkb-patterns");
-  await expect(page.getByText("Invented {topic} frame")).toBeVisible();
+  await expect(page.getByText("Alpha invented {topic} frame")).toBeVisible();
+  await expect(page.locator(".phrasebank-category-title .badge-info")).toHaveCount(1);
+  await expect(page.locator(".phrasebank-pattern-list .badge")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Use in Writer" })).toHaveAttribute("href", "/writer");
 });
 

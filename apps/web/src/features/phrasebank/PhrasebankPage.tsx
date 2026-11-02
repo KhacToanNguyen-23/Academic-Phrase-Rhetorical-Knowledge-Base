@@ -66,7 +66,7 @@ function PhraseRow({ cells }: { cells: string[][] }) {
   const copy = async () => navigator.clipboard?.writeText(phraseRow(cells));
   return <tr>
     {cells.map((alternatives, index) => <td key={`cell-${index}`}>{alternatives.map((text, alternativeIndex) => <div key={`alternative-${alternativeIndex}`}>{text}</div>)}</td>)}
-    <td><Badge tone="warn">{sourceLabel("manchester-reference")}</Badge> <button type="button" className="btn btn-ghost btn-sm" onClick={() => void copy()} aria-label="Copy phrase row">Copy</button></td>
+    <td><button type="button" className="btn btn-ghost btn-sm" onClick={() => void copy()} aria-label="Copy phrase row">Copy</button></td>
   </tr>;
 }
 
@@ -82,7 +82,7 @@ function EntryList({ entries }: { entries: NonNullable<NonNullable<Awaited<Retur
   }
   return <div className="phrasebank-entry-list">
     {blocks.map((block) => block.kind === "note"
-      ? <p key={block.id}><Badge tone="warn">{sourceLabel("manchester-reference")}</Badge> {block.text}</p>
+      ? <p key={block.id}>{block.text}</p>
       : <div className="phrasebank-table-wrap" key={`table-${block.id}`}><table className="phrasebank-table"><tbody>
         {block.entries.map((entry) => <PhraseRow key={entry.id} cells={entry.cells ?? []} />)}
       </tbody></table></div>)}
@@ -106,7 +106,6 @@ function PatternGroups({ patterns, query = "" }: { patterns: PatternDetail[]; qu
       <h3>{group}</h3>
       <ul className="phrasebank-pattern-list">
         {items.map((pattern) => <li id={`pattern-${pattern.id}`} key={pattern.id}>
-          <Badge tone="info">{sourceLabel("aprkb-patterns")}</Badge>
           <p><Link to="/phrasebank/$slug" params={{ slug: "aprkb-patterns" }} hash={`pattern-${pattern.id}`}>{pattern.canonical_frame}</Link> <Link to="/writer" className="btn btn-ghost btn-sm">Use in Writer</Link></p>
         </li>)}
       </ul>
@@ -126,7 +125,7 @@ export function PhrasebankHome() {
   const patternMatches = useMemo(() => (patterns.data ?? []).filter((pattern) =>
     !query || `${pattern.canonical_frame ?? ""} ${pattern.intent_code} ${pattern.allowed_sections.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [patterns.data, query]);
 
-  return <div className="stack">
+  return <div className="stack phrasebank-home">
     <PageHeader code="Reference library" title="Phrasebank" lead="Browse source-aware phrase collections. Manchester reference material and AP-RKB patterns remain separate collections." />
     <ManchesterNotice />
     <Card title="Search the phrasebank">
@@ -141,17 +140,17 @@ export function PhrasebankHome() {
       <Card title="Search results">
         {source !== "aprkb-patterns" && (results.isPending ? <Loading /> : disabled ? <p className="notice notice-warn" role="status">Manchester reference is disabled. Enable `REFERENCE_LIBRARY_ENABLED` to browse it.</p> : (results.data?.results.length ?? 0) === 0 ? <Empty>No Manchester reference results.</Empty> : <div className="stack">
           {groupBy(results.data?.results ?? [], (item) => item.category_slug).map(([slug, items]) => <section key={slug}>
-            <h3>{items?.[0]?.category_title}</h3>
+            <h3>{items?.[0]?.category_title} <Badge tone="warn">{sourceLabel("manchester-reference")}</Badge></h3>
             {groupBy(items ?? [], (item) => String(item.entry.heading_position)).map(([position, group]) => <div key={position}>
               <h4>{group[0]?.heading}</h4>
               {group.map((item) => {
                 const targetId = `heading-${slug}-${position}`;
-                return <p key={item.entry.id}><Badge tone="warn">{sourceLabel("manchester-reference")}</Badge> {item.entry.text ?? item.entry.cells?.map((cell) => cell.join(" / ")).join(" ")} <Link to="/phrasebank/$slug" params={{ slug }} hash={targetId} onClick={(event) => { event.preventDefault(); void navigate({ to: "/phrasebank/$slug", params: { slug }, hash: targetId }).then(() => scrollAfterNavigation(targetId)); }}>Open heading</Link></p>;
+                return <p key={item.entry.id}>{item.entry.text ?? item.entry.cells?.map((cell) => cell.join(" / ")).join(" ")} <Link to="/phrasebank/$slug" params={{ slug }} hash={targetId} onClick={(event) => { event.preventDefault(); void navigate({ to: "/phrasebank/$slug", params: { slug }, hash: targetId }).then(() => scrollAfterNavigation(targetId)); }}>Open heading</Link></p>;
               })}
             </div>)}
           </section>)}
         </div>)}
-        {source !== "manchester-reference" && <section><h3>AP-RKB patterns</h3><PatternGroups patterns={patternMatches} query={query} /></section>}
+        {source !== "manchester-reference" && <section><h3>AP-RKB patterns <Badge tone="info">{sourceLabel("aprkb-patterns")}</Badge></h3><PatternGroups patterns={patternMatches} query={query} /></section>}
       </Card>
     </> : <>
       {source !== "aprkb-patterns" && <Card title="Sections">
@@ -181,7 +180,7 @@ export function PhrasebankCategory({ slug }: { slug: string }) {
   }, [locationHref, slug, manchester.data, patterns.data, patterns.isPending]);
   if (slug === "aprkb-patterns") return <div className="stack">
     <ManchesterNotice /><p><Link to="/phrasebank">← Phrasebank home</Link></p>
-    <PageHeader code={sourceLabel("aprkb-patterns")} title="Approved AP-RKB patterns" lead="Self-authored patterns are shown from the approved client view of the existing pattern API." />
+    <PageHeader title={<span className="phrasebank-category-title">Approved AP-RKB patterns <Badge tone="info">{sourceLabel("aprkb-patterns")}</Badge></span>} lead="Self-authored patterns are shown from the approved client view of the existing pattern API." />
     {patterns.isPending ? <Loading /> : <PatternGroups patterns={patterns.data ?? []} />}
   </div>;
   if (disabled) return <div className="stack"><ManchesterNotice /><p><Link to="/phrasebank">← Phrasebank home</Link></p><p className="notice notice-warn" role="status">Manchester reference is disabled. Enable `REFERENCE_LIBRARY_ENABLED` to browse this category.</p></div>;
@@ -194,14 +193,14 @@ export function PhrasebankCategory({ slug }: { slug: string }) {
   return <div className="stack">
     <ManchesterNotice />
     <p><Link to="/phrasebank">← Phrasebank home</Link></p>
-    <PageHeader code={sourceLabel("manchester-reference")} title={category.category.title} lead={category.category.kind === "section" ? "Paper structure" : "General function"} />
+    <PageHeader title={<span className="phrasebank-category-title">{category.category.title} <Badge tone="warn">{sourceLabel("manchester-reference")}</Badge></span>} lead={category.category.kind === "section" ? "Paper structure" : "General function"} />
     <section id={`heading-${category.category.slug}-${intro?.heading_position ?? 0}`} className="phrasebank-intro"><EntryList entries={intro?.entries ?? []} /></section>
     <nav className="phrasebank-index" aria-label="In-page headings"><strong>On this page</strong><div>{sections.map((item) => {
       const targetId = `heading-${category.category.slug}-${item.heading_position}`;
       return <Link key={item.heading_position} to="/phrasebank/$slug" params={{ slug: category.category.slug }} hash={targetId} onClick={(event) => { event.preventDefault(); void navigate({ to: "/phrasebank/$slug", params: { slug: category.category.slug }, hash: targetId }).then(() => scrollAfterNavigation(targetId)); }}>{item.heading}</Link>;
     })}</div></nav>
     {sections.map((item) => <section className="phrasebank-section" id={`heading-${category.category.slug}-${item.heading_position}`} key={item.heading_position}>
-      <h2>{item.heading}</h2><Badge>{sourceLabel("manchester-reference")}</Badge><EntryList entries={item.entries} />
+      <h2>{item.heading}</h2><EntryList entries={item.entries} />
     </section>)}
   </div>;
 }

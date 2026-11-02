@@ -157,6 +157,37 @@ async def _purge_reference_library() -> None:
         await engine.dispose()
 
 
+async def _export_reference_mapping_template() -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.reference_library.mapping import export_template
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            print(await export_template(session), end="")
+    finally:
+        await engine.dispose()
+
+
+async def _import_reference_mapping(*, file_path: Path) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.reference_library.mapping import import_mapping_file
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                count = await import_mapping_file(session, file_path)
+            except Exception:
+                await session.rollback()
+                raise
+        print(f"Imported {count} reference-taxonomy mapping row(s).")
+    finally:
+        await engine.dispose()
+
+
 async def _eval_mining(*, split: str) -> None:
     from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
     from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
@@ -287,6 +318,14 @@ def main() -> None:
     )
     reference_import.add_argument("--file", type=Path, required=True)
     commands.add_parser("purge-reference-library", help="Remove all reference-library data")
+    commands.add_parser(
+        "export-reference-mapping-template",
+        help="Print an empty reference-to-taxonomy mapping template",
+    )
+    mapping_import = commands.add_parser(
+        "import-reference-mapping", help="Validate and import reviewed reference mappings"
+    )
+    mapping_import.add_argument("--file", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "bootstrap-key":
         asyncio.run(_bootstrap_key())
@@ -302,6 +341,10 @@ def main() -> None:
         asyncio.run(_import_reference_library(file_path=args.file))
     elif args.command == "purge-reference-library":
         asyncio.run(_purge_reference_library())
+    elif args.command == "export-reference-mapping-template":
+        asyncio.run(_export_reference_mapping_template())
+    elif args.command == "import-reference-mapping":
+        asyncio.run(_import_reference_mapping(file_path=args.file))
 
 
 if __name__ == "__main__":

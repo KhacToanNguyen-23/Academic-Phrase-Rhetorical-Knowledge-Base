@@ -48,6 +48,15 @@ class ReferenceCategory(Base):
     kind: Mapped[str] = mapped_column(String(16))
     position: Mapped[int] = mapped_column(Integer)
     source_url: Mapped[str] = mapped_column(Text)
+    resolved_url: Mapped[str] = mapped_column(Text)
+    captured_at: Mapped[str] = mapped_column(String(80))
+    html_sha256: Mapped[str] = mapped_column(String(64))
+    source_category: Mapped[str] = mapped_column(String(120))
+    license_status: Mapped[str] = mapped_column(String(80))
+    rights_status: Mapped[str] = mapped_column(String(80))
+    status: Mapped[str] = mapped_column(String(80))
+    note: Mapped[str] = mapped_column(Text)
+    extraction_method: Mapped[str | None] = mapped_column(String(120))
 
 
 class ReferenceEntry(Base):
@@ -60,6 +69,7 @@ class ReferenceEntry(Base):
     heading: Mapped[str] = mapped_column(Text)
     heading_position: Mapped[int] = mapped_column(Integer)
     block_index: Mapped[int] = mapped_column(Integer)
+    block_id: Mapped[str | int] = mapped_column(JSONB)
     kind: Mapped[str] = mapped_column(String(16))
     text: Mapped[str | None] = mapped_column(Text)
     cells: Mapped[list[list[str]] | None] = mapped_column(JSONB)
@@ -72,3 +82,25 @@ Index(
     func.to_tsvector("simple", ReferenceEntry.search_text),
     postgresql_using="gin",
 )
+
+
+class ReferenceTaxonomyMap(Base):
+    __tablename__ = "reference_taxonomy_map"
+    __table_args__ = (
+        UniqueConstraint(
+            "reference_category_id", "reference_key", name="uq_reference_taxonomy_key"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    reference_category_id: Mapped[UUID] = mapped_column(
+        ForeignKey("reference_categories.id", ondelete="CASCADE")
+    )
+    reference_key: Mapped[str] = mapped_column(String(240))
+    reference_title: Mapped[str] = mapped_column(Text)
+    heading_position: Mapped[int | None] = mapped_column(Integer)
+    target_kind: Mapped[str | None] = mapped_column(String(32))
+    target_code: Mapped[str | None] = mapped_column(String(64))
+    review_status: Mapped[str | None] = mapped_column(String(16))
+    mapped_by: Mapped[str | None] = mapped_column(String(120))
+    note: Mapped[str | None] = mapped_column(Text)

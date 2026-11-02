@@ -3,6 +3,7 @@
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -16,6 +17,7 @@ from aprkb.modules.reference_library.models import (
     ReferenceCategory,
     ReferenceEntry,
     ReferenceSource,
+    ReferenceTaxonomyMap,
 )
 
 SOURCE_URL = "https://www.phrasebank.manchester.ac.uk/"
@@ -24,6 +26,7 @@ NOTICE = (
     "reuse rights are not verified; do not redistribute."
 )
 _MODULE_DIR = Path(__file__).parent
+_MAPPING_CONFIG = _MODULE_DIR / "taxonomy-mapping.yaml"
 _ROOT_FIELDS = {
     "source",
     "status",
@@ -54,6 +57,7 @@ class ParsedEntry:
     heading: str
     heading_position: int
     block_index: int
+    block_id: str | int
     kind: str
     text: str | None
     cells: list[list[str]] | None
@@ -67,6 +71,15 @@ class ParsedCategory:
     title: str
     kind: str
     source_url: str
+    resolved_url: str
+    captured_at: str
+    html_sha256: str
+    source_category: str
+    license_status: str
+    rights_status: str
+    status: str
+    note: str
+    extraction_method: str | None
     position: int
     entries: list[ParsedEntry]
 
@@ -95,6 +108,13 @@ def _block_id(value: Any) -> None:
         (isinstance(value, int) and value >= 0) or (isinstance(value, str) and value.strip())
     ):
         raise ValueError("Invalid reference-library field: block.block_id")
+
+
+def _source_block_id(value: Any) -> str | int:
+    _block_id(value)
+    if isinstance(value, (str, int)) and not isinstance(value, bool):
+        return value
+    raise ValueError("Invalid reference-library field: block.block_id")
 
 
 def _sections() -> set[str]:
@@ -137,8 +157,20 @@ def parse_document(payload: Any, raw: bytes) -> ParsedLibrary:
             raise ValueError("Invalid reference-library page structure")
         if "extraction_method" in page:
             _required_text(page["extraction_method"], "page.extraction_method")
+        try:
+            datetime.fromisoformat(page["captured_at"].replace("Z", "+00:00"))
+        except (KeyError, AttributeError, TypeError, ValueError) as exc:
+            raise ValueError("Invalid reference-library field: page.captured_at") from exc
+        digest = page.get("html_sha256")
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdefABCDEF" for character in digest)
+        ):
+            raise ValueError("Invalid reference-library field: page.html_sha256")
         title = _required_text(page["title"], "page.title")
         page_url = _required_text(page["source_url"], "page.source_url")
+        resolved_url = _required_text(page["resolved_url"], "page.resolved_url")
         for field in _PAGE_FIELDS - {"title", "source_url", "blocks"}:
             _required_text(page[field], f"page.{field}")
         blocks = page["blocks"]
@@ -177,6 +209,7 @@ def parse_document(payload: Any, raw: bytes) -> ParsedLibrary:
                         heading,
                         heading_position,
                         block_index,
+                        _source_block_id(block["block_id"]),
                         "note",
                         value,
                         None,
@@ -204,6 +237,7 @@ def parse_document(payload: Any, raw: bytes) -> ParsedLibrary:
                             heading,
                             heading_position,
                             block_index,
+                            _source_block_id(block["block_id"]),
                             "phrase",
                             None,
                             cells,
@@ -223,6 +257,15 @@ def parse_document(payload: Any, raw: bytes) -> ParsedLibrary:
                 title=title,
                 kind="section" if title in section_titles else "function",
                 source_url=page_url,
+                resolved_url=resolved_url,
+                captured_at=page["captured_at"],
+                html_sha256=page["html_sha256"],
+                source_category=page["source_category"],
+                license_status=page["license_status"],
+                rights_status=page["rights_status"],
+                status=page["status"],
+                note=page["note"],
+                extraction_method=page.get("extraction_method"),
                 position=page_position,
                 entries=entries,
             )
@@ -256,30 +299,45 @@ async def import_library(
     existing = await session.scalar(
         select(ReferenceSource).where(ReferenceSource.name == library.source_name)
     )
-    if existing is not None:
-        await session.execute(delete(ReferenceSource).where(ReferenceSource.id == existing.id))
-    source = ReferenceSource(
-        name=library.source_name,
-        source_url=SOURCE_URL,
-        license_status=library.license_status,
-        rights_status=library.rights_status,
-        status=library.status,
-        content_sha256=library.content_sha256,
-    )
+    source = existing or ReferenceSource(name=library.source_name, source_url=SOURCE_URL)
+    source.source_url = SOURCE_URL
+    source.license_status = library.license_status
+    source.rights_status = library.rights_status
+    source.status = library.status
+    source.content_sha256 = library.content_sha256
+    source.imported_at = datetime.now(UTC)
     session.add(source)
     await session.flush()
-    entry_count = 0
-    for category in library.categories:
-        row = ReferenceCategory(
-            source_id=source.id,
-            slug=category.slug,
-            title=category.title,
-            kind=category.kind,
-            position=category.position,
-            source_url=category.source_url,
+    existing_categories = list(
+        await session.scalars(
+            select(ReferenceCategory).where(ReferenceCategory.source_id == source.id)
         )
+    )
+    categories_by_slug = {category.slug: category for category in existing_categories}
+    retained_category_ids: set[str] = set()
+    entry_count = 0
+    mapping_config = yaml.safe_load(_MAPPING_CONFIG.read_text(encoding="utf-8"))
+    for category in library.categories:
+        row = categories_by_slug.get(category.slug)
+        if row is None:
+            row = ReferenceCategory(source_id=source.id, slug=category.slug)
+        row.title = category.title
+        row.kind = category.kind
+        row.position = category.position
+        row.source_url = category.source_url
+        row.resolved_url = category.resolved_url
+        row.captured_at = category.captured_at
+        row.html_sha256 = category.html_sha256
+        row.source_category = category.source_category
+        row.license_status = category.license_status
+        row.rights_status = category.rights_status
+        row.status = category.status
+        row.note = category.note
+        row.extraction_method = category.extraction_method
         session.add(row)
         await session.flush()
+        retained_category_ids.add(str(row.id))
+        await session.execute(delete(ReferenceEntry).where(ReferenceEntry.category_id == row.id))
         session.add_all(
             [
                 ReferenceEntry(
@@ -287,6 +345,7 @@ async def import_library(
                     heading=entry.heading,
                     heading_position=entry.heading_position,
                     block_index=entry.block_index,
+                    block_id=entry.block_id,
                     kind=entry.kind,
                     text=entry.text,
                     cells=entry.cells,
@@ -297,6 +356,53 @@ async def import_library(
             ]
         )
         entry_count += len(category.entries)
+        existing_mappings = {
+            mapping.reference_key: mapping
+            for mapping in await session.scalars(
+                select(ReferenceTaxonomyMap).where(
+                    ReferenceTaxonomyMap.reference_category_id == row.id
+                )
+            )
+        }
+        heading_titles = {entry.heading_position: entry.heading for entry in category.entries}
+        stale_mapping_keys: list[str] = []
+        for key, mapping in existing_mappings.items():
+            current_title = (
+                heading_titles.get(mapping.heading_position)
+                if mapping.heading_position is not None
+                else category.title
+            )
+            if current_title is None or current_title != mapping.reference_title:
+                stale_mapping_keys.append(key)
+        for key in stale_mapping_keys:
+            await session.delete(existing_mappings.pop(key))
+        for mapping in mapping_config.get("mappings", []):
+            if mapping["reference_slug"] != category.slug:
+                continue
+            map_key = f"category:{category.slug}"
+            if map_key not in existing_mappings:
+                session.add(
+                    ReferenceTaxonomyMap(
+                        reference_category_id=row.id,
+                        reference_key=map_key,
+                        reference_title=category.title,
+                        heading_position=None,
+                        target_kind=mapping["target_kind"],
+                        target_code=mapping["target_code"],
+                        review_status=mapping.get("review_status", "proposed"),
+                        mapped_by="seed-config",
+                        note=mapping.get("note"),
+                    )
+                )
+    stale_category_ids = [
+        category.id
+        for category in existing_categories
+        if str(category.id) not in retained_category_ids
+    ]
+    if stale_category_ids:
+        await session.execute(
+            delete(ReferenceCategory).where(ReferenceCategory.id.in_(stale_category_ids))
+        )
     counts = {
         "categories": len(library.categories),
         "entries": entry_count,

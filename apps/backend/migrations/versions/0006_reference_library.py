@@ -35,6 +35,15 @@ def upgrade() -> None:
         sa.Column("kind", sa.String(length=16), nullable=False),
         sa.Column("position", sa.Integer(), nullable=False),
         sa.Column("source_url", sa.Text(), nullable=False),
+        sa.Column("resolved_url", sa.Text(), nullable=False),
+        sa.Column("captured_at", sa.String(length=80), nullable=False),
+        sa.Column("html_sha256", sa.String(length=64), nullable=False),
+        sa.Column("source_category", sa.String(length=120), nullable=False),
+        sa.Column("license_status", sa.String(length=80), nullable=False),
+        sa.Column("rights_status", sa.String(length=80), nullable=False),
+        sa.Column("status", sa.String(length=80), nullable=False),
+        sa.Column("note", sa.Text(), nullable=False),
+        sa.Column("extraction_method", sa.String(length=120), nullable=True),
         sa.ForeignKeyConstraint(["source_id"], ["reference_sources.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("source_id", "slug", name="uq_reference_category_source_slug"),
@@ -46,6 +55,7 @@ def upgrade() -> None:
         sa.Column("heading", sa.Text(), nullable=False),
         sa.Column("heading_position", sa.Integer(), nullable=False),
         sa.Column("block_index", sa.Integer(), nullable=False),
+        sa.Column("block_id", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("kind", sa.String(length=16), nullable=False),
         sa.Column("text", sa.Text(), nullable=True),
         sa.Column("cells", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
@@ -61,9 +71,43 @@ def upgrade() -> None:
         unique=False,
         postgresql_using="gin",
     )
+    op.create_table(
+        "reference_taxonomy_map",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("reference_category_id", sa.Uuid(), nullable=False),
+        sa.Column("reference_key", sa.String(length=240), nullable=False),
+        sa.Column("reference_title", sa.Text(), nullable=False),
+        sa.Column("heading_position", sa.Integer(), nullable=True),
+        sa.Column("target_kind", sa.String(length=32), nullable=True),
+        sa.Column("target_code", sa.String(length=64), nullable=True),
+        sa.Column("review_status", sa.String(length=16), nullable=True),
+        sa.Column("mapped_by", sa.String(length=120), nullable=True),
+        sa.Column("note", sa.Text(), nullable=True),
+        sa.CheckConstraint(
+            "target_kind IS NULL OR target_kind IN ('section', 'intent', 'general_function')",
+            name="ck_reference_taxonomy_target_kind",
+        ),
+        sa.CheckConstraint(
+            "review_status IS NULL OR review_status IN ('proposed', 'approved')",
+            name="ck_reference_taxonomy_review_status",
+        ),
+        sa.CheckConstraint(
+            "(target_kind IS NULL AND target_code IS NULL AND review_status IS NULL) OR "
+            "(target_kind IS NOT NULL AND target_code IS NOT NULL AND review_status IS NOT NULL)",
+            name="ck_reference_taxonomy_mapping_complete",
+        ),
+        sa.ForeignKeyConstraint(
+            ["reference_category_id"], ["reference_categories.id"], ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "reference_category_id", "reference_key", name="uq_reference_taxonomy_key"
+        ),
+    )
 
 
 def downgrade() -> None:
+    op.drop_table("reference_taxonomy_map")
     op.drop_index("ix_reference_entries_search_text_gin", table_name="reference_entries")
     op.drop_table("reference_entries")
     op.drop_table("reference_categories")

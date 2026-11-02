@@ -302,7 +302,14 @@
             "type": "array"
           },
           "source": {
-            "$ref": "#/components/schemas/SourceNotice"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceNotice"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -323,7 +330,14 @@
             "type": "array"
           },
           "source": {
-            "$ref": "#/components/schemas/SourceNotice"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceNotice"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -848,6 +862,28 @@
           "heading_position": {
             "title": "Heading Position",
             "type": "integer"
+          },
+          "intent_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent Code"
+          },
+          "review_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Status"
           }
         },
         "required": [
@@ -1797,9 +1833,46 @@
       },
       "ReferenceCategoryRead": {
         "properties": {
+          "captured_at": {
+            "title": "Captured At",
+            "type": "string"
+          },
           "entry_count": {
             "title": "Entry Count",
             "type": "integer"
+          },
+          "extraction_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Method"
+          },
+          "general_function_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "General Function Code"
+          },
+          "html_sha256": {
+            "title": "Html Sha256",
+            "type": "string"
+          },
+          "intent_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Intent Codes",
+            "type": "array"
           },
           "kind": {
             "enum": [
@@ -1809,17 +1882,79 @@
             "title": "Kind",
             "type": "string"
           },
+          "license_status": {
+            "title": "License Status",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
           "position": {
             "title": "Position",
             "type": "integer"
+          },
+          "resolved_url": {
+            "title": "Resolved Url",
+            "type": "string"
+          },
+          "review_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Status"
+          },
+          "rights_status": {
+            "title": "Rights Status",
+            "type": "string"
+          },
+          "section_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Code"
           },
           "slug": {
             "title": "Slug",
             "type": "string"
           },
+          "source_category": {
+            "title": "Source Category",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "unmapped_entry_count": {
+            "title": "Unmapped Entry Count",
+            "type": "integer"
+          },
+          "unmapped_intent_entry_count": {
+            "title": "Unmapped Intent Entry Count",
+            "type": "integer"
+          },
+          "unmapped_section_entry_count": {
+            "title": "Unmapped Section Entry Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -1827,13 +1962,37 @@
           "title",
           "kind",
           "position",
-          "entry_count"
+          "entry_count",
+          "unmapped_entry_count",
+          "unmapped_section_entry_count",
+          "unmapped_intent_entry_count",
+          "source_url",
+          "resolved_url",
+          "captured_at",
+          "html_sha256",
+          "source_category",
+          "license_status",
+          "rights_status",
+          "status",
+          "note",
+          "extraction_method"
         ],
         "title": "ReferenceCategoryRead",
         "type": "object"
       },
       "ReferenceEntryRead": {
         "properties": {
+          "block_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Block Id"
+          },
           "block_index": {
             "title": "Block Index",
             "type": "integer"
@@ -1897,6 +2056,7 @@
           "heading",
           "heading_position",
           "block_index",
+          "block_id",
           "kind",
           "text",
           "cells",
@@ -2172,7 +2332,14 @@
             "type": "array"
           },
           "source": {
-            "$ref": "#/components/schemas/SourceNotice"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceNotice"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -2199,6 +2366,39 @@
           "heading": {
             "title": "Heading",
             "type": "string"
+          },
+          "intent_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent Code"
+          },
+          "review_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Status"
+          },
+          "section_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Code"
           }
         },
         "required": [

@@ -131,6 +131,39 @@ async def test_published_taxonomy_tree_and_release_list(api_client, session_fact
     assert tree.status_code == 200
     assert "INTRO" in tree.text
     assert "INTRO_GAP_INDICATE" in tree.text
+    sections = {item["code"]: item for item in tree.json()["sections"]}
+    assert sections["INTRO"]["compatible_genres"] == [
+        "RESEARCH_ARTICLE",
+        "SYSTEMATIC_REVIEW",
+    ]
+    assert sections["DISCUSSION"]["compatible_genres"] == ["RESEARCH_ARTICLE"]
+
+
+@pytest.mark.asyncio
+async def test_genre_section_relationship_rejects_mismatch_and_keeps_empty_results_empty(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "genre-section client")
+    headers = {"X-API-Key": key}
+    payload = {
+        "intent": "INTRO_GAP_INDICATE",
+        "section": "DISCUSSION",
+        "genre": "SYSTEMATIC_REVIEW",
+        "claim_type": "descriptive",
+        "evidence_level": "multiple_consistent",
+    }
+
+    incompatible = await api_client.post("/v1/recommendations", headers=headers, json=payload)
+    assert incompatible.status_code == 422
+
+    valid_empty = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={**payload, "section": "INTRO"},
+    )
+    assert valid_empty.status_code == 200
+    assert valid_empty.json()["items"] == []
 
 
 @pytest.mark.asyncio

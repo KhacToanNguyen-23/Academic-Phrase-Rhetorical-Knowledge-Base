@@ -39,6 +39,8 @@ With `APP_ENV=local`, the writer connects automatically without an API key; the 
 
 Writer recommendation scores show each available criterion in its own horizontal cell with the criterion name and value; unavailable criteria display `—`.
 
+The Writer selects article genre before section. Published taxonomy compatibility filters section choices, and changing the section refreshes rhetorical intents. Self-authored compatibility seed values remain provisional pending taxonomy-owner review.
+
 ## Commands
 
 | Command | Purpose |

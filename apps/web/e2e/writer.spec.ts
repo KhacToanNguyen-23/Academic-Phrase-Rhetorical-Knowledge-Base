@@ -18,9 +18,19 @@ test("writer uses PostgreSQL-backed search, render, validate and feedback", asyn
   });
 
   await page.goto("/writer");
-  await page.getByLabel("Manuscript section").selectOption("INTRO");
-  await page.getByLabel("Rhetorical intent").selectOption("INTRO_GAP_INDICATE");
-  await page.getByLabel("Article genre").selectOption("RESEARCH_ARTICLE");
+  const genre = page.getByLabel("Article genre");
+  const section = page.getByLabel("Manuscript section");
+  const intent = page.getByLabel("Rhetorical intent");
+  await genre.selectOption("SYSTEMATIC_REVIEW");
+  await expect(section.locator('option[value="DISCUSSION"]')).toHaveCount(0);
+  await section.selectOption("INTRO");
+  await expect(intent.locator('option[value="INTRO_GAP_INDICATE"]')).toHaveCount(1);
+  await genre.selectOption("RESEARCH_ARTICLE");
+  await expect(section.locator('option[value="DISCUSSION"]')).toHaveCount(1);
+  await section.selectOption("DISCUSSION");
+  await expect(intent.locator('option[value="DISCUSSION_FINDING"]')).toHaveCount(1);
+  await section.selectOption("INTRO");
+  await intent.selectOption("INTRO_GAP_INDICATE");
   await page.getByLabel("Claim type").selectOption("descriptive");
   await page.getByLabel("Evidence level").selectOption("multiple_consistent");
   await page.getByRole("button", { name: "Find patterns" }).click();

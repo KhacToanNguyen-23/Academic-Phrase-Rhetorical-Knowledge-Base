@@ -6,6 +6,7 @@
       "code": "INTRO",
       "name": "Introduction",
       "order": 1,
+      "compatible_genres": ["RESEARCH_ARTICLE", "SYSTEMATIC_REVIEW"],
       "moves": [
         {
           "code": "INTRO_GAP",
@@ -26,6 +27,7 @@
       "code": "DISCUSSION",
       "name": "Discussion",
       "order": 2,
+      "compatible_genres": ["RESEARCH_ARTICLE"],
       "moves": [
         {
           "code": "DISCUSSION_FINDING",
@@ -44,7 +46,8 @@
     }
   ],
   "article_genres": [
-    {"code": "RESEARCH_ARTICLE", "name": "Research article"}
+    {"code": "RESEARCH_ARTICLE", "name": "Research article"},
+    {"code": "SYSTEMATIC_REVIEW", "name": "Systematic review"}
   ],
-  "todo": "TODO(owner): replace this draft taxonomy with the approved taxonomy."
+  "todo": "TODO(owner): validate this self-authored genre/section compatibility against the approved taxonomy."
 }

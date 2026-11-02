@@ -23,6 +23,7 @@ from aprkb.modules.recommendation.pipeline import RecommendationPipeline
 from aprkb.modules.recommendation.schemas import RecommendationRequest
 from aprkb.modules.recommendation.scorers import build_scorers
 from aprkb.modules.taxonomy import repository as taxonomy_repository
+from aprkb.modules.taxonomy import service as taxonomy_service
 from aprkb.policies.evidence import EvidencePolicy
 from aprkb.policies.loader import PolicyBundle
 
@@ -58,6 +59,10 @@ async def recommend(
     policy_bundle: PolicyBundle,
 ) -> dict[str, object]:
     """FR-07.1–.4: retrieve, gate, rank and log suggestions with explanation/fallback (BR-08)."""
+    if not await taxonomy_service.is_genre_section_compatible(
+        session, genre_code=payload.genre, section_code=payload.section
+    ):
+        raise HTTPException(status_code=422, detail="Genre and section are not compatible")
     try:
         evidence_policy = EvidencePolicy.from_reference_enums(
             policy_bundle.evidence_matrix, await repository.reference_strengths(session)

@@ -1033,6 +1033,8 @@ export interface components {
         TaxonomySection: {
             /** Code */
             code: string;
+            /** Compatible Genres */
+            compatible_genres: string[];
             /**
              * Id
              * Format: uuid

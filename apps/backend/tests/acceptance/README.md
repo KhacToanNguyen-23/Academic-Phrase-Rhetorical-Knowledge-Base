@@ -7,6 +7,7 @@
 | AT-01 | Passing: approved/provenance filtering; proprietary internal-use items carry `license_flag` — recommendation integration |
 | CR-06 | Passing: evidence proximity changes scores below the hard gate; keyword coverage ranks candidates; missing signals render as `—` — unit and API recommendation tests |
 | CR-05 | E2E assertion added for horizontal criterion cells and `—`; not executed because the local web/API servers are unavailable — `apps/web/e2e/writer.spec.ts` |
+| CR-03 | PostgreSQL integration passes for compatibility, mismatch rejection, and empty results; UI cascade assertions added but not run because local web/API servers are unavailable — taxonomy/API integration and `apps/web/e2e/writer.spec.ts` |
 | AT-02 | Passing: V02 blocks `proves` with `single_study` — Phase 04 validation integration |
 | AT-03 | Skipped: journal-specific fallback constraints need more criteria |
 | AT-04 | Passing: an article source outage fails the import job; local recommendations still answer — corpus import integration |

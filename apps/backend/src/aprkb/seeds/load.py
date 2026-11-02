@@ -98,9 +98,14 @@ async def _seed_taxonomy(session: AsyncSession) -> dict[str, Any]:
                 code=section_data["code"],
                 name=section_data["name"],
                 order=section_data["order"],
+                compatible_genres=section_data["compatible_genres"],
                 release_id=release.id,
             )
             session.add(section)
+        else:
+            section.name = section_data["name"]
+            section.order = section_data["order"]
+            section.compatible_genres = section_data["compatible_genres"]
         await session.flush()
         for move_data in section_data["moves"]:
             move = await session.scalar(

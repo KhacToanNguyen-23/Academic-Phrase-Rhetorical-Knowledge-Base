@@ -1493,6 +1493,13 @@
             "title": "Code",
             "type": "string"
           },
+          "compatible_genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Compatible Genres",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1519,6 +1526,7 @@
           "code",
           "name",
           "order",
+          "compatible_genres",
           "moves"
         ],
         "title": "TaxonomySection",

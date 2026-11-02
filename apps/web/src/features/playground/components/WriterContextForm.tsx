@@ -27,28 +27,29 @@ export function WriterContextForm({
   onSearch: () => void;
 }) {
   // FR-07.1: combine section, intent, genre, claim/evidence, journal and query in one recommendation context.
-  const section = taxonomy.sections.find((item) => item.code === context.section);
+  const sections = taxonomy.sections.filter((item) => item.compatible_genres.includes(context.genre));
+  const section = sections.find((item) => item.code === context.section);
   const intents = section?.moves.flatMap((move) => move.steps.flatMap((step) => step.intents)) ?? [];
 
   return <Card title="1. Writing context">
     <form onSubmit={(event) => { event.preventDefault(); onSearch(); }}>
       <div className="slot-grid">
+        <Field label="Article genre">
+          <select required value={context.genre} onChange={(event) => onChange({ ...context, genre: event.target.value, section: "", intent: "" })}>
+            <option value="">Select a genre</option>
+            {taxonomy.article_genres.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+          </select>
+        </Field>
         <Field label="Manuscript section">
-          <select required value={context.section} onChange={(event) => onChange({ ...context, section: event.target.value, intent: "" })}>
+          <select required disabled={!context.genre} value={context.section} onChange={(event) => onChange({ ...context, section: event.target.value, intent: "" })}>
             <option value="">Select a section</option>
-            {taxonomy.sections.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+            {sections.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
           </select>
         </Field>
         <Field label="Rhetorical intent">
-          <select required value={context.intent} onChange={(event) => onChange({ ...context, intent: event.target.value })}>
-            <option value="">Select an intent</option>
+          <select required disabled={!section || intents.length === 0} value={context.intent} onChange={(event) => onChange({ ...context, intent: event.target.value })}>
+            <option value="">{section ? "Select an intent" : "Select a section first"}</option>
             {intents.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Article genre">
-          <select required value={context.genre} onChange={(event) => onChange({ ...context, genre: event.target.value })}>
-            <option value="">Select a genre</option>
-            {taxonomy.article_genres.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
           </select>
         </Field>
         <Field label="Claim type">

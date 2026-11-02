@@ -62,10 +62,14 @@ System integrations continue to authenticate with `X-API-Key`. `GET /v1/auth/me`
 ## Current recommendation search
 
 `POST /v1/recommendations` accepts `intent`, `section`, optional `query`, `move`,
-`claim_type`, `genre`, `journal_id`, and evidence fields. `query` performs a
-case-insensitive literal substring search of canonical frames; `%` and `_`
-are treated as search characters, not SQL wildcards. Recommendation logs keep
-only a SHA-256 hash of the query, never its raw text.
+`claim_type`, `genre`, `journal_id`, and evidence fields. `query` is split into
+case-insensitive word terms, searches for any matching term, and ranks by
+matched-term coverage; punctuation-only queries return no results. Recommendation
+logs keep only a SHA-256 hash of the query, never its raw text.
+
+The published taxonomy returns section `compatible_genres`. `/v1/recommendations`
+rejects genre/section pairs absent from that relation. The seed relation is a
+self-authored draft pending taxonomy-owner review (`TODO(owner)`).
 
 Until reviewed journal guidelines and fingerprint data have a usable runtime
 contract, matches are reported as `generic_genre`. A selected journal receives

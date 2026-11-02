@@ -13,6 +13,8 @@ def build_rules(
     lexicon: EpistemicMarkersPolicy,
     policy: ValidationRulesPolicy,
 ) -> list[ValidationRule]:
+    # FR-08.6: preserve the V01–V08 response contract; unfinished checks are
+    # unavailable, never passing.
     rules: list[ValidationRule] = []
     for number in range(1, 9):
         code = f"V{number:02}"

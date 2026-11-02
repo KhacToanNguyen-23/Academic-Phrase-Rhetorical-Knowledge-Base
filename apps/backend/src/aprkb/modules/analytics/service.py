@@ -6,6 +6,7 @@ from aprkb.modules.analytics.schemas import FeedbackCreate, OverrideCreate
 from aprkb.modules.audit.service import record_event
 from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.recommendation.models import Feedback, Override
+from aprkb.modules.recommendation.service import require_issued_candidate
 
 
 async def create_feedback(
@@ -15,12 +16,22 @@ async def create_feedback(
     actor: ApiClient,
     request_id: str,
 ) -> Feedback:
+    """FR-07.7 / BR-08: persist feedback against the issued pattern version.
+
+    Writer text itself is not stored as feedback.
+    """
+    await require_issued_candidate(
+        session,
+        recommendation_id=payload.recommendation_id,
+        pattern_version_id=payload.pattern_version_id,
+        client_id=actor.id,
+    )
     row = Feedback(
         client_id=actor.id,
         recommendation_id=payload.recommendation_id,
         pattern_version_id=payload.pattern_version_id,
         signal=payload.signal,
-        payload=payload.payload,
+        payload=payload.payload.model_dump() if payload.payload is not None else None,
     )
     session.add(row)
     try:

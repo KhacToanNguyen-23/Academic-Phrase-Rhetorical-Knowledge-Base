@@ -16,6 +16,7 @@ from aprkb.modules.patterns.schemas import (
     PatternSummary,
     PatternVersionCreate,
     PatternVersionRead,
+    RenderableVersionRead,
 )
 
 router = APIRouter(tags=["patterns"])
@@ -25,9 +26,22 @@ Curator = Annotated[ApiClient, Depends(require_role("curator"))]
 Admin = Annotated[ApiClient, Depends(require_role("admin"))]
 
 
+@router.get("/versions/{version_id}", response_model=RenderableVersionRead)
+async def get_renderable_version(
+    version_id: UUID, _client: Client, session: DatabaseSession
+) -> RenderableVersionRead:
+    version, source = await service.get_renderable_version(session, version_id)
+    return RenderableVersionRead.model_validate(
+        {
+            **PatternVersionRead.model_validate(version).model_dump(),
+            "source_type": source.source_type,
+        }
+    )
+
+
 @router.get("", response_model=list[PatternSummary])
 async def list_patterns(
-    _client: Client,
+    client: Client,
     session: DatabaseSession,
     intent: str | None = None,
     section: str | None = None,
@@ -42,23 +56,31 @@ async def list_patterns(
         status=pattern_status,
         offset=offset,
         limit=limit,
+        renderable_only=client.role not in {"curator", "admin"},
     )
     return [PatternSummary.model_validate(row) for row in rows]
 
 
 @router.get("/{pattern_id}", response_model=PatternDetail)
-async def get_pattern(pattern_id: UUID, _client: Client, session: DatabaseSession) -> PatternDetail:
-    return PatternDetail.model_validate(await service.pattern_detail(session, pattern_id))
+async def get_pattern(pattern_id: UUID, client: Client, session: DatabaseSession) -> PatternDetail:
+    detail = (
+        await service.pattern_detail(session, pattern_id)
+        if client.role in {"curator", "admin"}
+        else await service.renderable_pattern_detail(session, pattern_id)
+    )
+    return PatternDetail.model_validate(detail)
 
 
 @router.get("/{pattern_id}/versions", response_model=list[PatternVersionRead])
 async def get_versions(
-    pattern_id: UUID, _client: Client, session: DatabaseSession
+    pattern_id: UUID, client: Client, session: DatabaseSession
 ) -> list[PatternVersionRead]:
-    return [
-        PatternVersionRead.model_validate(version)
-        for version in await service.pattern_versions(session, pattern_id)
-    ]
+    versions = (
+        await service.pattern_versions(session, pattern_id)
+        if client.role in {"curator", "admin"}
+        else await service.renderable_pattern_versions(session, pattern_id)
+    )
+    return [PatternVersionRead.model_validate(version) for version in versions]
 
 
 @router.post("", response_model=PatternDetail, status_code=status.HTTP_201_CREATED)

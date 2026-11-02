@@ -6,6 +6,8 @@ from aprkb.modules.recommendation.pattern_view import PatternView
 
 
 class IntentSectionGate(HardGate):
+    """FR-07.2: reject candidates outside the requested rhetorical intent and section."""
+
     code = "GATE_INTENT_SECTION"
 
     def check(self, pattern: PatternView, ctx: RecommendationContext) -> GateResult:

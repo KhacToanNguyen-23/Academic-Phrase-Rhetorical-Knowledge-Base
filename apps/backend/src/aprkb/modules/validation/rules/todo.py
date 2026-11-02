@@ -14,6 +14,7 @@ class TodoValidationRule(ValidationRule):
         # TODO(owner, PRD-6.2): implement this rule after its business criteria are approved.
         return RuleResult(
             code=self.code,
-            severity=Severity.PASS,
-            message=f"{self.code} is a scaffold TODO",
+            severity=Severity.UNAVAILABLE,
+            message=f"{self.code} was not evaluated",
+            applied=False,
         )

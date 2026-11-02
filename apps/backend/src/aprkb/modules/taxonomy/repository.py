@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.taxonomy.models import ArticleGenre, Intent, Move, Section, Step, TaxonomyRelease
+from aprkb.shared.models import RefEnum
 
 
 async def list_releases(session: AsyncSession) -> list[TaxonomyRelease]:
@@ -64,3 +65,13 @@ async def intents_for_steps(session: AsyncSession, step_ids: Sequence[UUID]) -> 
 
 async def article_genres(session: AsyncSession) -> list[ArticleGenre]:
     return list(await session.scalars(select(ArticleGenre).order_by(ArticleGenre.code)))
+
+
+async def reference_options(session: AsyncSession) -> list[RefEnum]:
+    return list(
+        await session.scalars(
+            select(RefEnum)
+            .where(RefEnum.group.in_(["claim_type", "evidence_level", "epistemic_strength"]))
+            .order_by(RefEnum.group, RefEnum.order, RefEnum.code)
+        )
+    )

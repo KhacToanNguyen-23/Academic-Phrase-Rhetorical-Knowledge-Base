@@ -34,6 +34,10 @@ class PatternVersionRead(BaseModel):
     change_note: str | None
 
 
+class RenderableVersionRead(PatternVersionRead):
+    source_type: str
+
+
 class PatternSummary(BaseModel):
     id: UUID
     status: str

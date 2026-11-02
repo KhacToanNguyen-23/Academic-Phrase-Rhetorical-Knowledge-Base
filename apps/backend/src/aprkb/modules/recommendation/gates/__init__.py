@@ -14,6 +14,8 @@ from aprkb.policies.evidence import EvidencePolicy
 def build_gates(
     *, evidence_policy: EvidencePolicy, guideline_policy: GuidelinePolicy | None = None
 ) -> list[HardGate]:
+    # FR-07.2: every hard gate runs before scoring. BR-01/10 protect approval and rights;
+    # BR-03 protects claim/evidence alignment. A failed gate is never offset by a high score.
     return [
         ApprovalGate(),
         RetiredGate(),

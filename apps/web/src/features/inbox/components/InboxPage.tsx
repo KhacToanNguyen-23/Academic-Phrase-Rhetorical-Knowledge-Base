@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { api, type Submission, type SubmissionStatus } from "@/shared/api";
 import { pct } from "@/shared/lib";
-import { Badge, Card, Empty, Frame, Loading, PageHeader, StatusBadge, Tabs, fmtTime } from "@/shared/ui";
+import { Badge, Card, Empty, ErrorState, Frame, Loading, PageHeader, StatusBadge, Tabs, fmtTime } from "@/shared/ui";
 
 type Filter = SubmissionStatus | "all";
 
@@ -13,6 +13,13 @@ export function InboxPage() {
   const all = useQuery({ queryKey: ["submissions"], queryFn: () => api.submissions() });
   const intents = useQuery({ queryKey: ["intents"], queryFn: api.intents });
   const clients = useQuery({ queryKey: ["clients"], queryFn: api.clients });
+
+  if (all.isPending || intents.isPending || clients.isPending) return <Loading />;
+  if (all.isError || intents.isError || clients.isError) {
+    return <ErrorState message="Inbox data could not be loaded." onRetry={async () => {
+      await Promise.all([all.refetch(), intents.refetch(), clients.refetch()]);
+    }} />;
+  }
 
   const count = (s: Filter) => all.data?.filter((x) => s === "all" || x.status === s).length ?? 0;
   const items = all.data?.filter((x) => filter === "all" || x.status === filter) ?? [];
@@ -30,8 +37,8 @@ export function InboxPage() {
         { id: "revision", label: "Revision requested", count: count("revision") },
         { id: "rejected", label: "Rejected", count: count("rejected") },
         { id: "all", label: "All", count: count("all") },
-      ]} />
-      {all.isPending ? <Loading /> : items.length === 0 ? <Empty>Nothing here.</Empty> : (
+      ]}>
+      {items.length === 0 ? <Empty>Nothing here.</Empty> : (
         <ol className="candidate-list" key={filter}>
           {items.map((s) => (
             <li key={s.id}>
@@ -42,6 +49,7 @@ export function InboxPage() {
           ))}
         </ol>
       )}
+      </Tabs>
     </>
   );
 }

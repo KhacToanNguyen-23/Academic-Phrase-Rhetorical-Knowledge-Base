@@ -7,6 +7,8 @@ from aprkb.policies.evidence import EvidencePolicy
 
 
 class EvidenceGate(HardGate):
+    """FR-07.2 / BR-03: a candidate's epistemic strength cannot exceed supplied evidence."""
+
     code = "GATE_EVIDENCE"
 
     def __init__(self, evidence_policy: EvidencePolicy) -> None:

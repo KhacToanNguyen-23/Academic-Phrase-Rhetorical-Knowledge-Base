@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.audit.service import record_event
+from aprkb.modules.corpus.models import License
 from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.patterns import repository
 from aprkb.modules.patterns.models import (
@@ -19,6 +20,33 @@ from aprkb.modules.patterns.schemas import PatternCreate, PatternVersionCreate
 from aprkb.modules.taxonomy.models import Intent
 
 
+async def get_renderable_version(
+    session: AsyncSession, version_id: UUID
+) -> tuple[PatternVersion, EvidenceProvenance]:
+    """Return only the current approved version with one displayable source."""
+    version = await session.get(PatternVersion, version_id)
+    pattern = await session.get(PhrasePattern, version.pattern_id) if version else None
+    if (
+        version is None
+        or pattern is None
+        or pattern.status != "approved"
+        or pattern.current_version_id != version_id
+    ):
+        raise HTTPException(status_code=404, detail="Renderable pattern version not found")
+    sources = await repository.list_provenances(session, version_id)
+    if len(sources) != 1:
+        raise HTTPException(status_code=404, detail="Renderable pattern version not found")
+    source = sources[0]
+    if source.source_type == "mined":
+        license_row = await session.get(License, source.license_id) if source.license_id else None
+        allowed = license_row is not None and license_row.allows_display
+    else:
+        allowed = source.source_type == "authored"
+    if not allowed:
+        raise HTTPException(status_code=404, detail="Renderable pattern version not found")
+    return version, source
+
+
 async def list_patterns(
     session: AsyncSession,
     *,
@@ -27,6 +55,7 @@ async def list_patterns(
     status: str | None,
     offset: int,
     limit: int,
+    renderable_only: bool = False,
 ) -> list[dict[str, object]]:
     rows = await repository.list_patterns(
         session,
@@ -35,8 +64,12 @@ async def list_patterns(
         status=status,
         offset=offset,
         limit=limit,
+        renderable_only=renderable_only,
     )
-    return [await pattern_detail(session, row.id) for row in rows]
+    return [
+        _pattern_detail_data(pattern, intent, version, usage)
+        for pattern, intent, version, usage in rows
+    ]
 
 
 async def pattern_detail(session: AsyncSession, pattern_id: UUID) -> dict[str, object]:
@@ -46,6 +79,25 @@ async def pattern_detail(session: AsyncSession, pattern_id: UUID) -> dict[str, o
     intent = await session.get(Intent, pattern.intent_id)
     version = await repository.get_current_version(session, pattern)
     usage = await repository.get_usage_constraint(session, version.id) if version else None
+    return _pattern_detail_data(pattern, intent, version, usage)
+
+
+async def renderable_pattern_detail(session: AsyncSession, pattern_id: UUID) -> dict[str, object]:
+    pattern = await repository.get_pattern(session, pattern_id)
+    if pattern is None or pattern.current_version_id is None:
+        raise HTTPException(status_code=404, detail="Renderable pattern not found")
+    version, _ = await get_renderable_version(session, pattern.current_version_id)
+    intent = await session.get(Intent, pattern.intent_id)
+    usage = await repository.get_usage_constraint(session, version.id)
+    return _pattern_detail_data(pattern, intent, version, usage)
+
+
+def _pattern_detail_data(
+    pattern: PhrasePattern,
+    intent: Intent | None,
+    version: PatternVersion | None,
+    usage: UsageConstraint | None,
+) -> dict[str, object]:
     return {
         "id": pattern.id,
         "status": pattern.status,
@@ -65,6 +117,16 @@ async def pattern_versions(session: AsyncSession, pattern_id: UUID) -> list[Patt
     if await repository.get_pattern(session, pattern_id) is None:
         raise HTTPException(status_code=404, detail="Pattern not found")
     return await repository.list_versions(session, pattern_id)
+
+
+async def renderable_pattern_versions(
+    session: AsyncSession, pattern_id: UUID
+) -> list[PatternVersion]:
+    pattern = await repository.get_pattern(session, pattern_id)
+    if pattern is None or pattern.current_version_id is None:
+        raise HTTPException(status_code=404, detail="Renderable pattern not found")
+    version, _ = await get_renderable_version(session, pattern.current_version_id)
+    return [version]
 
 
 async def create_pattern(

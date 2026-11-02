@@ -1,5 +1,6 @@
 """Identity and admin API-key HTTP endpoints."""
 
+from ipaddress import ip_address
 from typing import Annotated
 from uuid import UUID
 
@@ -7,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aprkb.core.deps import get_db_session
+from aprkb.core.deps import get_current_client, get_db_session
 from aprkb.core.security import require_role
 from aprkb.modules.audit.service import record_event
 from aprkb.modules.identity.models import ApiClient
@@ -16,14 +17,44 @@ from aprkb.modules.identity.schemas import (
     ApiKeyCreated,
     ApiKeyRevoked,
     ApiKeySummary,
+    AuthenticatedClient,
+    DemoSession,
 )
-from aprkb.modules.identity.service import ADMIN_LIFECYCLE_LOCK_ID, create_api_key
+from aprkb.modules.identity.service import (
+    ADMIN_LIFECYCLE_LOCK_ID,
+    create_api_key,
+    initialize_local_demo_session,
+)
 
 router = APIRouter(tags=["identity"])
 admin_router = APIRouter(tags=["admin api keys"])
 
 AdminClient = Annotated[ApiClient, Depends(require_role("admin"))]
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
+Authenticated = Annotated[ApiClient, Depends(get_current_client)]
+
+
+@router.get("/me", response_model=AuthenticatedClient)
+async def current_identity(client: Authenticated) -> AuthenticatedClient:
+    return AuthenticatedClient(id=client.id, name=client.name, role=client.role)
+
+
+@router.post("/demo-session", response_model=DemoSession)
+async def create_local_demo_session(request: Request, session: DatabaseSession) -> DemoSession:
+    """Initialize local sample data and issue a local-only curator API key."""
+    host = request.client.host if request.client else ""
+    try:
+        loopback = ip_address(host).is_loopback
+    except ValueError:
+        loopback = False
+    local_hostname = request.url.hostname in {"localhost", "127.0.0.1", "::1"}
+    if request.app.state.settings.app_env != "local" or not loopback or not local_hostname:
+        raise HTTPException(status_code=404, detail="Demo login is unavailable")
+
+    client, plaintext = await initialize_local_demo_session(
+        session, request_id=request.state.request_id
+    )
+    return DemoSession(id=client.id, name=client.name, role=client.role, api_key=plaintext)
 
 
 @admin_router.post("/api-keys", response_model=ApiKeyCreated, status_code=status.HTTP_201_CREATED)

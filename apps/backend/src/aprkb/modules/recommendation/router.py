@@ -23,6 +23,7 @@ async def create_recommendation(
     actor: Client,
     session: DatabaseSession,
 ) -> RecommendationResponse:
+    """FR-07.1–.4: expose context search, gated ranking and fallback to authenticated Writers."""
     result = await service.recommend(
         session,
         payload=payload,

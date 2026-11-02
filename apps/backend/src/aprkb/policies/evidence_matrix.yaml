@@ -1,4 +1,5 @@
-# DRAFT policy; TODO(owner, PRD-6.2): approve this evidence matrix before production use.
+# MVP runtime policy aligned to SCAFFOLD_PRD.md §4.6 and §8.
+# It remains provisional for production. Missing claim/evidence cells use low.
 version: 0.1.0
 default_max_strength: low
 matrix:
@@ -14,4 +15,4 @@ matrix:
     single_study: moderate
     multiple_consistent: high
     systematic_synthesis: high
-  # comparative and generalization remain TODO(owner); unknown cells fail closed.
+  # comparative and generalization have no approved cells yet; default low applies.

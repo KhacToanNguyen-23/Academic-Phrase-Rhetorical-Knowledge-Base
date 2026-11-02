@@ -1,4 +1,9 @@
-"""Evidence-to-strength policy evaluated using reference-enum ordering."""
+"""Shared evidence-to-strength policy for recommendation gates and V02.
+
+The versioned runtime matrix is configured in ``evidence_matrix.yaml``. Strength
+ordering comes from the seeded reference enums, as required by SCAFFOLD_PRD.md
+§4.6. Keep this as the single comparison implementation used by both paths.
+"""
 
 from __future__ import annotations
 

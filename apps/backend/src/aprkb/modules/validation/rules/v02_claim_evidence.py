@@ -9,6 +9,8 @@ from aprkb.policies.schemas import EpistemicMarkersPolicy
 
 
 class V02ClaimEvidenceRule(ValidationRule):
+    """FR-08.1 / BR-03: enforce evidence-supported wording strength."""
+
     code = "V02"
     requirement_id = "PRD-6.2-V02"
 
@@ -35,6 +37,7 @@ class V02ClaimEvidenceRule(ValidationRule):
             severity=self._severity,
             message=f"The marker '{marker}' exceeds the evidence-supported claim strength",
             span=span,
+            recommended_action="Use a weaker claim marker or supply supporting evidence.",
         )
 
     def _strongest_marker(self, text: str) -> str | None:

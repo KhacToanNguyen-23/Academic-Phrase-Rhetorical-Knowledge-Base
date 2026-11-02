@@ -10,6 +10,7 @@ from aprkb.modules.validation.rules.base import RuleResult, Severity, Validation
 class ValidationResult:
     rules: tuple[RuleResult, ...]
     severity: Severity
+    complete: bool
 
 
 class ValidationPipeline:
@@ -20,7 +21,18 @@ class ValidationPipeline:
         return [rule.evaluate(text, context) for rule in self._rules]
 
     def run(self, text: str, context: ValidationContext) -> ValidationResult:
+        # FR-08.6: an unavailable rule makes the result incomplete even when
+        # all applied rules pass.
         results = tuple(self.validate(text, context))
-        priority = {Severity.PASS: 0, Severity.WARN: 1, Severity.BLOCK: 2}
+        priority = {
+            Severity.UNAVAILABLE: -1,
+            Severity.PASS: 0,
+            Severity.WARN: 1,
+            Severity.BLOCK: 2,
+        }
         severity = max((result.severity for result in results), key=priority.__getitem__)
-        return ValidationResult(rules=results, severity=severity)
+        return ValidationResult(
+            rules=results,
+            severity=severity,
+            complete=all(result.applied for result in results),
+        )

@@ -1,5 +1,7 @@
 """FastAPI application factory with validated policies and request envelopes."""
 
+import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -18,6 +20,8 @@ from aprkb.api.routes import api_router
 from aprkb.core.config import settings
 from aprkb.core.deps import get_db_session
 from aprkb.policies.loader import load_policy_bundle
+
+logger = logging.getLogger(__name__)
 
 
 def _error_code(status_code: int) -> str:
@@ -40,6 +44,9 @@ def create_app(policy_dir: Path | str | None = None) -> FastAPI:
         engine = create_async_engine(settings.database_url, pool_pre_ping=True)
         application.state.engine = engine
         application.state.session_factory = async_sessionmaker(engine, expire_on_commit=False)
+        application.state.settings = settings
+        application.state.local_demo_client_id = None
+        application.state.local_demo_lock = asyncio.Lock()
         try:
             yield
         finally:
@@ -107,8 +114,15 @@ def create_app(policy_dir: Path | str | None = None) -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def unexpected_exception_handler(request: Request, _exc: Exception) -> JSONResponse:
+    async def unexpected_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         request_id = _request_id(request)
+        logger.error(
+            "Unhandled API exception request_id=%s exception_type=%s method=%s path=%s",
+            request_id,
+            type(exc).__name__,
+            request.method,
+            request.url.path,
+        )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={

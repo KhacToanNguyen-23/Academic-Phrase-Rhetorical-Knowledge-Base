@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter
 
-from aprkb.modules.analytics.router import override_router as overrides
 from aprkb.modules.analytics.router import router as analytics
+from aprkb.modules.composition.router import router as composition
 from aprkb.modules.corpus.router import admin_router as corpus_admin
 from aprkb.modules.identity.router import admin_router as identity_admin
 from aprkb.modules.identity.router import router as identity
@@ -23,8 +23,8 @@ api_router.include_router(taxonomy_admin, prefix="/admin")
 api_router.include_router(patterns, prefix="/patterns")
 api_router.include_router(journals, prefix="/journals")
 api_router.include_router(recommendation, prefix="/recommendations")
+api_router.include_router(composition, prefix="/render")
 api_router.include_router(validation, prefix="/validate")
 api_router.include_router(review, prefix="/admin")
 api_router.include_router(corpus_admin, prefix="/admin")
 api_router.include_router(analytics, prefix="/feedback")
-api_router.include_router(overrides, prefix="/overrides")

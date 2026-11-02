@@ -6,6 +6,8 @@ from aprkb.modules.recommendation.pattern_view import PatternView
 
 
 class LicenseGate(HardGate):
+    """FR-07.2 / BR-01 / BR-10: fail closed unless the pattern source permits display."""
+
     code = "GATE_LICENSE"
 
     def check(self, pattern: PatternView, ctx: RecommendationContext) -> GateResult:

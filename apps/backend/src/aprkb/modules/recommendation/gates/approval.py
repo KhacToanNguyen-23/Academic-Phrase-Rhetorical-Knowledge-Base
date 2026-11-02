@@ -6,6 +6,8 @@ from aprkb.modules.recommendation.pattern_view import PatternView
 
 
 class ApprovalGate(HardGate):
+    """FR-07.2 / BR-01: only approved patterns may enter recommendation results."""
+
     code = "GATE_APPROVAL"
 
     def check(self, pattern: PatternView, ctx: RecommendationContext) -> GateResult:

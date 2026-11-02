@@ -2,11 +2,15 @@ import { createRootRoute, createRoute, createRouter, getRouteApi, Link, Outlet, 
 import { useEffect, useState } from "react";
 
 import { AdminPage } from "@/features/admin";
+import { LoginPage } from "@/features/auth/LoginPage";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { InboxPage } from "@/features/inbox";
 import { JournalProfilePage } from "@/features/journal-profile";
 import { LibraryPage } from "@/features/library";
 import { OverviewPage } from "@/features/overview";
 import { PlaygroundPage } from "@/features/playground";
+import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
+import { Loading } from "@/shared/ui";
 import { useTheme } from "@/shared/lib/theme";
 
 // "/" là dashboard giới thiệu (mở qua logo). UI là bảng điều khiển của bank: người viết dùng qua Writing Engine (API), không qua UI này.
@@ -14,6 +18,7 @@ import { useTheme } from "@/shared/lib/theme";
 const NAV = [
   { to: "/library", label: "Library" },
   { to: "/playground", label: "Playground" },
+  { to: "/writer", label: "Writer" },
   { to: "/inbox", label: "Inbox" },
   { to: "/journals", label: "Journals" },
   { to: "/admin", label: "Admin" },
@@ -23,6 +28,7 @@ function Shell() {
   // Key theo pathname để animation từng section chạy lại khi chuyển trang.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { theme, toggle } = useTheme();
+  const auth = useAuth();
   // Bóng đổ header khi cuộn (giống SLRS: data-scrolled)
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -46,7 +52,7 @@ function Shell() {
           </Link>
           <nav aria-label="Contents">
             <ul className="toc">
-              {NAV.map((n) => (
+              {NAV.filter((n) => n.to === "/writer" || auth.client).filter((n) => n.to !== "/admin" || auth.client?.role === "admin").map((n) => (
                 <li key={n.to}>
                   <Link to={n.to} className="toc-link" activeProps={{ "aria-current": "page" }}>
                     {n.label}
@@ -56,6 +62,13 @@ function Shell() {
             </ul>
           </nav>
           <div className="masthead-right">
+            {auth.client ? (
+              <button type="button" className="btn btn-ghost" onClick={auth.logout} title={`${auth.client.name} · ${auth.client.role}`}>
+                Sign out
+              </button>
+            ) : pathname === "/writer" ? (
+              <Link to="/" className="btn btn-ghost">Staff sign in</Link>
+            ) : <span className="caption">Staff sign-in required</span>}
             <button type="button" className="theme-toggle" aria-pressed={theme === "dark"} onClick={toggle}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
               <span className="knob" aria-hidden />
@@ -65,11 +78,15 @@ function Shell() {
         </div>
       </header>
       <main id="main" className="main" key={pathname}>
-        <Outlet />
+        {pathname === "/writer" ? <Outlet /> : auth.loading ? <Loading /> : auth.client ? (
+          pathname === "/admin" && auth.client.role !== "admin"
+            ? <p className="notice notice-warn" role="alert">Admin role required for this page.</p>
+            : <Outlet />
+        ) : <LoginPage />}
       </main>
       <footer className="colophon">
         <span>© 2026 Academic Wordbank · Patterns are self-authored or used with permission</span>
-        <span>Mock data · OpenAlex disabled</span>
+        <span>Writer dùng API thật · Các trang mô phỏng còn dùng mock</span>
       </footer>
     </>
   );
@@ -96,6 +113,8 @@ const playground = createRoute({
   component: () => <PlaygroundPage patternId={getRouteApi("/playground").useSearch().pattern} />,
 });
 
+const writer = createRoute({ getParentRoute: () => root, path: "/writer", component: OnlineWriterPage });
+
 const inbox = createRoute({ getParentRoute: () => root, path: "/inbox", component: InboxPage });
 const admin = createRoute({ getParentRoute: () => root, path: "/admin", component: AdminPage });
 
@@ -107,7 +126,7 @@ const journal = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: root.addChildren([overview, library, playground, inbox, journals, journal, admin]),
+  routeTree: root.addChildren([overview, library, playground, writer, inbox, journals, journal, admin]),
 });
 
 declare module "@tanstack/react-router" {

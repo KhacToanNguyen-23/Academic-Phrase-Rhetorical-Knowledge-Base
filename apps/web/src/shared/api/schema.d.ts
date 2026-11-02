@@ -142,6 +142,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/demo-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Local Demo Session
+         * @description Initialize local sample data and issue a local-only curator API key.
+         */
+        post: operations["create_local_demo_session_v1_auth_demo_session_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current Identity */
+        get: operations["current_identity_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/feedback": {
         parameters: {
             query?: never;
@@ -151,7 +188,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Feedback */
+        /**
+         * Create Feedback
+         * @description FR-07.7 / BR-08: accept feedback only for a recommendation issued to this Writer.
+         */
         post: operations["create_feedback_v1_feedback_post"];
         delete?: never;
         options?: never;
@@ -227,23 +267,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/overrides": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create Override */
-        post: operations["create_override_v1_overrides_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/patterns": {
         parameters: {
             query?: never;
@@ -256,6 +279,23 @@ export interface paths {
         put?: never;
         /** Create Pattern */
         post: operations["create_pattern_v1_patterns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/patterns/versions/{version_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Renderable Version */
+        get: operations["get_renderable_version_v1_patterns_versions__version_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -323,8 +363,31 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Recommendation */
+        /**
+         * Create Recommendation
+         * @description FR-07.1–.4: expose context search, gated ranking and fallback to authenticated Writers.
+         */
         post: operations["create_recommendation_v1_recommendations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/render": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Render
+         * @description FR-07.5: render only the selected candidate/version issued to the authenticated client.
+         */
+        post: operations["render_v1_render_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -340,6 +403,23 @@ export interface paths {
         };
         /** Get Taxonomy */
         get: operations["get_taxonomy_v1_taxonomy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/taxonomy/reference-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Reference Options */
+        get: operations["get_reference_options_v1_taxonomy_reference_options_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -374,7 +454,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Validate Text */
+        /**
+         * Validate Text
+         * @description FR-08.1/.6 / BR-03: return rule-level outcomes and explicitly expose unavailable checks.
+         */
         post: operations["validate_text_v1_validate_post"];
         delete?: never;
         options?: never;
@@ -445,6 +528,18 @@ export interface components {
             /** Limit */
             limit?: number | null;
         };
+        /** AuthenticatedClient */
+        AuthenticatedClient: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
+        };
         /** Body_upload_article_v1_admin_corpus_articles_post */
         Body_upload_article_v1_admin_corpus_articles_post: {
             /** File */
@@ -486,6 +581,20 @@ export interface components {
              */
             id: string;
         };
+        /** DemoSession */
+        DemoSession: {
+            /** Api Key */
+            api_key: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
+        };
         /** FeedbackCreate */
         FeedbackCreate: {
             /**
@@ -493,10 +602,7 @@ export interface components {
              * Format: uuid
              */
             pattern_version_id: string;
-            /** Payload */
-            payload?: {
-                [key: string]: unknown;
-            } | null;
+            payload?: components["schemas"]["FeedbackMetadata"] | null;
             /**
              * Recommendation Id
              * Format: uuid
@@ -507,6 +613,11 @@ export interface components {
              * @enum {string}
              */
             signal: "accepted" | "rejected" | "edited";
+        };
+        /** FeedbackMetadata */
+        FeedbackMetadata: {
+            /** Context Hash */
+            context_hash: string;
         };
         /** GuidelineCreate */
         GuidelineCreate: {
@@ -571,18 +682,6 @@ export interface components {
             similar_journal_ids: string[];
             /** Subfield */
             subfield: string | null;
-        };
-        /** OverrideCreate */
-        OverrideCreate: {
-            /** Rationale */
-            rationale: string;
-            /** Rule Code */
-            rule_code: string;
-            /**
-             * Validation Id
-             * Format: uuid
-             */
-            validation_id: string;
         };
         /** PatternCreate */
         PatternCreate: {
@@ -723,6 +822,10 @@ export interface components {
             explanations: string[];
             /** Fallback Tier */
             fallback_tier: string;
+            /** License Code */
+            license_code: string | null;
+            /** License Name */
+            license_name: string | null;
             /**
              * Pattern Version Id
              * Format: uuid
@@ -730,6 +833,12 @@ export interface components {
             pattern_version_id: string;
             /** Score */
             score: number;
+            /** Source Reference */
+            source_reference: string | null;
+            /** Source Type */
+            source_type: string;
+            /** Version No */
+            version_no: number;
         };
         /** RecommendationRequest */
         RecommendationRequest: {
@@ -750,15 +859,23 @@ export interface components {
              * @default 10
              */
             limit: number;
+            /** Move */
+            move?: string | null;
+            /** Query */
+            query?: string | null;
             /** Section */
             section: string;
         };
         /** RecommendationResponse */
         RecommendationResponse: {
+            /** Context Hash */
+            context_hash: string;
             /** Excluded */
             excluded: {
                 [key: string]: number;
             };
+            /** Fallback Reason */
+            fallback_reason?: string | null;
             /** Items */
             items: components["schemas"]["RecommendationItemResponse"][];
             /** Policy Versions */
@@ -770,6 +887,19 @@ export interface components {
              * Format: uuid
              */
             recommendation_id: string;
+            /** Warnings */
+            warnings?: string[];
+        };
+        /** ReferenceOption */
+        ReferenceOption: {
+            /** Code */
+            code: string;
+            /** Group */
+            group: string;
+            /** Label */
+            label: string;
+            /** Order */
+            order: number;
         };
         /** ReleaseSummary */
         ReleaseSummary: {
@@ -784,6 +914,64 @@ export interface components {
             status: string;
             /** Version */
             version: string;
+        };
+        /** RenderRequest */
+        RenderRequest: {
+            /**
+             * Pattern Version Id
+             * Format: uuid
+             */
+            pattern_version_id: string;
+            /**
+             * Recommendation Id
+             * Format: uuid
+             */
+            recommendation_id: string;
+            /** Slots */
+            slots?: {
+                [key: string]: string;
+            };
+        };
+        /** RenderResponse */
+        RenderResponse: {
+            /**
+             * Pattern Version Id
+             * Format: uuid
+             */
+            pattern_version_id: string;
+            /** Text */
+            text: string;
+            /** Unfilled Slots */
+            unfilled_slots: string[];
+        };
+        /** RenderableVersionRead */
+        RenderableVersionRead: {
+            /** Canonical Frame */
+            canonical_frame: string;
+            /** Change Note */
+            change_note: string | null;
+            /** Claim Type */
+            claim_type: string;
+            /** Epistemic Strength */
+            epistemic_strength: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Pattern Id
+             * Format: uuid
+             */
+            pattern_id: string;
+            /** Slots */
+            slots: {
+                [key: string]: unknown;
+            };
+            /** Source Type */
+            source_type: string;
+            /** Version No */
+            version_no: number;
         };
         /** ReviewDecisionCreate */
         ReviewDecisionCreate: {
@@ -911,10 +1099,22 @@ export interface components {
         };
         /** ValidationResponse */
         ValidationResponse: {
+            /** Checks Unavailable */
+            checks_unavailable: string[];
+            /** Complete */
+            complete: boolean;
+            /** Context Hash */
+            context_hash: string;
+            /** Policy Versions */
+            policy_versions: {
+                [key: string]: string;
+            };
             /** Rules */
             rules: components["schemas"]["ValidationRuleResponse"][];
             /** Severity */
             severity: string;
+            /** Text Hash */
+            text_hash: string;
             /**
              * Validation Id
              * Format: uuid
@@ -923,10 +1123,14 @@ export interface components {
         };
         /** ValidationRuleResponse */
         ValidationRuleResponse: {
+            /** Applied */
+            applied: boolean;
             /** Code */
             code: string;
             /** Message */
             message: string;
+            /** Recommended Action */
+            recommended_action: string | null;
             /** Severity */
             severity: string;
             /** Span */
@@ -1288,6 +1492,57 @@ export interface operations {
             };
         };
     };
+    create_local_demo_session_v1_auth_demo_session_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoSession"];
+                };
+            };
+        };
+    };
+    current_identity_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthenticatedClient"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_feedback_v1_feedback_post: {
         parameters: {
             query?: never;
@@ -1446,41 +1701,6 @@ export interface operations {
             };
         };
     };
-    create_override_v1_overrides_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-API-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["OverrideCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreatedRecord"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_patterns_v1_patterns_get: {
         parameters: {
             query?: {
@@ -1540,6 +1760,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PatternDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_renderable_version_v1_patterns_versions__version_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenderableVersionRead"];
                 };
             };
             /** @description Validation Error */
@@ -1724,6 +1977,41 @@ export interface operations {
             };
         };
     };
+    render_v1_render_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenderRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_taxonomy_v1_taxonomy_get: {
         parameters: {
             query?: never;
@@ -1742,6 +2030,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaxonomyTree"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_reference_options_v1_taxonomy_reference_options_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferenceOption"][];
                 };
             };
             /** @description Validation Error */

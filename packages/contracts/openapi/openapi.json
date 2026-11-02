@@ -145,6 +145,30 @@
         "title": "ArticleImportCreate",
         "type": "object"
       },
+      "AuthenticatedClient": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role"
+        ],
+        "title": "AuthenticatedClient",
+        "type": "object"
+      },
       "Body_upload_article_v1_admin_corpus_articles_post": {
         "properties": {
           "file": {
@@ -265,6 +289,35 @@
         "title": "CreatedRecord",
         "type": "object"
       },
+      "DemoSession": {
+        "properties": {
+          "api_key": {
+            "title": "Api Key",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role",
+          "api_key"
+        ],
+        "title": "DemoSession",
+        "type": "object"
+      },
       "FeedbackCreate": {
         "properties": {
           "pattern_version_id": {
@@ -275,14 +328,12 @@
           "payload": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/FeedbackMetadata"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Payload"
+            ]
           },
           "recommendation_id": {
             "format": "uuid",
@@ -305,6 +356,21 @@
           "signal"
         ],
         "title": "FeedbackCreate",
+        "type": "object"
+      },
+      "FeedbackMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "context_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Context Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "context_hash"
+        ],
+        "title": "FeedbackMetadata",
         "type": "object"
       },
       "GuidelineCreate": {
@@ -479,33 +545,6 @@
           "similar_journal_ids"
         ],
         "title": "JournalRead",
-        "type": "object"
-      },
-      "OverrideCreate": {
-        "properties": {
-          "rationale": {
-            "minLength": 1,
-            "title": "Rationale",
-            "type": "string"
-          },
-          "rule_code": {
-            "maxLength": 32,
-            "minLength": 1,
-            "title": "Rule Code",
-            "type": "string"
-          },
-          "validation_id": {
-            "format": "uuid",
-            "title": "Validation Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "validation_id",
-          "rule_code",
-          "rationale"
-        ],
-        "title": "OverrideCreate",
         "type": "object"
       },
       "PatternCreate": {
@@ -890,6 +929,28 @@
             "title": "Fallback Tier",
             "type": "string"
           },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "license_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Name"
+          },
           "pattern_version_id": {
             "format": "uuid",
             "title": "Pattern Version Id",
@@ -898,6 +959,25 @@
           "score": {
             "title": "Score",
             "type": "number"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
+          "version_no": {
+            "title": "Version No",
+            "type": "integer"
           }
         },
         "required": [
@@ -906,7 +986,12 @@
           "score",
           "breakdown",
           "fallback_tier",
-          "explanations"
+          "explanations",
+          "source_type",
+          "version_no",
+          "license_code",
+          "license_name",
+          "source_reference"
         ],
         "title": "RecommendationItemResponse",
         "type": "object"
@@ -980,6 +1065,29 @@
             "title": "Limit",
             "type": "integer"
           },
+          "move": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
           "section": {
             "title": "Section",
             "type": "string"
@@ -994,12 +1102,27 @@
       },
       "RecommendationResponse": {
         "properties": {
+          "context_hash": {
+            "title": "Context Hash",
+            "type": "string"
+          },
           "excluded": {
             "additionalProperties": {
               "type": "integer"
             },
             "title": "Excluded",
             "type": "object"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
           },
           "items": {
             "items": {
@@ -1019,15 +1142,51 @@
             "format": "uuid",
             "title": "Recommendation Id",
             "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
           }
         },
         "required": [
           "items",
           "excluded",
           "policy_versions",
-          "recommendation_id"
+          "recommendation_id",
+          "context_hash"
         ],
         "title": "RecommendationResponse",
+        "type": "object"
+      },
+      "ReferenceOption": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "order": {
+            "title": "Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "group",
+          "code",
+          "label",
+          "order"
+        ],
+        "title": "ReferenceOption",
         "type": "object"
       },
       "ReleaseSummary": {
@@ -1065,6 +1224,123 @@
           "published_at"
         ],
         "title": "ReleaseSummary",
+        "type": "object"
+      },
+      "RenderRequest": {
+        "properties": {
+          "pattern_version_id": {
+            "format": "uuid",
+            "title": "Pattern Version Id",
+            "type": "string"
+          },
+          "recommendation_id": {
+            "format": "uuid",
+            "title": "Recommendation Id",
+            "type": "string"
+          },
+          "slots": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Slots",
+            "type": "object"
+          }
+        },
+        "required": [
+          "recommendation_id",
+          "pattern_version_id"
+        ],
+        "title": "RenderRequest",
+        "type": "object"
+      },
+      "RenderResponse": {
+        "properties": {
+          "pattern_version_id": {
+            "format": "uuid",
+            "title": "Pattern Version Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "unfilled_slots": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unfilled Slots",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pattern_version_id",
+          "text",
+          "unfilled_slots"
+        ],
+        "title": "RenderResponse",
+        "type": "object"
+      },
+      "RenderableVersionRead": {
+        "properties": {
+          "canonical_frame": {
+            "title": "Canonical Frame",
+            "type": "string"
+          },
+          "change_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Note"
+          },
+          "claim_type": {
+            "title": "Claim Type",
+            "type": "string"
+          },
+          "epistemic_strength": {
+            "title": "Epistemic Strength",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "pattern_id": {
+            "format": "uuid",
+            "title": "Pattern Id",
+            "type": "string"
+          },
+          "slots": {
+            "additionalProperties": true,
+            "title": "Slots",
+            "type": "object"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
+          "version_no": {
+            "title": "Version No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "pattern_id",
+          "version_no",
+          "canonical_frame",
+          "slots",
+          "epistemic_strength",
+          "claim_type",
+          "change_note",
+          "source_type"
+        ],
+        "title": "RenderableVersionRead",
         "type": "object"
       },
       "ReviewDecisionCreate": {
@@ -1390,6 +1666,28 @@
       },
       "ValidationResponse": {
         "properties": {
+          "checks_unavailable": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Checks Unavailable",
+            "type": "array"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "context_hash": {
+            "title": "Context Hash",
+            "type": "string"
+          },
+          "policy_versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Policy Versions",
+            "type": "object"
+          },
           "rules": {
             "items": {
               "$ref": "#/components/schemas/ValidationRuleResponse"
@@ -1401,6 +1699,10 @@
             "title": "Severity",
             "type": "string"
           },
+          "text_hash": {
+            "title": "Text Hash",
+            "type": "string"
+          },
           "validation_id": {
             "format": "uuid",
             "title": "Validation Id",
@@ -1409,7 +1711,12 @@
         },
         "required": [
           "validation_id",
+          "text_hash",
+          "context_hash",
+          "policy_versions",
           "severity",
+          "complete",
+          "checks_unavailable",
           "rules"
         ],
         "title": "ValidationResponse",
@@ -1417,6 +1724,10 @@
       },
       "ValidationRuleResponse": {
         "properties": {
+          "applied": {
+            "title": "Applied",
+            "type": "boolean"
+          },
           "code": {
             "title": "Code",
             "type": "string"
@@ -1424,6 +1735,17 @@
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "recommended_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommended Action"
           },
           "severity": {
             "title": "Severity",
@@ -1455,7 +1777,9 @@
           "code",
           "severity",
           "message",
-          "span"
+          "span",
+          "applied",
+          "recommended_action"
         ],
         "title": "ValidationRuleResponse",
         "type": "object"
@@ -2064,8 +2388,80 @@
         ]
       }
     },
+    "/v1/auth/demo-session": {
+      "post": {
+        "description": "Initialize local sample data and issue a local-only curator API key.",
+        "operationId": "create_local_demo_session_v1_auth_demo_session_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Local Demo Session",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "operationId": "current_identity_v1_auth_me_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedClient"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Current Identity",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
     "/v1/feedback": {
       "post": {
+        "description": "FR-07.7 / BR-08: accept feedback only for a recommendation issued to this Writer.",
         "operationId": "create_feedback_v1_feedback_post",
         "parameters": [
           {
@@ -2329,65 +2725,6 @@
         ]
       }
     },
-    "/v1/overrides": {
-      "post": {
-        "operationId": "create_override_v1_overrides_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-API-Key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OverrideCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreatedRecord"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Override",
-        "tags": [
-          "overrides"
-        ]
-      }
-    },
     "/v1/patterns": {
       "get": {
         "operationId": "list_patterns_v1_patterns_get",
@@ -2564,6 +2901,65 @@
           }
         },
         "summary": "Create Pattern",
+        "tags": [
+          "patterns"
+        ]
+      }
+    },
+    "/v1/patterns/versions/{version_id}": {
+      "get": {
+        "operationId": "get_renderable_version_v1_patterns_versions__version_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderableVersionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Renderable Version",
         "tags": [
           "patterns"
         ]
@@ -2819,6 +3215,7 @@
     },
     "/v1/recommendations": {
       "post": {
+        "description": "FR-07.1–.4: expose context search, gated ranking and fallback to authenticated Writers.",
         "operationId": "create_recommendation_v1_recommendations_post",
         "parameters": [
           {
@@ -2876,6 +3273,66 @@
         ]
       }
     },
+    "/v1/render": {
+      "post": {
+        "description": "FR-07.5: render only the selected candidate/version issued to the authenticated client.",
+        "operationId": "render_v1_render_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Render",
+        "tags": [
+          "composition"
+        ]
+      }
+    },
     "/v1/taxonomy": {
       "get": {
         "operationId": "get_taxonomy_v1_taxonomy_get",
@@ -2920,6 +3377,59 @@
           }
         },
         "summary": "Get Taxonomy",
+        "tags": [
+          "taxonomy"
+        ]
+      }
+    },
+    "/v1/taxonomy/reference-options": {
+      "get": {
+        "operationId": "get_reference_options_v1_taxonomy_reference_options_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReferenceOption"
+                  },
+                  "title": "Response Get Reference Options V1 Taxonomy Reference Options Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Reference Options",
         "tags": [
           "taxonomy"
         ]
@@ -2980,6 +3490,7 @@
     },
     "/v1/validate": {
       "post": {
+        "description": "FR-08.1/.6 / BR-03: return rule-level outcomes and explicitly expose unavailable checks.",
         "operationId": "validate_text_v1_validate_post",
         "parameters": [
           {

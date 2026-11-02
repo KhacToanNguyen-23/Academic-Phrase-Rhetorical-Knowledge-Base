@@ -1,11 +1,11 @@
 # AP-RKB — Academic Phrase & Rhetorical Knowledge Base
 
-AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. It does not implement the excluded admin console, production NLP extraction, or taxonomy publishing. The existing web app is a prototype UI that uses local mock data; its admin screen is not a production admin console and is outside this scaffold's backend scope.
+AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. It does not implement the excluded admin console, production NLP extraction, or taxonomy publishing. The `/writer` web route uses the real API and PostgreSQL; other prototype screens still use local mock data.
 
 ## Architecture
 
 ```text
-apps/web (React + TypeScript SPA; runs locally by default)
+apps/web (React + TypeScript SPA; Vite runs locally by default)
                │ REST /v1 + OpenAPI
 apps/backend (FastAPI modular monolith)
   API ── domain services ── PostgreSQL 16 + pgvector
@@ -33,6 +33,10 @@ For backend checks, set `TEST_DATABASE_URL` to a dedicated database named `aprkb
 
 Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker.
 
+Open the staff prototype at <http://localhost:5173/> and sign in with a curator or admin API key. In Vite development mode, **Quick demo** re-runs the idempotent self-authored seed data and issues a fresh local curator key. This button is restricted to loopback requests with `APP_ENV=local`. System integrations continue using their client API keys; client/reviewer pattern reads expose only approved current versions with display rights.
+
+With `APP_ENV=local`, the writer connects automatically without an API key; the backend grants a local demo client only to requests from loopback addresses. This access is disabled in other environments. The flow uses published taxonomy/reference options, recommendation, approved version detail, render, validation, and feedback APIs. Render requires a `recommendation_id` issued to the same client. V02 claim-strength validation runs; V01 and V03–V08 are reported as unavailable, so the UI labels copied text a draft. Journal-specific ranking waits for reviewed Offline guideline/fingerprint data and currently reports generic fallback. The MVP does not expose a validation override route.
+
 ## Commands
 
 | Command | Purpose |
@@ -49,6 +53,7 @@ Uploads require a curator API key and a seeded license. The sample `CC-BY` licen
 | `make worker` | Poll PostgreSQL jobs and process ingestion/mining |
 | `make test` | Run backend unit, integration, and scaffold acceptance tests |
 | `make lint` | Run Ruff, format verification, and mypy |
+| `make contracts` | Export OpenAPI and regenerate frontend types |
 | `make web-install` / `make web` / `make fe` | Install frontend dependencies / start the frontend dev server |
 | `.\dev.ps1 be` / `fe` / `worker` / `down` | PowerShell shortcuts for the local development workflow |
 

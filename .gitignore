@@ -52,6 +52,8 @@ pnpm-debug.log*
 # ==========================================
 data/corpus/
 data/blobs/
+# BLOB_DIR=./data/blobs resolves under apps/backend when commands run with uv --directory
+apps/backend/data/
 data/raw/
 data/processed/
 data/cache/

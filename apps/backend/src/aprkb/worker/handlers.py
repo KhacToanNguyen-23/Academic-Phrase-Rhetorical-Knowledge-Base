@@ -1,13 +1,15 @@
 """Transactional handlers for import, ingestion, and mining jobs."""
 
 from collections.abc import Callable
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.core.config import settings
+from aprkb.core.logging import get_logger
 from aprkb.modules.corpus.blobstore import BlobStore, LocalBlobStore
 from aprkb.modules.corpus.importer import IMPORT_JOB_TYPE, MAX_IMPORT_BATCH_LIMIT, import_page
 from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
@@ -16,9 +18,11 @@ from aprkb.modules.corpus.parsers.jats_parser import JatsParserStub
 from aprkb.modules.corpus.parsers.markdown_parser import MarkdownParser
 from aprkb.modules.corpus.parsers.pdf_parser import PdfParserStub
 from aprkb.modules.corpus.parsers.text_parser import TextParser
-from aprkb.modules.corpus.section_detector import detect_section
+from aprkb.modules.corpus.schemas import DEFAULT_ARTIFACT_KINDS, SlrWorkFilters
+from aprkb.modules.corpus.section_detector import SectionDetector
 from aprkb.modules.corpus.sentence_splitter import split_sentences
 from aprkb.modules.corpus.sources import ArticleSource, build_article_source
+from aprkb.modules.corpus.sources.base import ImportOptions
 from aprkb.modules.mining.candidate_writer import CandidateDraft, CandidateWriter
 from aprkb.modules.mining.models import Candidate, Job
 from aprkb.modules.mining.pipeline import MiningPipeline
@@ -33,6 +37,7 @@ _PARSERS: tuple[DocumentParser, ...] = (
     PdfParserStub(),
 )
 ArticleSourceFactory = Callable[[str], ArticleSource]
+logger = get_logger(__name__)
 
 
 class _SessionCandidateRepository:
@@ -43,9 +48,11 @@ class _SessionCandidateRepository:
         candidate = Candidate(
             canonical_frame=draft.canonical_frame,
             source_sentence_ids=draft.source_sentence_ids,
-            slots=draft.slots,
+            slots={name: slot.model_dump(mode="json") for name, slot in draft.slots.items()},
             confidence=draft.confidence,
             epistemic_strength=draft.epistemic_strength,
+            cluster_key=draft.cluster_key,
+            occurrences=draft.occurrences,
             status="pending",
         )
         self._session.add(candidate)
@@ -61,6 +68,16 @@ async def handle_job(
 ) -> str | None:
     if job.type == IMPORT_JOB_TYPE:
         return await _import(session, job, blob_store, article_source_factory)
+    if job.type == "label_gold":
+        sample_batch = job.payload.get("sample_batch")
+        if not isinstance(sample_batch, str):
+            return "Job payload is missing sample_batch"
+        from aprkb.modules.gold.service import label_sample_batch
+
+        job.result = await label_sample_batch(
+            session, sample_batch=sample_batch, request_id=str(job.id)
+        )
+        return None
     article_value = job.payload.get("article_id")
     if not isinstance(article_value, str):
         return "Job payload is missing article_id"
@@ -95,20 +112,71 @@ async def _import(
     if not isinstance(limit, int) or not 1 <= limit <= MAX_IMPORT_BATCH_LIMIT:
         return "Job payload contains an invalid limit"
     try:
+        raw_filters = job.payload.get("filters", {})
+        raw_kinds = job.payload.get("artifact_kinds", list(DEFAULT_ARTIFACT_KINDS))
+        profile_value = job.payload.get("profile_id")
+        if not isinstance(raw_filters, dict) or not isinstance(raw_kinds, list):
+            return "Job payload contains invalid import options"
+        filters = SlrWorkFilters.model_validate(raw_filters).model_dump(
+            by_alias=True, exclude_none=True
+        )
+        if (
+            any(kind not in DEFAULT_ARTIFACT_KINDS for kind in raw_kinds)
+            or not raw_kinds
+            or len(set(raw_kinds)) != len(raw_kinds)
+        ):
+            return "Job payload contains invalid artifact kinds"
+        profile_id = UUID(profile_value) if isinstance(profile_value, str) else None
+    except (ValueError, TypeError):
+        return "Job payload contains invalid import options"
+    try:
         source = article_source_factory(source_name)
-    except ValueError:
+    except ValueError as error:
+        if str(error) == "SLR_API_KEY is required when ARTICLE_SOURCE=slr":
+            return str(error)
         return "Unknown article source"
     # Keep a failed page atomic while leaving the outer transaction available to
     # mark the import job failed. import_page compensates any blobs it wrote.
-    async with session.begin_nested():
-        await import_page(
-            session, source=source, blob_store=blob_store, cursor=cursor, limit=limit, job_id=job.id
+    try:
+        async with session.begin_nested():
+            summary = await import_page(
+                session,
+                source=source,
+                blob_store=blob_store,
+                cursor=cursor,
+                limit=limit,
+                job_id=job.id,
+                options=ImportOptions(filters, tuple(raw_kinds)),
+                profile_id=profile_id,
+            )
+            job.result = {**asdict(summary), "profile_id": str(profile_id) if profile_id else None}
+        logger.info(
+            "Import page done job_id=%s source=%s profile_id=%s filters=%s listed=%s imported=%s "
+            "skipped_license=%s skipped_format=%s skipped_duplicate=%s "
+            "skipped_invalid_content=%s continuation_job_id=%s",
+            job.id,
+            source_name,
+            profile_id,
+            filters,
+            summary.listed,
+            summary.imported,
+            summary.skipped_license,
+            summary.skipped_format,
+            summary.skipped_duplicate,
+            summary.skipped_invalid_content,
+            summary.continuation_job_id,
         )
+    finally:
+        close = getattr(source, "aclose", None)
+        if close is not None:
+            await close()
     return None
 
 
 async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore) -> str | None:
-    license_row = await session.get(License, article.license_id)
+    license_row = await session.scalar(
+        select(License).where(License.id == article.license_id).with_for_update()
+    )
     if license_row is None or not license_row.allows_mining:
         article.ingest_status = "rejected"
         return "Article license does not allow mining"
@@ -126,11 +194,14 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
         article.ingest_status = "failed"
         return "Unsupported article format"
     document = parser.parse(content)
+    policies = load_policy_bundle()
+    section_codes = SectionDetector(policies.section_headings).detect(document.sections)
+    abbreviations = policies.abbreviations.abbreviations
     section_rows: dict[int, ArticleSection] = {}
-    for parsed_section in document.sections:
+    for parsed_section, section_code in zip(document.sections, section_codes, strict=True):
         section_row = ArticleSection(
             article_id=article.id,
-            section_code=detect_section(parsed_section),
+            section_code=section_code,
             heading=parsed_section.heading,
             order=parsed_section.order,
         )
@@ -139,7 +210,7 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
     await session.flush()
     for parsed_section in document.sections:
         section_row = section_rows[parsed_section.order]
-        for span in split_sentences(parsed_section.text):
+        for span in split_sentences(parsed_section.text, abbreviations=abbreviations):
             session.add(
                 Sentence(
                     article_id=article.id,
@@ -151,6 +222,57 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
             )
     article.ingest_status = "ready"
     return None
+
+
+@dataclass(frozen=True)
+class ReingestResult:
+    status: str
+    sentences_before: int = 0
+    sentences_after: int = 0
+    pending_candidates_removed: int = 0
+    error: str | None = None
+
+
+async def reingest_article(
+    session: AsyncSession, article: Article, blob_store: BlobStore
+) -> ReingestResult:
+    """Replace an article's sections and sentences after splitter or detector changes.
+
+    Pending candidates that point at the old sentences are removed with them. Articles
+    with reviewed candidates are left untouched so review history keeps valid sources.
+    The caller owns the transaction.
+    """
+    old_ids = list(
+        await session.scalars(select(Sentence.id).where(Sentence.article_id == article.id))
+    )
+    linked = (
+        list(
+            await session.scalars(
+                select(Candidate).where(Candidate.source_sentence_ids.op("&&")(old_ids))
+            )
+        )
+        if old_ids
+        else []
+    )
+    if any(candidate.status != "pending" for candidate in linked):
+        return ReingestResult(status="skipped_reviewed_candidates", sentences_before=len(old_ids))
+    for candidate in linked:
+        await session.delete(candidate)
+    await session.execute(delete(Sentence).where(Sentence.article_id == article.id))
+    await session.execute(delete(ArticleSection).where(ArticleSection.article_id == article.id))
+    await session.flush()
+    error = await _ingest(session, article, blob_store)
+    await session.flush()
+    after = len(
+        list(await session.scalars(select(Sentence.id).where(Sentence.article_id == article.id)))
+    )
+    return ReingestResult(
+        status="failed" if error else "ready",
+        sentences_before=len(old_ids),
+        sentences_after=after,
+        pending_candidates_removed=len(linked),
+        error=error,
+    )
 
 
 def _mime_from_key(blob_key: str) -> str:
@@ -168,22 +290,63 @@ def _mime_from_key(blob_key: str) -> str:
 async def _mine(session: AsyncSession, article: Article) -> str | None:
     if article.ingest_status != "ready":
         return "Article ingestion is not ready"
-    sentences = list(
-        await session.scalars(
-            select(Sentence).where(Sentence.article_id == article.id).order_by(Sentence.char_start)
+    # Rights must be rechecked before querying any source sentence text.
+    license_row = await session.scalar(
+        select(License).where(License.id == article.license_id).with_for_update()
+    )
+    if license_row is None or not license_row.allows_mining:
+        return "Article license does not allow mining"
+    rows = list(
+        await session.execute(
+            select(Sentence, ArticleSection.section_code)
+            .outerjoin(ArticleSection, Sentence.article_section_id == ArticleSection.id)
+            .where(Sentence.article_id == article.id)
+            .order_by(Sentence.char_start, Sentence.id)
         )
     )
-    if not sentences:
+    if not rows:
         return "Article has no parsed sentences"
-    policy = load_policy_bundle().mining_filter
-    pipeline = MiningPipeline(stages=build_stages(policy=policy))
-    items = pipeline.process(
-        [MiningItem(text=row.text, source_sentence_ids=[row.id]) for row in sentences]
+    policies = load_policy_bundle()
+    pipeline = MiningPipeline(stages=build_stages(policy_bundle=policies))
+    mining_rows: list[MiningItem] = []
+    previous_text: str | None = None
+    previous_section: str | None = None
+    for sentence, code in rows:
+        context = previous_text if code is not None and code == previous_section else None
+        mining_rows.append(
+            MiningItem(
+                text=sentence.text,
+                source_sentence_ids=[sentence.id],
+                section_code=code,
+                char_start=sentence.char_start,
+                previous_text=context,
+            )
+        )
+        previous_text = sentence.text
+        previous_section = code
+    items = pipeline.process(mining_rows)
+    writer = CandidateWriter(
+        _SessionCandidateRepository(session), reporting_policy=policies.reporting_verbs
     )
-    writer = CandidateWriter(_SessionCandidateRepository(session))
     for item in items:
         writer.write(
-            CandidateDraft(canonical_frame=item.text, source_sentence_ids=item.source_sentence_ids)
+            CandidateDraft(
+                canonical_frame=item.text,
+                source_sentence_ids=item.source_sentence_ids,
+                slots=item.slots,
+                confidence=None,
+                epistemic_strength=item.epistemic_strength,
+                cluster_key=item.cluster_key,
+                occurrences=[
+                    {
+                        "sentence_id": str(occurrence.sentence_id),
+                        "sentence_start": occurrence.sentence_start,
+                        "sentence_end": occurrence.sentence_end,
+                        "slot_spans": occurrence.slot_spans,
+                    }
+                    for occurrence in item.occurrences
+                ],
+            )
         )
     return None
 

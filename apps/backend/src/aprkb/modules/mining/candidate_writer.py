@@ -4,14 +4,19 @@ from dataclasses import dataclass, field
 from typing import Protocol
 from uuid import UUID
 
+from aprkb.modules.mining.schemas import SlotDefinition, is_safe_masked_frame
+from aprkb.policies.schemas import ReportingVerbsPolicy
+
 
 @dataclass(frozen=True)
 class CandidateDraft:
     canonical_frame: str
     source_sentence_ids: list[UUID]
-    slots: dict[str, object] = field(default_factory=dict)
+    slots: dict[str, SlotDefinition] = field(default_factory=dict)
     confidence: float | None = None
     epistemic_strength: str | None = None
+    cluster_key: str | None = None
+    occurrences: list[dict[str, object]] = field(default_factory=list)
 
 
 class CandidateRepository(Protocol):
@@ -19,12 +24,39 @@ class CandidateRepository(Protocol):
 
 
 class CandidateWriter:
-    def __init__(self, repository: CandidateRepository | None) -> None:
+    def __init__(
+        self,
+        repository: CandidateRepository | None,
+        *,
+        reporting_policy: ReportingVerbsPolicy | None = None,
+    ) -> None:
         self._repository = repository
+        self._reporting_forms = (
+            reporting_policy.all_forms if reporting_policy is not None else set()
+        )
 
     def write(self, draft: CandidateDraft) -> object:
         if not draft.source_sentence_ids:
             raise ValueError("source_sentence_ids are required for every mined candidate")
+        if not is_safe_masked_frame(draft.canonical_frame, self._reporting_forms):
+            raise ValueError("canonical_frame must be a masked positional frame")
         if self._repository is None:
             raise RuntimeError("Candidate repository is not configured")
+        try:
+            typed_slots = {
+                name: SlotDefinition.model_validate(slot) for name, slot in draft.slots.items()
+            }
+        except (TypeError, ValueError) as error:
+            raise ValueError("slots must contain typed slot definitions") from error
+        if any(not name or len(name) > 16 for name in typed_slots):
+            raise ValueError("slot names must be short positional names")
+        draft = CandidateDraft(
+            canonical_frame=draft.canonical_frame,
+            source_sentence_ids=draft.source_sentence_ids,
+            slots=typed_slots,
+            confidence=None,
+            epistemic_strength=draft.epistemic_strength,
+            cluster_key=draft.cluster_key,
+            occurrences=draft.occurrences,
+        )
         return self._repository.create_candidate(draft)

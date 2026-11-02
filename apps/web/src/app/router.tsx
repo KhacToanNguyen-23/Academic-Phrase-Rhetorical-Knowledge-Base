@@ -5,12 +5,14 @@ import { AdminPage } from "@/features/admin";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { InboxPage } from "@/features/inbox";
+import { GoldPage } from "@/features/gold";
 import { JournalProfilePage } from "@/features/journal-profile";
 import { LibraryPage } from "@/features/library";
 import { OverviewPage } from "@/features/overview";
 import { PlaygroundPage } from "@/features/playground";
 import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
 import { Loading } from "@/shared/ui";
+import { SlrImportPage } from "@/features/slr-import";
 import { useTheme } from "@/shared/lib/theme";
 
 // "/" là dashboard giới thiệu (mở qua logo). UI là bảng điều khiển của bank: người viết dùng qua Writing Engine (API), không qua UI này.
@@ -22,6 +24,8 @@ const NAV = [
   { to: "/inbox", label: "Inbox" },
   { to: "/journals", label: "Journals" },
   { to: "/admin", label: "Admin" },
+  { to: "/import", label: "Import" },
+  { to: "/gold", label: "Gold review" },
 ] as const;
 
 function Shell() {
@@ -117,6 +121,8 @@ const writer = createRoute({ getParentRoute: () => root, path: "/writer", compon
 
 const inbox = createRoute({ getParentRoute: () => root, path: "/inbox", component: InboxPage });
 const admin = createRoute({ getParentRoute: () => root, path: "/admin", component: AdminPage });
+const slrImport = createRoute({ getParentRoute: () => root, path: "/import", component: SlrImportPage });
+const gold = createRoute({ getParentRoute: () => root, path: "/gold", component: GoldPage });
 
 const journals = createRoute({ getParentRoute: () => root, path: "/journals", component: () => <JournalProfilePage /> });
 const journal = createRoute({
@@ -126,7 +132,18 @@ const journal = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: root.addChildren([overview, library, playground, writer, inbox, journals, journal, admin]),
+  routeTree: root.addChildren([
+    overview,
+    library,
+    playground,
+    writer,
+    inbox,
+    journals,
+    journal,
+    admin,
+    slrImport,
+    gold,
+  ]),
 });
 
 declare module "@tanstack/react-router" {

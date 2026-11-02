@@ -1,0 +1,36 @@
+version: 0.1.0
+licenses:
+  - {code: CC0, name: Creative Commons Zero, allows_mining: true, allows_display: true}
+  - {code: CC-BY, name: Creative Commons Attribution, allows_mining: true, allows_display: true}
+  - {code: CC-BY-SA, name: Creative Commons Attribution ShareAlike, allows_mining: true, allows_display: true}
+  - {code: CC-BY-NC, name: Creative Commons Attribution NonCommercial, allows_mining: false, allows_display: false} # TODO(owner, BR-10): chủ dự án quyết định
+  - {code: CC-BY-NC-SA, name: Creative Commons Attribution NonCommercial ShareAlike, allows_mining: false, allows_display: false} # TODO(owner, BR-10): chủ dự án quyết định
+  - {code: CC-BY-ND, name: Creative Commons Attribution NoDerivatives, allows_mining: false, allows_display: false} # TODO(owner, BR-10): chủ dự án quyết định
+  - {code: CC-BY-NC-ND, name: Creative Commons Attribution NonCommercial NoDerivatives, allows_mining: false, allows_display: false} # TODO(owner, BR-10): chủ dự án quyết định
+  - {code: PROPRIETARY, name: Proprietary, allows_mining: false, allows_display: false}
+  # Development only. Assigned to SLR works with no license when SLR_DEV_FALLBACK_LICENSE is set;
+  # the app refuses to start with that setting outside APP_ENV=local/test.
+  # TODO(owner, BR-10): delete articles under this code and the code itself before production.
+  - {code: DEV-UNVERIFIED, name: Development only - rights not verified, allows_mining: true, allows_display: true}
+source_aliases:
+  cc0: CC0
+  https://creativecommons.org/publicdomain/zero/1.0/: CC0
+  cc-by: CC-BY
+  https://creativecommons.org/licenses/by/4.0/: CC-BY
+  cc-by-sa: CC-BY-SA
+  https://creativecommons.org/licenses/by-sa/4.0/: CC-BY-SA
+  cc-by-nc: CC-BY-NC
+  https://creativecommons.org/licenses/by-nc/4.0/: CC-BY-NC
+  cc-by-nc-sa: CC-BY-NC-SA
+  https://creativecommons.org/licenses/by-nc-sa/4.0/: CC-BY-NC-SA
+  cc-by-nd: CC-BY-ND
+  https://creativecommons.org/licenses/by-nd/4.0/: CC-BY-ND
+  cc-by-nc-nd: CC-BY-NC-ND
+  https://creativecommons.org/licenses/by-nc-nd/4.0/: CC-BY-NC-ND
+  proprietary: PROPRIETARY
+# TODO(owner): xác nhận lại bằng dữ liệu SLR thật.
+slr_license_paths:
+  - license
+  - licence
+  - best_oa_location.license
+  - primary_location.license

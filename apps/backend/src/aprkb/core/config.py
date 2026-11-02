@@ -2,9 +2,11 @@
 
 from pathlib import Path
 
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[5] / ".env"
+DEV_APP_ENVS = frozenset({"local", "test"})
 
 
 class Settings(BaseSettings):
@@ -21,6 +23,38 @@ class Settings(BaseSettings):
     # Nguồn bài báo ngoài (ADR-0005): chỉ worker gọi, mặc định "null" (không nhập gì).
     article_source: str = "null"
     article_import_batch_limit: int = 20
+    slr_api_base_url: str = "https://slr-api.hyperdatalab.org/api"
+    slr_api_key: SecretStr | None = None
+    slr_timeout_seconds: float = 30
+    slr_max_retries: int = 3
+    slr_max_download_bytes: int = 50 * 1024 * 1024
+    # Chỉ dùng khi phát triển: gán license này cho bài SLR không có license.
+    # TODO(owner, BR-10): bỏ trước khi lên production; app không khởi động nếu đặt ngoài local/test.
+    slr_dev_fallback_license: str | None = None
+    gold_labeler: str = "null"
+    groq_api_key: SecretStr | None = None
+    groq_allow_external_processing: bool = False
+
+    @field_validator("slr_api_key", "slr_dev_fallback_license", "groq_api_key", mode="before")
+    @classmethod
+    def empty_value_is_missing(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @model_validator(mode="after")
+    def dev_license_fallback_only_in_development(self) -> "Settings":
+        if self.slr_dev_fallback_license is not None and self.app_env not in DEV_APP_ENVS:
+            raise ValueError(
+                "SLR_DEV_FALLBACK_LICENSE is only allowed when APP_ENV is local or test"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def gold_labeler_dev_only(self) -> "Settings":
+        if self.gold_labeler not in {"null", "groq"}:
+            raise ValueError("GOLD_LABELER must be null or groq")
+        if self.gold_labeler == "groq" and self.app_env not in DEV_APP_ENVS:
+            raise ValueError("GOLD_LABELER=groq is only allowed in local or test")
+        return self
 
     grobid_url: str = "http://localhost:8070"
     languagetool_url: str = "http://localhost:8010"

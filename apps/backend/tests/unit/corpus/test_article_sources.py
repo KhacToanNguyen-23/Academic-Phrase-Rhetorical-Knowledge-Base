@@ -4,6 +4,7 @@ import pytest
 
 from aprkb.modules.corpus.sentence_splitter import split_sentences
 from aprkb.modules.corpus.sources import (
+    ImportOptions,
     NullArticleSource,
     build_article_source,
     suffix_for_content_type,
@@ -14,7 +15,7 @@ from aprkb.modules.corpus.sources import (
 async def test_null_source_is_the_default_and_lists_nothing() -> None:
     source = build_article_source("null")
 
-    page = await source.list_articles(cursor=None, limit=10)
+    page = await source.list_articles(cursor=None, limit=10, options=ImportOptions({}, ()))
 
     assert isinstance(source, NullArticleSource)
     assert page.articles == ()

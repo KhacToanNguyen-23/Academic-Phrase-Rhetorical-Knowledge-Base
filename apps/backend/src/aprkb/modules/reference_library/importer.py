@@ -52,6 +52,7 @@ _PAGE_FIELDS = {
 class ParsedEntry:
     heading: str
     heading_position: int
+    block_index: int
     kind: str
     text: str | None
     cells: list[list[str]] | None
@@ -134,7 +135,7 @@ def parse_document(payload: Any, raw: bytes) -> ParsedLibrary:
         current_heading = title
         heading_position = 0
         entry_position = 0
-        for block in blocks:
+        for block_index, block in enumerate(blocks):
             if not isinstance(block, dict) or not {"block_id", "heading", "kind"} <= set(block):
                 raise ValueError("Invalid reference-library block structure")
             _required_text(block["block_id"], "block.block_id")
@@ -158,7 +159,14 @@ def parse_document(payload: Any, raw: bytes) -> ParsedLibrary:
                 value = "\n".join(line.strip() for line in lines)
                 entries.append(
                     ParsedEntry(
-                        heading, heading_position, "note", value, None, value, entry_position
+                        heading,
+                        heading_position,
+                        block_index,
+                        "note",
+                        value,
+                        None,
+                        value,
+                        entry_position,
                     )
                 )
                 entry_position += 1
@@ -180,6 +188,7 @@ def parse_document(payload: Any, raw: bytes) -> ParsedLibrary:
                         ParsedEntry(
                             heading,
                             heading_position,
+                            block_index,
                             "phrase",
                             None,
                             cells,
@@ -262,6 +271,7 @@ async def import_library(
                     category_id=row.id,
                     heading=entry.heading,
                     heading_position=entry.heading_position,
+                    block_index=entry.block_index,
                     kind=entry.kind,
                     text=entry.text,
                     cells=entry.cells,

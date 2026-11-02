@@ -59,6 +59,7 @@ class ReferenceEntry(Base):
     )
     heading: Mapped[str] = mapped_column(Text)
     heading_position: Mapped[int] = mapped_column(Integer)
+    block_index: Mapped[int] = mapped_column(Integer)
     kind: Mapped[str] = mapped_column(String(16))
     text: Mapped[str | None] = mapped_column(Text)
     cells: Mapped[list[list[str]] | None] = mapped_column(JSONB)

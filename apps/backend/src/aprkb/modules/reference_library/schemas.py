@@ -20,6 +20,7 @@ class ReferenceEntryRead(BaseModel):
     id: UUID
     heading: str
     heading_position: int
+    block_index: int
     kind: Literal["note", "phrase"]
     text: str | None
     cells: list[list[str]] | None

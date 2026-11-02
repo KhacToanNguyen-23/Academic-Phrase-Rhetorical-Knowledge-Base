@@ -1361,6 +1361,8 @@ export interface components {
         };
         /** ReferenceEntryRead */
         ReferenceEntryRead: {
+            /** Block Index */
+            block_index: number;
             /** Cells */
             cells: string[][] | null;
             /** Heading */

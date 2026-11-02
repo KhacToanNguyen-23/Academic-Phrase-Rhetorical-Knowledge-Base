@@ -74,6 +74,7 @@ def test_parser_maps_sections_and_functions_and_alternatives() -> None:
     assert library.categories[0].entries[0].text == "Alpha beta gamma"
     assert library.categories[0].entries[1].cells == [["Alpha", "Beta"], ["gamma"], ["delta"]]
     assert library.categories[0].entries[1].search_text == "Alpha Beta gamma delta"
+    assert [entry.block_index for entry in library.categories[0].entries] == [0, 1]
     assert library.table_count == 1
 
 

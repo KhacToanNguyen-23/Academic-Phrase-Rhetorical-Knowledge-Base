@@ -1834,6 +1834,10 @@
       },
       "ReferenceEntryRead": {
         "properties": {
+          "block_index": {
+            "title": "Block Index",
+            "type": "integer"
+          },
           "cells": {
             "anyOf": [
               {
@@ -1892,6 +1896,7 @@
           "id",
           "heading",
           "heading_position",
+          "block_index",
           "kind",
           "text",
           "cells",

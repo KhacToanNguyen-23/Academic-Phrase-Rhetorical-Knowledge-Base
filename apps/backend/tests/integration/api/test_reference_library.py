@@ -44,6 +44,18 @@ def fixture_library():
                 "kind": "table",
                 "rows": [["Alpha", "beta", "gamma"]],
             },
+            {
+                "block_id": "p3",
+                "heading": "Secondary heading",
+                "kind": "paragraph",
+                "lines": ["Delta epsilon"],
+            },
+            {
+                "block_id": "p4",
+                "heading": "Secondary heading",
+                "kind": "table",
+                "rows": [["zeta", "eta"]],
+            },
         ]
         pages.append(
             {
@@ -65,8 +77,8 @@ def fixture_library():
         "status": "quarantined",
         "license_status": "unknown",
         "page_count": 2,
-        "block_count": 4,
-        "table_count": 2,
+        "block_count": 8,
+        "table_count": 4,
         "pages": pages,
     }
     raw = json.dumps(payload).encode()
@@ -111,7 +123,7 @@ async def test_reference_import_replace_purge_and_read_api(api_client, session_f
         assert repeated == counts
         assert await session.scalar(select(func.count()).select_from(ReferenceSource)) == 1
         assert await session.scalar(select(func.count()).select_from(ReferenceCategory)) == 2
-        assert await session.scalar(select(func.count()).select_from(ReferenceEntry)) == 4
+        assert await session.scalar(select(func.count()).select_from(ReferenceEntry)) == 8
         events = list(
             await session.scalars(
                 select(AuditEvent).where(AuditEvent.action == "reference_library.import")
@@ -137,7 +149,11 @@ async def test_reference_import_replace_purge_and_read_api(api_client, session_f
         "Introducing work",
         "Secondary heading",
     ]
-    assert detail.json()["headings"][1]["entries"][0]["cells"] == [["Alpha"], ["beta"], ["gamma"]]
+    secondary_entries = detail.json()["headings"][1]["entries"]
+    assert [entry["kind"] for entry in secondary_entries] == ["phrase", "note", "phrase"]
+    assert [entry["block_index"] for entry in secondary_entries] == [1, 2, 3]
+    assert secondary_entries[0]["cells"] == [["Alpha"], ["beta"], ["gamma"]]
+    assert secondary_entries[2]["cells"] == [["zeta"], ["eta"]]
     hit = await api_client.get("/v1/reference-library/search", params={"q": "Al"}, headers=headers)
     miss = await api_client.get(
         "/v1/reference-library/search", params={"q": "no-match"}, headers=headers

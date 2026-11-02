@@ -45,6 +45,7 @@ def upgrade() -> None:
         sa.Column("category_id", sa.Uuid(), nullable=False),
         sa.Column("heading", sa.Text(), nullable=False),
         sa.Column("heading_position", sa.Integer(), nullable=False),
+        sa.Column("block_index", sa.Integer(), nullable=False),
         sa.Column("kind", sa.String(length=16), nullable=False),
         sa.Column("text", sa.Text(), nullable=True),
         sa.Column("cells", postgresql.JSONB(astext_type=sa.Text()), nullable=True),

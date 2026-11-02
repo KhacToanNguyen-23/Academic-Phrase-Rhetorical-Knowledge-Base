@@ -93,3 +93,35 @@ def test_parser_rejects_invalid_structure(mutate) -> None:
 
     with pytest.raises(ValueError):
         parse_document(data, raw)
+
+
+def test_parser_accepts_optional_extraction_method_and_integer_block_ids() -> None:
+    data = sample_document()
+    for number, page in enumerate(data["pages"], start=1):
+        page["extraction_method"] = "fixture"
+        for block in page["blocks"]:
+            block["block_id"] = number
+    raw = json.dumps(data).encode()
+
+    library = parse_document(json.loads(raw), raw)
+
+    assert [len(category.entries) for category in library.categories] == [2, 1]
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda data: data["pages"][0].update(unexpected="x"),
+        lambda data: data["pages"][0].update(extraction_method=""),
+        lambda data: data["pages"][0]["blocks"][0].update(block_id=True),
+        lambda data: data["pages"][0]["blocks"][0].update(block_id=-1),
+        lambda data: data["pages"][0]["blocks"][0].update(block_id=1.5),
+    ],
+)
+def test_parser_still_rejects_unknown_page_keys_and_bad_block_ids(mutate) -> None:
+    data = sample_document()
+    mutate(data)
+    raw = json.dumps(data).encode()
+
+    with pytest.raises(ValueError):
+        parse_document(data, raw)

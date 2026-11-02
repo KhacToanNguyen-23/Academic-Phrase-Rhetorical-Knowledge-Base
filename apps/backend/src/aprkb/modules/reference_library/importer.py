@@ -33,6 +33,7 @@ _ROOT_FIELDS = {
     "table_count",
     "pages",
 }
+_OPTIONAL_PAGE_FIELDS = {"extraction_method"}
 _PAGE_FIELDS = {
     "title",
     "source_url",
@@ -88,6 +89,14 @@ def _required_text(value: Any, field: str) -> str:
     return value.strip()
 
 
+def _block_id(value: Any) -> None:
+    """Accept a non-empty string or a non-negative integer, as scrapers emit either."""
+    if isinstance(value, bool) or not (
+        (isinstance(value, int) and value >= 0) or (isinstance(value, str) and value.strip())
+    ):
+        raise ValueError("Invalid reference-library field: block.block_id")
+
+
 def _sections() -> set[str]:
     data = yaml.safe_load((_MODULE_DIR / "categories.yaml").read_text(encoding="utf-8"))
     sections = data.get("sections") if isinstance(data, dict) else None
@@ -120,8 +129,14 @@ def parse_document(payload: Any, raw: bytes) -> ParsedLibrary:
     table_total = 0
     section_titles = _sections()
     for page_position, page in enumerate(pages):
-        if not isinstance(page, dict) or set(page) != _PAGE_FIELDS:
+        if (
+            not isinstance(page, dict)
+            or not set(page) >= _PAGE_FIELDS
+            or not set(page) <= _PAGE_FIELDS | _OPTIONAL_PAGE_FIELDS
+        ):
             raise ValueError("Invalid reference-library page structure")
+        if "extraction_method" in page:
+            _required_text(page["extraction_method"], "page.extraction_method")
         title = _required_text(page["title"], "page.title")
         page_url = _required_text(page["source_url"], "page.source_url")
         for field in _PAGE_FIELDS - {"title", "source_url", "blocks"}:
@@ -138,7 +153,7 @@ def parse_document(payload: Any, raw: bytes) -> ParsedLibrary:
         for block_index, block in enumerate(blocks):
             if not isinstance(block, dict) or not {"block_id", "heading", "kind"} <= set(block):
                 raise ValueError("Invalid reference-library block structure")
-            _required_text(block["block_id"], "block.block_id")
+            _block_id(block["block_id"])
             heading = _required_text(block["heading"], "block.heading")
             kind = block["kind"]
             if kind not in {"paragraph", "table"}:

@@ -18,6 +18,11 @@ test("writer uses PostgreSQL-backed search, render, validate and feedback", asyn
   });
 
   await page.goto("/writer");
+  await expect(page.getByRole("table", { name: "Recommended patterns" })).toBeVisible();
+  await expect(page.getByText("Select an evidence level to hide patterns that exceed it.")).toBeVisible();
+  await page.getByLabel("Evidence level").selectOption("single_study");
+  await page.getByRole("button", { name: "Find patterns" }).click();
+  await expect(page.getByText(/samples hidden because they exceed the selected evidence level/)).toBeVisible();
   const genre = page.getByLabel("Article genre");
   const section = page.getByLabel("Manuscript section");
   const intent = page.getByLabel("Rhetorical intent");
@@ -35,8 +40,8 @@ test("writer uses PostgreSQL-backed search, render, validate and feedback", asyn
   await page.getByLabel("Evidence level").selectOption("multiple_consistent");
   await page.getByRole("button", { name: "Find patterns" }).click();
   await expect(page.getByText("The role of {topic} in {context} remains underexplored.")).toBeVisible();
-  await expect(page.getByLabel("Score criteria").first().getByText("Evidence alignment", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Score criteria").first().getByText("—", { exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Recommended patterns" }).getByText("Evidence alignment", { exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Recommended patterns" }).getByText("—", { exact: true })).toBeVisible();
   await expect(page.getByText("Score breakdown:")).toHaveCount(0);
 
   await page.getByRole("textbox", { name: /^\{topic\}/ }).fill("language models");

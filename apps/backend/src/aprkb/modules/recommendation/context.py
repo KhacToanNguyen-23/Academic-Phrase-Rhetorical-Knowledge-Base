@@ -6,8 +6,8 @@ from uuid import UUID
 
 @dataclass(frozen=True)
 class RecommendationContext:
-    intent_code: str
-    section_code: str
+    intent_code: str | None
+    section_code: str | None
     genre_code: str | None
     journal_id: UUID | None
     claim_type: str | None

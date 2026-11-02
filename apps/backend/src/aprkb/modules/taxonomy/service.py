@@ -80,9 +80,9 @@ async def get_published_tree(session: AsyncSession) -> dict[str, object] | None:
 
 
 async def is_genre_section_compatible(
-    session: AsyncSession, *, genre_code: str | None, section_code: str
+    session: AsyncSession, *, genre_code: str | None, section_code: str | None
 ) -> bool:
-    if genre_code is None:
+    if genre_code is None or section_code is None:
         return False
     release = await repository.published_release(session)
     if release is None:

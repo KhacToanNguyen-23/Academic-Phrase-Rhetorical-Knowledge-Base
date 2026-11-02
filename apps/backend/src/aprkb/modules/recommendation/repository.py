@@ -31,7 +31,7 @@ type PatternRow = tuple[
 async def load_pattern_rows(
     session: AsyncSession,
     *,
-    intent_code: str,
+    intent_code: str | None,
     query: str | None = None,
     move_code: str | None = None,
     claim_type: str | None = None,
@@ -55,9 +55,10 @@ async def load_pattern_rows(
         .outerjoin(EvidenceProvenance, EvidenceProvenance.pattern_version_id == PatternVersion.id)
         .outerjoin(License, License.id == EvidenceProvenance.license_id)
         .outerjoin(Article, Article.id == EvidenceProvenance.article_id)
-        .where(Intent.code == intent_code)
         .order_by(PhrasePattern.created_at, PhrasePattern.id)
     )
+    if intent_code:
+        statement = statement.where(Intent.code == intent_code)
     if query:
         terms = set(re.findall(r"[^\W_]+", query.casefold(), flags=re.UNICODE))
         if not terms:

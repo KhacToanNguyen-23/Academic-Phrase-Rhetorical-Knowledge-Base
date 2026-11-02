@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { PageHeader } from "@/shared/ui";
 import { liveApi, type RecommendationRequest } from "../live/api";
@@ -21,6 +21,7 @@ export function OnlineWriterPage() {
   const [renderSnapshot, setRenderSnapshot] = useState("");
   const [validationSnapshot, setValidationSnapshot] = useState("");
   const epoch = useRef(0);
+  const initialSearchStarted = useRef(false);
 
   const taxonomy = useQuery({
     queryKey: ["writer", "taxonomy"],
@@ -75,6 +76,13 @@ export function OnlineWriterPage() {
     }),
   });
 
+  useEffect(() => {
+    if (taxonomy.data && options.data && !initialSearchStarted.current) {
+      initialSearchStarted.current = true;
+      search();
+    }
+  }, [taxonomy.data, options.data]);
+
   const canCopy = !!activeValidation && !!activeRender &&
     activeValidation.severity !== "block" && activeRender.unfilled_slots.length === 0;
 
@@ -87,19 +95,18 @@ export function OnlineWriterPage() {
   }
 
   function search() {
-    // FR-07.1 sends the selected writing context; downstream hard gates must not be relaxed to fill results.
-    if (!context.section || !context.intent || !context.genre || !context.claimType || !context.evidenceLevel) return;
+    // CR-01: initial empty context lists every eligible pattern; selected fields only narrow it.
     epoch.current += 1;
     setSearchSnapshot(JSON.stringify(context)); setRenderSnapshot(""); setValidationSnapshot("");
     setPicked(""); setSlots({}); setDraft(""); setCopyStatus("");
     recommendation.reset();
     render.reset(); validation.reset(); feedback.reset();
     recommendation.mutate({ epoch: epoch.current, request: {
-      section: context.section,
-      intent: context.intent,
-      genre: context.genre,
-      claim_type: context.claimType,
-      evidence_level: context.evidenceLevel,
+      section: context.section || null,
+      intent: context.intent || null,
+      genre: context.genre || null,
+      claim_type: context.claimType || null,
+      evidence_level: context.evidenceLevel || null,
       journal_id: context.journalId || null,
       query: context.query.trim() || null,
       limit: 10,

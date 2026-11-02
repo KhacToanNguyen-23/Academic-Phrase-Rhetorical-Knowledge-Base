@@ -87,6 +87,18 @@ def test_each_hard_gate_has_a_fail_case(context, evidence_policy, overrides, exp
     assert result.reason
 
 
+def test_evidence_gate_is_inactive_until_evidence_filter_is_selected(context, evidence_policy):
+    gate = next(
+        gate
+        for gate in build_gates(evidence_policy=evidence_policy)
+        if type(gate).__name__ == "EvidenceGate"
+    )
+
+    assert gate.check(
+        pattern(epistemic_strength="absolute"), replace(context, evidence_level=None)
+    ).passed
+
+
 def test_aggregator_renormalizes_missing_scorers_and_keeps_null_breakdown():
     total, breakdown = aggregate_scores(
         scores={"intent": 1.0, "discipline": None, "evidence": 0.5},

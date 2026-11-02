@@ -853,7 +853,7 @@ export interface components {
             /** Genre */
             genre?: string | null;
             /** Intent */
-            intent: string;
+            intent?: string | null;
             /** Journal Id */
             journal_id?: string | null;
             /**
@@ -866,7 +866,7 @@ export interface components {
             /** Query */
             query?: string | null;
             /** Section */
-            section: string;
+            section?: string | null;
         };
         /** RecommendationResponse */
         RecommendationResponse: {

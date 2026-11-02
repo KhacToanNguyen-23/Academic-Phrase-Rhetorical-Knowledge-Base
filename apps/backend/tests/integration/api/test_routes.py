@@ -167,6 +167,38 @@ async def test_genre_section_relationship_rejects_mismatch_and_keeps_empty_resul
 
 
 @pytest.mark.asyncio
+async def test_recommendations_default_to_approved_patterns_and_count_evidence_hidden(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "writer table client")
+    headers = {"X-API-Key": key}
+
+    initial = await api_client.post("/v1/recommendations", headers=headers, json={})
+    assert initial.status_code == 200
+    assert initial.json()["items"]
+    assert all(item["source_type"] in {"authored", "mined"} for item in initial.json()["items"])
+    assert all(
+        "There is limited evidence about" not in item["canonical_frame"]
+        for item in initial.json()["items"]
+    )
+    assert initial.json()["excluded"].get("GATE_APPROVAL", 0) > 0
+    assert all(
+        "The findings may relate to" not in item["canonical_frame"]
+        for item in initial.json()["items"]
+    )
+    assert any("Evidence level not selected" in warning for warning in initial.json()["warnings"])
+
+    filtered = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={"evidence_level": "single_study"},
+    )
+    assert filtered.status_code == 200
+    assert filtered.json()["excluded"].get("GATE_EVIDENCE", 0) > 0
+
+
+@pytest.mark.asyncio
 async def test_patterns_list_detail_history_create_and_append_version(api_client, session_factory):
     await run_seed_in_session(session_factory)
     _, key = await create_key(session_factory, "curator", "pattern curator")
@@ -629,7 +661,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
     body = response.json()
     assert body["items"]
     assert all(
-        item["explanations"] == ["Passed intent and section gates for INTRO_GAP_INDICATE"]
+        item["explanations"] == ["Passed configured intent and section gates"]
         for item in body["items"]
     )
     frames = {item["canonical_frame"] for item in body["items"]}

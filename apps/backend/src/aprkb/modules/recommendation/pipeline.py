@@ -75,9 +75,7 @@ class RecommendationPipeline:
                         score=score,
                         breakdown=breakdown,
                         fallback_tier=tier,
-                        explanations=(
-                            f"Passed intent and section gates for {context.intent_code}",
-                        ),
+                        explanations=("Passed configured intent and section gates",),
                     )
                 )
             if len(accepted) >= context.limit:

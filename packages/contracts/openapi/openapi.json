@@ -1048,8 +1048,15 @@
             "title": "Genre"
           },
           "intent": {
-            "title": "Intent",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent"
           },
           "journal_id": {
             "anyOf": [
@@ -1094,14 +1101,17 @@
             "title": "Query"
           },
           "section": {
-            "title": "Section",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
           }
         },
-        "required": [
-          "intent",
-          "section"
-        ],
         "title": "RecommendationRequest",
         "type": "object"
       },

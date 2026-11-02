@@ -61,8 +61,11 @@ System integrations continue to authenticate with `X-API-Key`. `GET /v1/auth/me`
 
 ## Current recommendation search
 
-`POST /v1/recommendations` accepts `intent`, `section`, optional `query`, `move`,
-`claim_type`, `genre`, `journal_id`, and evidence fields. `query` is split into
+`POST /v1/recommendations` accepts optional `intent`, `section`, `query`, `move`,
+`claim_type`, `genre`, `journal_id`, and evidence filters. An empty context returns
+approved, renderable examples. Evidence strength is not filtered until an evidence
+level is selected; rejected examples are counted under `excluded.GATE_EVIDENCE`.
+`query` is split into
 case-insensitive word terms, searches for any matching term, and ranks by
 matched-term coverage; punctuation-only queries return no results. Recommendation
 logs keep only a SHA-256 hash of the query, never its raw text.

@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 class RecommendationRequest(BaseModel):
     # FR-07.1 / System Design §5.1: optional context fields are recorded and
     # handled through explicit fallback.
-    intent: str
-    section: str
+    intent: str | None = None
+    section: str | None = None
     query: str | None = Field(default=None, max_length=500)
     move: str | None = None
     genre: str | None = None

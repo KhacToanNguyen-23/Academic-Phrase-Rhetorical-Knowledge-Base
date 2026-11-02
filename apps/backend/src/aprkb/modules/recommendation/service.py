@@ -59,8 +59,12 @@ async def recommend(
     policy_bundle: PolicyBundle,
 ) -> dict[str, object]:
     """FR-07.1–.4: retrieve, gate, rank and log suggestions with explanation/fallback (BR-08)."""
-    if not await taxonomy_service.is_genre_section_compatible(
-        session, genre_code=payload.genre, section_code=payload.section
+    if (
+        payload.genre is not None
+        and payload.section is not None
+        and not await taxonomy_service.is_genre_section_compatible(
+            session, genre_code=payload.genre, section_code=payload.section
+        )
     ):
         raise HTTPException(status_code=422, detail="Genre and section are not compatible")
     try:
@@ -107,7 +111,7 @@ async def recommend(
             article = None
         source_type = provenance.source_type if provenance else "unknown"
         allowed_genres = tuple(usage.allowed_genres) if usage else ()
-        if allowed_genres and payload.genre not in allowed_genres:
+        if payload.genre and allowed_genres and payload.genre not in allowed_genres:
             continue
         # A genre match alone is not evidence of journal-specific suitability.
         tier = "generic_genre"
@@ -117,7 +121,7 @@ async def recommend(
             PatternView(
                 pattern_version_id=version.id,
                 status=pattern.status,
-                intent_code=payload.intent,
+                intent_code=_intent.code,
                 canonical_frame=version.canonical_frame,
                 claim_type=version.claim_type,
                 epistemic_strength=version.epistemic_strength,
@@ -184,6 +188,8 @@ async def recommend(
     taxonomy_release = await taxonomy_repository.published_release(session)
     versions["taxonomy_release"] = taxonomy_release.version if taxonomy_release else "unpublished"
     warnings = []
+    if payload.evidence_level is None:
+        warnings.append("Evidence level not selected; candidate strength was not filtered")
     if payload.discipline:
         warnings.append("Discipline affinity is unavailable and was not used for ranking")
     if payload.journal_id is not None and guideline_policy.has_mandatory_rules(payload.journal_id):

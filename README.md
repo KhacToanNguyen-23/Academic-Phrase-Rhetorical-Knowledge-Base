@@ -27,7 +27,7 @@ if (!(Test-Path .env)) { Copy-Item .env.example .env }
 
 `.\dev.ps1 be` starts PostgreSQL in Docker, applies migrations and seed data, then runs the backend locally with reload and logs in that terminal. In a second terminal, run `.\dev.ps1 fe` to start the frontend locally with Vite logs and hot reload; it installs npm dependencies automatically the first time. Open <http://localhost:5173> for the web app or <http://localhost:8000/docs> for the API. Stop each terminal with `Ctrl+C`; run `.\dev.ps1 down` to stop PostgreSQL while preserving its named volume. `make bootstrap-key` creates the initial admin API key; keep it private.
 
-Vite proxies `/v1` to `http://localhost:8000` by default. If the API runs on another local port, set `VITE_API_PROXY_TARGET` before starting `.\dev.ps1 fe`, for example `http://127.0.0.1:8001`.
+Vite proxies `/v1` to `http://localhost:8000` by default. If the API runs on another local port, set `VITE_API_PROXY_TARGET` before starting `.\dev.ps1 fe`, for example `http://127.0.0.1:8001`. If port 5173 is already in use, set `VITE_PORT` (for example `5174`) before starting the frontend.
 
 If you need to process uploaded articles, run `.\dev.ps1 worker` in a third terminal.
 

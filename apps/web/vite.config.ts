@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
       alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
     },
     server: {
-      port: 5173,
+      port: Number(env.VITE_PORT) || 5173,
       proxy: { "/v1": env.VITE_API_PROXY_TARGET || "http://localhost:8000" },
     },
   };

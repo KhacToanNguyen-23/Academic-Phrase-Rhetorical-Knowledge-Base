@@ -56,7 +56,7 @@ Mã nguồn: `apps/backend/src/aprkb/worker/handlers.py` (`_ingest`), `modules/c
 | [ ] | 2.2c Parser PDF | — | Stub, `TODO(owner, FR-07)`: kết nối GROBID |
 | [ ] | 2.2d Parser JATS XML | — | Stub |
 | [ ] | 2.3 `detect_section`: gắn loại section (Introduction/Methods/Results/Discussion) | `article_sections.section_code` | Stub, luôn trả `None`. Đề xuất: ánh xạ tiêu đề section qua YAML policy |
-| [~] | 2.4 `split_sentences`: tách câu bằng regex, giữ vị trí ký tự | `sentences` | **Cắt sai sau chữ viết tắt**: `e.g.`, `i.e.`, `et al.`, `Fig.`, `Dr.` |
+| [~] | 2.4 `split_sentences`: tách câu theo ngữ cảnh dấu câu và chữ viết tắt, giữ vị trí ký tự | `sentences` | Bổ sung mock regression cho `e.g.`, `i.e.`, `et al.`, `Fig.`, `Dr.`, dấu ngoặc/nháy và offsets. Vẫn là heuristic cho văn bản học thuật tiếng Anh, chưa đo trên gold |
 | [x] | 2.5 Đặt `ingest_status = ready` | `articles` | |
 
 ## 3. Mining (job `mine_article`)
@@ -123,3 +123,18 @@ Các bước 1–4 dưới đây chạy được bằng dữ liệu mock, không
 6. `frame_normalizer` → `clusterer` → `dedup_matcher` (3.5–3.7).
 7. Khi có tài liệu API: HTTP adapter (1.2), PDF parser nếu đối tác trả PDF (2.2c).
 8. Khi có bài báo thật: bộ gold và đo chất lượng (mục 6), rồi AI hỗ trợ duyệt (4.6).
+
+## Phạm vi sửa tách câu (2026-11-02)
+
+Task tách câu nằm ở bước 2.4, trước mining; không thay thế bước 3.4 tạo
+khung phrase. Kiểm thử bằng văn bản mock tự viết, giữ nguyên `SentenceSpan`
+và offsets để worker tiếp tục truy nguồn tới bài báo. Không cần tải model NLP.
+
+Theo phân công của nhóm, bộ gold do phần slot abstractor phụ trách; không tạo
+bộ gold mới trong task này. Checkout hiện tại chỉ có ví dụ synthetic trong
+`eval/mining/`, vì vậy mock test không được coi là điểm chất lượng trên gold.
+
+Giới hạn: các chữ viết tắt dạng tiền tố (`Dr.`, `Fig.`, `e.g.`) được giữ
+liền với phần sau; chữ cái đầu/từ viết tắt như `U.S.` dùng một danh sách
+hữu hạn các từ mở đầu câu để nhận diện ranh giới. Những ngữ cảnh mơ hồ ngoài
+các quy tắc này vẫn cần đối chiếu trên dữ liệu thật trước khi mở rộng.

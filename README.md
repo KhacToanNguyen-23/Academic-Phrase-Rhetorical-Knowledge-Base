@@ -13,23 +13,23 @@ apps/backend (FastAPI modular monolith)
   corpus blobs ── local ./data/blobs via BlobStore
 ```
 
-The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker runs locally with `make worker`; no Redis or Celery service is used. Text ingestion is implemented; JATS and PDF parsers remain explicit stubs. OpenAlex is optional and inactive. See [ADR-0001](doc/adr/0001-modular-monolith.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
+The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The default local workflow runs PostgreSQL in Docker and the backend/frontend on the host; run the worker separately with `make worker` when processing jobs. No Redis or Celery service is used. Text and Markdown ingestion are implemented; JATS and PDF parsers remain explicit stubs. Articles can also be imported from an external article API through the `import_articles` worker job (`POST /v1/admin/corpus/imports`); mining rights are checked on listed metadata before any content is downloaded. Only the `null` source is registered until the real HTTP adapter is written (`ARTICLE_SOURCE`). OpenAlex is not used. See [ADR-0001](doc/adr/0001-modular-monolith.md), [ADR-0005](doc/adr/0005-external-article-source.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
 
 ## Quick start
 
-Requirements: Docker Desktop with Docker Compose v2 `--wait` support, Python 3.12, `uv`, and Node.js/npm. The default workflow runs PostgreSQL in Docker and the backend/frontend on the host. On Windows, use the PowerShell helper; on macOS/Linux, GNU Make targets are available. Set a local `POSTGRES_PASSWORD` in `.env`; Compose configures the backend's database connection automatically. Its ports bind to `127.0.0.1` only.
+Requirements: Docker Desktop with Docker Compose v2 `--wait` support, Python 3.12, `uv`, Node.js/npm, and PowerShell on Windows (GNU Make on macOS/Linux). The default workflow runs PostgreSQL in Docker and the backend/frontend on the host. Set `POSTGRES_PASSWORD` and the matching password in `DATABASE_URL` in `.env`; Compose uses the former and the host backend reads the latter. PostgreSQL binds to `127.0.0.1` only.
 
 ```powershell
 if (!(Test-Path .env)) { Copy-Item .env.example .env }
-# Edit .env and set a local POSTGRES_PASSWORD first.
+# Set POSTGRES_PASSWORD and use the same password in DATABASE_URL.
 .\dev.ps1 be
 ```
 
-`.\dev.ps1 be` starts PostgreSQL in Docker, applies migrations and seed data, then runs the backend locally with reload and logs in that terminal. In a second terminal, run `.\dev.ps1 fe` to start the frontend locally with Vite logs and hot reload; npm dependencies install automatically the first time. Open <http://localhost:5173/writer> for the web app or <http://localhost:8000/docs> for the API. Stop both terminals with `Ctrl+C`; run `.\dev.ps1 down` to stop PostgreSQL while preserving its data volume. To create the initial admin key, run `make bootstrap-key` or `uv run --directory apps/backend python -m aprkb.cli bootstrap-key` and keep the printed key private.
+`.\dev.ps1 be` starts PostgreSQL in Docker, applies migrations and seed data, then runs the backend locally with reload and logs in that terminal. In a second terminal, run `.\dev.ps1 fe` to start the frontend locally with Vite logs and hot reload; it installs npm dependencies automatically the first time. Open <http://localhost:5173> for the web app or <http://localhost:8000/docs> for the API. Stop each terminal with `Ctrl+C`; run `.\dev.ps1 down` to stop PostgreSQL while preserving its named volume. `make bootstrap-key` creates the initial admin API key; keep it private.
 
 If you need to process uploaded articles, run `.\dev.ps1 worker` in a third terminal.
 
-For backend checks on the host, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`; the test fixture creates and removes isolated schemas there and never migrates the application's public schema. Set it to the same local password and host port used by Compose, then run `make check`.
+For backend checks, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`. The test fixture creates and removes isolated schemas there and never migrates the application's public schema. Use the same local password and host port as `DATABASE_URL`, then run `make check`.
 
 Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker.
 
@@ -56,12 +56,10 @@ With `APP_ENV=local`, the writer connects automatically without an API key; the 
 | `make contracts` | Export OpenAPI and regenerate frontend types |
 | `make web-install` / `make web` / `make fe` | Install frontend dependencies / start the frontend dev server |
 | `.\dev.ps1 be` / `fe` / `worker` / `down` | PowerShell shortcuts for the local development workflow |
-| `docker compose up --wait postgres` | Start PostgreSQL in Docker |
-| `docker compose down` | Stop PostgreSQL while preserving its data volume |
 
 ## Continuous integration
 
-GitHub Actions runs on pushes to `main` and pull requests. The backend job checks the generated OpenAPI contract, Ruff lint/format, mypy, and pytest against an ephemeral PostgreSQL/pgvector service. The frontend job installs from the pnpm lockfile, checks generated API types, runs TypeScript checks, and builds the app. CI uses a disposable test database and needs no repository secrets.
+GitHub Actions runs on pushes to any branch and pull requests. The backend job checks the generated OpenAPI contract, Ruff lint/format, mypy, and pytest against an ephemeral PostgreSQL/pgvector service. The frontend job installs from the pnpm lockfile, checks generated API types, runs TypeScript checks, and builds the app. CI uses a disposable test database and needs no repository secrets.
 
 ## PRD traceability
 

@@ -1,6 +1,6 @@
 # ADR-0003: OpenAlex là adapter tùy chọn, bất đồng bộ
 
-- Trạng thái: Accepted
+- Trạng thái: Superseded bởi [ADR-0005](0005-external-article-source.md)
 - Ngày: 2026-10-29
 
 ## Bối cảnh

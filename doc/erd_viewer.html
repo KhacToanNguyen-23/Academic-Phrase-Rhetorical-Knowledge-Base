@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>AP-RKB - Sơ đồ ERD Cơ sở dữ liệu</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0;
+      color: #0f172a;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+    }
+    button {
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      cursor: pointer;
+      background: #ffffff;
+      color: #334155;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+    button.primary {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
+    button.primary:hover {
+      background: #1d4ed8;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+      overflow: auto;
+      text-align: center;
+    }
+    #erd-wrapper svg {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>AP-RKB Database Schema - Entity-Relationship Diagram</h1>
+      <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">28 bảng dữ liệu phân bổ trên 6 domain cốt lõi</p>
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="exportPNG()">📥 Tải ảnh PNG chất lượng cao</button>
+      <button onclick="exportSVG()">📥 Tải file vector SVG</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="erd-wrapper" class="mermaid">
+erDiagram
+    api_clients {
+        uuid id PK
+        varchar_255 name
+        varchar_255 key_hash
+        varchar_32 key_prefix
+        varchar_16 role
+        boolean is_active
+        timestamptz created_at
+        uuid created_by FK
+        timestamptz updated_at
+    }
+
+    audit_events {
+        uuid id PK
+        uuid actor_id FK
+        varchar_128 action
+        varchar_128 entity_type
+        uuid entity_id
+        jsonb before
+        jsonb after
+        varchar_64 request_id
+        timestamptz created_at
+    }
+
+    licenses {
+        uuid id PK
+        varchar_64 code
+        varchar_255 name
+        boolean allows_mining
+        boolean allows_display
+        timestamptz created_at
+    }
+
+    journal_profiles {
+        uuid id PK
+        varchar_255 name
+        varchar_16 issn
+        varchar_255 publisher
+        varchar_255 field
+        varchar_255 subfield
+        uuid_array similar_journal_ids
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    guideline_rules {
+        uuid id PK
+        uuid journal_id FK
+        varchar_64 rule_type
+        jsonb payload
+        boolean is_mandatory
+        timestamptz active_from
+        timestamptz active_to
+        timestamptz created_at
+    }
+
+    journal_fingerprints {
+        uuid id PK
+        uuid journal_id FK
+        uuid genre_id FK
+        vector_384 vector
+        timestamptz computed_at
+        timestamptz created_at
+    }
+
+    articles {
+        uuid id PK
+        varchar_255 doi
+        text title
+        uuid journal_id FK
+        uuid genre_id FK
+        uuid license_id FK
+        varchar_1024 blob_key
+        varchar_32 ingest_status
+        varchar_64 source
+        varchar_255 external_id
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    article_sections {
+        uuid id PK
+        uuid article_id FK
+        varchar_64 section_code
+        text heading
+        integer order
+        timestamptz created_at
+    }
+
+    sentences {
+        uuid id PK
+        uuid article_id FK
+        uuid article_section_id FK
+        text text
+        integer char_start
+        integer char_end
+        vector_384 embedding
+        timestamptz created_at
+    }
+
+    taxonomy_releases {
+        uuid id PK
+        varchar_32 version
+        varchar_16 status
+        timestamptz published_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    article_genres {
+        uuid id PK
+        varchar_64 code
+        varchar_255 name
+        timestamptz created_at
+    }
+
+    sections {
+        uuid id PK
+        varchar_64 code
+        varchar_255 name
+        integer order
+        uuid release_id FK
+        timestamptz created_at
+    }
+
+    moves {
+        uuid id PK
+        varchar_64 code
+        varchar_255 name
+        uuid section_id FK
+        timestamptz created_at
+    }
+
+    steps {
+        uuid id PK
+        varchar_64 code
+        varchar_255 name
+        uuid move_id FK
+        timestamptz created_at
+    }
+
+    intents {
+        uuid id PK
+        varchar_64 code
+        varchar_255 name
+        uuid step_id FK
+        text description
+        timestamptz created_at
+    }
+
+    phrase_patterns {
+        uuid id PK
+        uuid intent_id FK
+        varchar_16 status
+        uuid current_version_id FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    pattern_versions {
+        uuid id PK
+        uuid pattern_id FK
+        integer version_no
+        text canonical_frame
+        jsonb slots
+        varchar_32 epistemic_strength
+        varchar_64 claim_type
+        text change_note
+        timestamptz created_at
+    }
+
+    phrase_variants {
+        uuid id PK
+        uuid pattern_version_id FK
+        text text
+        varchar_64 register
+        timestamptz created_at
+    }
+
+    usage_constraints {
+        uuid id PK
+        uuid pattern_version_id FK
+        varchar_64 evidence_min
+        jsonb forbidden_contexts
+        jsonb allowed_sections
+        jsonb allowed_genres
+        timestamptz created_at
+    }
+
+    evidence_provenances {
+        uuid id PK
+        uuid pattern_version_id FK
+        varchar_16 source_type
+        uuid article_id FK
+        uuid_array sentence_ids
+        uuid license_id FK
+        timestamptz created_at
+    }
+
+    discipline_affinities {
+        uuid id PK
+        uuid pattern_version_id FK
+        varchar_128 discipline_code
+        float score
+        timestamptz created_at
+    }
+
+    candidates {
+        uuid id PK
+        text canonical_frame
+        jsonb slots
+        uuid intent_id FK
+        float confidence
+        varchar_32 epistemic_strength
+        uuid_array source_sentence_ids
+        varchar_255 cluster_key
+        uuid matched_pattern_id FK
+        varchar_16 status
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    jobs {
+        uuid id PK
+        varchar_64 type
+        jsonb payload
+        varchar_16 status
+        integer attempts
+        timestamptz locked_at
+        text error
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    review_decisions {
+        uuid id PK
+        uuid candidate_id FK
+        uuid pattern_version_id FK
+        smallint round
+        varchar_32 decision
+        uuid reviewer_id FK
+        text comment
+        timestamptz created_at
+    }
+
+    feedback {
+        uuid id PK
+        uuid client_id FK
+        uuid recommendation_id
+        uuid pattern_version_id FK
+        varchar_16 signal
+        jsonb payload
+        timestamptz created_at
+    }
+
+    overrides {
+        uuid id PK
+        uuid client_id FK
+        uuid validation_id
+        varchar_32 rule_code
+        text rationale
+        timestamptz created_at
+    }
+
+    recommendation_logs {
+        uuid id PK
+        jsonb request
+        jsonb results
+        jsonb policy_versions
+        timestamptz created_at
+    }
+
+    ref_enums {
+        uuid id PK
+        varchar_64 group
+        varchar_64 code
+        varchar_255 label
+        integer order
+        timestamptz created_at
+    }
+
+    api_clients ||--o{ audit_events : actor
+    licenses ||--o{ articles : licensed_under
+    journal_profiles |o--o{ articles : publishes
+    article_genres |o--o{ articles : categorized_as
+    journal_profiles ||--o{ guideline_rules : has_rules
+    journal_profiles ||--o{ journal_fingerprints : has_fingerprint
+    article_genres ||--o{ journal_fingerprints : fingerprint_genre
+    articles ||--o{ article_sections : divided_into
+    articles ||--o{ sentences : contains
+    article_sections |o--o{ sentences : organizes
+
+    taxonomy_releases ||--o{ sections : defines
+    sections ||--o{ moves : contains
+    moves ||--o{ steps : contains
+    steps ||--o{ intents : contains
+
+    intents ||--o{ phrase_patterns : realized_by
+    phrase_patterns ||--|{ pattern_versions : versions
+    phrase_patterns |o--o| pattern_versions : points_to_current
+    pattern_versions ||--o{ phrase_variants : surface_variants
+    pattern_versions ||--o| usage_constraints : governed_by
+    pattern_versions ||--o{ discipline_affinities : applies_to
+    pattern_versions ||--o{ evidence_provenances : grounded_in
+    articles |o--o{ evidence_provenances : evidence_source
+    licenses |o--o{ evidence_provenances : evidence_license
+
+    intents |o--o{ candidates : candidate_intent
+    phrase_patterns |o--o{ candidates : matched_against
+    candidates |o--o{ review_decisions : candidate_target
+    pattern_versions |o--o{ review_decisions : pattern_target
+    api_clients ||--o{ review_decisions : reviewed_by
+
+    api_clients ||--o{ feedback : sent_by
+    pattern_versions ||--o{ feedback : evaluated_pattern
+    api_clients ||--o{ overrides : authorized_by
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+
+    function getSVGElement() {
+      return document.querySelector('#erd-wrapper svg');
+    }
+
+    function exportSVG() {
+      const svg = getSVGElement();
+      if (!svg) {
+        alert('Sơ đồ đang được vẽ, vui lòng thử lại sau giây lát!');
+        return;
+      }
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'AP-RKB_ERD.svg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportPNG() {
+      const svg = getSVGElement();
+      if (!svg) {
+        alert('Sơ đồ đang được vẽ, vui lòng thử lại sau giây lát!');
+        return;
+      }
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = function() {
+        const bbox = svg.getBoundingClientRect();
+        // Scale up for high resolution
+        const scale = 2;
+        canvas.width = (bbox.width || 1200) * scale;
+        canvas.height = (bbox.height || 1600) * scale;
+        ctx.scale(scale, scale);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+
+        URL.revokeObjectURL(url);
+        const pngUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = pngUrl;
+        link.download = 'AP-RKB_ERD.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+      img.src = url;
+    }
+  </script>
+</body>
+</html>

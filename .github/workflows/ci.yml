@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
 permissions:
@@ -28,6 +27,7 @@ jobs:
     env:
       DATABASE_URL: postgresql+asyncpg://aprkb:postgres@localhost:5432/aprkb_test
       TEST_DATABASE_URL: postgresql+asyncpg://aprkb:postgres@localhost:5432/aprkb_test
+      ARTICLE_SOURCE: "null"
       OPENALEX_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4

@@ -101,6 +101,7 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/admin/review-queue/{id}/decisions", "post"),
         ("/v1/admin/corpus/articles", "post"),
         ("/v1/admin/corpus/articles/{id}/mine", "post"),
+        ("/v1/admin/corpus/imports", "post"),
         ("/v1/admin/jobs/{id}", "get"),
         ("/v1/admin/api-keys", "post"),
         ("/v1/admin/api-keys", "get"),

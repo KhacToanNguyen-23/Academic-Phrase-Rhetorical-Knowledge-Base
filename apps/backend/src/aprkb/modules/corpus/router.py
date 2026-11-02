@@ -11,14 +11,20 @@ from aprkb.core.config import settings
 from aprkb.core.deps import get_db_session
 from aprkb.core.security import require_role
 from aprkb.modules.corpus.blobstore import LocalBlobStore
-from aprkb.modules.corpus.service import create_upload, enqueue_mining, get_license
+from aprkb.modules.corpus.schemas import ArticleImportCreate
+from aprkb.modules.corpus.service import (
+    create_upload,
+    enqueue_import,
+    enqueue_mining,
+    get_license,
+)
 from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.mining.models import Job
 
 admin_router = APIRouter(tags=["admin corpus and jobs"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 Curator = Annotated[ApiClient, Depends(require_role("curator"))]
-_ALLOWED_SUFFIXES = {".txt", ".xml", ".jats", ".pdf"}
+_ALLOWED_SUFFIXES = {".txt", ".md", ".markdown", ".xml", ".jats", ".pdf"}
 
 
 @admin_router.post("/corpus/articles", status_code=status.HTTP_202_ACCEPTED)
@@ -32,7 +38,9 @@ async def upload_article(
 ) -> dict[str, str]:
     suffix = Path(file.filename or "").suffix.casefold()
     if suffix not in _ALLOWED_SUFFIXES:
-        raise HTTPException(status_code=415, detail="Supported formats are TXT, XML/JATS, and PDF")
+        raise HTTPException(
+            status_code=415, detail="Supported formats are TXT, Markdown, XML/JATS, and PDF"
+        )
     license_row = await get_license(session, license_code)
     content = await file.read()
     article_id = uuid4()
@@ -53,6 +61,24 @@ async def upload_article(
         blob_store.delete(blob_key)
         raise
     return {"article_id": str(article.id), "job_id": str(job.id), "status": job.status}
+
+
+@admin_router.post("/corpus/imports", status_code=status.HTTP_202_ACCEPTED)
+async def import_articles(
+    payload: ArticleImportCreate,
+    request: Request,
+    session: DatabaseSession,
+    actor: Curator,
+) -> dict[str, str]:
+    job = await enqueue_import(
+        session,
+        source_name=settings.article_source,
+        cursor=payload.cursor,
+        limit=payload.limit or settings.article_import_batch_limit,
+        actor=actor,
+        request_id=request.state.request_id,
+    )
+    return {"job_id": str(job.id), "status": job.status}
 
 
 @admin_router.post("/corpus/articles/{article_id}/mine", status_code=status.HTTP_202_ACCEPTED)

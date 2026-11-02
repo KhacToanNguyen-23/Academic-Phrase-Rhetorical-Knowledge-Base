@@ -20,6 +20,7 @@ from aprkb.modules.reference_library.models import (
     ReferenceEntry,
     ReferenceSource,
 )
+from aprkb.seeds.load import run_seed
 
 
 @pytest_asyncio.fixture
@@ -149,6 +150,10 @@ async def test_reference_import_replace_purge_and_read_api(api_client, session_f
     assert miss.json()["results"] == []
     patterns = await api_client.get("/v1/patterns", headers=headers)
     assert "Alpha beta gamma" not in patterns.text
+    # Recommendations need the reference data and approved authored patterns.
+    async with session_factory() as session:
+        await run_seed(session)
+        await session.commit()
     recommendation = await api_client.post(
         "/v1/recommendations",
         headers=headers,

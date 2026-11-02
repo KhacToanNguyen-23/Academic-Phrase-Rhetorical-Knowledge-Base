@@ -108,6 +108,49 @@ async def test_upload_txt_then_worker_ingest_and_mine_creates_only_sourced_candi
 
 
 @pytest.mark.asyncio
+async def test_upload_preserves_scholarly_sentence_boundaries_and_offsets(
+    phase05_client: tuple[AsyncClient, str], phase05_sessions: async_sessionmaker
+) -> None:
+    async with phase05_sessions() as session:
+        await run_seed(session)
+        await session.commit()
+    client, key = phase05_client
+    expected = [
+        "Dr. Smith used examples, e.g. neural models.",
+        "See Fig. 2 for the measured results.",
+        'Smith et al. (2020) wrote "These results agree."',
+        "We studied the U.S. in 2020.",
+    ]
+    source = "  " + "\r\n".join(expected) + "  "
+    response = await client.post(
+        "/v1/admin/corpus/articles",
+        headers={"X-API-Key": key},
+        data={"title": "Scholarly sentence fixture", "license_code": "CC-BY"},
+        files={"file": ("sentences.txt", source.encode(), "text/plain")},
+    )
+    assert response.status_code == 202
+    article_id = UUID(response.json()["article_id"])
+    job_id = UUID(response.json()["job_id"])
+    await run_once(phase05_sessions)
+
+    async with phase05_sessions() as session:
+        job = await session.get(Job, job_id)
+        assert job is not None and job.status == "succeeded"
+        sentences = list(
+            await session.scalars(
+                select(Sentence)
+                .where(Sentence.article_id == article_id)
+                .order_by(Sentence.char_start)
+            )
+        )
+        assert [sentence.text for sentence in sentences] == expected
+        assert all(
+            source[sentence.char_start : sentence.char_end] == sentence.text
+            for sentence in sentences
+        )
+
+
+@pytest.mark.asyncio
 async def test_mining_before_ingest_is_ready_returns_conflict(
     phase05_client: tuple[AsyncClient, str], phase05_sessions: async_sessionmaker
 ) -> None:

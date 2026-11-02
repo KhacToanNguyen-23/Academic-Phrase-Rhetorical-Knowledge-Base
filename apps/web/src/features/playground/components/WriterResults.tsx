@@ -35,7 +35,7 @@ export function WriterResults({
           {item.license_flag && <small className="notice">Copyrighted source — internal use only</small>}
           {item.explanations.map((explanation) => <small key={explanation}>{explanation}<br /></small>)}
           <small>Score breakdown: {Object.entries(item.breakdown).map(([key, value]) =>
-            `${key.replaceAll("_", " ")}: ${value === null ? "not available" : value.toFixed(2)}`,
+            `${key.replaceAll("_", " ")}: ${value === null ? "—" : value.toFixed(2)}`,
           ).join(" · ")}</small>
         </span>
       </label>)}

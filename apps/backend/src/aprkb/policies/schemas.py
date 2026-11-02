@@ -14,11 +14,15 @@ class VersionedPolicy(BaseModel):
 
 class RankingWeightsPolicy(VersionedPolicy):
     weights: dict[str, float]
+    evidence_alignment_formula: Literal[
+        "1 - abs(max_supported - candidate_strength) / strength_span"
+    ]
+    keyword_formula: Literal["matched_keywords / query_keywords"]
 
     @field_validator("weights")
     @classmethod
     def validate_weights(cls, weights: dict[str, float]) -> dict[str, float]:
-        expected = {"intent", "discipline", "journal_genre", "evidence", "linguistic", "provenance"}
+        expected = {"discipline", "journal_genre", "evidence", "linguistic", "provenance"}
         if set(weights) != expected:
             raise ValueError("weights must define every active scorer exactly once")
         if any(not isfinite(weight) or weight < 0 or weight > 1 for weight in weights.values()):

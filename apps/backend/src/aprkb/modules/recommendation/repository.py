@@ -1,8 +1,9 @@
 """Database loading for preloaded recommendation views and result logs."""
 
+import re
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.corpus.models import Article, License
@@ -58,10 +59,14 @@ async def load_pattern_rows(
         .order_by(PhrasePattern.created_at, PhrasePattern.id)
     )
     if query:
-        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        statement = statement.where(
-            PatternVersion.canonical_frame.ilike(f"%{escaped}%", escape="\\")
-        )
+        terms = set(re.findall(r"[^\W_]+", query.casefold(), flags=re.UNICODE))
+        if not terms:
+            return []
+        clauses = []
+        for term in sorted(terms):
+            escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            clauses.append(PatternVersion.canonical_frame.ilike(f"%{escaped}%", escape="\\"))
+        statement = statement.where(or_(*clauses))
     if move_code:
         statement = (
             statement.join(Step, Step.id == Intent.step_id)

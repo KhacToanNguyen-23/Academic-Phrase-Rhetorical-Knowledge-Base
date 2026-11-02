@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from aprkb.modules.recommendation.context import RecommendationContext
@@ -11,13 +12,6 @@ from aprkb.policies.evidence import EvidencePolicy
 
 if TYPE_CHECKING:
     from aprkb.modules.discipline.base import DisciplineSource
-
-
-class IntentScorer(Scorer):
-    key = "intent"
-
-    def score(self, pattern: PatternView, ctx: RecommendationContext) -> float:
-        return 1.0 if pattern.intent_code == ctx.intent_code else 0.0
 
 
 class DisciplineScorer(Scorer):
@@ -48,23 +42,28 @@ class EvidenceScorer(Scorer):
         self._evidence_policy = evidence_policy
 
     def score(self, pattern: PatternView, ctx: RecommendationContext) -> float | None:
-        claim_type = ctx.claim_type or pattern.claim_type
         if not ctx.evidence_level:
             return None
-        return float(
-            self._evidence_policy.is_allowed(
-                claim_type, ctx.evidence_level, pattern.epistemic_strength
-            )
+        return self._evidence_policy.alignment_score(
+            ctx.claim_type or pattern.claim_type,
+            ctx.evidence_level,
+            pattern.epistemic_strength,
         )
 
 
 class LinguisticScorer(Scorer):
     key = "linguistic"
 
-    def score(self, pattern: PatternView, ctx: RecommendationContext) -> float:
-        del pattern, ctx
-        # TODO(owner, PRD-6.1): replace the neutral score with an approved linguistic scorer.
-        return 0.5
+    def score(self, pattern: PatternView, ctx: RecommendationContext) -> float | None:
+        if not ctx.query:
+            return None
+        keywords = set(re.findall(r"[^\W_]+", ctx.query.casefold(), flags=re.UNICODE))
+        if not keywords:
+            return None
+        frame_words = set(
+            re.findall(r"[^\W_]+", pattern.canonical_frame.casefold(), flags=re.UNICODE)
+        )
+        return len(keywords & frame_words) / len(keywords)
 
 
 class ProvenanceScorer(Scorer):

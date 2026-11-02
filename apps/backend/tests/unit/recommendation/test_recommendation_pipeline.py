@@ -124,13 +124,42 @@ def test_scaffold_scorers_use_only_the_documented_values(context, evidence_polic
     }
     authored = pattern()
 
-    assert scorers["intent"].score(authored, context) == 1.0
     assert scorers["discipline"].score(authored, context) is None
     assert scorers["journal_genre"].score(authored, context) is None
     assert scorers["evidence"].score(authored, context) == 1.0
-    assert scorers["linguistic"].score(authored, context) == 0.5
+    assert scorers["linguistic"].score(authored, context) is None
+    assert "intent" not in scorers
     assert scorers["provenance"].score(authored, context) == 1.0
     assert scorers["provenance"].score(pattern(source_type="mined"), context) == 0.7
+
+
+def test_evidence_score_measures_proximity_below_hard_gate(context, evidence_policy):
+    scorers = {
+        scorer.key: scorer
+        for scorer in build_scorers(
+            discipline_source=NullDisciplineSource(), evidence_policy=evidence_policy
+        )
+    }
+    aligned = scorers["evidence"].score(pattern(epistemic_strength="moderate"), context)
+    weaker = scorers["evidence"].score(pattern(epistemic_strength="low"), context)
+
+    assert aligned == 1.0
+    assert weaker == pytest.approx(2 / 3)
+
+
+def test_linguistic_score_matches_query_keywords(context, evidence_policy):
+    scorers = {
+        scorer.key: scorer
+        for scorer in build_scorers(
+            discipline_source=NullDisciplineSource(), evidence_policy=evidence_policy
+        )
+    }
+    keyword_context = replace(context, query="results topic")
+    exact = pattern(canonical_frame="The results support {topic}.")
+    partial = pattern(canonical_frame="The analysis supports {finding}.")
+
+    assert scorers["linguistic"].score(exact, keyword_context) == 1.0
+    assert scorers["linguistic"].score(partial, keyword_context) == 0.0
 
 
 def test_recommendation_fallback_reuses_gates_deduplicates_and_applies_limit(

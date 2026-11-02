@@ -71,7 +71,11 @@ Until reviewed journal guidelines and fingerprint data have a usable runtime
 contract, matches are reported as `generic_genre`. A selected journal receives
 an explicit `fallback_reason`; matching genre alone does not establish journal
 suitability. The response includes versioned score breakdowns and gate exclusion
-counts. This is the current API behavior, not a claim of journal style support.
+counts. Intent and evidence eligibility remain hard gates; only eligible candidates
+receive an evidence proximity score. Keyword match uses query term coverage, and
+criteria without data remain null (`—` in the writer). Provisional formulas and
+weights are recorded in `ranking_weights.yaml` with `TODO(owner)`. This is the
+current API behavior, not a claim of journal style support.
 
 `GET /v1/taxonomy/reference-options` returns DB-backed claim/evidence/strength choices.
 `GET /v1/patterns/versions/{version_id}` returns slots only for the current approved

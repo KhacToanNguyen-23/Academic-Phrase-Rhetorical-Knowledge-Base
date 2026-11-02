@@ -152,6 +152,7 @@ async def recommend(
         discipline_code=payload.discipline,
         client_id=actor.id,
         limit=payload.limit,
+        query=query,
     )
     pipeline = RecommendationPipeline(
         gates=build_gates(evidence_policy=evidence_policy, guideline_policy=guideline_policy),

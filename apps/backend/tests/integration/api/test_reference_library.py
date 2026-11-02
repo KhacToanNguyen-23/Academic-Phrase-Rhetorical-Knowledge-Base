@@ -141,7 +141,11 @@ async def test_reference_import_replace_purge_and_read_api(api_client, session_f
     miss = await api_client.get(
         "/v1/reference-library/search", params={"q": "no-match"}, headers=headers
     )
-    assert len(hit.json()["results"]) == 2
+    assert [(item["category_slug"], item["heading"]) for item in hit.json()["results"]] == [
+        ("introducing-work", "Introducing work"),
+        ("introducing-work", "Secondary heading"),
+        ("giving-examples", "Secondary heading"),
+    ]
     assert miss.json()["results"] == []
     patterns = await api_client.get("/v1/patterns", headers=headers)
     assert "Alpha beta gamma" not in patterns.text

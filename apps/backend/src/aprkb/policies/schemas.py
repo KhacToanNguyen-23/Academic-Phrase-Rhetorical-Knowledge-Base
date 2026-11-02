@@ -128,6 +128,10 @@ class ValidationRulesPolicy(VersionedPolicy):
 
 class EpistemicMarkersPolicy(VersionedPolicy):
     markers: dict[str, list[str]]
+    # Base verb -> irregular inflected forms that suffix rules cannot derive.
+    irregular_forms: dict[str, list[str]] = Field(default_factory=dict)
+    # Declared markers that are not verbs and must keep exact matching.
+    non_inflecting: list[str] = Field(default_factory=list)
 
     @field_validator("markers")
     @classmethod
@@ -141,3 +145,23 @@ class EpistemicMarkersPolicy(VersionedPolicy):
         if any(len(values) != len(set(values)) for values in markers.values()):
             raise ValueError("epistemic marker lists must not contain duplicates")
         return markers
+
+    @field_validator("irregular_forms")
+    @classmethod
+    def validate_irregular_forms(cls, forms: dict[str, list[str]]) -> dict[str, list[str]]:
+        if any(
+            not base.strip() or not values or any(not form.strip() for form in values)
+            for base, values in forms.items()
+        ):
+            raise ValueError("irregular_forms must map each base verb to non-empty forms")
+        return forms
+
+    @model_validator(mode="after")
+    def validate_non_inflecting(self) -> "EpistemicMarkersPolicy":
+        declared = {marker.casefold() for values in self.markers.values() for marker in values}
+        names = [name.casefold() for name in self.non_inflecting]
+        if len(names) != len(set(names)) or any(not name.strip() for name in names):
+            raise ValueError("non_inflecting must be unique, non-empty markers")
+        if not set(names) <= declared:
+            raise ValueError("non_inflecting entries must be declared markers")
+        return self

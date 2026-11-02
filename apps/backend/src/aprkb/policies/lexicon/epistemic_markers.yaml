@@ -6,3 +6,12 @@ markers:
   moderate: [suggest, indicate, is likely]
   high: [show, demonstrate, confirm]
   absolute: [prove, establish beyond doubt, always]
+
+# V02 derives regular inflections (-s/-es, -ed/-d, -ing) from each verb marker.
+# Irregular forms that rules cannot derive are listed here, keyed by the base verb.
+irregular_forms:
+  prove: [proven]
+  show: [shown]
+
+# Markers that are not verbs keep exact matching and are never inflected.
+non_inflecting: [always, could, is likely, may, might, possibly]

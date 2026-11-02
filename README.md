@@ -37,6 +37,8 @@ Open the staff prototype at <http://localhost:5173/> and sign in with a curator 
 
 With `APP_ENV=local`, the writer connects automatically without an API key; the backend grants a local demo client only to requests from loopback addresses. This access is disabled in other environments. The flow uses published taxonomy/reference options, recommendation, approved version detail, render, validation, and feedback APIs. Render requires a `recommendation_id` issued to the same client. V02 claim-strength validation runs; V01 and V03–V08 are reported as unavailable, so the UI labels copied text a draft. Journal-specific ranking waits for reviewed Offline guideline/fingerprint data and currently reports generic fallback. The MVP does not expose a validation override route.
 
+Writer recommendation scores show each available criterion in its own horizontal cell with the criterion name and value; unavailable criteria display `—`.
+
 ## Commands
 
 | Command | Purpose |

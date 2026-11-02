@@ -25,6 +25,9 @@ test("writer uses PostgreSQL-backed search, render, validate and feedback", asyn
   await page.getByLabel("Evidence level").selectOption("multiple_consistent");
   await page.getByRole("button", { name: "Find patterns" }).click();
   await expect(page.getByText("The role of {topic} in {context} remains underexplored.")).toBeVisible();
+  await expect(page.getByLabel("Score criteria").first().getByText("Evidence alignment", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Score criteria").first().getByText("—", { exact: true })).toBeVisible();
+  await expect(page.getByText("Score breakdown:")).toHaveCount(0);
 
   await page.getByRole("textbox", { name: /^\{topic\}/ }).fill("language models");
   await page.getByRole("textbox", { name: /^\{context\}/ }).fill("education");

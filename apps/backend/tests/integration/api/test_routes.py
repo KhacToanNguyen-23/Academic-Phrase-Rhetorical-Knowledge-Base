@@ -595,6 +595,10 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
     assert response.headers.get("X-Request-ID")
     body = response.json()
     assert body["items"]
+    assert all(
+        item["explanations"] == ["Passed intent and section gates for INTRO_GAP_INDICATE"]
+        for item in body["items"]
+    )
     frames = {item["canonical_frame"] for item in body["items"]}
     assert "There is limited evidence about {topic}." not in frames
     assert "The findings may relate to {context}." not in frames

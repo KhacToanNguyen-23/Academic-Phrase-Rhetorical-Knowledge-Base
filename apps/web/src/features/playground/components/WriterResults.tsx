@@ -9,6 +9,14 @@ const fallbackLabels: Record<string, string> = {
   generic_genre: "General",
 };
 
+const scoreLabels: Record<string, string> = {
+  discipline: "Discipline",
+  journal_genre: "Journal / genre",
+  evidence: "Evidence alignment",
+  linguistic: "Keyword match",
+  provenance: "Provenance",
+};
+
 export function WriterResults({
   recommendation, picked, onSelect,
 }: {
@@ -34,9 +42,12 @@ export function WriterResults({
           </small><br />
           {item.license_flag && <small className="notice">Copyrighted source — internal use only</small>}
           {item.explanations.map((explanation) => <small key={explanation}>{explanation}<br /></small>)}
-          <small>Score breakdown: {Object.entries(item.breakdown).map(([key, value]) =>
-            `${key.replaceAll("_", " ")}: ${value === null ? "—" : value.toFixed(2)}`,
-          ).join(" · ")}</small>
+          <div className="score-grid" aria-label="Score criteria">
+            {Object.entries(item.breakdown).map(([key, value]) => <span className="score-cell" key={key}>
+              <small>{scoreLabels[key] ?? key.replaceAll("_", " ")}</small>
+              <strong>{value === null ? "—" : value.toFixed(2)}</strong>
+            </span>)}
+          </div>
         </span>
       </label>)}
     </div>

@@ -319,6 +319,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 .choice input { width: auto; min-height: 0; margin-top: 5px; accent-color: var(--color-primary); }
 .choice > span { display: flex; flex-direction: column; gap: 4px; font-size: 0.9375rem; }
 .choice.is-active { border-color: var(--color-primary); background: var(--color-primary-light); }
+.score-grid { display: flex; gap: 8px; overflow-x: auto; margin-top: 4px; }
+.score-cell { display: flex; min-width: 88px; flex-direction: column; gap: 3px; padding: 6px 9px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.score-cell small { color: var(--color-text-secondary); text-transform: capitalize; }
+.score-cell strong { font-variant-numeric: tabular-nums; }
 
 /* ── Validation ─────────────────────────────────────────────── */
 .violation-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

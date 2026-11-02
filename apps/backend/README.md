@@ -73,7 +73,8 @@ an explicit `fallback_reason`; matching genre alone does not establish journal
 suitability. The response includes versioned score breakdowns and gate exclusion
 counts. Intent and evidence eligibility remain hard gates; only eligible candidates
 receive an evidence proximity score. Keyword match uses query term coverage, and
-criteria without data remain null (`—` in the writer). Provisional formulas and
+criteria without data remain null (`—` in the writer). The writer shows each
+criterion once in a horizontal cell. Provisional formulas and
 weights are recorded in `ranking_weights.yaml` with `TODO(owner)`. This is the
 current API behavior, not a claim of journal style support.
 

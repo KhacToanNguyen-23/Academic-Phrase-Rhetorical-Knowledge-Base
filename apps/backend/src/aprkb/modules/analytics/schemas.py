@@ -1,16 +1,22 @@
 """HTTP contracts for recommendation feedback and validation overrides."""
 
-from typing import Any, Literal
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class FeedbackMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    context_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class FeedbackCreate(BaseModel):
     recommendation_id: UUID
     pattern_version_id: UUID
     signal: Literal["accepted", "rejected", "edited"]
-    payload: dict[str, Any] | None = None
+    payload: FeedbackMetadata | None = None
 
 
 class OverrideCreate(BaseModel):

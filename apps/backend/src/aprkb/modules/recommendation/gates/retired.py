@@ -6,6 +6,8 @@ from aprkb.modules.recommendation.pattern_view import PatternView
 
 
 class RetiredGate(HardGate):
+    """FR-07.2: retired patterns are excluded before ranking."""
+
     code = "GATE_RETIRED"
 
     def check(self, pattern: PatternView, ctx: RecommendationContext) -> GateResult:

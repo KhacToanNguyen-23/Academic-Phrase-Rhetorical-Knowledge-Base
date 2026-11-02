@@ -20,6 +20,46 @@
     "priority": "P1"
   },
   {
+    "id": "online-writer-compose",
+    "title": "Select a pattern and compose a sentence",
+    "user_visible_behavior": "Fill pattern slots while preserving missing placeholders and pattern provenance",
+    "verification_command": "Real API returns an approved pattern; render validates typed slots and does not invent missing content",
+    "status": "passing",
+    "evidence": "Backend 83 passed, 9 pre-existing skips on isolated pgvector aprkb_test; 1 Edge browser E2E passed against real API/DB. Render rejects unauthorized/unissued versions and preserves missing slots.",
+    "notes": "Phase 03 Composer and V02 path implemented; other validation rules remain explicitly unavailable. Requirement text in plans/online-writer-flow/phase-03-render-and-validation.md",
+    "priority": "P1"
+  },
+  {
+    "id": "online-journal-style-ranking",
+    "title": "Rank suggestions using eligible journal data",
+    "user_visible_behavior": "Use verified guidelines as rules and reviewed fingerprints as observations with transparent fallback",
+    "verification_command": "Real reviewed fingerprint changes ranking reproducibly; ineligible or missing data returns explicit fallback",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "Depends on Thái's Offline fingerprint contract and real reviewed corpus artifact; see phase-05-journal-fingerprint-integration.md",
+    "priority": "P1"
+  },
+  {
+    "id": "online-writer-ui",
+    "title": "Complete the Writer field-to-validation UI flow",
+    "user_visible_behavior": "Enter context, review suggestions, compose, validate, revise and copy through real APIs",
+    "verification_command": "Browser E2E uses PostgreSQL/API and reaches validated copy without calling Online mock engine",
+    "status": "passing",
+    "evidence": "1 Edge browser E2E passed: field input, DB search, version detail, render, validate, edit invalidation, clipboard and feedback; TypeScript typecheck and Vite build passed.",
+    "notes": "Live /writer is separate from mock prototype screens. Journal-specific signal remains unavailable pending reviewed Offline artifacts. Online Writer Flow Phase 04",
+    "priority": "P1"
+  },
+  {
+    "id": "online-journey-acceptance",
+    "title": "Verify the end-to-end Writer journey",
+    "user_visible_behavior": "Receive traceable, privacy-minimized results with correct gate, fallback and validation behavior",
+    "verification_command": "Spec acceptance cases A01-A20 have explicit evidence and one full browser journey passes",
+    "status": "active",
+    "evidence": "Generic browser E2E passed; A01-A20 coverage and real reviewed journal fingerprint acceptance remain incomplete.",
+    "notes": "Online Writer Flow Phase 06 requires approved evidence/guideline/fingerprint contracts and full scenario evidence; existing recommendation-validation entry preserved as-is",
+    "priority": "P1"
+  },
+  {
     "id": "access-audit",
     "title": "Manage access and audit writes",
     "user_visible_behavior": "Control access and trace write operations",

@@ -81,9 +81,7 @@ def test_v02_fails_closed_when_marker_strength_is_missing_from_reference_enums(p
     assert result.severity.value == "block"
 
 
-def test_validation_pipeline_runs_v01_through_v08_and_todo_rules_pass(
-    evidence_policy, policy_bundle
-):
+def test_validation_pipeline_reports_unavailable_checks(evidence_policy, policy_bundle):
     rules = build_rules(
         evidence_policy=evidence_policy,
         lexicon=policy_bundle.epistemic_markers,
@@ -99,4 +97,6 @@ def test_validation_pipeline_runs_v01_through_v08_and_todo_rules_pass(
     results = pipeline.validate("The study suggests a possible relationship.", context)
 
     assert [result.code for result in results] == [f"V{i:02}" for i in range(1, 9)]
-    assert all(result.severity.value == "pass" for result in results if result.code != "V02")
+    assert all(not result.applied for result in results if result.code != "V02")
+    assert all(result.severity.value == "unavailable" for result in results if result.code != "V02")
+    assert not pipeline.run("The study suggests a possible relationship.", context).complete

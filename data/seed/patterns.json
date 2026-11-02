@@ -65,5 +65,38 @@
     "claim_type": "descriptive",
     "source_type": "authored",
     "allowed_sections": ["DISCUSSION"]
+  },
+  {
+    "seed_key": "gap-moderate",
+    "status": "approved",
+    "intent_code": "INTRO_GAP_INDICATE",
+    "canonical_frame": "Although {topic} has been examined, evidence remains limited for {population}.",
+    "slots": {"topic": "noun_phrase", "population": "noun_phrase"},
+    "epistemic_strength": "moderate",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["INTRO"]
+  },
+  {
+    "seed_key": "discussion-descriptive-low",
+    "status": "approved",
+    "intent_code": "DISCUSSION_FINDING",
+    "canonical_frame": "The observed pattern may reflect {factor} in {context}.",
+    "slots": {"factor": "noun_phrase", "context": "noun_phrase"},
+    "epistemic_strength": "low",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["DISCUSSION"]
+  },
+  {
+    "seed_key": "discussion-causal-moderate",
+    "status": "approved",
+    "intent_code": "DISCUSSION_FINDING",
+    "canonical_frame": "These findings suggest that {factor} may contribute to {outcome} under {condition}.",
+    "slots": {"factor": "noun_phrase", "outcome": "noun_phrase", "condition": "noun_phrase"},
+    "epistemic_strength": "moderate",
+    "claim_type": "causal",
+    "source_type": "authored",
+    "allowed_sections": ["DISCUSSION"]
   }
 ]

@@ -1,5 +1,7 @@
 """Client validation endpoint using the shared evidence policy and V02."""
 
+import json
+from hashlib import sha256
 from typing import Annotated
 from uuid import uuid4
 
@@ -32,6 +34,7 @@ async def validate_text(
     _actor: Client,
     session: DatabaseSession,
 ) -> ValidationResponse:
+    """FR-08.1/.6 / BR-03: return rule-level outcomes and explicitly expose unavailable checks."""
     bundle = request.app.state.policy_bundle
     try:
         evidence_policy = EvidencePolicy.from_reference_enums(
@@ -56,13 +59,26 @@ async def validate_text(
     result = pipeline.run(payload.text, context)
     return ValidationResponse(
         validation_id=uuid4(),
+        text_hash=sha256(payload.text.encode("utf-8")).hexdigest(),
+        context_hash=sha256(
+            json.dumps(context.__dict__, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest(),
+        policy_versions={
+            "evidence_matrix": bundle.evidence_matrix.version,
+            "epistemic_markers": bundle.epistemic_markers.version,
+            "validation_rules": bundle.validation_rules.version,
+        },
         severity=result.severity.value,
+        complete=result.complete,
+        checks_unavailable=[rule.code for rule in result.rules if not rule.applied],
         rules=[
             ValidationRuleResponse(
                 code=rule.code,
                 severity=rule.severity.value,
                 message=rule.message,
                 span=rule.span,
+                applied=rule.applied,
+                recommended_action=rule.recommended_action,
             )
             for rule in result.rules
         ],

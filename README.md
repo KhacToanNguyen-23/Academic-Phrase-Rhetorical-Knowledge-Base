@@ -1,11 +1,11 @@
 # AP-RKB — Academic Phrase & Rhetorical Knowledge Base
 
-AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. It does not implement the excluded admin console, production NLP extraction, or taxonomy publishing. The existing web app is a prototype UI that uses local mock data; its admin screen is not a production admin console and is outside this scaffold's backend scope.
+AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. It does not implement the excluded admin console, production NLP extraction, or taxonomy publishing. The `/writer` web route uses the real API and PostgreSQL; other prototype screens still use local mock data.
 
 ## Architecture
 
 ```text
-apps/web (existing React + TypeScript SPA; outside this scaffold runtime)
+apps/web (React + TypeScript SPA; Vite runs locally by default)
                │ REST /v1 + OpenAPI
 apps/backend (FastAPI modular monolith)
   API ── domain services ── PostgreSQL 16 + pgvector
@@ -13,34 +13,38 @@ apps/backend (FastAPI modular monolith)
   corpus blobs ── local ./data/blobs via BlobStore
 ```
 
-The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker is started separately with `make worker`; no Redis or Celery service is used. Text ingestion is implemented; JATS and PDF parsers remain explicit stubs. OpenAlex is optional and inactive. See [ADR-0001](doc/adr/0001-modular-monolith.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
+The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker runs locally with `make worker`; no Redis or Celery service is used. Text ingestion is implemented; JATS and PDF parsers remain explicit stubs. OpenAlex is optional and inactive. See [ADR-0001](doc/adr/0001-modular-monolith.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
 
 ## Quick start
 
-Requirements: Python 3.12, `uv`, Docker Desktop, and GNU Make. Before starting Postgres, replace the example `POSTGRES_PASSWORD` and keep `DATABASE_URL` in sync. Compose binds Postgres to `127.0.0.1` only.
+Requirements: Docker Desktop with Docker Compose v2 `--wait` support, Python 3.12, `uv`, and Node.js/npm. The default workflow runs PostgreSQL in Docker and the backend/frontend on the host. On Windows, use the PowerShell helper; on macOS/Linux, GNU Make targets are available. Set a local `POSTGRES_PASSWORD` in `.env`; Compose configures the backend's database connection automatically. Its ports bind to `127.0.0.1` only.
 
 ```powershell
-Copy-Item .env.example .env
-make up
-make install
-make migrate
-make seed
-make bootstrap-key
-make lint
-$env:TEST_DATABASE_URL = "postgresql+asyncpg://aprkb:<your-local-password>@localhost:5432/aprkb_test"
-make test
-make run
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+# Edit .env and set a local POSTGRES_PASSWORD first.
+.\dev.ps1 be
 ```
 
-`make bootstrap-key` prints the initial admin API key once. Keep it private. The test fixture requires a dedicated database named `aprkb_test`; it creates and removes isolated schemas there and never migrates the application's public schema. Set `TEST_DATABASE_URL` to that database before running tests, using the same local password and host port as `DATABASE_URL`. Replace `<your-local-password>` with the password you configured. `make down` stops the PostgreSQL service and preserves its named volume.
+`.\dev.ps1 be` starts PostgreSQL in Docker, applies migrations and seed data, then runs the backend locally with reload and logs in that terminal. In a second terminal, run `.\dev.ps1 fe` to start the frontend locally with Vite logs and hot reload; npm dependencies install automatically the first time. Open <http://localhost:5173/writer> for the web app or <http://localhost:8000/docs> for the API. Stop both terminals with `Ctrl+C`; run `.\dev.ps1 down` to stop PostgreSQL while preserving its data volume. To create the initial admin key, run `make bootstrap-key` or `uv run --directory apps/backend python -m aprkb.cli bootstrap-key` and keep the printed key private.
 
-OpenAPI is available at <http://localhost:8000/docs>. To process uploaded articles, run `make worker` in another terminal. Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker.
+If you need to process uploaded articles, run `.\dev.ps1 worker` in a third terminal.
+
+For backend checks on the host, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`; the test fixture creates and removes isolated schemas there and never migrates the application's public schema. Set it to the same local password and host port used by Compose, then run `make check`.
+
+Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker.
+
+Open the staff prototype at <http://localhost:5173/> and sign in with a curator or admin API key. In Vite development mode, **Quick demo** re-runs the idempotent self-authored seed data and issues a fresh local curator key. This button is restricted to loopback requests with `APP_ENV=local`. System integrations continue using their client API keys; client/reviewer pattern reads expose only approved current versions with display rights.
+
+With `APP_ENV=local`, the writer connects automatically without an API key; the backend grants a local demo client only to requests from loopback addresses. This access is disabled in other environments. The flow uses published taxonomy/reference options, recommendation, approved version detail, render, validation, and feedback APIs. Render requires a `recommendation_id` issued to the same client. V02 claim-strength validation runs; V01 and V03–V08 are reported as unavailable, so the UI labels copied text a draft. Journal-specific ranking waits for reviewed Offline guideline/fingerprint data and currently reports generic fallback. The MVP does not expose a validation override route.
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `make up` / `make down` | Start or stop PostgreSQL |
+| `make up` / `make down` | Start PostgreSQL only / stop the Compose stack |
+| `make setup` | Start PostgreSQL, install backend dependencies, migrate, and seed |
+| `make dev` / `make be` | Start PostgreSQL, prepare backend, and run the API |
+| `make check` | Run lint and backend tests |
 | `make install` | Sync backend dependencies with `uv` |
 | `make migrate` | Apply the Alembic migration |
 | `make seed` | Idempotently load reference enums, taxonomy, and self-authored patterns |
@@ -49,6 +53,15 @@ OpenAPI is available at <http://localhost:8000/docs>. To process uploaded articl
 | `make worker` | Poll PostgreSQL jobs and process ingestion/mining |
 | `make test` | Run backend unit, integration, and scaffold acceptance tests |
 | `make lint` | Run Ruff, format verification, and mypy |
+| `make contracts` | Export OpenAPI and regenerate frontend types |
+| `make web-install` / `make web` / `make fe` | Install frontend dependencies / start the frontend dev server |
+| `.\dev.ps1 be` / `fe` / `worker` / `down` | PowerShell shortcuts for the local development workflow |
+| `docker compose up --wait postgres` | Start PostgreSQL in Docker |
+| `docker compose down` | Stop PostgreSQL while preserving its data volume |
+
+## Continuous integration
+
+GitHub Actions runs on pushes to `main` and pull requests. The backend job checks the generated OpenAPI contract, Ruff lint/format, mypy, and pytest against an ephemeral PostgreSQL/pgvector service. The frontend job installs from the pnpm lockfile, checks generated API types, runs TypeScript checks, and builds the app. CI uses a disposable test database and needs no repository secrets.
 
 ## PRD traceability
 

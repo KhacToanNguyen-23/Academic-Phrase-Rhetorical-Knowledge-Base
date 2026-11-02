@@ -32,3 +32,13 @@ class ApiKeySummary(BaseModel):
 class ApiKeyRevoked(BaseModel):
     id: UUID
     is_active: bool
+
+
+class AuthenticatedClient(BaseModel):
+    id: UUID
+    name: str
+    role: str
+
+
+class DemoSession(AuthenticatedClient):
+    api_key: str

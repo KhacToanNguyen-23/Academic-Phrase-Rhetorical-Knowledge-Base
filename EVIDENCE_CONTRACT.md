@@ -1,9 +1,9 @@
 # AP-RKB — Evidence Contract v0.1 (bản đề xuất)
 
-> **Trạng thái:** BẢN NHÁP để nhóm và giảng viên hướng dẫn duyệt. Mọi giá trị đều có thể sửa.
+> **Trạng thái:** ĐỀ XUẤT CHƯA DUYỆT; không phải nguồn policy runtime. Backend MVP hiện dùng `apps/backend/src/aprkb/policies/evidence_matrix.yaml`, `lexicon/epistemic_markers.yaml` và thứ tự `RefEnum` theo `SCAFFOLD_PRD.md` §4.6/§8. Nội dung dưới đây chỉ là phương án mở rộng để nhóm xem xét.
 > **Mục đích:** quy định **một câu khẳng định được phép mạnh đến đâu** so với **bằng chứng mà người viết có**.
-> **Nơi dùng:** `EvidenceGate` (lọc pattern khi gợi ý) và rule `V02` (kiểm câu người viết). Cả hai đọc chung `EvidencePolicy`, sinh ra từ tài liệu này.
-> **Đầu ra:** `app/policies/evidence_matrix.yaml` và `app/policies/lexicon/epistemic_markers.yaml` (mục 8).
+> **Dự kiến nếu được duyệt:** `EvidenceGate` (lọc pattern khi gợi ý) và rule `V02` (kiểm câu người viết) sẽ cùng đọc `EvidencePolicy`. Hiện backend nạp policy runtime từ các YAML trong `apps/backend/src/aprkb/policies/`.
+> **Đề xuất đầu ra nếu được duyệt:** các file policy runtime nói trên. Hiện các bảng/mặc định trong tài liệu này chưa được áp dụng tự động.
 
 ---
 

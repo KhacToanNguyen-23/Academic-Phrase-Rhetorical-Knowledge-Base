@@ -4,7 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 
 import { api, type ApiClient, type RequestLog, type Submission } from "@/shared/api";
 import { pct } from "@/shared/lib";
-import { Badge, Card, Empty, JsonBlock, Loading, PageHeader, SeverityBadge, Stat, StatusBadge, Tabs, fmtTime } from "@/shared/ui";
+import { Badge, Card, Empty, ErrorState, JsonBlock, Loading, PageHeader, SeverityBadge, Stat, StatusBadge, Tabs, fmtTime } from "@/shared/ui";
 
 type Tab = "clients" | "log" | "out" | "in";
 
@@ -15,6 +15,11 @@ export function AdminPage() {
   const subs = useQuery({ queryKey: ["submissions"], queryFn: () => api.submissions() });
 
   if (clients.isPending || logs.isPending || subs.isPending) return <Loading />;
+  if (clients.isError || logs.isError || subs.isError) {
+    return <ErrorState message="Administration data could not be loaded." onRetry={async () => {
+      await Promise.all([clients.refetch(), logs.refetch(), subs.refetch()]);
+    }} />;
+  }
   const L = logs.data ?? [];
   const C = clients.data ?? [];
   const S = subs.data ?? [];
@@ -46,14 +51,14 @@ export function AdminPage() {
         { id: "log", label: "Request log", count: L.length },
         { id: "out", label: "Data out" },
         { id: "in", label: "Data in", count: S.length },
-      ]} />
-
-      <div key={tab} className="tab-panel">
+      ]}>
+      <div key={tab}>
         {tab === "clients" && <Clients clients={C} logs={L} subs={S} />}
         {tab === "log" && <Log logs={L} clients={C} name={name} />}
         {tab === "out" && <DataOut logs={L} clients={C} />}
         {tab === "in" && <DataIn subs={S} name={name} />}
       </div>
+      </Tabs>
     </>
   );
 }

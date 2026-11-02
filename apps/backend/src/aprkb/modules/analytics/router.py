@@ -24,6 +24,7 @@ async def create_feedback(
     actor: Client,
     session: DatabaseSession,
 ) -> CreatedRecord:
+    """FR-07.7 / BR-08: accept feedback only for a recommendation issued to this Writer."""
     row = await service.create_feedback(
         session, payload=payload, actor=actor, request_id=request.state.request_id
     )

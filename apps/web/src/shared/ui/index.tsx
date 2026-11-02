@@ -1,14 +1,14 @@
 // Component UI dùng chung — semantic HTML + ARIA, điều hướng được bằng bàn phím (NFR-08).
-import type { ReactNode } from "react";
+import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import type { EvidenceClass, FallbackTier, Provenance, Severity } from "@/shared/api";
 import { parseFrame } from "@/shared/lib";
 
-export function PageHeader({ code, title, lead, actions }: { code: string; title: string; lead?: string; actions?: ReactNode }) {
+export function PageHeader({ code, title, lead, actions }: { code?: string; title: string; lead?: string; actions?: ReactNode }) {
   return (
     <header className="page-header">
       <div>
-        <p className="eyebrow">{code}</p>
+        {code && <p className="eyebrow">{code}</p>}
         <h1>{title}</h1>
         {lead && <p className="lead">{lead}</p>}
       </div>
@@ -128,6 +128,15 @@ export function Loading() {
   return <div className="loading" aria-busy="true" aria-label="Loading"><span /><span /><span /></div>;
 }
 
+export function ErrorState({ onRetry, message = "Data could not be loaded." }: { onRetry: () => void; message?: string }) {
+  return (
+    <div className="notice notice-warn" role="alert">
+      <p>{message}</p>
+      <button type="button" className="btn btn-ghost" onClick={() => void onRetry()}>Try again</button>
+    </div>
+  );
+}
+
 /** Ô số liệu tổng quan (Admin/Overview). */
 export function Stat({ label, value, note, tone }: { label: string; value: ReactNode; note?: string; tone?: "ok" | "warn" | "bad" }) {
   return (
@@ -149,15 +158,55 @@ export function JsonBlock({ title, value }: { title: string; value: unknown }) {
   );
 }
 
-export function Tabs<T extends string>({ value, onChange, items, label }: { value: T; onChange: (v: T) => void; items: { id: T; label: string; count?: number }[]; label: string }) {
+export function Tabs<T extends string>({ value, onChange, items, label, children }: { value: T; onChange: (v: T) => void; items: { id: T; label: string; count?: number }[]; label: string; children: ReactNode }) {
+  const id = useId();
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const focusTab = (index: number) => {
+    const nextIndex = (index + items.length) % items.length;
+    onChange(items[nextIndex].id);
+    tabRefs.current[nextIndex]?.focus();
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      focusTab(index + 1);
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      focusTab(index - 1);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      focusTab(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      focusTab(items.length - 1);
+    }
+  };
+
   return (
-    <div className="tabs" role="tablist" aria-label={label}>
-      {items.map((t) => (
-        <button key={t.id} type="button" role="tab" aria-selected={t.id === value} className="tab" onClick={() => onChange(t.id)}>
-          {t.label}{t.count !== undefined && <span className="tab-count">{t.count}</span>}
-        </button>
-      ))}
-    </div>
+    <>
+      <div className="tabs" role="tablist" aria-label={label}>
+        {items.map((t, index) => (
+          <button
+            key={t.id}
+            ref={(element) => { tabRefs.current[index] = element; }}
+            id={`${id}-tab-${t.id}`}
+            type="button"
+            role="tab"
+            aria-selected={t.id === value}
+            aria-controls={`${id}-panel`}
+            tabIndex={t.id === value ? 0 : -1}
+            className="tab"
+            onClick={() => onChange(t.id)}
+            onKeyDown={(event) => onKeyDown(event, index)}
+          >
+            {t.label}{t.count !== undefined && <span className="tab-count">{t.count}</span>}
+          </button>
+        ))}
+      </div>
+      <div id={`${id}-panel`} className="tab-panel" role="tabpanel" aria-labelledby={`${id}-tab-${value}`} tabIndex={0}>
+        {children}
+      </div>
+    </>
   );
 }
 

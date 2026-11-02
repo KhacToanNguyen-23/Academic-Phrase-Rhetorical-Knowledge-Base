@@ -6,8 +6,12 @@ from pydantic import BaseModel, Field
 
 
 class RecommendationRequest(BaseModel):
+    # FR-07.1 / System Design §5.1: optional context fields are recorded and
+    # handled through explicit fallback.
     intent: str
     section: str
+    query: str | None = Field(default=None, max_length=500)
+    move: str | None = None
     genre: str | None = None
     journal_id: UUID | None = None
     claim_type: str | None = None
@@ -23,6 +27,11 @@ class RecommendationItemResponse(BaseModel):
     breakdown: dict[str, float | None]
     fallback_tier: str
     explanations: list[str]
+    source_type: str
+    version_no: int
+    license_code: str | None
+    license_name: str | None
+    source_reference: str | None
 
 
 class RecommendationResponse(BaseModel):
@@ -30,3 +39,6 @@ class RecommendationResponse(BaseModel):
     excluded: dict[str, int]
     policy_versions: dict[str, str]
     recommendation_id: UUID
+    context_hash: str
+    fallback_reason: str | None = None
+    warnings: list[str] = Field(default_factory=list)

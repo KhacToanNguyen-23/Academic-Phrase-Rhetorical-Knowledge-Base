@@ -17,11 +17,18 @@ class ValidationRuleResponse(BaseModel):
     severity: str
     message: str
     span: tuple[int, int] | None
+    applied: bool
+    recommended_action: str | None
 
 
 class ValidationResponse(BaseModel):
     validation_id: UUID
+    text_hash: str
+    context_hash: str
+    policy_versions: dict[str, str]
     severity: str
+    complete: bool
+    checks_unavailable: list[str]
     rules: list[ValidationRuleResponse]
 
 

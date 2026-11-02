@@ -10,7 +10,7 @@ from aprkb.core.deps import get_db_session
 from aprkb.core.security import require_role
 from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.taxonomy import service
-from aprkb.modules.taxonomy.schemas import ReleaseSummary, TaxonomyTree
+from aprkb.modules.taxonomy.schemas import ReferenceOption, ReleaseSummary, TaxonomyTree
 
 router = APIRouter(tags=["taxonomy"])
 admin_router = APIRouter(tags=["admin releases"])
@@ -30,6 +30,13 @@ async def get_taxonomy(_client: Client, session: DatabaseSession) -> TaxonomyTre
 @router.get("/releases", response_model=list[ReleaseSummary])
 async def get_releases(_client: Client, session: DatabaseSession) -> list[ReleaseSummary]:
     return [ReleaseSummary.model_validate(item) for item in await service.get_releases(session)]
+
+
+@router.get("/reference-options", response_model=list[ReferenceOption])
+async def get_reference_options(_client: Client, session: DatabaseSession) -> list[ReferenceOption]:
+    return [
+        ReferenceOption.model_validate(row) for row in await service.get_reference_options(session)
+    ]
 
 
 @admin_router.post("/releases/{release_id}/publish", status_code=status.HTTP_501_NOT_IMPLEMENTED)

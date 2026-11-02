@@ -15,3 +15,6 @@ class GuidelinePolicy:
 
     def set(self, journal_id: UUID, rules: tuple[dict[str, object], ...]) -> None:
         self._cache[journal_id] = rules
+
+    def has_mandatory_rules(self, journal_id: UUID) -> bool:
+        return any(rule.get("is_mandatory") is True for rule in self.get(journal_id))

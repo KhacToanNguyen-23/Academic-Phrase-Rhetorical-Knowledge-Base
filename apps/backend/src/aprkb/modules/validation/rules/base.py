@@ -8,6 +8,7 @@ from aprkb.modules.validation.context import ValidationContext
 
 
 class Severity(StrEnum):
+    UNAVAILABLE = "unavailable"
     PASS = "pass"
     WARN = "warn"
     BLOCK = "block"
@@ -19,6 +20,8 @@ class RuleResult:
     severity: Severity
     message: str
     span: tuple[int, int] | None = None
+    applied: bool = True
+    recommended_action: str | None = None
 
 
 class ValidationRule(ABC):

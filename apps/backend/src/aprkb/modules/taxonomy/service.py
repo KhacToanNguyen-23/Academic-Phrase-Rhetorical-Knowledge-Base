@@ -12,6 +12,13 @@ async def get_releases(session: AsyncSession) -> list[TaxonomyRelease]:
     return await repository.list_releases(session)
 
 
+async def get_reference_options(session: AsyncSession) -> list[dict[str, object]]:
+    return [
+        {"group": row.group, "code": row.code, "label": row.label, "order": row.order}
+        for row in await repository.reference_options(session)
+    ]
+
+
 async def get_published_tree(session: AsyncSession) -> dict[str, object] | None:
     release = await repository.published_release(session)
     if release is None:

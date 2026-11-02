@@ -1,4 +1,5 @@
-# DRAFT lexicon; TODO(owner, PRD-6.2): approve markers before production use.
+# MVP runtime marker lexicon aligned to SCAFFOLD_PRD.md §8.
+# Provisional: domain review is required before production use.
 version: 0.1.0
 markers:
   low: [may, might, could, possibly, appears to]

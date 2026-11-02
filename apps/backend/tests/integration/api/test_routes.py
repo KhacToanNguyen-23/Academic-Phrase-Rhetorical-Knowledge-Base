@@ -26,7 +26,7 @@ from aprkb.modules.patterns.models import (
     ReviewDecision,
     UsageConstraint,
 )
-from aprkb.modules.recommendation.models import Feedback, Override, RecommendationLog
+from aprkb.modules.recommendation.models import Feedback, RecommendationLog
 from aprkb.modules.taxonomy.models import Intent
 from aprkb.seeds.load import run_seed
 
@@ -78,18 +78,22 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
     }
     expected = {
         ("/v1/health", "get"),
+        ("/v1/auth/me", "get"),
+        ("/v1/auth/demo-session", "post"),
         ("/v1/taxonomy", "get"),
         ("/v1/taxonomy/releases", "get"),
+        ("/v1/taxonomy/reference-options", "get"),
         ("/v1/patterns", "get"),
+        ("/v1/patterns/versions/{id}", "get"),
         ("/v1/patterns/{id}", "get"),
         ("/v1/patterns/{id}/versions", "get"),
         ("/v1/patterns", "post"),
         ("/v1/patterns/{id}/versions", "post"),
         ("/v1/patterns/{id}/retire", "post"),
         ("/v1/recommendations", "post"),
+        ("/v1/render", "post"),
         ("/v1/validate", "post"),
         ("/v1/feedback", "post"),
-        ("/v1/overrides", "post"),
         ("/v1/journals", "get"),
         ("/v1/journals/{id}", "get"),
         ("/v1/journals/{id}/guidelines", "post"),
@@ -209,6 +213,62 @@ async def test_patterns_list_detail_history_create_and_append_version(api_client
 
 
 @pytest.mark.asyncio
+async def test_client_pattern_reads_hide_drafts_and_restricted_provenance(
+    api_client, session_factory
+):
+    await run_seed_in_session(session_factory)
+    async with session_factory() as session:
+        draft = await session.scalar(select(PhrasePattern).where(PhrasePattern.status == "draft"))
+        restricted = await session.scalar(
+            select(PhrasePattern)
+            .join(PatternVersion, PatternVersion.id == PhrasePattern.current_version_id)
+            .join(
+                EvidenceProvenance,
+                EvidenceProvenance.pattern_version_id == PatternVersion.id,
+            )
+            .join(License, License.id == EvidenceProvenance.license_id)
+            .where(License.code == "PROPRIETARY")
+        )
+        assert draft is not None and restricted is not None
+        draft_id = draft.id
+        restricted_id = restricted.id
+
+    _, client_key = await create_key(session_factory, "client", "pattern API client")
+    _, curator_key = await create_key(session_factory, "curator", "pattern curator")
+    client_headers = {"X-API-Key": client_key}
+    curator_headers = {"X-API-Key": curator_key}
+
+    client_list = await api_client.get("/v1/patterns", headers=client_headers)
+    hidden_draft = await api_client.get(f"/v1/patterns/{draft_id}", headers=client_headers)
+    hidden_draft_history = await api_client.get(
+        f"/v1/patterns/{draft_id}/versions", headers=client_headers
+    )
+    hidden_restricted = await api_client.get(
+        f"/v1/patterns/{restricted_id}", headers=client_headers
+    )
+    curator_list = await api_client.get(
+        "/v1/patterns", params={"status": "draft"}, headers=curator_headers
+    )
+    curator_draft = await api_client.get(f"/v1/patterns/{draft_id}", headers=curator_headers)
+    curator_history = await api_client.get(
+        f"/v1/patterns/{draft_id}/versions", headers=curator_headers
+    )
+
+    assert client_list.status_code == 200
+    assert all(item["status"] == "approved" for item in client_list.json())
+    assert str(restricted_id) not in {item["id"] for item in client_list.json()}
+    assert hidden_draft.status_code == 404
+    assert hidden_draft_history.status_code == 404
+    assert hidden_restricted.status_code == 404
+    assert curator_draft.status_code == 200
+    assert curator_draft.json()["status"] == "draft"
+    assert curator_list.status_code == 200
+    assert str(draft_id) in {item["id"] for item in curator_list.json()}
+    assert curator_history.status_code == 200
+    assert len(curator_history.json()) == 1
+
+
+@pytest.mark.asyncio
 async def test_admin_retire_changes_pattern_status_and_audits_write(api_client, session_factory):
     await run_seed_in_session(session_factory)
     async with session_factory() as session:
@@ -273,17 +333,26 @@ async def test_journal_list_detail_and_guideline_write_are_persisted_and_audited
 
 
 @pytest.mark.asyncio
-async def test_feedback_and_override_are_persisted_and_audited_rationale_is_required(
+async def test_feedback_is_persisted_and_override_is_unavailable_in_mvp(
     api_client, session_factory
 ):
     await run_seed_in_session(session_factory)
-    async with session_factory() as session:
-        version = await session.scalar(select(PatternVersion).limit(1))
-        assert version is not None
-        version_id = version.id
     client, key = await create_key(session_factory, "client", "feedback client")
     headers = {"X-API-Key": key}
-    recommendation_id = uuid4()
+    recommendation = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={
+            "intent": "INTRO_GAP_INDICATE",
+            "section": "INTRO",
+            "genre": "RESEARCH_ARTICLE",
+            "claim_type": "descriptive",
+            "evidence_level": "multiple_consistent",
+        },
+    )
+    assert recommendation.status_code == 200
+    recommendation_id = UUID(recommendation.json()["recommendation_id"])
+    version_id = UUID(recommendation.json()["items"][0]["pattern_version_id"])
     feedback = await api_client.post(
         "/v1/feedback",
         headers=headers,
@@ -291,47 +360,39 @@ async def test_feedback_and_override_are_persisted_and_audited_rationale_is_requ
             "recommendation_id": str(recommendation_id),
             "pattern_version_id": str(version_id),
             "signal": "accepted",
-            "payload": {"source": "test"},
+            "payload": {"context_hash": "b" * 64},
         },
     )
-    validation_id = uuid4()
-    missing_rationale = await api_client.post(
-        "/v1/overrides",
-        headers=headers,
-        json={"validation_id": str(validation_id), "rule_code": "V02"},
-    )
+    assert feedback.status_code in {200, 201}
     override = await api_client.post(
         "/v1/overrides",
         headers=headers,
+        json={"validation_id": str(uuid4()), "rule_code": "V02", "rationale": "test"},
+    )
+    assert override.status_code == 404
+    unrelated = await api_client.post(
+        "/v1/feedback",
+        headers=headers,
         json={
-            "validation_id": str(validation_id),
-            "rule_code": "V02",
-            "rationale": "The cited evidence was independently reviewed.",
+            "recommendation_id": str(recommendation_id),
+            "pattern_version_id": str(uuid4()),
+            "signal": "accepted",
+            "payload": {"context_hash": "b" * 64},
         },
     )
-
-    assert feedback.status_code in {200, 201}
-    assert missing_rationale.status_code == 422
-    assert override.status_code in {200, 201}
+    assert unrelated.status_code == 404
     async with session_factory() as session:
         feedback_row = await session.scalar(
             select(Feedback).where(Feedback.recommendation_id == recommendation_id)
         )
-        override_row = await session.scalar(
-            select(Override).where(Override.validation_id == validation_id)
-        )
         assert feedback_row is not None
         assert feedback_row.client_id == client.id
-        assert override_row is not None
-        assert override_row.rationale == "The cited evidence was independently reviewed."
         audited_entity_ids = set(
             await session.scalars(
-                select(AuditEvent.entity_id).where(
-                    AuditEvent.entity_id.in_([feedback_row.id, override_row.id])
-                )
+                select(AuditEvent.entity_id).where(AuditEvent.entity_id == feedback_row.id)
             )
         )
-        assert audited_entity_ids == {feedback_row.id, override_row.id}
+        assert audited_entity_ids == {feedback_row.id}
 
 
 @pytest.mark.asyncio
@@ -361,6 +422,16 @@ async def test_role_hierarchy_on_client_reviewer_curator_and_admin_routes(
     for role, key in keys.items():
         taxonomy = await api_client.get("/v1/taxonomy", headers={"X-API-Key": key})
         assert taxonomy.status_code == 200, role
+
+    options = await api_client.get(
+        "/v1/taxonomy/reference-options", headers={"X-API-Key": keys["client"]}
+    )
+    assert options.status_code == 200
+    assert {item["group"] for item in options.json()} == {
+        "claim_type",
+        "evidence_level",
+        "epistemic_strength",
+    }
 
     review_queue = "/v1/admin/review-queue"
     for role, key in keys.items():
@@ -537,12 +608,21 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
             "breakdown",
             "fallback_tier",
             "explanations",
+            "source_type",
+            "version_no",
+            "license_code",
+            "license_name",
+            "source_reference",
         }
         assert item["breakdown"]["discipline"] is None
         assert item["breakdown"]["journal_genre"] is None
     assert body["policy_versions"] == {
         "ranking_weights": "0.1.0",
+        "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
+        "validation_rules": "0.1.0",
+        "epistemic_markers": "0.1.0",
+        "taxonomy_release": "0.1.0",
     }
 
     async with session_factory() as session:
@@ -550,6 +630,52 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         assert log is not None
         assert log.request["intent"] == "INTRO_GAP_INDICATE"
         assert log.results["items"]
+
+
+@pytest.mark.asyncio
+async def test_recommendation_search_keeps_query_private_and_uses_honest_journal_fallback(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    async with session_factory() as session:
+        await run_seed(session)
+        journal = JournalProfile(name="Search fallback journal", issn="2049-3631")
+        session.add(journal)
+        _, key = await create_api_key(session, name="search client", role="client")
+        await session.commit()
+
+    payload = {
+        "intent": "INTRO_GAP_INDICATE",
+        "section": "INTRO",
+        "genre": "RESEARCH_ARTICLE",
+        "journal_id": str(journal.id),
+        "claim_type": "descriptive",
+        "evidence_level": "multiple_consistent",
+        "query": "underexplored",
+    }
+    response = await api_client.post(
+        "/v1/recommendations", headers={"X-API-Key": key}, json=payload
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"]
+    assert all(item["fallback_tier"] == "generic_genre" for item in body["items"])
+    assert all("underexplored" in item["canonical_frame"] for item in body["items"])
+    assert body["fallback_reason"]
+    async with session_factory() as session:
+        log = await session.get(RecommendationLog, UUID(body["recommendation_id"]))
+        assert log is not None
+        assert "query" not in log.request
+        assert log.request["query_hash"]
+        assert "underexplored" not in str(log.request)
+
+    wildcard_response = await api_client.post(
+        "/v1/recommendations",
+        headers={"X-API-Key": key},
+        json={**payload, "query": "%"},
+    )
+    assert wildcard_response.status_code == 200
+    assert wildcard_response.json()["items"] == []
 
 
 @pytest.mark.asyncio
@@ -575,6 +701,93 @@ async def test_validation_http_runs_v02_and_blocks_prove_with_single_study(
     serialized = str(body).casefold()
     assert "v02" in serialized
     assert "block" in serialized
+    assert body["complete"] is False
+    assert "V01" in body["checks_unavailable"]
+    v02 = next(rule for rule in body["rules"] if rule["code"] == "V02")
+    assert v02["applied"] is True
+    assert v02["recommended_action"]
+
+
+@pytest.mark.asyncio
+async def test_render_uses_approved_version_and_keeps_missing_slots(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "render client")
+    async with session_factory() as session:
+        approved = await session.scalar(
+            select(PatternVersion).where(PatternVersion.canonical_frame.like("The role of %"))
+        )
+        restricted = await session.scalar(
+            select(PatternVersion).where(
+                PatternVersion.canonical_frame.like("Prior work has rarely %")
+            )
+        )
+        assert approved is not None and restricted is not None
+
+    endpoint = "/v1/render"
+    headers = {"X-API-Key": key}
+    recommendation = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={
+            "intent": "INTRO_GAP_INDICATE",
+            "section": "INTRO",
+            "genre": "RESEARCH_ARTICLE",
+            "claim_type": "descriptive",
+            "evidence_level": "multiple_consistent",
+        },
+    )
+    assert recommendation.status_code == 200
+    assert str(approved.id) in {
+        item["pattern_version_id"] for item in recommendation.json()["items"]
+    }
+    detail = await api_client.get(f"/v1/patterns/versions/{approved.id}", headers=headers)
+    assert detail.status_code == 200
+    assert detail.json()["slots"] == {"topic": "noun_phrase", "context": "noun_phrase"}
+    payload = {
+        "recommendation_id": recommendation.json()["recommendation_id"],
+        "pattern_version_id": str(approved.id),
+        "slots": {"topic": "language models"},
+    }
+    response = await api_client.post(endpoint, headers=headers, json=payload)
+    assert response.status_code == 200
+    assert response.json()["text"] == (
+        "The role of language models in {context} remains underexplored."
+    )
+    assert response.json()["unfilled_slots"] == ["context"]
+
+    extra = await api_client.post(
+        endpoint, headers=headers, json={**payload, "slots": {"unexpected": "x"}}
+    )
+    assert extra.status_code == 422
+    forbidden = await api_client.post(
+        endpoint,
+        headers=headers,
+        json={**payload, "pattern_version_id": str(restricted.id), "slots": {}},
+    )
+    assert forbidden.status_code == 404
+    hidden_detail = await api_client.get(f"/v1/patterns/versions/{restricted.id}", headers=headers)
+    assert hidden_detail.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_feedback_rejects_raw_writer_text(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "privacy client")
+    response = await api_client.post(
+        "/v1/feedback",
+        headers={"X-API-Key": key},
+        json={
+            "recommendation_id": str(uuid4()),
+            "pattern_version_id": str(uuid4()),
+            "signal": "edited",
+            "payload": {"raw_text": "My unpublished sentence"},
+        },
+    )
+    assert response.status_code == 422
 
 
 async def _create_candidate(session_factory: async_sessionmaker) -> UUID:

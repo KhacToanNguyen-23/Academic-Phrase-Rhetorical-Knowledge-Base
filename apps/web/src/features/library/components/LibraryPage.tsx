@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { api, type PatternQuery, type PatternStatus, type PhrasePattern, type Section } from "@/shared/api";
-import { Badge, Card, Empty, EvidenceLabel, Frame, Loading, PageHeader, ProvenanceTag, StatusBadge } from "@/shared/ui";
+import { Badge, Card, Empty, ErrorState, EvidenceLabel, Frame, Loading, PageHeader, ProvenanceTag, StatusBadge } from "@/shared/ui";
 
 const SECTIONS: Section[] = ["Introduction", "Methods", "Results", "Discussion", "Conclusion"];
 const STATUSES: PatternStatus[] = ["approved", "in_review", "draft", "retired"];
@@ -13,6 +13,12 @@ export function LibraryPage({ selectedId }: { selectedId?: string }) {
   const navigate = useNavigate();
   const intents = useQuery({ queryKey: ["intents"], queryFn: api.intents });
   const list = useQuery({ queryKey: ["patterns", f], queryFn: () => api.patterns(f), placeholderData: (p) => p });
+
+  if (intents.isError || list.isError) {
+    return <ErrorState message="The pattern library could not be loaded." onRetry={async () => {
+      await Promise.all([intents.refetch(), list.refetch()]);
+    }} />;
+  }
 
   const activeId = selectedId ?? list.data?.[0]?.id;
   const intentName = (id: string) => intents.data?.find((i) => i.intent_id === id)?.name ?? id;
@@ -64,8 +70,9 @@ export function LibraryPage({ selectedId }: { selectedId?: string }) {
 }
 
 function Detail({ id, intentName }: { id: string; intentName: (id: string) => string }) {
-  const { data: p, isPending } = useQuery({ queryKey: ["pattern", id], queryFn: () => api.pattern(id) });
+  const { data: p, isPending, isError, refetch } = useQuery({ queryKey: ["pattern", id], queryFn: () => api.pattern(id) });
   if (isPending) return <Loading />;
+  if (isError) return <ErrorState message={`Pattern ${id} could not be loaded.`} onRetry={async () => { await refetch(); }} />;
   if (!p) return <Empty>Pattern {id} could not be found.</Empty>;
   const servable = p.status === "approved" && (p.license_status === "own_authored" || p.license_status === "allowed");
 

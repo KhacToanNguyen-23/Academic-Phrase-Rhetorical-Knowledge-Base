@@ -1,7 +1,8 @@
-// Gốc ứng dụng: QueryClientProvider + RouterProvider. Auth context sẽ gắn ở đây khi có identity API.
+// Root providers: query cache, staff auth, and router.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 
+import { AuthProvider } from "@/features/auth/AuthProvider";
 import { router } from "./router";
 import "./styles.css";
 
@@ -10,7 +11,9 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

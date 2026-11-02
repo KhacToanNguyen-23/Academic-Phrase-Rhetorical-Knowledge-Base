@@ -49,3 +49,10 @@ class TaxonomyTree(BaseModel):
     version: str
     sections: list[TaxonomySection]
     article_genres: list[dict[str, str]]
+
+
+class ReferenceOption(BaseModel):
+    group: str
+    code: str
+    label: str
+    order: int

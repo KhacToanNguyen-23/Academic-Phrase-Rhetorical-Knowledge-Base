@@ -51,6 +51,7 @@ pnpm-debug.log*
 # 4. Data, Corpus & NLP Cache (Dung lượng lớn & Bản quyền)
 # ==========================================
 data/corpus/
+data/blobs/
 data/raw/
 data/processed/
 data/cache/
@@ -83,10 +84,9 @@ logs/
 # JetBrains (PyCharm / WebStorm / IDEA)
 .idea/
 
-# VS Code (Giữ lại extension gợi ý & debug config chung nếu có, bỏ setting giao diện cá nhân)
+# VS Code (giữ extension dùng chung; bỏ cấu hình và launch riêng từng máy)
 .vscode/*
 !.vscode/extensions.json
-!.vscode/launch.json
 
 # Local AI plugins, session state, and per-machine guard configuration
 .agents/plugins/
@@ -117,3 +117,14 @@ $RECYCLE.BIN/
 
 # Linux
 *~
+
+# ==========================================
+# 7. AI agent local state (Codex / Claude Code)
+# ==========================================
+# Trạng thái runtime theo từng session do hook ghi ra, mỗi máy khác nhau
+.codex/session-data/
+.claude/settings.local.json
+# Con trỏ brainstorm đang làm dở của từng người; spec/report trong plans/ vẫn được commit
+plans/.current-brainstorm.md
+# Script thu thập thử từ Manchester Academic Phrasebank: chỉ dùng local, không đưa vào repo (BR-10, seed phải own_authored)
+scripts/collect_manchester_demo.py

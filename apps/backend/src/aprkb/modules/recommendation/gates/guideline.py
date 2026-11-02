@@ -10,10 +10,15 @@ from aprkb.modules.recommendation.pattern_view import PatternView
 
 
 class _GuidelineReader(Protocol):
-    def get(self, journal_id: UUID) -> tuple[dict[str, object], ...]: ...
+    def has_mandatory_rules(self, journal_id: UUID) -> bool: ...
 
 
 class GuidelineGate(HardGate):
+    """FR-07.2 / BR-04 / BR-09.
+
+    Mandatory rules must come from verified guidelines, not corpus trends.
+    """
+
     code = "GATE_GUIDELINE"
 
     def __init__(self, guideline_policy: _GuidelineReader | None = None) -> None:
@@ -21,7 +26,9 @@ class GuidelineGate(HardGate):
 
     def check(self, pattern: PatternView, ctx: RecommendationContext) -> GateResult:
         del pattern
-        if ctx.journal_id is not None:
-            self._guideline_policy.get(ctx.journal_id)
-        # TODO(owner, AT-06): implement cached mandatory guideline rule evaluation.
+        if ctx.journal_id is not None and self._guideline_policy.has_mandatory_rules(
+            ctx.journal_id
+        ):
+            # No rule evaluator exists yet; never return a candidate as compliant by default.
+            return GateResult(False, "Mandatory guideline cannot yet be evaluated")
         return GateResult(True)

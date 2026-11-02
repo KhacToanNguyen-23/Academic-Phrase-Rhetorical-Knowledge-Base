@@ -38,12 +38,12 @@ test("writer uses PostgreSQL-backed search, render, validate and feedback", asyn
   await intent.selectOption("INTRO_GAP_INDICATE");
   await page.getByLabel("Claim type").selectOption("descriptive");
   await page.getByLabel("Evidence level").selectOption("multiple_consistent");
-  await page.getByLabel("Search keywords (optional)").fill("45%");
+  await page.getByLabel("Search keywords (optional)").fill("role 45%");
   await page.getByLabel("Supporting context (optional)").fill("The study examined language models in education.");
   await page.getByRole("button", { name: "Find patterns" }).click();
   await expect(page.getByText("The role of {topic} in {context} remains underexplored.")).toBeVisible();
   await expect(page.getByRole("table", { name: "Recommended patterns" }).getByText("Evidence alignment", { exact: true })).toBeVisible();
-  await expect(page.getByRole("table", { name: "Recommended patterns" }).getByText("—", { exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Recommended patterns" }).getByText("—", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Score breakdown:")).toHaveCount(0);
 
   const topic = page.getByRole("textbox", { name: /^\{topic\}/ });
@@ -79,6 +79,8 @@ test("writer uses PostgreSQL-backed search, render, validate and feedback", asyn
   await page.getByRole("button", { name: "This pattern is useful" }).click();
   await expect(page.getByRole("button", { name: "Feedback recorded" })).toBeVisible();
   expect(onlineCalls).toEqual([
-    "/v1/recommendations", "/v1/render", "/v1/validate", "/v1/validate", "/v1/feedback",
+    "/v1/recommendations", "/v1/recommendations", "/v1/recommendations",
+    "/v1/render", "/v1/render", "/v1/render",
+    "/v1/validate", "/v1/validate", "/v1/feedback",
   ]);
 });

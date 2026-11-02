@@ -60,12 +60,12 @@ export const liveApi = {
     return required(data, response.status);
   },
   render: async (key: string, recommendationId: string, versionId: string, slots: Record<string, string>) => {
-    const { data, response } = await client.POST("/v1/render", {
+    const { data, error, response } = await client.POST("/v1/render", {
       headers: headers(key),
       body: { recommendation_id: recommendationId, pattern_version_id: versionId, slots },
     });
     if (data === undefined && response.status === 422) {
-      const body: unknown = await response.clone().json().catch(() => undefined);
+      const body: unknown = error;
       if (body && typeof body === "object" && "error" in body) {
         const error = body.error;
         if (error && typeof error === "object" && "details" in error) {

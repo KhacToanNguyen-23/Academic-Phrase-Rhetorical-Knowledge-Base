@@ -1,5 +1,6 @@
 """Typed draft and approved labels for the development gold set."""
 
+import re
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -77,3 +78,29 @@ class GoldLabels(BaseModel):
             if slot.char_end > len(source_text):
                 raise ValueError("slot range is outside the source sentence")
         return self
+
+    def validate_frame_matches_source(self, source_text: str) -> "GoldLabels":
+        """Require ``frame`` to be the sentence with each slot span replaced by ``[name]``.
+
+        Applied to AI drafts only; a human reviewer may deliberately trim a frame.
+        """
+        if not self.keep:
+            return self
+        if self.frame is None:
+            raise ValueError("kept label requires a frame")
+        rebuilt: list[str] = []
+        position = 0
+        for slot in sorted(self.slots, key=lambda item: item.char_start):
+            if slot.char_start < position:
+                raise ValueError("slot ranges overlap")
+            rebuilt.append(source_text[position : slot.char_start])
+            rebuilt.append(f"[{slot.name}]")
+            position = slot.char_end
+        rebuilt.append(source_text[position:])
+        if _squash("".join(rebuilt)) != _squash(self.frame):
+            raise ValueError("frame does not match the source sentence with slots replaced")
+        return self
+
+
+def _squash(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()

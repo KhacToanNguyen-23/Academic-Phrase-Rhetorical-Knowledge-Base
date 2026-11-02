@@ -974,16 +974,17 @@ class _QuotaAfterTwoLabeler:
 
     model = "fake-model"
     prompt_version = "fake-v0"
+    total_tokens = 321
 
     def __init__(self, *, error: Exception) -> None:
         self.calls = 0
         self._error = error
 
-    async def label(self, **_kwargs: object) -> GoldLabels:
+    async def label(self, **kwargs: object) -> GoldLabels:
         self.calls += 1
         if self.calls > 2:
             raise self._error
-        return GoldLabels(keep=True, section="RESULTS")
+        return GoldLabels(keep=True, section="RESULTS", frame=str(kwargs["sentence"]))
 
 
 async def _seed_unlabeled_gold_batch(session_factory: async_sessionmaker, count: int) -> str:
@@ -1051,6 +1052,7 @@ async def test_gold_labeling_keeps_finished_labels_when_daily_quota_runs_out(
     assert result == {
         "labeled_count": 2,
         "stale_count": 0,
+        "tokens_used": 321,
         "stopped": "quota",
         "remaining_count": 3,
         "retry_after_seconds": 7200,

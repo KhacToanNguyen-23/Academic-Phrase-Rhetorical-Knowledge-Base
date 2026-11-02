@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from aprkb.core.config import settings
 from aprkb.core.logging import configure_logging, get_logger, safe_traceback
+from aprkb.modules import load_models
 from aprkb.modules.corpus.blobstore import BlobStore
 from aprkb.modules.mining.models import Job
 from aprkb.modules.mining.queue import claim_next
@@ -102,6 +103,9 @@ async def run_forever() -> None:
 
 def main() -> None:
     configure_logging()
+    # Article has foreign keys into journals and taxonomy; without every model registered the
+    # first flush in a standalone worker fails with NoReferencedTableError.
+    load_models()
     with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(run_forever())
 

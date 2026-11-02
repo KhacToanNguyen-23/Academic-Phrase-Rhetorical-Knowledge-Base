@@ -17,18 +17,39 @@ SLR import đã chạy được (4 bài thật, license `DEV-UNVERIFIED`), nên 
 
 Không đổi: luồng runtime upload/import → ingest → `mine_article` → candidate `pending` → hai vòng review. Mining không ghi pattern/version. Gold **không** đi vào review queue và không tạo pattern.
 
+## Flow đã làm (cập nhật 2026-11-02)
+
+```
+SLR import → ingest (tách câu, section, lọc nhiễu) → lấy mẫu 300 câu (phân tầng)
+  → Groq gán nhãn nháp → kiểm tra frame tự động → [người duyệt trên /gold] → gold approved
+  → eval-mining: sentence_filter  |  extraction (slot_abstractor)
+```
+
+1. **Ingest (01):** tách câu biết chữ viết tắt, nhận diện section, lọc câu nhiễu; đã `reingest` 4 bài SLR (ví dụ 771→730, 705→647, 96→85, 1288→1276 câu).
+2. **Lấy mẫu (02):** 300 câu, phân tầng theo section, 10% từ câu bị bộ lọc loại, 30% (90 câu) vào `test` và chọn riêng trong từng tầng. Chỉ lấy bài `source=slr`.
+3. **Gán nhãn (03):** `GroqGoldLabeler` dùng `openai/gpt-oss-120b`, `json_schema` strict, `reasoning_effort: medium`, `include_reasoning: false`. Hết quota (429 đòi chờ lâu hơn `max_rate_limit_wait_seconds`) thì job dừng, giữ nhãn đã gán và báo `stopped: quota`. Tham số `limit` cho phép gán thử một phần batch.
+4. **Chạy thử 10 câu:** 10/10 gán được, 0 `label_failed`, khoảng 124 giây và 21,8 nghìn token (~2,2 nghìn/câu). Ước tính 300 câu ≈ 654 nghìn token, vượt hạn mức ngày của gói miễn phí, nên cần chia nhiều ngày hoặc giảm effort. Hạn mức thật xem ở console.groq.com.
+5. **Rà nhãn nháp:** 3/7 câu `keep=true` có frame không khớp câu gốc (mất phần đầu, phần cuối hoặc chữ bị sửa); một số frame còn nguyên từ chuyên ngành. Từ đó:
+   - Thêm `GoldLabels.validate_frame_matches_source`: frame phải bằng câu với mỗi slot thay bằng `[tên]`. Chỉ áp dụng cho nhãn AI; lệch thì item thành `label_failed`.
+   - Viết lại hướng dẫn thành **guideline v1** và prompt v1 (`prompt_version`, `guideline_version`).
+6. **Chốt định nghĩa `keep` (v1):** `keep` = câu là văn xuôi sạch, không phải nhiễu. Nó **không** nghĩa là trích được slot. Bộ trích (`slot_abstractor`) chỉ chạy trên câu sạch và được đo riêng.
+7. **Runtime (05):** `SlotAbstractor.extractability_reason(text)` trả `None` hoặc `no_reporting_verb` / `no_that` / `no_subject` / `subject_too_long` / `clause_too_short`.
+8. **Evaluator (08):** tách thành `sentence_filter` (keep, noise_reason) và `extraction` (coverage, lý do, accuracy, slot F1 trên câu đã trích).
+
+**Chưa có gold được duyệt, chưa có kết luận chất lượng.** 10 nhãn nháp hiện có là v0 (định nghĩa `keep` cũ), không nên duyệt làm gold; 290 câu còn `pending_ai`. Số đếm thử trên 10 nhãn nháp (độ phủ bộ trích 1/7, phần lớn `no_reporting_verb`) chỉ để minh họa, không phải kết quả đánh giá.
+
 ## Phase
 
 | Phase | Nội dung | Trạng thái |
 |---|---|---|
-| [01](phase-01-ingest-quality.md) | Chất lượng ingest: tách câu với chữ viết tắt, nhận diện section, lọc câu nhiễu | Đã code, chờ chạy `reingest` (cần Docker) |
-| [02](phase-02-gold-schema-and-guideline.md) | Bảng gold, nhãn (Pydantic), hướng dẫn gán nhãn, lấy mẫu, cập nhật PRD/ADR | Hoàn thành: schema/API và mẫu 300 item (90 test); chưa có nhãn |
-| [03](phase-03-llm-labeling.md) | Gán nhãn bằng LLM (tạm dùng Groq) qua job worker, validate bằng Pydantic | Đã triển khai; test HTTP giả lập. Owner đã chọn `openai/gpt-oss-120b` và báo đã cấu hình key; chưa gọi thật vì chưa xác nhận quyền gửi bài báo cho bên thứ ba |
-| [04](phase-04-internal-contract-and-policies.md) | Runtime: hợp đồng dữ liệu, policy | Đã triển khai; PostgreSQL integration đang chờ `TEST_DATABASE_URL` |
-| [05](phase-05-protected-extraction-engines.md) | Runtime: trích slot bằng regex | Đã triển khai; unit pass, PostgreSQL integration đang chờ `TEST_DATABASE_URL` |
-| [06](phase-06-keying-and-worker-integration.md) | Runtime: key bảo thủ, nối worker; thêm `epistemic_tagger` theo luật | Đã triển khai; unit pass, PostgreSQL integration đang chờ `TEST_DATABASE_URL` |
-| [07](phase-07-gold-review-ui.md) | Màn hình duyệt gold trên web + API | Đã triển khai; web typecheck/lint pass, PostgreSQL integration đang chờ `TEST_DATABASE_URL` |
-| [08](phase-08-evaluator.md) | Đánh giá pipeline trên gold đã duyệt | Đã triển khai CLI/métric; chưa chạy vì chưa có nhãn gold được duyệt |
+| [01](phase-01-ingest-quality.md) | Chất lượng ingest: tách câu với chữ viết tắt, nhận diện section, lọc câu nhiễu | Hoàn thành; đã `reingest` 4 bài SLR |
+| [02](phase-02-gold-schema-and-guideline.md) | Bảng gold, nhãn (Pydantic), hướng dẫn gán nhãn, lấy mẫu, cập nhật PRD/ADR | Hoàn thành: schema/API, mẫu 300 item phân tầng (90 test), guideline v1; chưa có nhãn được duyệt |
+| [03](phase-03-llm-labeling.md) | Gán nhãn bằng LLM (tạm dùng Groq) qua job worker, validate bằng Pydantic | Đã triển khai; đã chạy thật 10 câu bằng `openai/gpt-oss-120b` (10/10, nhãn v0, `draft`); còn 290 câu `pending_ai`. Prompt/guideline v1 chưa chạy thật |
+| [04](phase-04-internal-contract-and-policies.md) | Runtime: hợp đồng dữ liệu, policy | Đã triển khai; PostgreSQL integration pass (`aprkb_test`) |
+| [05](phase-05-protected-extraction-engines.md) | Runtime: trích slot bằng regex | Đã triển khai, thêm `extractability_reason`; unit và PostgreSQL integration pass |
+| [06](phase-06-keying-and-worker-integration.md) | Runtime: key bảo thủ, nối worker; thêm `epistemic_tagger` theo luật | Đã triển khai; unit pass, PostgreSQL integration pass (`aprkb_test`) |
+| [07](phase-07-gold-review-ui.md) | Màn hình duyệt gold trên web + API | Đã triển khai; web typecheck/lint pass, PostgreSQL integration pass (`aprkb_test`) |
+| [08](phase-08-evaluator.md) | Đánh giá pipeline trên gold đã duyệt | Đã triển khai CLI/metric, tách `sentence_filter` và `extraction`; chưa chạy chính thức vì chưa có nhãn gold được duyệt |
 | [09](phase-09-synonym-proposals.md) | Đề xuất từ đồng nghĩa | Hoãn |
 
 Thứ tự: 01 → 02 → 03 → 07 (gán nhãn và duyệt có thể chạy trong lúc làm 04–06) → 04 → 05 → 06 → 08. Việc gọi Groq thật vẫn tắt cho tới khi owner xác nhận quyền xử lý AI bên ngoài; key/model đã được cấu hình. Evaluator chỉ chạy trên nhãn `approved`.

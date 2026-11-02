@@ -285,3 +285,37 @@ def test_dev_fallback_license_must_exist_in_policy() -> None:
     config = Settings(app_env="local", slr_api_key="k", slr_dev_fallback_license="NOPE")
     with pytest.raises(ValueError, match="licenses.yaml"):
         SlrRepositorySource(httpx.AsyncClient(), config, load_policy_bundle().licenses)
+
+
+@pytest.mark.asyncio
+async def test_taxonomy_exposes_openalex_ids_that_slr_accepts_as_filters() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        item = {
+            "level": "field",
+            "id": "fields_17",
+            "openAlexId": "https://openalex.org/fields/17",
+            "label": "Computer Science",
+            "parentId": "D3",
+            "parentOpenAlexId": "https://openalex.org/domains/3",
+        }
+        legacy = {"level": "field", "id": "F99", "label": "Legacy", "parentId": "D9"}
+        return httpx.Response(
+            200, json={"isSuccess": True, "data": {"items": [item, legacy], "nextCursor": None}}
+        )
+
+    client = httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://slr.test/api"
+    )
+    config = Settings(slr_api_key="test-secret", slr_max_retries=0)
+    source = SlrRepositorySource(client, config, load_policy_bundle().licenses)
+    page = await source.get_taxonomy("field", "https://openalex.org/domains/3", None, 100)
+    assert requests[0].url.params["parentId"] == "https://openalex.org/domains/3"
+    first, second = page["items"]
+    assert first["id"] == "https://openalex.org/fields/17"
+    assert first["parentId"] == "https://openalex.org/domains/3"
+    assert (second["id"], second["parentId"]) == ("F99", "D9")
+    assert page["nextCursor"] is None
+    await client.aclose()

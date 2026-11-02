@@ -8,7 +8,10 @@ Lệnh `uv run --directory apps/backend python -m aprkb.cli eval-mining [--split
 
 - Chỉ đọc item `approved` và không `stale`.
 - Chạy các stage hiện có trên đúng câu đó, so với `final_labels`.
-- Số liệu: lọc nhiễu (precision/recall của `keep`), section (accuracy, confusion), `epistemic_strength` và `tense` (accuracy, confusion), `ownership`, frame (khớp chính xác sau chuẩn hóa khoảng trắng), slot (F1 theo vị trí ký tự).
+- Báo cáo tách hai thuật toán (2026-11-02):
+  - `sentence_filter`: precision/recall của `keep`; `noise_reason_confusion` là bảng đếm thô giữa lý do nhiễu của gold và lý do loại của bộ lọc (không giả định ánh xạ giữa hai danh sách).
+  - `extraction`: chạy các stage sau bộ lọc trên mọi câu gold `keep=true` (bất kể bộ lọc có cho qua không). Gồm `gold_keep_count`, `extracted_count`, `coverage` và `reasons` (số câu theo `extractability_reason`).
+  - `accuracy`, `confusions`, `slot_f1` chỉ tính trên câu đã trích, đọc cùng `coverage`: section, `epistemic_strength`, `tense`, `ownership`, frame (khớp chính xác sau chuẩn hóa khoảng trắng), slot (F1 theo vị trí ký tự).
 - Báo cáo riêng `dev` và `test`, kèm phiên bản policy/stage, `guideline_version` và số item. Ghi ra stdout và `data/eval/` (gitignored). Không in câu.
 - Thêm vào báo cáo tỉ lệ người duyệt sửa nhãn AI theo từng trường (độ tin cậy của nhãn nháp).
 

@@ -107,7 +107,7 @@ async def create_sample(
                 section_at_sampling=row.section,
                 split="test" if row.sentence_id in test_ids else "dev",
                 sample_batch=batch,
-                guideline_version="v0",
+                guideline_version=policies.gold_labeling.guideline_version,
                 status="pending_ai",
                 created_by=actor.id if actor is not None else None,
             )
@@ -221,6 +221,7 @@ async def label_sample_batch(
     sample_batch: str,
     request_id: str,
     labeler: GoldLabeler | None = None,
+    limit: int | None = None,
 ) -> dict[str, int | str]:
     """Label one batch after a separate rights check, never logging source content."""
     policies = load_policy_bundle()
@@ -248,6 +249,7 @@ async def label_sample_batch(
                 GoldItem.status.in_(["pending_ai", "label_failed"]),
             )
             .order_by(GoldItem.id)
+            .limit(limit)
             .with_for_update(of=[GoldItem, License])
         )
     )
@@ -305,6 +307,7 @@ async def label_sample_batch(
                 next_sentence=next_sentence,
             )
             labels.validate_source_offsets(source_sentence.text)
+            labels.validate_frame_matches_source(source_sentence.text)
         except GoldLabelingRequestError as error:
             # Keep the labels already drafted: they cost provider quota to produce.
             stopped = error
@@ -315,6 +318,7 @@ async def label_sample_batch(
         item.ai_labels = labels.model_dump(mode="json")
         item.ai_model = labeler.model
         item.ai_prompt_version = labeler.prompt_version
+        item.guideline_version = policies.gold_labeling.guideline_version
         item.ai_labeled_at = datetime.now(UTC)
         item.status = "draft"
         labeled += 1
@@ -332,7 +336,11 @@ async def label_sample_batch(
         request_id=request_id,
     )
     await session.commit()
-    result: dict[str, int | str] = {"labeled_count": labeled, "stale_count": stale}
+    result: dict[str, int | str] = {
+        "labeled_count": labeled,
+        "stale_count": stale,
+        "tokens_used": labeler.total_tokens,
+    }
     if isinstance(stopped, GoldLabelingQuotaError):
         # Daily quota used up: the remaining items stay pending_ai for a later run.
         remaining = sum(item.status in ("pending_ai", "label_failed") for item, _ in rows)
@@ -544,7 +552,8 @@ async def review_gold_item(
         item.final_labels = labels.model_dump(mode="json")
         item.status = "approved"
     item.reviewed_by = reviewer.id
-    item.reviewed_at = datetime.now(UTC)
+    reviewed_at = datetime.now(UTC)
+    item.reviewed_at = reviewed_at
     await record_event(
         session,
         actor_id=reviewer.id,
@@ -560,9 +569,7 @@ async def review_gold_item(
         request_id=request_id,
     )
     await session.commit()
-    return GoldReviewResult(
-        id=item.id, status=item.status, reviewed_at=item.reviewed_at.isoformat()
-    )
+    return GoldReviewResult(id=item.id, status=item.status, reviewed_at=reviewed_at.isoformat())
 
 
 async def get_gold_stats(session: AsyncSession) -> GoldStats:

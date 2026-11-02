@@ -49,3 +49,36 @@ def test_gold_labels_reject_slot_ranges_outside_sentence():
     )
     with pytest.raises(ValueError, match="outside"):
         labels.validate_source_offsets("short")
+
+
+_FRAME_SENTENCE = "These results suggest that seedlings tolerate cold."
+
+
+def _frame_labels(frame: str, start: int = 27, end: int = 50) -> GoldLabels:
+    return GoldLabels.model_validate(
+        {
+            "keep": True,
+            "frame": frame,
+            "slots": [{"name": "X", "char_start": start, "char_end": end}],
+        }
+    )
+
+
+def test_frame_matching_source_with_slots_is_accepted():
+    _frame_labels("These results suggest that [X].").validate_frame_matches_source(_FRAME_SENTENCE)
+
+
+def test_frame_that_drops_leading_text_is_rejected():
+    with pytest.raises(ValueError, match="frame does not match"):
+        _frame_labels("suggest that [X].").validate_frame_matches_source(_FRAME_SENTENCE)
+
+
+def test_frame_check_ignores_rejected_items():
+    labels = GoldLabels.model_validate({"keep": False, "noise_reason": "fragment"})
+    assert labels.validate_frame_matches_source("anything") is labels
+
+
+def test_kept_label_requires_a_frame():
+    labels = GoldLabels.model_validate({"keep": True, "frame": None, "slots": []})
+    with pytest.raises(ValueError, match="requires a frame"):
+        labels.validate_frame_matches_source("A self-authored sentence.")

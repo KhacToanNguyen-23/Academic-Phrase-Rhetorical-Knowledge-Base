@@ -1,6 +1,6 @@
 # Phase 02 — Bảng gold, nhãn, hướng dẫn, lấy mẫu
 
-Trạng thái: hoàn thành — schema, API lấy mẫu deterministic, guideline, PRD/ADR và mẫu dev đã cập nhật.
+Trạng thái: hoàn thành — schema, API lấy mẫu deterministic, guideline v1, PRD/ADR và mẫu dev đã cập nhật. Guideline v1 (2026-11-02) viết lại tiêu chí từng nhãn; xem `eval/mining/gold/GUIDELINE.md`.
 
 ## Tài liệu
 
@@ -13,17 +13,19 @@ Trạng thái: hoàn thành — schema, API lấy mẫu deterministic, guideline
 
 | Trường | Giá trị |
 |---|---|
-| `keep` | bool — câu có dùng để trích phrase được không |
+| `keep` | bool — câu là văn xuôi sạch (không phải nhiễu). **Không** nghĩa là trích được slot; độ phủ của bộ trích đo riêng |
 | `noise_reason` | `caption` / `table` / `formula` / `reference` / `acknowledgement` / `fragment` / `metadata` / `other`, chỉ khi `keep=false` |
 | `section` | mã section trong bảng `sections` hoặc `OTHER` |
 | `epistemic_strength` | `low` / `moderate` / `high` / `absolute` / `none` (theo `epistemic_markers.yaml`) |
 | `tense` | `past` / `present` / `present_perfect` / `none` (thì của động từ tường thuật chính) |
-| `frame` | khung phrase, slot đặt tên theo vị trí `[X]`, `[Y]`, `[Z]` |
+| `frame` | cả câu với mỗi slot thay bằng `[X]`, `[Y]`, `[Z]`; mọi ký tự ngoài slot giữ nguyên |
 | `slots` | danh sách `{name, char_start, char_end}` trong câu |
 | `ownership` | `own` / `prior` / `unclear` (DET_OWN/DET_PRIOR) |
 | `notes` | ghi chú ngắn của người duyệt (tùy chọn) |
 
-`intent` (move) chưa gán ở v0.
+`intent` (move) chưa gán ở v0 và v1.
+
+Ví dụ tự soạn, bảng định nghĩa `noise_reason`, danh sách từ đánh dấu mức chắc chắn (khớp `epistemic_markers.yaml`) và tiêu chí `ownership` nằm trong guideline. Test `test_guideline.py` báo lỗi nếu guideline lệch với YAML hoặc phiên bản policy.
 
 ## Bảng `gold_items` (migration sau head hiện tại)
 

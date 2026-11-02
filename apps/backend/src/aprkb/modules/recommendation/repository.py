@@ -38,7 +38,8 @@ async def load_pattern_rows(session: AsyncSession, *, intent_code: str) -> list[
         .where(Intent.code == intent_code)
         .order_by(PhrasePattern.created_at, PhrasePattern.id)
     )
-    return list((await session.execute(statement)).unique().all())
+    rows = (await session.execute(statement)).unique().all()
+    return [(row[0], row[1], row[2], row[3], row[4], row[5]) for row in rows]
 
 
 async def reference_strengths(session: AsyncSession) -> list[RefEnum]:

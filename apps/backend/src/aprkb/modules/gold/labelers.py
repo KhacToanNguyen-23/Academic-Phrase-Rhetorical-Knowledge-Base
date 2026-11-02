@@ -11,11 +11,19 @@ from aprkb.modules.gold.labels import GoldLabels, NoiseReason, Ownership, Streng
 from aprkb.policies.schemas import GoldLabelingPolicy
 
 _GUIDELINE = """Classify one academic sentence. Return only JSON matching the requested schema.
-Use adjacent sentences only as context. Do not label them or include them in slot spans.
-Do not invent spans: offsets are zero-based, end-exclusive offsets into the target sentence.
-If it is not a reusable academic phrase, set keep=false and provide noise_reason.
+Use adjacent sentences only as context for ownership. Do not label them or include them in slots.
+keep means the sentence is clean running prose; it does not mean a slot can be extracted.
+If it is a caption, table row, formula, reference, acknowledgement, fragment or metadata,
+set keep=false and give noise_reason; otherwise noise_reason must be null.
+Offsets are zero-based and end-exclusive into the target sentence; do not invent spans.
+The frame must be the whole sentence with each slot span replaced by [X], [Y] or [Z]; every
+character outside the slots stays exactly as written. Never shorten, reword or drop text.
+Slots are non-overlapping spans named X, Y, Z in order of appearance. Put sentence-specific
+content (topic nouns, domain terms, content clauses) in slots and keep the reporting verb,
+hedges, negation, modals and comparison words in the frame.
+Set epistemic_strength from the marker words in the guideline only; otherwise use none.
+For keep=false set frame to null and slots to an empty list.
 Labels: keep, noise_reason, section, epistemic_strength, tense, frame, slots, ownership, notes.
-Slot objects contain name, char_start and char_end. Use positional slot names X, Y, Z.
 """
 
 
@@ -84,6 +92,7 @@ _LABEL_JSON_SCHEMA: dict[str, object] = {
 class GoldLabeler(Protocol):
     model: str
     prompt_version: str
+    total_tokens: int
 
     async def label(
         self,
@@ -98,6 +107,7 @@ class GoldLabeler(Protocol):
 class NullGoldLabeler:
     model = "null"
     prompt_version = "v0"
+    total_tokens = 0
 
     async def label(
         self,
@@ -128,6 +138,7 @@ class GroqGoldLabeler:
         self._policy = policy
         self._guideline = guideline
         self._client = client
+        self.total_tokens = 0  # provider-reported usage; counts only, never content
         self._rate_lock = asyncio.Lock()
         self._next_request_at = 0.0
 
@@ -175,7 +186,11 @@ class GroqGoldLabeler:
         client = self._client or httpx.AsyncClient(timeout=45)
         try:
             response = await self._request(client, payload)
-            content = response.json()["choices"][0]["message"]["content"]
+            body = response.json()
+            usage = body.get("usage")
+            if isinstance(usage, dict) and isinstance(usage.get("total_tokens"), int):
+                self.total_tokens += usage["total_tokens"]
+            content = body["choices"][0]["message"]["content"]
             if not isinstance(content, str):
                 raise GoldLabelerError("Provider returned no label JSON")
             decoded = json.loads(content)

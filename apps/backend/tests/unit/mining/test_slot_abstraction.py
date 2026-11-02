@@ -5,6 +5,7 @@ from uuid import uuid4
 from aprkb.modules.mining.pipeline import MiningPipeline
 from aprkb.modules.mining.stages import build_stages
 from aprkb.modules.mining.stages.base import MiningItem
+from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
 from aprkb.policies.loader import load_policy_bundle
 
 
@@ -145,3 +146,36 @@ def test_unrecognized_reporting_word_does_not_create_a_raw_candidate():
     )
 
     assert _pipeline().process([item]) == []
+
+
+def test_extractability_reason_reports_empty_subject_after_determiner(policy_bundle):
+    from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
+
+    abstractor = SlotAbstractor(policy_bundle.reporting_verbs, policy_bundle.slot_abstraction)
+    text = "These suggest that the sample changes."
+
+    assert abstractor.extractability_reason(text) == "empty_noun_phrase"
+    assert _pipeline().process([MiningItem(text=text, source_sentence_ids=[uuid4()])]) == []
+
+
+def _abstractor():
+    bundle = load_policy_bundle()
+    return SlotAbstractor(bundle.reporting_verbs, bundle.slot_abstraction)
+
+
+def test_extractability_reason_is_none_for_supported_construction():
+    assert (
+        _abstractor().extractability_reason("Our results suggest that cold slows growth.") is None
+    )
+
+
+def test_extractability_reason_names_the_failing_condition():
+    abstractor = _abstractor()
+    assert (
+        abstractor.extractability_reason("This paper presents a new tool.") == "no_reporting_verb"
+    )
+    assert abstractor.extractability_reason("Our results suggest a new tool.") == "no_that"
+    assert abstractor.extractability_reason("Results suggest that cold.") == "clause_too_short"
+    assert abstractor.extractability_reason("suggest that cold slows growth.") == "no_subject"
+    long_subject = "The very long and winding collection of many separate results suggest that x y."
+    assert abstractor.extractability_reason(long_subject) == "subject_too_long"

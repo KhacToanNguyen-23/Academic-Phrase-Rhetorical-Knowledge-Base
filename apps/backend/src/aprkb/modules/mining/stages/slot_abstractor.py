@@ -2,7 +2,7 @@
 
 import hashlib
 import re
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from aprkb.modules.mining.schemas import Ownership, ProtectedSignal, SlotDefinition, SlotType, Tense
 from aprkb.modules.mining.stages.base import ExtractionOccurrence, MiningItem, MiningStage
@@ -25,6 +25,14 @@ _SIGNAL_PATTERNS = {
         r"\b(?:ms|s|seconds?|minutes?|hours?|days?|mm|cm|m|km|kg|g|mb|gb)\b", re.I
     ),
 }
+
+
+@dataclass(frozen=True)
+class _Located:
+    tense: Tense
+    surface: str
+    subject: tuple[int, int]
+    clause: tuple[int, int]
 
 
 class SlotAbstractor(MiningStage):
@@ -51,43 +59,68 @@ class SlotAbstractor(MiningStage):
                 extracted.append(result)
         return extracted
 
-    def _extract(self, item: MiningItem) -> MiningItem | None:
-        match = self._reporting_match(item.text)
+    def extractability_reason(self, text: str) -> str | None:
+        """Return why ``text`` cannot be abstracted, or ``None`` when it can."""
+        located = self._locate(text)
+        return located if isinstance(located, str) else None
+
+    def _locate(self, text: str) -> str | _Located:
+        """Find verb, subject and clause spans, or return the reason extraction is impossible."""
+        match = self._reporting_match(text)
         if match is None:
-            return None
+            return "no_reporting_verb"
         verb_start, verb_end, tense, verb_class, surface = match
-        that = re.match(r"\s+that\b\s*", item.text[verb_end:], re.I)
+        that = re.match(r"\s+that\b\s*", text[verb_end:], re.I)
         if that is None:
-            return None
-        subject_start, subject_end = _trim_span(item.text, 0, verb_start)
-        clause_start = verb_end + that.end()
-        clause_start, clause_end = _trim_span(item.text, clause_start, len(item.text))
-        subject = item.text[subject_start:subject_end]
-        subject_words = re.findall(r"\b[\w'-]+\b", subject)
-        clause_words = re.findall(r"\b[\w'-]+\b", item.text[clause_start:clause_end])
-        if not subject_words or len(subject_words) > self._policy.max_subject_words:
-            return None
+            return "no_that"
+        subject_start, subject_end = _trim_span(text, 0, verb_start)
+        clause_start, clause_end = _trim_span(text, verb_end + that.end(), len(text))
+        subject_words = re.findall(r"\b[\w'-]+\b", text[subject_start:subject_end])
+        clause_words = re.findall(r"\b[\w'-]+\b", text[clause_start:clause_end])
+        if not subject_words:
+            return "no_subject"
+        if len(subject_words) > self._policy.max_subject_words:
+            return "subject_too_long"
         if len(clause_words) < self._policy.min_clause_words:
+            return "clause_too_short"
+        determiner = _determiner_match(
+            text[subject_start:subject_end],
+            self._policy.own_determiners + self._policy.prior_determiners,
+        )
+        if determiner is not None:
+            noun_start, noun_end = _trim_span(text, subject_start + determiner.end(), subject_end)
+            if noun_start == noun_end:
+                return "empty_noun_phrase"
+        return _Located(tense, surface, (subject_start, subject_end), (clause_start, clause_end))
+
+    def _extract(self, item: MiningItem) -> MiningItem | None:
+        located = self._locate(item.text)
+        if isinstance(located, str):
             return None
+        tense, surface = located.tense, located.surface
+        subject_start, subject_end = located.subject
+        clause_start, clause_end = located.clause
+        subject = item.text[subject_start:subject_end]
 
         determiner = _determiner_match(
             item.text[subject_start:subject_end],
             self._policy.own_determiners + self._policy.prior_determiners,
         )
         has_determiner_slot = determiner is not None
+        determiner_text = ""
         spans: dict[str, tuple[int, int]] = {}
         slot_defs: dict[str, SlotDefinition] = {}
         if has_determiner_slot:
             if determiner is None:
                 return None
             det_span = (subject_start, subject_start + determiner.end())
+            determiner_text = item.text[slice(*det_span)].casefold()
             noun_start, noun_end = _trim_span(item.text, det_span[1], subject_end)
             if noun_start == noun_end:
                 return None
             spans["X"] = det_span
             spans["Y"] = (noun_start, noun_end)
             spans["Z"] = (clause_start, clause_end)
-            determiner_text = item.text[slice(*det_span)].casefold()
             det_type = (
                 SlotType.DETERMINER_OWN
                 if determiner_text in self._policy.own_determiners
@@ -106,9 +139,7 @@ class SlotAbstractor(MiningStage):
                 "Y": _definition(SlotType.CLAUSE, item.text[clause_start:clause_end]),
             }
 
-        ownership = self._ownership(
-            item, item.text[slice(*det_span)].casefold() if has_determiner_slot else ""
-        )
+        ownership = self._ownership(item, determiner_text)
         frame = f"[X] [Y] {surface} that [Z]" if "Z" in spans else f"[X] {surface} that [Y]"
         trailing = re.search(r"[.!?]+\s*$", item.text)
         if trailing is not None:

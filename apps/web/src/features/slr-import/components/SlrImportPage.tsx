@@ -410,35 +410,6 @@ export function SlrImportPage() {
               </Field>
             </div>
 
-            <div className="grid-2">
-              <Field label="Tên tạp chí" error={fieldErrors.journal}>
-                <input
-                  placeholder="VD: Nature Machine Intelligence"
-                  aria-invalid={!!fieldErrors.journal}
-                  value={String(filters.journal ?? "")}
-                  onChange={(e) => setFilter("journal", e.target.value)}
-                />
-              </Field>
-              <Field label="Mã ISSN" error={fieldErrors.journalIssn}>
-                <input
-                  placeholder="VD: 2522-5839"
-                  aria-invalid={!!fieldErrors.journalIssn}
-                  value={String(filters.journalIssn ?? "")}
-                  onChange={(e) => setFilter("journalIssn", e.target.value)}
-                />
-              </Field>
-            </div>
-
-            <Field label="Từ khóa tìm kiếm (q)" hint="Tìm kiếm theo chuỗi trong tiêu đề hoặc metadata" error={fieldErrors.q}>
-              <input
-                type="search"
-                placeholder="VD: rhetorical moves academic phraseology"
-                aria-invalid={!!fieldErrors.q}
-                value={String(filters.q ?? "")}
-                onChange={(e) => setFilter("q", e.target.value)}
-              />
-            </Field>
-
             <div className="grid-2" style={{ alignItems: "flex-start", marginTop: 8 }}>
               <Field label="Số bài mỗi lượt (Batch limit)" hint="Giới hạn số bài trong một lần import (1 - 100)">
                 <input

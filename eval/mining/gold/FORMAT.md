@@ -4,7 +4,7 @@ The schema and 300-item sample are in place. The development set is sampled from
 
 ## Item and label fields
 
-- `keep`: whether the sentence contains usable phrase-mining language.
+- `keep`: whether the sentence is clean running prose (not noise). It does not mean a slot can be extracted; see GUIDELINE.md v1.
 - `noise_reason`: required only when `keep=false`.
 - `section`: section code or `OTHER`.
 - `epistemic_strength`: `low`, `moderate`, `high`, `absolute` or `none`.

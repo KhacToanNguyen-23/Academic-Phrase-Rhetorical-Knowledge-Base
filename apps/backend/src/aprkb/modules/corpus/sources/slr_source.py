@@ -245,4 +245,14 @@ class SlrRepositorySource:
         if cursor is not None:
             params["cursor"] = cursor
         data = await self._json("/public/v1/repository/taxonomy", params=params)
-        return {"items": data.get("items", []), "nextCursor": data.get("nextCursor")}
+        # SLR rejects its own ``id`` (e.g. ``fields_17``) as ``parentId`` or a work filter;
+        # the OpenAlex URL is accepted by both (probe 2026-11-02), so expose that as ``id``.
+        items = [
+            {
+                **item,
+                "id": item.get("openAlexId") or item.get("id"),
+                "parentId": item.get("parentOpenAlexId") or item.get("parentId"),
+            }
+            for item in data.get("items", [])
+        ]
+        return {"items": items, "nextCursor": data.get("nextCursor")}

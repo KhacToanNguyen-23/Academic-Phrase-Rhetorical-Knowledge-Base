@@ -19,3 +19,9 @@ Sample approximately 300 sentences with a fixed seed and 30% test split. Store t
 The selected initial provider is Groq, behind `GoldLabeler` with a null implementation. Calls are explicit and tests use a fake provider. Never log source text, prompts containing it, responses or API keys. `allows_mining` does not grant third-party AI processing. AI labeling stays disabled for real article text until the owner resolves `TODO(owner, BR-10)`; the AI draft is never treated as a human review or gold label.
 
 For development, keep `GROQ_API_KEY` only in the local `.env` and read it when the owner explicitly requests a real Groq run. Do not add web key entry, a key-storage API, database credential storage, encryption, a master key, rotation or revoke for this phase. Never commit or log the key. No key or model is needed for mock tests. `TODO(owner, BR-10)` remains before sending data with unclear third-party processing rights.
+
+## Update 2026-11-02
+
+- **Meaning of `keep`:** `keep=true` means a clean running-prose sentence, not that a slot can be extracted. The sentence filter is scored on `keep` and `noise_reason`; the slot abstractor is scored only on `keep=true` sentences, with extraction coverage reported separately from field accuracy. See guideline v1 and `eval/mining/gold/DEV_PROTOCOL.md`.
+- **Frame rule:** a frame is the whole sentence with each slot span replaced by its placeholder. AI drafts that do not match are marked `label_failed`; human edits are not constrained by this check.
+- **Trial result:** a 10-sentence Groq trial with `openai/gpt-oss-120b` labeled all items; a manual review found frame mismatches in 3 of 7 kept items, which led to the frame check and guideline v1. This is a labeling-quality observation, not a quality claim for the mining algorithm.

@@ -15,4 +15,6 @@ matrix:
     single_study: moderate
     multiple_consistent: high
     systematic_synthesis: high
-  # comparative and generalization have no approved cells yet; default low applies.
+  # TODO(owner): comparative and generalization rows are not approved yet. The
+  # policy fails closed, so no pattern passes for those claim types until the
+  # cells are approved.

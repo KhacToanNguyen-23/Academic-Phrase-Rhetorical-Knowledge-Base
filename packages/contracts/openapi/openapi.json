@@ -375,6 +375,20 @@
         "title": "Body_upload_article_v1_admin_corpus_articles_post",
         "type": "object"
       },
+      "Body_vocabulary_import_v1_admin_vocabulary_imports_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_vocabulary_import_v1_admin_vocabulary_imports_post",
+        "type": "object"
+      },
       "BulkDecisionCreate": {
         "properties": {
           "candidate_ids": {
@@ -635,6 +649,144 @@
           "api_key"
         ],
         "title": "DemoSession",
+        "type": "object"
+      },
+      "DomainStatRead": {
+        "properties": {
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "domain_label": {
+            "title": "Domain Label",
+            "type": "string"
+          },
+          "freq": {
+            "title": "Freq",
+            "type": "integer"
+          },
+          "relative_ratio": {
+            "title": "Relative Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "domain",
+          "domain_label",
+          "freq",
+          "relative_ratio"
+        ],
+        "title": "DomainStatRead",
+        "type": "object"
+      },
+      "FamilyMemberRead": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "category_label": {
+            "title": "Category Label",
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "freq": {
+            "title": "Freq",
+            "type": "integer"
+          },
+          "lemma_id": {
+            "format": "uuid",
+            "title": "Lemma Id",
+            "type": "string"
+          },
+          "pos": {
+            "title": "Pos",
+            "type": "string"
+          },
+          "pos_label": {
+            "title": "Pos Label",
+            "type": "string"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lemma_id",
+          "word",
+          "pos",
+          "pos_label",
+          "freq",
+          "category",
+          "category_label",
+          "domains"
+        ],
+        "title": "FamilyMemberRead",
+        "type": "object"
+      },
+      "FamilyPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "FamilyPage",
+        "type": "object"
+      },
+      "FamilyRead": {
+        "properties": {
+          "family_freq": {
+            "title": "Family Freq",
+            "type": "integer"
+          },
+          "headword": {
+            "title": "Headword",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyMemberRead"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "headword",
+          "rank",
+          "family_freq",
+          "members"
+        ],
+        "title": "FamilyRead",
         "type": "object"
       },
       "FeedbackCreate": {
@@ -1307,6 +1459,135 @@
         "title": "ImportProfileUpdate",
         "type": "object"
       },
+      "ImportResult": {
+        "properties": {
+          "inserted": {
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "rows_read": {
+            "title": "Rows Read",
+            "type": "integer"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "run_id",
+          "source_kind",
+          "rows_read",
+          "inserted",
+          "updated",
+          "skipped",
+          "warnings"
+        ],
+        "title": "ImportResult",
+        "type": "object"
+      },
+      "ImportRunPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRunRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ImportRunPage",
+        "type": "object"
+      },
+      "ImportRunRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inserted": {
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "rows_read": {
+            "title": "Rows Read",
+            "type": "integer"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {},
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "source_kind",
+          "filename",
+          "sha256",
+          "rows_read",
+          "inserted",
+          "updated",
+          "skipped",
+          "warnings",
+          "created_at"
+        ],
+        "title": "ImportRunRead",
+        "type": "object"
+      },
       "JobRead": {
         "properties": {
           "attempts": {
@@ -1447,6 +1728,279 @@
           "similar_journal_ids"
         ],
         "title": "JournalRead",
+        "type": "object"
+      },
+      "LemmaDetail": {
+        "properties": {
+          "band": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
+          "coca_acad": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coca Acad"
+          },
+          "coca_all": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coca All"
+          },
+          "disp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disp"
+          },
+          "domain_stats": {
+            "items": {
+              "$ref": "#/components/schemas/DomainStatRead"
+            },
+            "title": "Domain Stats",
+            "type": "array"
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "families": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyRead"
+            },
+            "title": "Families",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_core": {
+            "title": "Is Core",
+            "type": "boolean"
+          },
+          "pos": {
+            "title": "Pos",
+            "type": "string"
+          },
+          "pos_label": {
+            "title": "Pos Label",
+            "type": "string"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "word",
+          "pos",
+          "pos_label",
+          "rank",
+          "band",
+          "status",
+          "status_label",
+          "is_core",
+          "coca_all",
+          "coca_acad",
+          "ratio",
+          "disp",
+          "range",
+          "domains",
+          "domain_stats",
+          "families"
+        ],
+        "title": "LemmaDetail",
+        "type": "object"
+      },
+      "LemmaPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LemmaSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "LemmaPage",
+        "type": "object"
+      },
+      "LemmaSummary": {
+        "properties": {
+          "band": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_core": {
+            "title": "Is Core",
+            "type": "boolean"
+          },
+          "pos": {
+            "title": "Pos",
+            "type": "string"
+          },
+          "pos_label": {
+            "title": "Pos Label",
+            "type": "string"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "word",
+          "pos",
+          "pos_label",
+          "rank",
+          "band",
+          "status",
+          "status_label",
+          "is_core"
+        ],
+        "title": "LemmaSummary",
+        "type": "object"
+      },
+      "LetterCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "letter": {
+            "title": "Letter",
+            "type": "string"
+          }
+        },
+        "required": [
+          "letter",
+          "count"
+        ],
+        "title": "LetterCount",
         "type": "object"
       },
       "MineRequest": {
@@ -5842,6 +6396,135 @@
         ]
       }
     },
+    "/v1/admin/vocabulary/imports": {
+      "get": {
+        "operationId": "vocabulary_import_list_v1_admin_vocabulary_imports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportRunPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Import List",
+        "tags": [
+          "vocabulary"
+        ]
+      },
+      "post": {
+        "operationId": "vocabulary_import_v1_admin_vocabulary_imports_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_vocabulary_import_v1_admin_vocabulary_imports_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Import",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
     "/v1/auth/demo-session": {
       "post": {
         "description": "Initialize local sample data and issue a local-only curator API key.",
@@ -7194,6 +7877,345 @@
         "summary": "Validate Text",
         "tags": [
           "validation"
+        ]
+      }
+    },
+    "/v1/vocabulary/families": {
+      "get": {
+        "operationId": "vocabulary_families_v1_vocabulary_families_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FamilyPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Families",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
+    "/v1/vocabulary/lemmas": {
+      "get": {
+        "operationId": "vocabulary_lemmas_v1_vocabulary_lemmas_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "letter",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(?:[a-zA-Z]|#)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Letter"
+            }
+          },
+          {
+            "in": "query",
+            "name": "core_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Core Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "alpha",
+              "enum": [
+                "alpha",
+                "rank"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LemmaPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Lemmas",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
+    "/v1/vocabulary/lemmas/{lemma_id}": {
+      "get": {
+        "operationId": "vocabulary_lemma_v1_vocabulary_lemmas__lemma_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lemma_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lemma Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LemmaDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Lemma",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
+    "/v1/vocabulary/letters": {
+      "get": {
+        "operationId": "vocabulary_letters_v1_vocabulary_letters_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "core_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Core Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LetterCount"
+                  },
+                  "title": "Response Vocabulary Letters V1 Vocabulary Letters Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Letters",
+        "tags": [
+          "vocabulary"
         ]
       }
     }

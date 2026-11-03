@@ -15,6 +15,7 @@ import { PhrasebankCategory, PhrasebankHome } from "@/features/phrasebank/Phrase
 import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
 import { Loading } from "@/shared/ui";
 import { SlrImportPage } from "@/features/slr-import";
+import { VocabularyLemmaPage, VocabularyPage } from "@/features/vocabulary";
 import { useTheme } from "@/shared/lib/theme";
 
 // "/" là dashboard giới thiệu (mở qua logo). UI là bảng điều khiển của bank: người viết dùng qua Writing Engine (API), không qua UI này.
@@ -134,6 +135,26 @@ const inbox = createRoute({ getParentRoute: () => root, path: "/inbox", componen
 const admin = createRoute({ getParentRoute: () => root, path: "/admin", component: AdminPage });
 const slrImport = createRoute({ getParentRoute: () => root, path: "/import", component: SlrImportPage });
 const gold = createRoute({ getParentRoute: () => root, path: "/gold", component: GoldPage });
+const vocabularySearch = (s: Record<string, unknown>) => ({
+  view: s.view === "families" ? ("families" as const) : s.view === "lemmas" ? ("lemmas" as const) : undefined,
+  letter: str(s.letter),
+  q: str(s.q),
+  coreOnly: typeof s.coreOnly === "boolean" ? s.coreOnly : s.coreOnly === "true" ? true : undefined,
+  sort: s.sort === "rank" ? ("rank" as const) : s.sort === "alpha" ? ("alpha" as const) : undefined,
+  offset: typeof s.offset === "number" ? s.offset : Number.isFinite(Number(s.offset)) ? Number(s.offset) : undefined,
+});
+const vocabulary = createRoute({
+  getParentRoute: () => root,
+  path: "/vocabulary",
+  validateSearch: vocabularySearch,
+  component: VocabularyPage,
+});
+const vocabularyLemma = createRoute({
+  getParentRoute: () => root,
+  path: "/vocabulary/$lemmaId",
+  validateSearch: vocabularySearch,
+  component: VocabularyLemmaPage,
+});
 // ?batch=<id>[,<id>] preselects batches; the Import page links here when a run finishes.
 const extract = createRoute({
   getParentRoute: () => root,
@@ -164,6 +185,8 @@ export const router = createRouter({
     slrImport,
     extract,
     gold,
+    vocabulary,
+    vocabularyLemma,
   ]),
 });
 

@@ -16,6 +16,7 @@ def load_models() -> None:
         "recommendation",
         "reference_library",
         "taxonomy",
+        "vocabulary",
     ):
         import_module(f"aprkb.modules.{domain}.models")
     import_module("aprkb.shared.models")

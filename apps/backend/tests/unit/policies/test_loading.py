@@ -22,6 +22,8 @@ def test_policy_bundle_loads_versioned_sample_policies() -> None:
     assert bundle.validation_rules.version == "0.2.0"
     assert "really" in bundle.validation_rules.style_warning_phrases
     assert "prove" in bundle.epistemic_markers.markers["absolute"]
+    assert bundle.vocabulary_import.version == "0.1.0"
+    assert bundle.vocabulary_import.sources["acad_core"].sheet == "list"
 
 
 def test_policy_loader_rejects_invalid_schema(tmp_path) -> None:
@@ -46,6 +48,17 @@ def test_policy_loader_rejects_invalid_license_policy(tmp_path) -> None:
     )
     with pytest.raises(ValueError, match="licenses.yaml"):
         load_policy_bundle(policy_dir)
+
+
+def test_vocabulary_policy_rejects_unknown_family_domain_alias() -> None:
+    bundle = load_policy_bundle()
+    payload = bundle.vocabulary_import.model_dump()
+    payload["family_domain_aliases"]["Unknown"] = "NOPE"
+
+    from aprkb.policies.schemas import VocabularyImportPolicy
+
+    with pytest.raises(ValueError, match="unknown domain codes"):
+        VocabularyImportPolicy.model_validate(payload)
 
 
 def test_policy_rejects_empty_active_scorer_weights() -> None:

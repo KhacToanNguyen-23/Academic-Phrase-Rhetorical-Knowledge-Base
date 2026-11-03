@@ -4,6 +4,14 @@ import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 import type { EvidenceClass, FallbackTier, Provenance, Severity } from "@/shared/api";
 import { parseFrame } from "@/shared/lib";
 
+import { BadgePrimitive } from "./badge";
+import { Button } from "./button";
+import { Card as CardPrimitive } from "./card";
+import { Skeleton } from "./skeleton";
+export { Button } from "./button";
+export { Input } from "./input";
+export { Textarea } from "./textarea";
+
 export function PageHeader({ code, title, lead, actions }: { code?: string; title: ReactNode; lead?: string; actions?: ReactNode }) {
   return (
     <header className="page-header">
@@ -18,7 +26,8 @@ export function PageHeader({ code, title, lead, actions }: { code?: string; titl
 }
 
 export function Badge({ children, tone = "neutral", title }: { children: ReactNode; tone?: "neutral" | "ok" | "warn" | "bad" | "info"; title?: string }) {
-  return <span className={`badge badge-${tone}`} title={title}>{children}</span>;
+  const variant = ({ neutral: "secondary", ok: "success", warn: "warning", bad: "destructive", info: "info" } as const)[tone];
+  return <BadgePrimitive className={`badge badge-${tone}`} variant={variant} title={title}>{children}</BadgePrimitive>;
 }
 
 const EVIDENCE: Record<EvidenceClass, { label: string; hint: string }> = {
@@ -99,7 +108,7 @@ export function Field({ label, children, hint, error }: { label: string; childre
  */
 export function Card({ title, aside, confirm, className, children }: { title?: ReactNode; aside?: ReactNode; confirm?: ReactNode; className?: string; children: ReactNode }) {
   return (
-    <section className={`card ${className ?? ""}`.trim()}>
+    <CardPrimitive as="section" className={`card ${className ?? ""}`.trim()}>
       {(title || aside) && (
         <div className="card-head">
           {title && <h2>{title}</h2>}
@@ -108,7 +117,7 @@ export function Card({ title, aside, confirm, className, children }: { title?: R
       )}
       {children}
       {confirm && <div className="confirm"><div className="confirm-inner">{confirm}</div></div>}
-    </section>
+    </CardPrimitive>
   );
 }
 
@@ -125,14 +134,14 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 
 export function Loading() {
-  return <div className="loading" aria-busy="true" aria-label="Loading"><span /><span /><span /></div>;
+  return <div className="loading" aria-busy="true" aria-label="Loading"><Skeleton /><Skeleton /><Skeleton /></div>;
 }
 
 export function ErrorState({ onRetry, message = "Data could not be loaded." }: { onRetry: () => void; message?: string }) {
   return (
     <div className="notice notice-warn" role="alert">
       <p>{message}</p>
-      <button type="button" className="btn btn-ghost" onClick={() => void onRetry()}>Try again</button>
+      <Button variant="outline" className="btn btn-ghost" onClick={() => void onRetry()}>Try again</Button>
     </div>
   );
 }

@@ -1,12 +1,12 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
-import { PageHeader } from "@/shared/ui";
+import { DataState, PageHeader } from "@/components/domain";
 import { liveApi, type RecommendationRequest } from "../live/api";
 import { WriterComposer } from "./WriterComposer";
 import { WriterContextForm, blankContext, type WriterContext } from "./WriterContextForm";
 import { WriterResults } from "./WriterResults";
-import { ErrorText } from "./WriterStatus";
+import { ErrorText, type WriterStage } from "./WriterStatus";
 import { WriterValidation } from "./WriterValidation";
 
 export function OnlineWriterPage() {
@@ -90,6 +90,15 @@ export function OnlineWriterPage() {
   const canCopy = !!activeValidation && !!activeRender &&
     activeValidation.severity !== "block" && activeRender.unfilled_slots.length === 0;
 
+  // Only the button of the step the writer is on is the primary action.
+  const stage: WriterStage = !activeRecommendation
+    ? "search"
+    : !activeRender
+      ? "build"
+      : !activeValidation
+        ? "validate"
+        : "copy";
+
   function resetAfterContextChange(next: WriterContext) {
     epoch.current += 1;
     setContext(next);
@@ -169,7 +178,11 @@ export function OnlineWriterPage() {
     if (!canCopy) return;
     try {
       await navigator.clipboard.writeText(draft);
-      setCopyStatus(activeValidation?.complete ? "Copied validated sentence." : "Copied as a draft; some checks are unavailable.");
+      setCopyStatus(
+        activeValidation?.complete
+          ? "Copied validated sentence."
+          : "Copied as a draft; some checks are unavailable.",
+      );
     } catch {
       setCopyStatus("Could not copy. Check your browser's clipboard permission.");
     }
@@ -179,9 +192,10 @@ export function OnlineWriterPage() {
     <>
       <PageHeader
         title="Writer"
+        description="Find a pattern for your claim, fill its slots, then check the sentence against your evidence."
       />
-      <div className="stack">
-        {taxonomy.isPending && <p className="caption">Loading writing options…</p>}
+      <div className="mt-6 flex flex-col gap-6">
+        {taxonomy.isPending && <DataState state="loading" loadingLabel="Loading writing options" />}
         <ErrorText error={taxonomy.error || options.error || journals.error} />
 
         {taxonomy.data && options.data && <>
@@ -192,6 +206,7 @@ export function OnlineWriterPage() {
             journals={journals.data ?? []}
             supportingContext={supportingContext}
             searching={recommendation.isPending}
+            primary={stage === "search"}
             onChange={resetAfterContextChange}
             onSupportingContextChange={changeSupportingContext}
             onSearch={search}
@@ -212,6 +227,7 @@ export function OnlineWriterPage() {
           slots={slots}
           rendered={activeRender}
           rendering={render.isPending}
+          primary={stage === "build"}
           onSlot={changeSlot}
           onRender={renderSentence}
         />}
@@ -225,6 +241,8 @@ export function OnlineWriterPage() {
           copyStatus={copyStatus}
           feedbackPending={feedback.isPending}
           feedbackDone={feedback.isSuccess}
+          copied={copyStatus.startsWith("Copied")}
+          stage={stage}
           onText={changeDraft}
           onValidate={validateSentence}
           onCopy={copy}

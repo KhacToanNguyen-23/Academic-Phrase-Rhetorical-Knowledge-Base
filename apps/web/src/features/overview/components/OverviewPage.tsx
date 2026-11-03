@@ -1,30 +1,65 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 
-import { PageHeader } from "@/components/domain";
+import { DataState, PageHeader, SeverityBadge, StatusBadge } from "@/components/domain";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { api } from "@/shared/api";
-import { SeverityBadge, StatusBadge, fmtTime } from "@/shared/ui";
 
-const SECTIONS = [
-  { to: "/library", title: "Library", text: "Browse every rhetorical pattern, its slots, usage contract, variants and provenance.", tag: "WB-01 / 02" },
-  { to: "/playground", title: "Playground", text: "Replay a Writing Engine call — recommend, render, validate — with the exact JSON.", tag: "WB-03 / 08" },
-  { to: "/inbox", title: "Inbox", text: "Review sentences and frames sent by the Writing Engine before they enter the bank.", tag: "WB-07" },
-  { to: "/journals", title: "Journals", text: "Verified author guidelines kept apart from stylistic trends observed in the corpus.", tag: "WB-04" },
-  { to: "/admin", title: "Admin", text: "API clients, the request log, and every entry that left or arrived in the bank.", tag: "WB-09" },
-] as const;
+const ROW_LIMIT = 5;
 
-const FLOW_OUT = [
-  ["Context", "Writing sends section, intent, genre, claim and evidence level."],
-  ["Hard gates", "Unapproved, unlicensed or over-claiming patterns are removed."],
-  ["Ranking", "Candidates are scored with a visible breakdown and fallback tier."],
-  ["Validation", "The rendered sentence is checked against V01–V08 before use."],
-];
-const FLOW_IN = [
-  ["Submission", "Writing proposes a sentence or frame with its context."],
-  ["Quarantine", "Licence and author opt-in are verified; unknown rights stay locked."],
-  ["Editor review", "Near-duplicates are flagged; an editor approves, rejects or asks for revision."],
-  ["Bank", "Approved entries become immutable, versioned patterns."],
-];
+const fmtTime = (iso: string) =>
+  new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+
+type Destination = "/library" | "/inbox" | "/admin";
+
+function Figure({
+  value,
+  label,
+  to,
+  failed,
+}: {
+  value?: number;
+  label: string;
+  to: Destination;
+  failed?: boolean;
+}) {
+  return (
+    <Link to={to} className="flex flex-col gap-1 py-2">
+      <span className="text-3xl font-semibold tabular-nums">{value ?? "—"}</span>
+      <span className="text-sm text-muted-foreground">{failed ? `${label} (could not be loaded)` : label}</span>
+    </Link>
+  );
+}
+
+function RecentCard({
+  title,
+  to,
+  linkLabel,
+  children,
+}: {
+  title: string;
+  to: Destination;
+  linkLabel: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardAction>
+          <Button asChild variant="ghost" size="sm">
+            <Link to={to}>{linkLabel}</Link>
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
 
 export function OverviewPage() {
   const patterns = useQuery({ queryKey: ["patterns", {}], queryFn: () => api.patterns({}) });
@@ -34,105 +69,100 @@ export function OverviewPage() {
 
   const approved = patterns.data?.filter((p) => p.status === "approved").length;
   const pending = subs.data?.filter((s) => s.status === "pending");
-  const name = (id: string) => clients.data?.find((c) => c.client_id === id)?.name ?? id;
+  const clientName = (id: string) => clients.data?.find((c) => c.client_id === id)?.name ?? id;
+  const active = clients.data?.filter((c) => c.status === "active").length;
 
   return (
-    <div className="overview">
-      <PageHeader title="Workspace" description="Queues that need review, the bank at a glance, and recent API activity." />
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title="Workspace"
+        description="What needs review, how big the bank is, and who has been calling the API."
+      />
 
-      <section className="kpis" aria-label="At a glance">
-        <Kpi value={approved} label="Approved patterns" to="/library" />
-        <Kpi value={pending?.length} label="Awaiting review" to="/inbox" tone={pending?.length ? "warn" : undefined} />
-        <Kpi value={logs.data?.length} label="API requests today" to="/admin" />
-        <Kpi value={clients.data?.filter((c) => c.status === "active").length} label="Active API clients" to="/admin" />
+      <section aria-label="At a glance" className="grid grid-cols-4 gap-6">
+        <Figure value={pending?.length} label="Submissions awaiting review" to="/inbox" />
+        <Figure value={approved} label="Approved patterns" to="/library" failed={patterns.isError} />
+        <Figure value={logs.data?.length} label="API requests today" to="/admin" />
+        <Figure value={active} label="Active API clients" to="/admin" failed={clients.isError} />
       </section>
 
-      <section className="ov-section">
-        <div className="ov-head">
-          <h2>Two flows, one bank.</h2>
-          <p className="lead">Data leaves the bank only through hard gates, and enters it only through editorial review.</p>
-        </div>
-        <div className="flows">
-          <Flow title="Data out" sub="Writing Engine asks for phrasing" steps={FLOW_OUT} />
-          <Flow title="Data in" sub="Writing Engine contributes phrasing" steps={FLOW_IN} />
-        </div>
-      </section>
+      <div className="grid grid-cols-2 gap-6">
+        <RecentCard title="Awaiting review" to="/inbox" linkLabel="Open inbox">
+          {subs.isPending ? (
+            <DataState state="loading" loadingLabel="Loading submissions" />
+          ) : subs.isError ? (
+            <DataState
+              state="error"
+              errorTitle="Submissions could not be loaded"
+              errorDescription="Check the connection and try again."
+              onRetry={() => void subs.refetch()}
+            />
+          ) : !pending?.length ? (
+            <DataState
+              state="empty"
+              emptyTitle="Nothing waiting"
+              emptyDescription="New submissions from the Writing Engine appear here."
+            />
+          ) : (
+            <Table>
+              <TableBody>
+                {pending.slice(0, ROW_LIMIT).map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="w-full max-w-0 truncate">{s.text}</TableCell>
+                    <TableCell className="text-right">
+                      {s.license_status === "unknown" || s.license_status === "restricted" || !s.user_opt_in ? (
+                        <Badge variant="warning">Quarantined</Badge>
+                      ) : (
+                        <StatusBadge status={s.status} />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </RecentCard>
 
-      <section className="ov-section">
-        <div className="ov-head"><h2>Explore the workspace.</h2></div>
-        <div className="explore-grid">
-          {SECTIONS.map((s) => (
-            <Link key={s.to} to={s.to} className="explore-card">
-              <span className="explore-tag">{s.tag}</span>
-              <strong>{s.title}</strong>
-              <span className="explore-text">{s.text}</span>
-              <span className="explore-go">Open <span className="arrow">→</span></span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="ov-section">
-        <div className="ov-head"><h2>Recent activity.</h2></div>
-        <div className="grid-2">
-          <div className="card">
-            <div className="card-head"><h2>Latest API requests</h2><Link to="/admin">View log →</Link></div>
-            <ul className="activity">
-              {logs.data?.slice(0, 5).map((l) => (
-                <li key={l.request_id}>
-                  <code className="endpoint">{l.endpoint}</code>
-                  <span className="activity-main">{name(l.client_id)}</span>
-                  <span className="activity-side">
-                    {l.verdict ? <SeverityBadge value={l.verdict} /> : l.status >= 400 ? <span className="badge badge-bad">{l.status}</span> : <span className="badge badge-ok">{l.status}</span>}
-                    <small>{fmtTime(l.at)}</small>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="card">
-            <div className="card-head"><h2>Awaiting review</h2><Link to="/inbox">Open inbox →</Link></div>
-            <ul className="activity">
-              {pending?.slice(0, 5).map((s) => (
-                <li key={s.id}>
-                  <code className="endpoint">{s.id}</code>
-                  <span className="activity-main activity-text">{s.text}</span>
-                  <span className="activity-side">
-                    {s.license_status === "unknown" || s.license_status === "restricted" || !s.user_opt_in
-                      ? <span className="badge badge-bad">quarantined</span>
-                      : <StatusBadge status={s.status} />}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function Kpi({ value, label, to, tone }: { value?: number; label: string; to: "/library" | "/inbox" | "/admin"; tone?: "warn" }) {
-  return (
-    <Link to={to} className={`kpi ${tone ? `kpi-${tone}` : ""}`}>
-      <span className="kpi-value">{value ?? "—"}</span>
-      <span className="kpi-label">{label}</span>
-    </Link>
-  );
-}
-
-function Flow({ title, sub, steps }: { title: string; sub: string; steps: string[][] }) {
-  return (
-    <div className="flow">
-      <div className="flow-head"><strong>{title}</strong><span>{sub}</span></div>
-      <ol className="flow-steps">
-        {steps.map(([h, t], i) => (
-          <li key={h} style={{ animationDelay: `${i * 0.06}s` }}>
-            <span className="flow-num">{i + 1}</span>
-            <div><strong>{h}</strong><p>{t}</p></div>
-          </li>
-        ))}
-      </ol>
+        <RecentCard title="Latest API requests" to="/admin" linkLabel="Open admin">
+          {logs.isPending ? (
+            <DataState state="loading" loadingLabel="Loading requests" />
+          ) : logs.isError ? (
+            <DataState
+              state="error"
+              errorTitle="Requests could not be loaded"
+              errorDescription="Check the connection and try again."
+              onRetry={() => void logs.refetch()}
+            />
+          ) : !logs.data?.length ? (
+            <DataState
+              state="empty"
+              emptyTitle="No requests yet"
+              emptyDescription="Calls from API clients appear here."
+            />
+          ) : (
+            <Table>
+              <TableBody>
+                {logs.data.slice(0, ROW_LIMIT).map((l) => (
+                  <TableRow key={l.request_id}>
+                    <TableCell>
+                      <code className="text-sm">{l.endpoint}</code>
+                      <span className="block text-sm text-muted-foreground">{clientName(l.client_id)}</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {l.verdict ? (
+                        <SeverityBadge value={l.verdict} />
+                      ) : (
+                        <Badge variant={l.status >= 400 ? "destructive" : "success"}>{l.status}</Badge>
+                      )}
+                      <span className="block text-sm text-muted-foreground">{fmtTime(l.at)}</span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </RecentCard>
+      </div>
     </div>
   );
 }

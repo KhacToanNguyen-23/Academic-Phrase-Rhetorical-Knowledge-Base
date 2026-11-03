@@ -86,7 +86,7 @@ CR-06 changed the current weights; they remain provisional pending owner review.
 
 ## Deployment
 
-Production uses the backend Docker image with the existing PostgreSQL Compose volume, a persistent blob volume, and manually applied migrations. It does not run the development data initializer. Follow the [manual Docker Compose deployment runbook](deploy/README.md) after confirming the server's database volume and reverse proxy.
+Production uses Docker Compose for the API, worker, and web app, with persistent PostgreSQL and blob volumes and manually applied migrations. It does not run the development data initializer. Follow the [manual Docker Compose deployment runbook](deploy/README.md) before starting services on the server.
 
 ## Continuous integration
 

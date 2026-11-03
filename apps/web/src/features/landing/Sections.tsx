@@ -16,6 +16,35 @@ import platesB from "./assets/transactions-1665-b.jpg";
 import type { LandingCopy } from "./copy.en";
 import { SHOWCASE_FRAME } from "./frames";
 
+// The clip fades from and to black at its ends; loop only the lit part so a panel is never a black screen.
+const CLIP_START = 1.5;
+const CLIP_END = 25;
+
+function LoopVideo({ label }: { label: string }) {
+  return (
+    <video
+      src={letterpressLoop}
+      poster={letterpressPoster}
+      aria-label={label}
+      autoPlay
+      muted
+      playsInline
+      preload="auto"
+      onLoadedMetadata={(e) => {
+        e.currentTarget.currentTime = CLIP_START;
+      }}
+      onTimeUpdate={(e) => {
+        if (e.currentTarget.currentTime >= CLIP_END) e.currentTarget.currentTime = CLIP_START;
+      }}
+      onEnded={(e) => {
+        e.currentTarget.currentTime = CLIP_START;
+        void e.currentTarget.play();
+      }}
+      className="treat absolute inset-0 h-full w-full object-cover"
+    />
+  );
+}
+
 const idx = (i: number) => ({ "--i": i }) as CSSProperties;
 
 export function Intro({ copy }: { copy: LandingCopy }) {
@@ -92,7 +121,8 @@ export function How({ copy }: { copy: LandingCopy }) {
     <section id="how" data-chapter="ink" aria-labelledby="how-title" className="bg-[var(--dark)] text-[var(--paper)]">
       <h2 id="how-title" className="sr-only">{copy.how.heading}</h2>
       {copy.how.steps.map((step, i) => (
-        <div key={step.verb} className="relative h-svh min-h-[640px] overflow-hidden">
+        <div key={step.verb} className="relative h-svh min-h-[640px] snap-start overflow-hidden">
+          <div className="absolute inset-0">
           {HOW_IMAGES[i] ? (
             <img
               src={HOW_IMAGES[i] as string}
@@ -103,21 +133,12 @@ export function How({ copy }: { copy: LandingCopy }) {
               className="treat settle absolute inset-0 h-full w-full object-cover"
             />
           ) : (
-            <video
-              src={letterpressLoop}
-              poster={letterpressPoster}
-              aria-label={step.imageAlt}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              className="treat absolute inset-0 h-full w-full object-cover"
-            />
+            <LoopVideo label={step.imageAlt} />
           )}
           <div className="absolute inset-0 bg-black/50" />
           <h3 className="display reveal absolute inset-0 grid place-items-center text-[clamp(96px,15vw,260px)] text-[var(--paper)]">{step.verb}</h3>
           <p className="reveal absolute bottom-12 left-[var(--margin)] max-w-[30rem] bg-black/60 p-5 text-[17px] leading-snug text-[var(--paper)]" style={idx(2)}>{step.text}</p>
+          </div>
         </div>
       ))}
     </section>

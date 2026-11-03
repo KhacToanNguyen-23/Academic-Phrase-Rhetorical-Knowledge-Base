@@ -47,6 +47,8 @@ export function LandingPage({ copy = copyEn }: { copy?: LandingCopy }) {
     const el = root.current;
     if (!el) return;
     el.classList.add("js");
+    // How-it-works panels settle on a full screen instead of stopping half-way between two pictures.
+    document.documentElement.style.scrollSnapType = "y proximity";
 
     const seen = new IntersectionObserver(
       (entries) => {
@@ -73,6 +75,7 @@ export function LandingPage({ copy = copyEn }: { copy?: LandingCopy }) {
     el.querySelectorAll("[data-chapter]").forEach((node) => chapters.observe(node));
 
     return () => {
+      document.documentElement.style.scrollSnapType = "";
       seen.disconnect();
       chapters.disconnect();
     };

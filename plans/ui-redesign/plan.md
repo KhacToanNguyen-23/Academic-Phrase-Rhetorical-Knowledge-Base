@@ -171,6 +171,7 @@ Không thêm: GSAP, Lenis/smooth scroll, thư viện chart (app-screens dùng `a
 | [04](phase-04-landing.md) | Landing theo run trang của taste skill (bước 1–10) | 02, 03 |
 | [05](phase-05-app-screens.md) | Làm lại 11 màn theo 4 đợt, mỗi màn qua gate `--app` | 03 |
 | [06](phase-06-cleanup-verification.md) | Xóa CSS cũ, a11y, hiệu năng, so sánh before/after, cập nhật docs/ADR | 04, 05 |
+| [07](phase-07-polish.md) | Polish: tăng mật độ thông tin, empty state, nhịp làm việc cho các màn. Chấm điểm trước và sau bằng critique | 05, 06 |
 
 Phase 04 và 05 chạy song song được sau Phase 03.
 

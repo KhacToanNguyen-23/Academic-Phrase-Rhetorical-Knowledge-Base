@@ -104,3 +104,7 @@ requires a version actually issued in that client's recommendation. The MVP does
 mount `/v1/overrides`.
 
 See [the root README](../../README.md) for the PRD traceability table and command list. See [SCAFFOLD_PRD.md](../../SCAFFOLD_PRD.md) for the scope boundary and acceptance criteria.
+
+## Internal reference library
+
+The `/v1/reference-library` GET routes serve a quarantined external reference collection from its own tables. They return 404 unless `REFERENCE_LIBRARY_ENABLED=true`. Import and purge are CLI-only (`uv run python -m aprkb.cli import-reference-library --file <path>` and `uv run python -m aprkb.cli purge-reference-library`). Import replacement and its content-free audit event commit together. Imported entries are disconnected from patterns, recommendations, render, and validation. Keep the source notice in the UI and do not treat these entries as approved or redistributable patterns.

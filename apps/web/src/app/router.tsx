@@ -10,6 +10,7 @@ import { JournalProfilePage } from "@/features/journal-profile";
 import { LibraryPage } from "@/features/library";
 import { OverviewPage } from "@/features/overview";
 import { PlaygroundPage } from "@/features/playground";
+import { PhrasebankCategory, PhrasebankHome } from "@/features/phrasebank/PhrasebankPage";
 import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
 import { Loading } from "@/shared/ui";
 import { SlrImportPage } from "@/features/slr-import";
@@ -19,6 +20,7 @@ import { useTheme } from "@/shared/lib/theme";
 // Data out: Library → Playground (mô phỏng API). Data in: Inbox. Giám sát: Admin.
 const NAV = [
   { to: "/library", label: "Library" },
+  { to: "/phrasebank", label: "Phrasebank" },
   { to: "/playground", label: "Playground" },
   { to: "/writer", label: "Writer" },
   { to: "/inbox", label: "Inbox" },
@@ -110,6 +112,13 @@ const library = createRoute({
   component: () => <LibraryPage selectedId={getRouteApi("/library").useSearch().p} />,
 });
 
+const phrasebank = createRoute({ getParentRoute: () => root, path: "/phrasebank", component: PhrasebankHome });
+const phrasebankCategory = createRoute({
+  getParentRoute: () => root,
+  path: "/phrasebank/$slug",
+  component: () => <PhrasebankCategory slug={getRouteApi("/phrasebank/$slug").useParams().slug} />,
+});
+
 const playground = createRoute({
   getParentRoute: () => root,
   path: "/playground",
@@ -135,6 +144,8 @@ export const router = createRouter({
   routeTree: root.addChildren([
     overview,
     library,
+    phrasebank,
+    phrasebankCategory,
     playground,
     writer,
     inbox,

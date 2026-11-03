@@ -95,3 +95,9 @@ The API and worker write logs to stderr under the `aprkb.*` loggers; set the lev
 | Discipline data remains an optional P2 adapter | `apps/backend/src/aprkb/modules/discipline/null_source.py` | `tests/unit/discipline/test_null_source.py`; null source returns no classification |
 
 The original acceptance cases that depend on excluded product behavior remain skipped with `TODO(owner)` in `apps/backend/tests/acceptance/`. Cases already covered by scaffold behavior reuse the Phase 04/05 integration tests.
+
+## Unified phrasebank reference
+
+`/phrasebank` is a source-aware browser for Manchester reference material and AP-RKB's existing approved patterns. The Manchester collection is stored only in the separate `reference_sources`, `reference_categories`, and `reference_entries` tables; it never enters `phrase_patterns`, recommendations, render, or validate. Its API and UI are off by default (`REFERENCE_LIBRARY_ENABLED=false`). Manchester items always show the notice that reuse rights are unverified and the material must not be redistributed. Treat this as an internal, removable reference collection, not approved patterns. The AP-RKB group reads approved client-visible patterns through `/v1/patterns`; taxonomy sections are not mapped to Manchester categories (`TODO(owner)`).
+
+To enable the local reference browser, set `REFERENCE_LIBRARY_ENABLED=true`, apply migrations from `apps/backend` with `uv run alembic -c alembic.ini upgrade head`, then import the external file with `uv run python -m aprkb.cli import-reference-library --file "D:\Project\FptProject\Academic-Phrase-Rhetorical-Knowledge-Base\data\raw\manchester-diverse\collection.json"`. The input file remains outside git. Remove the imported reference data with `uv run python -m aprkb.cli purge-reference-library`; disable API access again by setting the flag to false.

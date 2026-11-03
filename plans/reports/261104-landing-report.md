@@ -50,3 +50,26 @@ No bundled stock photographs, no drawings standing in for photographs. All pictu
 ## Sample content to confirm before launch
 
 Every sentence in `copy.en.ts` is a draft. The FAQ answers describe the intended behaviour (locked entries, two review rounds, append-only versions, the writer's evidence check) and should be confirmed by the product owner. The showcase card shows an invented frame with invented provenance labels, not a real bank entry. No customers, quotes, logos or statistics appear on the page.
+
+## Refinement round (2026-11-04, after owner review)
+
+Causes found before editing:
+
+- Clipped headlines were not a scroll animation. The hero headline was two copies clipped at a seam (`clip-path`), the how-it-works verbs were 15vw words centred in 100svh panels (so any scroll position cut them at the viewport or at the next panel), and the showcase stack was `nowrap` 9vw text inside `overflow: hidden`.
+- Disconnected sections: each section had its own composition, its own heading size (five sizes for headings) and its own edge treatment, and two sections were full-bleed 100svh photo or black fields.
+- Empty areas: `min-height` and `100svh` on the intro, CTA and footer, plus `padding-top: 34svh`.
+- The pictures were period engravings with no tie to the product, and the first screen showed no product.
+
+What changed (editorial direction, grayscale pictures and the teal budget kept):
+
+- One 12-column grid (1280px), one section rhythm (112px), one heading pattern: heading plus its supporting text grouped in the left five columns, content in the right seven. Tone steps (paper, paper 2, dark) separate sections instead of full-bleed photos.
+- Hero: headline, one supporting sentence, the move selector and the single teal action on the left; a real library entry on the right, built from the app's own components (`PhraseFrame`, `Badge`, `ProvenanceTag`, `LicenceStatus`). It follows the selected move: frame, slot examples, usage contract and claim strength. The old seam and the clipped copy are gone; the headline is one element and rests fully visible.
+- New intro: a published sentence beside the frame lifted from it, which is the product's one idea shown directly.
+- Showcase: the four article sections with the move and frame each one uses, replacing the 9vw stack.
+- How it works: a normal ordered list of four steps, each with a small grayscale picture (the clip stays in "Mine") and its sentence, replacing the four 100svh panels. No pinned or snapped scrolling, so nothing is cut.
+- CTA and footer share one dark ground; the cropped wordmark is removed. Display size is now used only in the hero (76px at 1440px); section headings are 42px; body text 17 to 20px.
+- Removed the three engraving and compositor pictures that no longer fit; the page keeps three pictures, the clip and the product preview. Credits trimmed to match.
+
+Verification: `lint.mjs` 0 FAIL, 0 WARN. `inspect.mjs` at 1440px: 0 FAIL, 1 WARN (the serif slot in the headline, defended above). At 1024px and 768px: 0 FAIL, no horizontal overflow (columns stack below 1024px; this is a check only, not a mobile design).
+
+Still weak: the pictures are quiet and archival; the three "how" pictures are small. The owner asked for no arbitrary background images, so they were not enlarged.

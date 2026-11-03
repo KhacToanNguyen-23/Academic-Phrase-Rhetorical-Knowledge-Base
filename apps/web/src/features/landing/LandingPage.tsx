@@ -5,7 +5,8 @@ import { BrandMark } from "@/app/BrandMark";
 
 import { copyEn, type LandingCopy } from "./copy.en";
 import { Hero } from "./Hero";
-import { Cta, Faq, Footer, How, Intro, Showcase, Start } from "./Sections";
+import { Wrap } from "./layout";
+import { CtaFooter, Faq, How, Intro, Showcase, Start } from "./Sections";
 import "./landing.css";
 
 type Ink = "paper" | "ink";
@@ -14,19 +15,21 @@ type Ink = "paper" | "ink";
 function Header({ copy, ink }: { copy: LandingCopy; ink: Ink }) {
   return (
     <header
-      className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between px-[var(--margin)] transition-colors duration-300"
+      className="fixed inset-x-0 top-0 z-50 transition-colors duration-300"
       style={{ color: ink === "paper" ? "var(--ink)" : "var(--paper)", backgroundColor: ink === "paper" ? "var(--paper)" : "var(--dark)" }}
     >
-      <Link to="/" className="flex items-center gap-2.5 text-xl font-semibold tracking-tight" aria-label={copy.brand}>
-        <BrandMark />
-        {copy.brand}
-      </Link>
-      <nav aria-label={copy.nav.label} className="flex items-center gap-8 text-base">
-        <a href="#how" className="press">{copy.nav.how}</a>
-        <a href="#start" className="press">{copy.nav.start}</a>
-        <a href="#questions" className="press">{copy.nav.questions}</a>
-        <Link to="/signin" className="press font-medium">{copy.nav.signIn}</Link>
-      </nav>
+      <Wrap className="flex h-16 items-center justify-between">
+        <Link to="/" className="flex items-center gap-2.5 text-xl font-semibold tracking-tight" aria-label={copy.brand}>
+          <BrandMark />
+          {copy.brand}
+        </Link>
+        <nav aria-label={copy.nav.label} className="flex items-center gap-8 text-base">
+          <a href="#how" className="press hidden md:inline">{copy.nav.how}</a>
+          <a href="#start" className="press hidden md:inline">{copy.nav.start}</a>
+          <a href="#questions" className="press hidden md:inline">{copy.nav.questions}</a>
+          <Link to="/signin" className="press font-medium">{copy.nav.signIn}</Link>
+        </nav>
+      </Wrap>
     </header>
   );
 }
@@ -47,8 +50,6 @@ export function LandingPage({ copy = copyEn }: { copy?: LandingCopy }) {
     const el = root.current;
     if (!el) return;
     el.classList.add("js");
-    // How-it-works panels settle on a full screen instead of stopping half-way between two pictures.
-    document.documentElement.style.scrollSnapType = "y proximity";
 
     const seen = new IntersectionObserver(
       (entries) => {
@@ -75,7 +76,6 @@ export function LandingPage({ copy = copyEn }: { copy?: LandingCopy }) {
     el.querySelectorAll("[data-chapter]").forEach((node) => chapters.observe(node));
 
     return () => {
-      document.documentElement.style.scrollSnapType = "";
       seen.disconnect();
       chapters.disconnect();
     };
@@ -91,9 +91,8 @@ export function LandingPage({ copy = copyEn }: { copy?: LandingCopy }) {
         <How copy={copy} />
         <Start copy={copy} />
         <Faq copy={copy} />
-        <Cta copy={copy} />
       </main>
-      <Footer copy={copy} />
+      <CtaFooter copy={copy} />
     </div>
   );
 }

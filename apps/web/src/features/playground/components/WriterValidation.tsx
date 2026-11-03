@@ -30,7 +30,10 @@ export function WriterValidation({
     <ErrorText error={error} />
     {validation && <>
       <p><strong>Claim check: {validation.severity === "pass" ? "Pass" : validation.severity === "warn" ? "Warning" : "Blocked"}</strong> · {validation.complete ? "Complete" : "Partial"}</p>
-      {validation.checks_unavailable.length > 0 && <p className="notice">Some checks are unavailable. This sentence has not been fully validated.</p>}
+      {validation.checks_unavailable.length > 0 && <>
+        <p className="notice">Some checks are unavailable ({validation.checks_unavailable.join(", ")}). This sentence has not been fully validated.</p>
+        {validation.checks_unavailable.includes("V05") && <p className="notice">V05 not checked: verified Offline guideline data is unavailable.</p>}
+      </>}
       {issues.map((rule) => <p key={rule.code} className="notice">{rule.severity === "warn" ? "Warning" : rule.severity === "block" ? "Blocked" : "Pass"}: {rule.message} {rule.recommended_action && `— ${rule.recommended_action}`}</p>)}
       <button className="btn btn-primary" type="button" disabled={!canCopy} onClick={onCopy}>
         {validation.complete ? "Copy sentence" : "Copy draft"}

@@ -46,11 +46,15 @@ class LicensesPolicy(VersionedPolicy):
 
 class RankingWeightsPolicy(VersionedPolicy):
     weights: dict[str, float]
+    evidence_alignment_formula: Literal[
+        "1 - abs(max_supported - candidate_strength) / strength_span"
+    ]
+    keyword_formula: Literal["matched_keywords / query_keywords"]
 
     @field_validator("weights")
     @classmethod
     def validate_weights(cls, weights: dict[str, float]) -> dict[str, float]:
-        expected = {"intent", "discipline", "journal_genre", "evidence", "linguistic", "provenance"}
+        expected = {"discipline", "journal_genre", "evidence", "linguistic", "provenance"}
         if set(weights) != expected:
             raise ValueError("weights must define every active scorer exactly once")
         if any(not isfinite(weight) or weight < 0 or weight > 1 for weight in weights.values()):
@@ -60,6 +64,17 @@ class RankingWeightsPolicy(VersionedPolicy):
         if not any(weight > 0 for weight in weights.values()):
             raise ValueError("at least one scorer weight must be positive")
         return weights
+
+
+class LicensePolicy(VersionedPolicy):
+    internal_use_codes: list[str] = Field(min_length=1)
+
+    @field_validator("internal_use_codes")
+    @classmethod
+    def validate_internal_use_codes(cls, codes: list[str]) -> list[str]:
+        if len(codes) != len(set(codes)) or any(not code.strip() for code in codes):
+            raise ValueError("internal_use_codes must contain unique non-empty license codes")
+        return codes
 
 
 class FallbackTiersPolicy(VersionedPolicy):
@@ -265,6 +280,7 @@ class RuleSetting(BaseModel):
 
 class ValidationRulesPolicy(VersionedPolicy):
     rules: dict[str, RuleSetting]
+    style_warning_phrases: list[str] = Field(default_factory=list)
 
     @field_validator("rules")
     @classmethod
@@ -273,6 +289,13 @@ class ValidationRulesPolicy(VersionedPolicy):
         if not rules or any(code not in allowed for code in rules):
             raise ValueError("rules must contain known V01–V08 entries")
         return rules
+
+    @field_validator("style_warning_phrases")
+    @classmethod
+    def validate_style_warning_phrases(cls, phrases: list[str]) -> list[str]:
+        if any(not phrase.strip() for phrase in phrases):
+            raise ValueError("style warning phrases must not be blank")
+        return phrases
 
 
 class EpistemicMarkersPolicy(VersionedPolicy):

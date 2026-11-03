@@ -60,3 +60,13 @@ class EvidencePolicy:
             return self.strength_order[strength] <= self.strength_order[maximum]
         except (KeyError, ValueError):
             return False
+
+    def alignment_score(self, claim_type: str, evidence_level: str, strength: str) -> float | None:
+        """Score proximity to the strongest policy-supported level after hard gating."""
+        try:
+            maximum = self.strength_order[self.max_strength(claim_type, evidence_level)]
+            candidate = self.strength_order[strength]
+        except (KeyError, ValueError):
+            return None
+        span = max(self.strength_order.values()) - min(self.strength_order.values())
+        return 1.0 if span == 0 else 1.0 - abs(maximum - candidate) / span

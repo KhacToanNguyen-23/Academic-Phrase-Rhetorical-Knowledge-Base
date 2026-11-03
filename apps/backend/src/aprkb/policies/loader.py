@@ -14,6 +14,7 @@ from aprkb.policies.schemas import (
     GoldLabelingPolicy,
     GoldSamplingPolicy,
     LicensesPolicy,
+    LicensePolicy,
     MiningFilterPolicy,
     RankingWeightsPolicy,
     ReportingVerbsPolicy,
@@ -27,6 +28,7 @@ from aprkb.policies.schemas import (
 class PolicyBundle:
     licenses: LicensesPolicy
     ranking_weights: RankingWeightsPolicy
+    license: LicensePolicy
     fallback_tiers: FallbackTiersPolicy
     evidence_matrix: EvidenceMatrixPolicy
     validation_rules: ValidationRulesPolicy
@@ -55,6 +57,7 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
     return PolicyBundle(
         licenses=_load(root / "licenses.yaml", LicensesPolicy),
         ranking_weights=_load(root / "ranking_weights.yaml", RankingWeightsPolicy),
+        license=_load(root / "license_policy.yaml", LicensePolicy),
         fallback_tiers=_load(root / "fallback_tiers.yaml", FallbackTiersPolicy),
         evidence_matrix=_load(root / "evidence_matrix.yaml", EvidenceMatrixPolicy),
         validation_rules=_load(root / "validation_rules.yaml", ValidationRulesPolicy),

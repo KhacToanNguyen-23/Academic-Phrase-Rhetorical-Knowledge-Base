@@ -6,9 +6,20 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class SlotDefinition(BaseModel):
+    """Typed writer slot metadata; string values remain valid for older versions."""
+
+    type: str
+    label: str | None = None
+    instruction: str | None = None
+    example: str | None = None
+    required: bool = True
+    min_length: int = Field(default=1, ge=1)
+
+
 class PatternVersionCreate(BaseModel):
     canonical_frame: str = Field(min_length=1)
-    slots: dict[str, object] = Field(default_factory=dict)
+    slots: dict[str, SlotDefinition | str] = Field(default_factory=dict)
     epistemic_strength: Literal["low", "moderate", "high", "absolute"]
     claim_type: Literal["descriptive", "causal", "comparative", "generalization"]
     change_note: str | None = None
@@ -28,7 +39,7 @@ class PatternVersionRead(BaseModel):
     pattern_id: UUID
     version_no: int
     canonical_frame: str
-    slots: dict[str, object]
+    slots: dict[str, SlotDefinition | str]
     epistemic_strength: str
     claim_type: str
     change_note: str | None
@@ -48,7 +59,7 @@ class PatternSummary(BaseModel):
 
 class PatternDetail(PatternSummary):
     current_version_id: UUID | None
-    slots: dict[str, object] | None
+    slots: dict[str, SlotDefinition | str] | None
     epistemic_strength: str | None
     claim_type: str | None
     allowed_sections: list[str]

@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aprkb.core.db import Base, EntityMixin, MutableEntityMixin
@@ -22,6 +23,7 @@ class Section(EntityMixin, Base):
     code: Mapped[str] = mapped_column(String(64))
     name: Mapped[str] = mapped_column(String(255))
     order: Mapped[int] = mapped_column(Integer)
+    compatible_genres: Mapped[list[str]] = mapped_column(JSONB, default=list)
     release_id: Mapped[UUID] = mapped_column(ForeignKey("taxonomy_releases.id"))
 
 

@@ -1,8 +1,11 @@
+# Provisional relative weights and proximity formula; review against user studies.
+# TODO(owner): approve ranking weights and keyword normalization.
 version: 0.1.0
+evidence_alignment_formula: "1 - abs(max_supported - candidate_strength) / strength_span"
+keyword_formula: "matched_keywords / query_keywords"
 weights:
-  intent: 0.25
   discipline: 0.20
   journal_genre: 0.20
-  evidence: 0.15
-  linguistic: 0.10
-  provenance: 0.10
+  evidence: 0.30
+  linguistic: 0.15
+  provenance: 0.15

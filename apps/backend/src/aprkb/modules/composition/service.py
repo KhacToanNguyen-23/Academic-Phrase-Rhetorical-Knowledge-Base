@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aprkb.modules.composition.renderer import render_frame
+from aprkb.modules.composition.renderer import SlotValidationError, render_frame
 from aprkb.modules.patterns import service as pattern_service
 from aprkb.modules.recommendation import service as recommendation_service
 
@@ -28,6 +28,8 @@ async def render_pattern(
     version, _source = await pattern_service.get_renderable_version(session, pattern_version_id)
     try:
         text, unfilled = render_frame(version.canonical_frame, version.slots, slots)
+    except SlotValidationError as error:
+        raise HTTPException(status_code=422, detail={"field_errors": error.field_errors}) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     return {

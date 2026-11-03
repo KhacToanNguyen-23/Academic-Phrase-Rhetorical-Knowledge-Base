@@ -1,4 +1,13 @@
-import { createRootRouteWithContext, createRoute, createRouter, getRouteApi, lazyRouteComponent, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import {
+  createRootRouteWithContext,
+  createRoute,
+  createRouter,
+  getRouteApi,
+  lazyRouteComponent,
+  Outlet,
+  redirect,
+  useRouterState,
+} from "@tanstack/react-router";
 
 import { AdminPage } from "@/features/admin";
 import { useAuth, type AuthContextValue } from "@/features/auth/AuthProvider";
@@ -30,7 +39,7 @@ function Guarded() {
   if (auth.loading) return <Loading />;
   if (!auth.client) return null;
   if (pathname === "/admin" && auth.client.role !== "admin") {
-    return <p className="notice notice-warn" role="alert">Admin role required for this page.</p>;
+    return <AdminPage />;
   }
   return <Outlet />;
 }
@@ -41,7 +50,13 @@ const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
 // Public pages, no sidebar.
 const publicLayout = createRoute({ getParentRoute: () => root, id: "public", component: Outlet });
-const home = createRoute({ getParentRoute: () => publicLayout, path: "/", component: lazyRouteComponent(() => import("@/features/landing/LandingPage").then((m) => ({ default: m.LandingPage }))) });
+const home = createRoute({
+  getParentRoute: () => publicLayout,
+  path: "/",
+  component: lazyRouteComponent(() =>
+    import("@/features/landing/LandingPage").then((m) => ({ default: m.LandingPage })),
+  ),
+});
 const signin = createRoute({
   getParentRoute: () => publicLayout,
   path: "/signin",
@@ -59,7 +74,11 @@ const guarded = createRoute({
   id: "guarded",
   beforeLoad: ({ context, location }) => {
     if (context.auth.loading || context.auth.client) return;
-    throw redirect({ to: "/signin", search: { next: safeNext(`${location.pathname}${location.searchStr}`) }, replace: true });
+    throw redirect({
+      to: "/signin",
+      search: { next: safeNext(`${location.pathname}${location.searchStr}`) },
+      replace: true,
+    });
   },
   component: Guarded,
 });
@@ -121,20 +140,29 @@ const extract = createRoute({
   component: () => <ExtractPage initialBatch={getRouteApi("/shell/guarded/extract").useSearch().batch} />,
 });
 
-const journals = createRoute({ getParentRoute: () => guarded, path: "/journals", component: () => <JournalProfilePage /> });
+const journals = createRoute({
+  getParentRoute: () => guarded,
+  path: "/journals",
+  component: () => <JournalProfilePage />,
+});
 const journal = createRoute({
   getParentRoute: () => guarded,
   path: "/journals/$journalId",
-  component: () => <JournalProfilePage journalId={getRouteApi("/shell/guarded/journals/$journalId").useParams().journalId} />,
+  component: () => (
+    <JournalProfilePage journalId={getRouteApi("/shell/guarded/journals/$journalId").useParams().journalId} />
+  ),
 });
 
-const devUiRoute = import.meta.env.DEV || import.meta.env.MODE === "inspect"
-  ? createRoute({
-      getParentRoute: () => root,
-      path: "/dev/ui",
-      component: lazyRouteComponent(() => import("@/features/dev-ui/DevUIPage").then((module) => ({ default: module.DevUIPage }))),
-    })
-  : undefined;
+const devUiRoute =
+  import.meta.env.DEV || import.meta.env.MODE === "inspect"
+    ? createRoute({
+        getParentRoute: () => root,
+        path: "/dev/ui",
+        component: lazyRouteComponent(() =>
+          import("@/features/dev-ui/DevUIPage").then((module) => ({ default: module.DevUIPage })),
+        ),
+      })
+    : undefined;
 
 export const router = createRouter({
   routeTree: root.addChildren([

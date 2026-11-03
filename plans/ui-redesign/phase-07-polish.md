@@ -62,3 +62,7 @@ Mỗi đợt chạy `code-review` và xử lý P0/P1, rồi báo cáo kèm đi�
 | Số liệu giả để màn trông đầy | Cấm. Dữ liệu mock chỉ được dùng nếu màn đó vốn đã dùng mock, và ghi rõ trong báo cáo |
 | Biểu đồ phá quy tắc màu | Một hue trung tính, nhấn một phần bằng đậm hơn; không teal, không cầu vồng |
 | Gold, Extract, Admin cần khóa admin để thấy dữ liệu thật | Làm việc với admin key hoặc phiên admin cho môi trường dev; nếu không có thì ghi rõ phần chưa kiểm |
+
+## Kết quả vòng 1 (2026-11-04)
+
+Xem `plans/reports/261104-phase07-polish-report.md`. Đã làm: Workspace, Vocabulary, Vocabulary detail, Library, Journals, Phrasebank, toast cho Inbox, câu hướng dẫn ở Sign-in. Chưa làm: Gold/Extract (cần khóa admin), Import/Admin, Writer/Playground.

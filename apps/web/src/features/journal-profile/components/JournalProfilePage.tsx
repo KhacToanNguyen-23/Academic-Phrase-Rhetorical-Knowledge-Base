@@ -1,9 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DataState } from "@/components/domain/DataState";
 import { EvidenceLabel } from "@/components/domain/EvidenceLabel";
 import { PageHeader } from "@/components/domain/PageHeader";
@@ -74,18 +75,7 @@ export function JournalProfilePage({ journalId }: { journalId?: string }) {
         </Card>
         <div className="flex flex-col gap-4">
           {!journalId ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DataState
-                  state="empty"
-                  emptyTitle="Select a journal"
-                  emptyDescription="Choose a journal to view its verified guidelines and corpus observations."
-                />
-              </CardContent>
-            </Card>
+            <Overview journals={list.data ?? []} loading={list.isPending} />
           ) : detail.isPending ? (
             <DataState state="loading" loadingLabel="Loading journal profile" />
           ) : detail.isError ? (
@@ -107,6 +97,91 @@ export function JournalProfilePage({ journalId }: { journalId?: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function Overview({
+  journals,
+  loading,
+}: {
+  journals: { journal_id: string; title: string; issn_l: string }[];
+  loading: boolean;
+}) {
+  const profiles = useQueries({
+    queries: journals.map((journal) => ({
+      queryKey: ["journal", journal.journal_id],
+      queryFn: () => api.journal(journal.journal_id),
+    })),
+  });
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Compare journals</CardTitle>
+        <CardDescription>
+          Verified guidelines and corpus observations side by side. Choose a journal to read its full profile.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <DataState state="loading" loadingLabel="Loading journals" />
+        ) : journals.length === 0 ? (
+          <DataState
+            state="empty"
+            emptyTitle="No journals to compare"
+            emptyDescription="Journal profiles appear here once they have been added."
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Journal</TableHead>
+                <TableHead numeric>Verified rules</TableHead>
+                <TableHead numeric>Required</TableHead>
+                <TableHead numeric>Corpus articles</TableHead>
+                <TableHead>Corpus evidence</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {journals.map((journal, index) => {
+                const profile = profiles[index]?.data;
+                const articles = profile?.fingerprints.reduce((sum, f) => sum + f.sample_n, 0);
+                const lowSample = profile?.fingerprints.every((f) => f.sample_n < MIN_SAMPLE);
+                return (
+                  <TableRow key={journal.journal_id}>
+                    <TableCell className="whitespace-normal">
+                      <Link
+                        to="/journals/$journalId"
+                        params={{ journalId: journal.journal_id }}
+                        className="font-medium"
+                      >
+                        {journal.title}
+                      </Link>
+                      <span className="block text-sm text-muted-foreground">
+                        {profile ? `${profile.publisher} · ${profile.field}` : `ISSN-L ${journal.issn_l}`}
+                      </span>
+                    </TableCell>
+                    <TableCell numeric>{profile?.guidelines.length ?? "—"}</TableCell>
+                    <TableCell numeric>
+                      {profile ? profile.guidelines.filter((g) => g.level === "required").length : "—"}
+                    </TableCell>
+                    <TableCell numeric>{articles ?? "—"}</TableCell>
+                    <TableCell>
+                      {profile ? (
+                        lowSample ? (
+                          <Badge variant="warning">Too few articles, field-level fallback</Badge>
+                        ) : (
+                          <Badge variant="success">Enough articles</Badge>
+                        )
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

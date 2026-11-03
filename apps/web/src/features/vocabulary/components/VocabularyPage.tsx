@@ -99,6 +99,14 @@ export function VocabularyPage() {
     offset,
   });
   const families = useFamilies({ q: debouncedQuery || undefined, limit, offset });
+  // Unfiltered totals for the summary strip.
+  const allLetters = useLetters(false);
+  const coreLetters = useLetters(true);
+  const familyTotal = useFamilies({ limit: 1, offset: 0 });
+  const sumLetters = (data?: { count: number }[]) => data?.reduce((sum, item) => sum + item.count, 0);
+  const lemmaCount = sumLetters(allLetters.data);
+  const coreCount = sumLetters(coreLetters.data);
+  const maxLetter = Math.max(1, ...(letters.data ?? []).map((item) => item.count));
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -149,6 +157,26 @@ export function VocabularyPage() {
         }
       />
       {showImport && isCurator ? <VocabularyImportCard onClose={() => setShowImport(false)} /> : null}
+      <section aria-label="Lexicon summary" className="grid grid-cols-3 gap-6">
+        {[
+          { value: lemmaCount, label: "Lemmas", note: "Every lemma and part of speech" },
+          {
+            value: coreCount,
+            label: "Core academic lemmas",
+            note:
+              lemmaCount && coreCount !== undefined
+                ? `${Math.round((coreCount / lemmaCount) * 100)}% of all lemmas`
+                : undefined,
+          },
+          { value: familyTotal.data?.total, label: "Word families", note: "Grouped by headword" },
+        ].map((figure) => (
+          <div key={figure.label} className="flex flex-col gap-1 py-1">
+            <span className="text-3xl font-semibold tabular-nums">{figure.value?.toLocaleString() ?? "—"}</span>
+            <span className="text-sm">{figure.label}</span>
+            {figure.note ? <span className="text-sm text-muted-foreground">{figure.note}</span> : null}
+          </div>
+        ))}
+      </section>
       <Tabs
         value={view}
         onValueChange={(nextView) =>
@@ -234,7 +262,12 @@ export function VocabularyPage() {
                 aria-label="Filter vocabulary by initial letter"
                 className="flex w-full flex-nowrap justify-between gap-0.5"
               >
-                <ToggleGroupItem value="all" aria-label="All letters" className="h-10 min-w-9 flex-col gap-0 px-1">
+                <ToggleGroupItem
+                  value="all"
+                  aria-label="All letters"
+                  className="h-14 min-w-9 flex-col justify-end gap-0 px-1"
+                >
+                  <span aria-hidden className="mb-1 block w-full bg-foreground/30" style={{ height: "4px" }} />
                   <span>All</span>
                   <small className="tabular-nums text-muted-foreground">{totalLettersCount}</small>
                 </ToggleGroupItem>
@@ -246,8 +279,13 @@ export function VocabularyPage() {
                       value={letter}
                       disabled={!letters.isPending && count === 0}
                       aria-label={`${letter.toUpperCase()} ${count} lemmas`}
-                      className="h-10 min-w-8 flex-col gap-0 px-1"
+                      className="h-14 min-w-8 flex-col justify-end gap-0 px-1"
                     >
+                      <span
+                        aria-hidden
+                        className="mb-1 block w-full bg-foreground/30"
+                        style={{ height: `${Math.max(2, Math.round((count / maxLetter) * 22))}px` }}
+                      />
                       <span>{letter.toUpperCase()}</span>
                       <small className="tabular-nums text-muted-foreground">{count}</small>
                     </ToggleGroupItem>

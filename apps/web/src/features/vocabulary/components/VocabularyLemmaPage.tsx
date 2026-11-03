@@ -85,25 +85,25 @@ export function VocabularyLemmaPage() {
         }
       />
 
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          ["Rank", item.rank !== null ? `#${item.rank}` : "—", "AVL frequency rank"],
-          ["Band", item.band !== null ? `Band ${item.band}` : "—", "Core academic band"],
-          ["COCA-Acad", item.coca_acad !== null ? item.coca_acad.toLocaleString() : "—", "Academic occurrences"],
-          ["COCA-All", item.coca_all !== null ? item.coca_all.toLocaleString() : "—", "Total corpus occurrences"],
-          ["Ratio", item.ratio !== null ? `${item.ratio.toFixed(2)}x` : "—", "Academic vs general"],
-          ["Dispersion", item.disp !== null ? item.disp.toFixed(2) : "—", "Cross-disciplinary spread"],
-          ["Range", item.range !== null ? `${item.range}/9` : "—", "Disciplines represented"],
-        ].map(([label, value, note]) => (
-          <Card key={label}>
-            <CardContent className="flex flex-col gap-1 pt-4">
-              <span className="text-xs text-muted-foreground">{label}</span>
-              <strong className="text-xl tabular-nums">{value}</strong>
-              <span className="text-xs text-muted-foreground">{note}</span>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardContent className="grid grid-cols-4 gap-x-6 gap-y-6">
+          {[
+            ["Rank", item.rank !== null ? `#${item.rank}` : "—", "AVL frequency rank"],
+            ["Band", item.band !== null ? `Band ${item.band}` : "—", "Core academic band"],
+            ["COCA-Acad", item.coca_acad !== null ? item.coca_acad.toLocaleString() : "—", "Academic occurrences"],
+            ["COCA-All", item.coca_all !== null ? item.coca_all.toLocaleString() : "—", "Total corpus occurrences"],
+            ["Ratio", item.ratio !== null ? `${item.ratio.toFixed(2)}x` : "—", "Academic vs general"],
+            ["Dispersion", item.disp !== null ? item.disp.toFixed(2) : "—", "Cross-disciplinary spread"],
+            ["Range", item.range !== null ? `${item.range}/9` : "—", "Disciplines represented"],
+          ].map(([label, value, note]) => (
+            <div key={label} className="flex flex-col gap-1">
+              <span className="text-sm text-muted-foreground">{label}</span>
+              <strong className="text-2xl font-semibold tabular-nums">{value}</strong>
+              <span className="text-sm text-muted-foreground">{note}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -135,7 +135,7 @@ export function VocabularyLemmaPage() {
                   <span className="text-sm">{stat.domain_label}</span>
                   <div className="h-3 rounded-sm bg-muted">
                     <span
-                      className="block h-3 rounded-sm bg-primary"
+                      className="block h-3 rounded-sm bg-foreground/60"
                       style={{ width: `${Math.min(100, (stat.relative_ratio / maxRatio) * 100)}%` }}
                       title={`${stat.relative_ratio.toFixed(2)}x`}
                     />
@@ -148,12 +148,10 @@ export function VocabularyLemmaPage() {
         </Card>
       ) : (
         <Card>
-          <CardContent className="pt-4">
-            <DataState
-              state="empty"
-              emptyTitle="No disciplinary distribution"
-              emptyDescription="This lemma has no domain-level frequency data yet."
-            />
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              No disciplinary frequency data for this lemma yet, so there is no distribution to show.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -183,7 +181,6 @@ export function VocabularyLemmaPage() {
                       <TableHead numeric>Frequency</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Domains</TableHead>
-                      <TableHead>Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -215,17 +212,6 @@ export function VocabularyLemmaPage() {
                             <Badge>{member.category_label}</Badge>
                           </TableCell>
                           <TableCell>{member.domains.join(", ") || "—"}</TableCell>
-                          <TableCell>
-                            {current ? (
-                              <span className="text-sm text-muted-foreground">Current</span>
-                            ) : (
-                              <Button asChild variant="outline" size="sm">
-                                <Link to="/vocabulary/$lemmaId" params={{ lemmaId: member.lemma_id }} search={search}>
-                                  Inspect
-                                </Link>
-                              </Button>
-                            )}
-                          </TableCell>
                         </TableRow>
                       );
                     })}

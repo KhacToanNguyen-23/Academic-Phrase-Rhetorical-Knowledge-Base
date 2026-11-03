@@ -45,7 +45,8 @@ export function LoginPage() {
           Sign in to Academic Wordbank
         </h1>
         <CardDescription>
-          Use a curator or admin API key. External writing systems continue to use their own client keys.
+          Use a curator or admin API key. Ask an administrator if you do not have one. External writing systems keep
+          using their own client keys.
         </CardDescription>
       </CardHeader>
       <CardContent>

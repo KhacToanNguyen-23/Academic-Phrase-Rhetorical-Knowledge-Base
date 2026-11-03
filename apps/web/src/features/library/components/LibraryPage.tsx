@@ -29,6 +29,13 @@ export function LibraryPage({ selectedId }: { selectedId?: string }) {
     queryFn: () => api.patterns(filters),
     placeholderData: (previous) => previous,
   });
+  const statusSummary = list.data?.length
+    ? " · " +
+      STATUSES.map((status) => [status, list.data.filter((p) => p.status === status).length] as const)
+        .filter(([, count]) => count > 0)
+        .map(([status, count]) => `${count} ${status.replace("_", " ")}`)
+        .join(" · ")
+    : "";
   const activeId = selectedId ?? list.data?.[0]?.id;
   const intentName = (id: string) => intents.data?.find((intent) => intent.intent_id === id)?.name ?? id;
   const retry = async () => {
@@ -109,7 +116,10 @@ export function LibraryPage({ selectedId }: { selectedId?: string }) {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-sm text-muted-foreground">{list.data?.length ?? 0} entries</p>
+              <p className="text-sm text-muted-foreground">
+                {list.data?.length ?? 0} entries
+                {statusSummary}
+              </p>
               {list.isPending ? (
                 <div className="flex flex-col gap-2" aria-busy="true">
                   <Skeleton className="h-16 w-full" />
@@ -257,7 +267,7 @@ function Detail({ id, intentName }: { id: string; intentName: (id: string) => st
           </p>
         </CardContent>
       </Card>
-      <div className="grid grid-cols-2 items-start gap-4">
+      <div className="flex flex-col gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Slots</CardTitle>

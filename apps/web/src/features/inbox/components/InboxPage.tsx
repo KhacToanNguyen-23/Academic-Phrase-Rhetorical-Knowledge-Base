@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -204,10 +205,16 @@ function SubmissionDetail({ submission, intent, client }: { submission: Submissi
   const decide = useMutation({
     mutationFn: (status: Exclude<SubmissionStatus, "pending">) => api.decide(submission.id, status),
     onSuccess: (_, status) => {
-      setMessage(status === "approved" ? "Submission approved into the phrase bank." : "Submission decision saved.");
+      const text = status === "approved" ? "Submission approved into the phrase bank." : "Submission decision saved.";
+      setMessage(text);
+      toast.success(text);
       void queryClient.invalidateQueries({ queryKey: ["submissions"] });
     },
-    onError: (error: Error) => setMessage(error.message || "The decision could not be saved. Try again."),
+    onError: (error: Error) => {
+      const text = error.message || "The decision could not be saved. Try again.";
+      setMessage(text);
+      toast.error(text);
+    },
   });
   const blocked =
     submission.license_status === "unknown" || submission.license_status === "restricted" || !submission.user_opt_in;

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -481,7 +482,15 @@ export function PhrasebankHome() {
         </Card>
       ) : (
         <>
-          {source !== "aprkb-patterns" ? (
+          {source !== "aprkb-patterns" && disabled ? (
+            <Alert role="status">
+              <AlertDescription>
+                The Manchester reference collection is switched off here, so only the bank&apos;s own patterns are
+                listed below.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {source !== "aprkb-patterns" && !disabled ? (
             <Card>
               <CardHeader>
                 <CardTitle>Sections</CardTitle>
@@ -506,7 +515,7 @@ export function PhrasebankHome() {
               </CardContent>
             </Card>
           ) : null}
-          {source !== "aprkb-patterns" ? (
+          {source !== "aprkb-patterns" && !disabled ? (
             <Card>
               <CardHeader>
                 <CardTitle>General functions</CardTitle>

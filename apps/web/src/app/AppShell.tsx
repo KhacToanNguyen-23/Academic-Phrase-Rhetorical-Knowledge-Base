@@ -2,6 +2,7 @@ import { Outlet, useRouterState } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "@/shared/lib/theme";
 
@@ -48,6 +49,7 @@ export function AppShell() {
         </main>
       </div>
       <CommandMenu />
+      <Toaster position="bottom-right" />
     </SidebarProvider>
     </TooltipProvider>
   );

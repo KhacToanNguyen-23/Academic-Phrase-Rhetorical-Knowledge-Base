@@ -6,7 +6,6 @@ from aprkb.modules.recommendation.scorers.base import Scorer
 from aprkb.modules.recommendation.scorers.implementations import (
     DisciplineScorer,
     EvidenceScorer,
-    IntentScorer,
     JournalGenreScorer,
     LinguisticScorer,
     ProvenanceScorer,
@@ -18,7 +17,6 @@ def build_scorers(
     *, discipline_source: DisciplineSource, evidence_policy: EvidencePolicy
 ) -> list[Scorer]:
     return [
-        IntentScorer(),
         DisciplineScorer(discipline_source),
         JournalGenreScorer(),
         EvidenceScorer(evidence_policy),

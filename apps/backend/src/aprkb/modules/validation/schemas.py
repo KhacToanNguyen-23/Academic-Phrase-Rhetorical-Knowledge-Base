@@ -10,6 +10,8 @@ class ValidationRequest(BaseModel):
     claim_type: str
     evidence_level: str
     epistemic_strength: str | None = None
+    context: str | None = None
+    slots: dict[str, str] = Field(default_factory=dict)
 
 
 class ValidationRuleResponse(BaseModel):

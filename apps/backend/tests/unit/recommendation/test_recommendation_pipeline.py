@@ -10,6 +10,7 @@ from aprkb.modules.recommendation.context import RecommendationContext
 from aprkb.modules.recommendation.diversifier import PassThroughDiversifier
 from aprkb.modules.recommendation.fallback import FallbackTierLoader
 from aprkb.modules.recommendation.gates import build_gates
+from aprkb.modules.recommendation.gates.license import LicenseGate
 from aprkb.modules.recommendation.pattern_view import PatternView
 from aprkb.modules.recommendation.pipeline import RecommendationPipeline
 from aprkb.modules.recommendation.scorers import build_scorers
@@ -45,6 +46,12 @@ def test_pattern_view_is_read_only():
         view.status = "draft"
 
 
+def test_license_gate_allows_explicit_internal_use_flag(context):
+    proprietary = pattern(source_type="mined", license_allows_display=True, license_flag=True)
+
+    assert LicenseGate().check(proprietary, context).passed
+
+
 def test_hard_gates_are_registered_in_prd_order(context, evidence_policy):
     gates = build_gates(evidence_policy=evidence_policy)
 
@@ -78,6 +85,18 @@ def test_each_hard_gate_has_a_fail_case(context, evidence_policy, overrides, exp
 
     assert not result.passed
     assert result.reason
+
+
+def test_evidence_gate_is_inactive_until_evidence_filter_is_selected(context, evidence_policy):
+    gate = next(
+        gate
+        for gate in build_gates(evidence_policy=evidence_policy)
+        if type(gate).__name__ == "EvidenceGate"
+    )
+
+    assert gate.check(
+        pattern(epistemic_strength="absolute"), replace(context, evidence_level=None)
+    ).passed
 
 
 def test_aggregator_renormalizes_missing_scorers_and_keeps_null_breakdown():
@@ -117,13 +136,42 @@ def test_scaffold_scorers_use_only_the_documented_values(context, evidence_polic
     }
     authored = pattern()
 
-    assert scorers["intent"].score(authored, context) == 1.0
     assert scorers["discipline"].score(authored, context) is None
     assert scorers["journal_genre"].score(authored, context) is None
     assert scorers["evidence"].score(authored, context) == 1.0
-    assert scorers["linguistic"].score(authored, context) == 0.5
+    assert scorers["linguistic"].score(authored, context) is None
+    assert "intent" not in scorers
     assert scorers["provenance"].score(authored, context) == 1.0
     assert scorers["provenance"].score(pattern(source_type="mined"), context) == 0.7
+
+
+def test_evidence_score_measures_proximity_below_hard_gate(context, evidence_policy):
+    scorers = {
+        scorer.key: scorer
+        for scorer in build_scorers(
+            discipline_source=NullDisciplineSource(), evidence_policy=evidence_policy
+        )
+    }
+    aligned = scorers["evidence"].score(pattern(epistemic_strength="moderate"), context)
+    weaker = scorers["evidence"].score(pattern(epistemic_strength="low"), context)
+
+    assert aligned == 1.0
+    assert weaker == pytest.approx(2 / 3)
+
+
+def test_linguistic_score_matches_query_keywords(context, evidence_policy):
+    scorers = {
+        scorer.key: scorer
+        for scorer in build_scorers(
+            discipline_source=NullDisciplineSource(), evidence_policy=evidence_policy
+        )
+    }
+    keyword_context = replace(context, query="results topic")
+    exact = pattern(canonical_frame="The results support {topic}.")
+    partial = pattern(canonical_frame="The analysis supports {finding}.")
+
+    assert scorers["linguistic"].score(exact, keyword_context) == 1.0
+    assert scorers["linguistic"].score(partial, keyword_context) == 0.0
 
 
 def test_recommendation_fallback_reuses_gates_deduplicates_and_applies_limit(

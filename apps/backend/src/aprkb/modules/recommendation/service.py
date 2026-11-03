@@ -23,6 +23,7 @@ from aprkb.modules.recommendation.pipeline import RecommendationPipeline
 from aprkb.modules.recommendation.schemas import RecommendationRequest
 from aprkb.modules.recommendation.scorers import build_scorers
 from aprkb.modules.taxonomy import repository as taxonomy_repository
+from aprkb.modules.taxonomy import service as taxonomy_service
 from aprkb.policies.evidence import EvidencePolicy
 from aprkb.policies.loader import PolicyBundle
 
@@ -58,6 +59,14 @@ async def recommend(
     policy_bundle: PolicyBundle,
 ) -> dict[str, object]:
     """FR-07.1–.4: retrieve, gate, rank and log suggestions with explanation/fallback (BR-08)."""
+    if (
+        payload.genre is not None
+        and payload.section is not None
+        and not await taxonomy_service.is_genre_section_compatible(
+            session, genre_code=payload.genre, section_code=payload.section
+        )
+    ):
+        raise HTTPException(status_code=422, detail="Genre and section are not compatible")
     try:
         evidence_policy = EvidencePolicy.from_reference_enums(
             policy_bundle.evidence_matrix, await repository.reference_strengths(session)
@@ -102,7 +111,7 @@ async def recommend(
             article = None
         source_type = provenance.source_type if provenance else "unknown"
         allowed_genres = tuple(usage.allowed_genres) if usage else ()
-        if allowed_genres and payload.genre not in allowed_genres:
+        if payload.genre and allowed_genres and payload.genre not in allowed_genres:
             continue
         # A genre match alone is not evidence of journal-specific suitability.
         tier = "generic_genre"
@@ -112,7 +121,7 @@ async def recommend(
             PatternView(
                 pattern_version_id=version.id,
                 status=pattern.status,
-                intent_code=payload.intent,
+                intent_code=_intent.code,
                 canonical_frame=version.canonical_frame,
                 claim_type=version.claim_type,
                 epistemic_strength=version.epistemic_strength,
@@ -124,8 +133,15 @@ async def recommend(
                     or (
                         source_type == "mined"
                         and license_row is not None
-                        and license_row.allows_display
+                        and (
+                            license_row.allows_display
+                            or license_row.code in policy_bundle.license.internal_use_codes
+                        )
                     )
+                ),
+                license_flag=(
+                    license_row is not None
+                    and license_row.code in policy_bundle.license.internal_use_codes
                 ),
                 version_no=version.version_no,
                 license_code=license_row.code if license_row else None,
@@ -145,6 +161,7 @@ async def recommend(
         discipline_code=payload.discipline,
         client_id=actor.id,
         limit=payload.limit,
+        query=query,
     )
     pipeline = RecommendationPipeline(
         gates=build_gates(evidence_policy=evidence_policy, guideline_policy=guideline_policy),
@@ -162,6 +179,7 @@ async def recommend(
     )
     versions = {
         "ranking_weights": policy_bundle.ranking_weights.version,
+        "license_policy": policy_bundle.license.version,
         "fallback_tiers": policy_bundle.fallback_tiers.version,
         "evidence_matrix": policy_bundle.evidence_matrix.version,
         "validation_rules": policy_bundle.validation_rules.version,
@@ -170,6 +188,8 @@ async def recommend(
     taxonomy_release = await taxonomy_repository.published_release(session)
     versions["taxonomy_release"] = taxonomy_release.version if taxonomy_release else "unpublished"
     warnings = []
+    if payload.evidence_level is None:
+        warnings.append("Evidence level not selected; candidate strength was not filtered")
     if payload.discipline:
         warnings.append("Discipline affinity is unavailable and was not used for ranking")
     if payload.journal_id is not None and guideline_policy.has_mandatory_rules(payload.journal_id):
@@ -193,6 +213,7 @@ async def recommend(
             "version_no": item.pattern.version_no,
             "license_code": item.pattern.license_code,
             "license_name": item.pattern.license_name,
+            "license_flag": item.pattern.license_flag,
             "source_reference": item.pattern.source_reference,
             "explanations": [
                 *item.explanations,

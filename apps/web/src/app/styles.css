@@ -138,6 +138,36 @@ nav[aria-label="Contents"] { flex: 1; min-width: 0; height: 100%; }
 @media (max-width: 720px) { .brand-name { display: none; } }
 
 .main { max-width: var(--container); margin: 0 auto; padding: 40px clamp(16px, 3vw, 32px) 96px; }
+.phrasebank-source-credit, .phrasebank-filter-note { color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 400; }
+.phrasebank-source-credit { margin: 24px 0 0; }
+.phrasebank-filter-note { margin: 0; }
+.phrasebank-search-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); gap: 12px; }
+.phrasebank-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.phrasebank-category-card { min-width: 0; min-height: 86px; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: center; gap: 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); color: var(--color-text-primary); }
+.phrasebank-card-title { min-width: 0; overflow-wrap: anywhere; }
+.phrasebank-count { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--color-bg-secondary); color: var(--color-text-secondary); font-size: 0.75rem; white-space: nowrap; }
+.phrasebank-category-card:hover { border-color: var(--color-primary-border); box-shadow: var(--shadow-sm); text-decoration: none; }
+.stack.phrasebank-home > .card { animation: ui-motion-enter 0.35s var(--ease-out) both; }
+.phrasebank-index { padding: 12px 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); box-shadow: var(--shadow-xs); }
+.phrasebank-index div { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 8px; }
+.phrasebank-section, .phrasebank-intro { scroll-margin-top: 160px; }
+.phrasebank-section { padding: 18px 0; border-bottom: 1px solid var(--color-border); }
+.phrasebank-section h2 { margin: 0 0 8px; font-size: 1.45rem; }
+.phrasebank-intro, .phrasebank-entry-list { color: var(--color-text-primary); }
+.phrasebank-table-wrap { overflow-x: auto; margin: 12px 0; }
+.phrasebank-table { width: 100%; border-collapse: collapse; background: var(--color-surface); }
+.phrasebank-table td { padding: 12px; vertical-align: top; border: 1px solid var(--color-border); }
+.phrasebank-table td:last-child { white-space: nowrap; }
+.phrasebank-search-phrase { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 0 10px; margin: 10px 0; }
+.phrasebank-search-table-wrap { flex: 1 1 480px; min-width: 0; margin: 0; }
+.phrasebank-search-table { table-layout: fixed; }
+.phrasebank-search-table td:last-child { white-space: normal; }
+.phrasebank-search-phrase > a { align-self: center; white-space: nowrap; }
+.phrasebank-match { padding: 0 1px; color: inherit; background: var(--color-warning-bg); border-radius: 2px; }
+.phrasebank-pattern-list { list-style: none; padding: 0; }
+.phrasebank-pattern-list li { scroll-margin-top: 160px; margin: 10px 0; padding: 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); }
+.phrasebank-pattern-list p { margin: 8px 0 0; }
+@media (max-width: 720px) { .phrasebank-search-controls { grid-template-columns: 1fr; } }
 .colophon {
   max-width: var(--container); margin: 0 auto; padding: 24px clamp(16px, 3vw, 32px) 32px;
   display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
@@ -325,6 +355,10 @@ input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:f
 .choice input { width: auto; min-height: 0; margin-top: 5px; accent-color: var(--color-primary); }
 .choice > span { display: flex; flex-direction: column; gap: 4px; font-size: 0.9375rem; }
 .choice.is-active { border-color: var(--color-primary); background: var(--color-primary-light); }
+.writer-table { min-width: 960px; }
+.writer-table input[type="radio"] { width: auto; min-height: 0; }
+.table-detail { display: block; margin-top: 4px; color: var(--color-text-secondary); }
+.table-scroll { overflow-x: auto; }
 
 /* ── Validation ─────────────────────────────────────────────── */
 .violation-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -740,7 +774,6 @@ textarea[aria-invalid="true"] {
 .gold-review textarea { width: 100%; resize: vertical; font-family: var(--mono); }
 .gold-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 820px) { .gold-layout { grid-template-columns: 1fr; } }
-
 /* ── Phrase extraction ─────────────────────────────────────── */
 /* ── Slim scrollbar ── */
 .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -1280,3 +1313,7 @@ textarea[aria-invalid="true"] {
   .phrase-card-header { flex-direction: column; gap: 8px; }
   .phrase-card-badges { justify-content: flex-start; }
 }
+.phrasebank-taxonomy-filters { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.phrasebank-taxonomy-filters label { display: grid; gap: 6px; color: var(--color-text-secondary); font-size: 0.85rem; }
+.phrasebank-table caption { padding: 8px 12px; text-align: left; color: var(--color-text-secondary); font-size: 0.8rem; }
+@media (max-width: 720px) { .phrasebank-taxonomy-filters { grid-template-columns: 1fr; } }

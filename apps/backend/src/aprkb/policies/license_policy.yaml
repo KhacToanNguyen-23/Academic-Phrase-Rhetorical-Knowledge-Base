@@ -1,0 +1,5 @@
+version: 0.1.0
+# Internal writer flow may display these with an explicit copyright notice.
+# TODO(owner): confirm organization-wide handling before any public deployment.
+internal_use_codes:
+  - PROPRIETARY

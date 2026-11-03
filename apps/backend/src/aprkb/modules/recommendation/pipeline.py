@@ -69,21 +69,13 @@ class RecommendationPipeline:
                     continue
                 scores = {scorer.key: scorer.score(pattern, context) for scorer in self._scorers}
                 score, breakdown = aggregate_scores(scores=scores, weights=self._weights)
-                score_explanations = tuple(
-                    f"{key.replace('_', ' ').title()}: {value:.2f}"
-                    for key, value in breakdown.items()
-                    if value is not None
-                )
                 accepted.append(
                     RecommendationItem(
                         pattern=pattern,
                         score=score,
                         breakdown=breakdown,
                         fallback_tier=tier,
-                        explanations=(
-                            f"Passed intent and section gates for {context.intent_code}",
-                            *score_explanations,
-                        ),
+                        explanations=("Passed configured intent and section gates",),
                     )
                 )
             if len(accepted) >= context.limit:

@@ -11,7 +11,7 @@ class IntentSectionGate(HardGate):
     code = "GATE_INTENT_SECTION"
 
     def check(self, pattern: PatternView, ctx: RecommendationContext) -> GateResult:
-        passed = (
-            pattern.intent_code == ctx.intent_code and ctx.section_code in pattern.allowed_sections
+        passed = (ctx.intent_code is None or pattern.intent_code == ctx.intent_code) and (
+            ctx.section_code is None or ctx.section_code in pattern.allowed_sections
         )
         return GateResult(passed, None if passed else "Pattern does not match intent and section")

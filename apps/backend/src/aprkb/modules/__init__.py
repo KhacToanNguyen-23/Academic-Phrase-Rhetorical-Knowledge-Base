@@ -14,6 +14,7 @@ def load_models() -> None:
         "mining",
         "patterns",
         "recommendation",
+        "reference_library",
         "taxonomy",
     ):
         import_module(f"aprkb.modules.{domain}.models")

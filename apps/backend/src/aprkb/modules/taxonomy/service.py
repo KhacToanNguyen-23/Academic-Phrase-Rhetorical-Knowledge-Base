@@ -46,6 +46,7 @@ async def get_published_tree(session: AsyncSession) -> dict[str, object] | None:
                 "code": section.code,
                 "name": section.name,
                 "order": section.order,
+                "compatible_genres": section.compatible_genres,
                 "moves": [
                     {
                         "id": move.id,
@@ -76,3 +77,16 @@ async def get_published_tree(session: AsyncSession) -> dict[str, object] | None:
         ],
         "article_genres": [{"code": genre.code, "name": genre.name} for genre in genres],
     }
+
+
+async def is_genre_section_compatible(
+    session: AsyncSession, *, genre_code: str | None, section_code: str | None
+) -> bool:
+    if genre_code is None or section_code is None:
+        return False
+    release = await repository.published_release(session)
+    if release is None:
+        return False
+    sections = await repository.sections_for_release(session, release.id)
+    section = next((row for row in sections if row.code == section_code), None)
+    return section is not None and genre_code in section.compatible_genres

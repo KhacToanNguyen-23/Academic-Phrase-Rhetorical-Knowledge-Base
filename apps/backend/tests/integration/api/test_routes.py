@@ -101,6 +101,9 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/render", "post"),
         ("/v1/validate", "post"),
         ("/v1/feedback", "post"),
+        ("/v1/reference-library/categories", "get"),
+        ("/v1/reference-library/categories/{id}", "get"),
+        ("/v1/reference-library/search", "get"),
         ("/v1/journals", "get"),
         ("/v1/journals/{id}", "get"),
         ("/v1/journals/{id}/guidelines", "post"),
@@ -157,6 +160,71 @@ async def test_published_taxonomy_tree_and_release_list(api_client, session_fact
     assert tree.status_code == 200
     assert "INTRO" in tree.text
     assert "INTRO_GAP_INDICATE" in tree.text
+    sections = {item["code"]: item for item in tree.json()["sections"]}
+    assert sections["INTRO"]["compatible_genres"] == [
+        "RESEARCH_ARTICLE",
+        "SYSTEMATIC_REVIEW",
+    ]
+    assert sections["DISCUSSION"]["compatible_genres"] == ["RESEARCH_ARTICLE"]
+
+
+@pytest.mark.asyncio
+async def test_genre_section_relationship_rejects_mismatch_and_keeps_empty_results_empty(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "genre-section client")
+    headers = {"X-API-Key": key}
+    payload = {
+        "intent": "INTRO_GAP_INDICATE",
+        "section": "DISCUSSION",
+        "genre": "SYSTEMATIC_REVIEW",
+        "claim_type": "descriptive",
+        "evidence_level": "multiple_consistent",
+    }
+
+    incompatible = await api_client.post("/v1/recommendations", headers=headers, json=payload)
+    assert incompatible.status_code == 422
+
+    valid_empty = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={**payload, "section": "INTRO"},
+    )
+    assert valid_empty.status_code == 200
+    assert valid_empty.json()["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_recommendations_default_to_approved_patterns_and_count_evidence_hidden(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "writer table client")
+    headers = {"X-API-Key": key}
+
+    initial = await api_client.post("/v1/recommendations", headers=headers, json={})
+    assert initial.status_code == 200
+    assert initial.json()["items"]
+    assert all(item["source_type"] in {"authored", "mined"} for item in initial.json()["items"])
+    assert all(
+        "There is limited evidence about" not in item["canonical_frame"]
+        for item in initial.json()["items"]
+    )
+    assert initial.json()["excluded"].get("GATE_APPROVAL", 0) > 0
+    assert all(
+        "The findings may relate to" not in item["canonical_frame"]
+        for item in initial.json()["items"]
+    )
+    assert any("Evidence level not selected" in warning for warning in initial.json()["warnings"])
+
+    filtered = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={"evidence_level": "single_study"},
+    )
+    assert filtered.status_code == 200
+    assert filtered.json()["excluded"].get("GATE_EVIDENCE", 0) > 0
 
 
 @pytest.mark.asyncio
@@ -639,10 +707,14 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
     assert response.headers.get("X-Request-ID")
     body = response.json()
     assert body["items"]
+    assert all(
+        item["explanations"] == ["Passed configured intent and section gates"]
+        for item in body["items"]
+    )
     frames = {item["canonical_frame"] for item in body["items"]}
     assert "There is limited evidence about {topic}." not in frames
     assert "The findings may relate to {context}." not in frames
-    assert "Prior work has rarely examined {topic}." not in frames
+    assert "Prior work has rarely examined {topic}." in frames
     assert "Unprovenanced phrase {topic}." not in frames
     assert "Conflicting provenance phrase {topic}." not in frames
     for item in body["items"]:
@@ -657,15 +729,18 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
             "version_no",
             "license_code",
             "license_name",
+            "license_flag",
             "source_reference",
         }
         assert item["breakdown"]["discipline"] is None
         assert item["breakdown"]["journal_genre"] is None
+        assert item["license_flag"] is (item["license_code"] == "PROPRIETARY")
     assert body["policy_versions"] == {
         "ranking_weights": "0.1.0",
+        "license_policy": "0.1.0",
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
-        "validation_rules": "0.1.0",
+        "validation_rules": "0.2.0",
         "epistemic_markers": "0.1.0",
         "taxonomy_release": "0.1.0",
     }
@@ -675,6 +750,70 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         assert log is not None
         assert log.request["intent"] == "INTRO_GAP_INDICATE"
         assert log.results["items"]
+
+
+@pytest.mark.asyncio
+async def test_proprietary_recommendation_is_flagged_for_internal_use(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    async with session_factory() as session:
+        await run_seed(session)
+        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        license_row = await session.scalar(select(License).where(License.code == "PROPRIETARY"))
+        assert intent is not None and license_row is not None
+        pattern = PhrasePattern(intent_id=intent.id, status="approved")
+        session.add(pattern)
+        await session.flush()
+        version = PatternVersion(
+            pattern_id=pattern.id,
+            version_no=1,
+            canonical_frame="The proprietary fixture suggests {topic}.",
+            slots={"topic": "noun_phrase"},
+            epistemic_strength="low",
+            claim_type="descriptive",
+        )
+        session.add(version)
+        await session.flush()
+        pattern.current_version_id = version.id
+        session.add_all(
+            [
+                UsageConstraint(
+                    pattern_version_id=version.id,
+                    allowed_sections=["INTRO"],
+                    allowed_genres=["RESEARCH_ARTICLE"],
+                ),
+                EvidenceProvenance(
+                    pattern_version_id=version.id,
+                    source_type="mined",
+                    sentence_ids=[],
+                    license_id=license_row.id,
+                ),
+            ]
+        )
+        _, key = await create_api_key(session, name="internal writer", role="client")
+        await session.commit()
+
+    response = await api_client.post(
+        "/v1/recommendations",
+        headers={"X-API-Key": key},
+        json={
+            "intent": "INTRO_GAP_INDICATE",
+            "section": "INTRO",
+            "genre": "RESEARCH_ARTICLE",
+            "claim_type": "descriptive",
+            "evidence_level": "multiple_consistent",
+            "limit": 10,
+        },
+    )
+
+    assert response.status_code == 200
+    item = next(
+        item
+        for item in response.json()["items"]
+        if item["canonical_frame"] == "The proprietary fixture suggests {topic}."
+    )
+    assert item["license_code"] == "PROPRIETARY"
+    assert item["license_flag"] is True
 
 
 @pytest.mark.asyncio
@@ -754,7 +893,7 @@ async def test_validation_http_runs_v02_and_blocks_prove_with_single_study(
 
 
 @pytest.mark.asyncio
-async def test_render_uses_approved_version_and_keeps_missing_slots(
+async def test_render_uses_approved_version_and_validates_slots(
     api_client: AsyncClient, session_factory: async_sessionmaker
 ) -> None:
     await run_seed_in_session(session_factory)
@@ -789,18 +928,27 @@ async def test_render_uses_approved_version_and_keeps_missing_slots(
     }
     detail = await api_client.get(f"/v1/patterns/versions/{approved.id}", headers=headers)
     assert detail.status_code == 200
-    assert detail.json()["slots"] == {"topic": "noun_phrase", "context": "noun_phrase"}
+    assert detail.json()["slots"]["topic"]["type"] == "noun_phrase"
     payload = {
         "recommendation_id": recommendation.json()["recommendation_id"],
         "pattern_version_id": str(approved.id),
-        "slots": {"topic": "language models"},
+        "slots": {"topic": "language models", "context": "education"},
     }
     response = await api_client.post(endpoint, headers=headers, json=payload)
     assert response.status_code == 200
     assert response.json()["text"] == (
-        "The role of language models in {context} remains underexplored."
+        "The role of language models in education remains underexplored."
     )
-    assert response.json()["unfilled_slots"] == ["context"]
+    assert response.json()["unfilled_slots"] == []
+
+    invalid = await api_client.post(
+        endpoint, headers=headers, json={**payload, "slots": {"topic": "AI"}}
+    )
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["details"]["field_errors"] == {
+        "topic": "Enter at least 3 characters.",
+        "context": "This field is required.",
+    }
 
     extra = await api_client.post(
         endpoint, headers=headers, json={**payload, "slots": {"unexpected": "x"}}
@@ -833,6 +981,33 @@ async def test_feedback_rejects_raw_writer_text(
         },
     )
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_validation_checks_writer_provided_grounding_and_keeps_v05_unavailable(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "validation grounding client")
+    response = await api_client.post(
+        "/v1/validate",
+        headers={"X-API-Key": key},
+        json={
+            "text": "The result was significant (p < 0.05) with a rate of 45%.",
+            "claim_type": "descriptive",
+            "evidence_level": "multiple_consistent",
+            "context": "study context",
+            "slots": {"topic": "language models"},
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    v03 = next(rule for rule in body["rules"] if rule["code"] == "V03")
+    assert v03["severity"] == "block"
+    assert v03["applied"] is True
+    assert v03["span"] is not None
+    assert "V05" in body["checks_unavailable"]
 
 
 async def _create_candidate(session_factory: async_sessionmaker, *, unsafe: bool = False) -> UUID:

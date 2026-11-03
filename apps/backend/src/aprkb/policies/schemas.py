@@ -46,11 +46,15 @@ class LicensesPolicy(VersionedPolicy):
 
 class RankingWeightsPolicy(VersionedPolicy):
     weights: dict[str, float]
+    evidence_alignment_formula: Literal[
+        "1 - abs(max_supported - candidate_strength) / strength_span"
+    ]
+    keyword_formula: Literal["matched_keywords / query_keywords"]
 
     @field_validator("weights")
     @classmethod
     def validate_weights(cls, weights: dict[str, float]) -> dict[str, float]:
-        expected = {"intent", "discipline", "journal_genre", "evidence", "linguistic", "provenance"}
+        expected = {"discipline", "journal_genre", "evidence", "linguistic", "provenance"}
         if set(weights) != expected:
             raise ValueError("weights must define every active scorer exactly once")
         if any(not isfinite(weight) or weight < 0 or weight > 1 for weight in weights.values()):
@@ -60,6 +64,17 @@ class RankingWeightsPolicy(VersionedPolicy):
         if not any(weight > 0 for weight in weights.values()):
             raise ValueError("at least one scorer weight must be positive")
         return weights
+
+
+class LicensePolicy(VersionedPolicy):
+    internal_use_codes: list[str] = Field(min_length=1)
+
+    @field_validator("internal_use_codes")
+    @classmethod
+    def validate_internal_use_codes(cls, codes: list[str]) -> list[str]:
+        if len(codes) != len(set(codes)) or any(not code.strip() for code in codes):
+            raise ValueError("internal_use_codes must contain unique non-empty license codes")
+        return codes
 
 
 class FallbackTiersPolicy(VersionedPolicy):
@@ -274,6 +289,7 @@ class RuleSetting(BaseModel):
 
 class ValidationRulesPolicy(VersionedPolicy):
     rules: dict[str, RuleSetting]
+    style_warning_phrases: list[str] = Field(default_factory=list)
 
     @field_validator("rules")
     @classmethod
@@ -283,9 +299,20 @@ class ValidationRulesPolicy(VersionedPolicy):
             raise ValueError("rules must contain known V01–V08 entries")
         return rules
 
+    @field_validator("style_warning_phrases")
+    @classmethod
+    def validate_style_warning_phrases(cls, phrases: list[str]) -> list[str]:
+        if any(not phrase.strip() for phrase in phrases):
+            raise ValueError("style warning phrases must not be blank")
+        return phrases
+
 
 class EpistemicMarkersPolicy(VersionedPolicy):
     markers: dict[str, list[str]]
+    # Base verb -> irregular inflected forms that suffix rules cannot derive.
+    irregular_forms: dict[str, list[str]] = Field(default_factory=dict)
+    # Declared markers that are not verbs and must keep exact matching.
+    non_inflecting: list[str] = Field(default_factory=list)
 
     @field_validator("markers")
     @classmethod
@@ -299,3 +326,23 @@ class EpistemicMarkersPolicy(VersionedPolicy):
         if any(len(values) != len(set(values)) for values in markers.values()):
             raise ValueError("epistemic marker lists must not contain duplicates")
         return markers
+
+    @field_validator("irregular_forms")
+    @classmethod
+    def validate_irregular_forms(cls, forms: dict[str, list[str]]) -> dict[str, list[str]]:
+        if any(
+            not base.strip() or not values or any(not form.strip() for form in values)
+            for base, values in forms.items()
+        ):
+            raise ValueError("irregular_forms must map each base verb to non-empty forms")
+        return forms
+
+    @model_validator(mode="after")
+    def validate_non_inflecting(self) -> "EpistemicMarkersPolicy":
+        declared = {marker.casefold() for values in self.markers.values() for marker in values}
+        names = [name.casefold() for name in self.non_inflecting]
+        if len(names) != len(set(names)) or any(not name.strip() for name in names):
+            raise ValueError("non_inflecting must be unique, non-empty markers")
+        if not set(names) <= declared:
+            raise ValueError("non_inflecting entries must be declared markers")
+        return self

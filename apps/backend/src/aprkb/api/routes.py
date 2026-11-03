@@ -12,6 +12,7 @@ from aprkb.modules.identity.router import router as identity
 from aprkb.modules.journals.router import router as journals
 from aprkb.modules.patterns.router import router as patterns
 from aprkb.modules.recommendation.router import router as recommendation
+from aprkb.modules.reference_library.router import router as reference_library
 from aprkb.modules.review.router import router as review
 from aprkb.modules.taxonomy.router import admin_router as taxonomy_admin
 from aprkb.modules.taxonomy.router import router as taxonomy
@@ -32,3 +33,4 @@ api_router.include_router(corpus_admin, prefix="/admin")
 api_router.include_router(extraction_admin, prefix="/admin")
 api_router.include_router(gold)
 api_router.include_router(analytics, prefix="/feedback")
+api_router.include_router(reference_library, prefix="/reference-library")

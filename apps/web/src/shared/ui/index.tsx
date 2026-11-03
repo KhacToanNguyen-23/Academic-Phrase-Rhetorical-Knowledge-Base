@@ -4,7 +4,7 @@ import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 import type { EvidenceClass, FallbackTier, Provenance, Severity } from "@/shared/api";
 import { parseFrame } from "@/shared/lib";
 
-export function PageHeader({ code, title, lead, actions }: { code?: string; title: string; lead?: string; actions?: ReactNode }) {
+export function PageHeader({ code, title, lead, actions }: { code?: string; title: ReactNode; lead?: string; actions?: ReactNode }) {
   return (
     <header className="page-header">
       <div>

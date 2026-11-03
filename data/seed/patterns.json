@@ -4,7 +4,10 @@
     "status": "approved",
     "intent_code": "INTRO_GAP_INDICATE",
     "canonical_frame": "The role of {topic} in {context} remains underexplored.",
-    "slots": {"topic": "noun_phrase", "context": "noun_phrase"},
+    "slots": {
+      "topic": {"type": "noun_phrase", "label": "Research topic", "instruction": "Name the specific topic discussed in your evidence.", "example": "language models", "required": true, "min_length": 3},
+      "context": {"type": "noun_phrase", "label": "Context", "instruction": "Describe the study or setting relevant to the topic.", "example": "higher education", "required": true, "min_length": 3}
+    },
     "epistemic_strength": "low",
     "claim_type": "descriptive",
     "source_type": "authored",
@@ -15,7 +18,10 @@
     "status": "approved",
     "intent_code": "DISCUSSION_FINDING",
     "canonical_frame": "These results demonstrate that {finding} in {context}.",
-    "slots": {"finding": "clause", "context": "noun_phrase"},
+    "slots": {
+      "finding": {"type": "clause", "label": "Finding", "instruction": "Enter a finding supported by your results.", "example": "the intervention improved retention", "required": true, "min_length": 5},
+      "context": {"type": "noun_phrase", "label": "Context", "instruction": "Name the population or setting for this finding.", "example": "first-year students", "required": true, "min_length": 3}
+    },
     "epistemic_strength": "high",
     "claim_type": "causal",
     "source_type": "authored",
@@ -26,7 +32,7 @@
     "status": "draft",
     "intent_code": "INTRO_GAP_INDICATE",
     "canonical_frame": "There is limited evidence about {topic}.",
-    "slots": {"topic": "noun_phrase"},
+    "slots": {"topic": {"type": "noun_phrase", "label": "Research topic", "instruction": "Name the specific topic discussed in your evidence.", "example": "language models", "required": true, "min_length": 3}},
     "epistemic_strength": "low",
     "claim_type": "descriptive",
     "source_type": "authored",
@@ -37,7 +43,7 @@
     "status": "retired",
     "intent_code": "DISCUSSION_FINDING",
     "canonical_frame": "The findings may relate to {context}.",
-    "slots": {"context": "noun_phrase"},
+    "slots": {"context": {"type": "noun_phrase", "label": "Context", "instruction": "Name the setting supported by your evidence.", "example": "higher education", "required": true, "min_length": 3}},
     "epistemic_strength": "low",
     "claim_type": "descriptive",
     "source_type": "authored",
@@ -48,7 +54,7 @@
     "status": "approved",
     "intent_code": "INTRO_GAP_INDICATE",
     "canonical_frame": "Prior work has rarely examined {topic}.",
-    "slots": {"topic": "noun_phrase"},
+    "slots": {"topic": {"type": "noun_phrase", "label": "Research topic", "instruction": "Name the specific topic discussed in your evidence.", "example": "language models", "required": true, "min_length": 3}},
     "epistemic_strength": "moderate",
     "claim_type": "descriptive",
     "source_type": "mined",
@@ -60,7 +66,7 @@
     "status": "approved",
     "intent_code": "INTRO_GAP_INDICATE",
     "canonical_frame": "An unresolved issue concerns {topic}.",
-    "slots": {"topic": "noun_phrase"},
+    "slots": {"topic": {"type": "noun_phrase", "label": "Research topic", "instruction": "Name the specific topic discussed in your evidence.", "example": "language models", "required": true, "min_length": 3}},
     "epistemic_strength": "moderate",
     "claim_type": "descriptive",
     "source_type": "authored",
@@ -71,7 +77,10 @@
     "status": "approved",
     "intent_code": "INTRO_GAP_INDICATE",
     "canonical_frame": "Although {topic} has been examined, evidence remains limited for {population}.",
-    "slots": {"topic": "noun_phrase", "population": "noun_phrase"},
+    "slots": {
+      "topic": {"type": "noun_phrase", "label": "Research topic", "instruction": "Name the topic examined in prior work.", "example": "online learning", "required": true, "min_length": 3},
+      "population": {"type": "noun_phrase", "label": "Population", "instruction": "Name the population for which evidence remains limited.", "example": "adult learners", "required": true, "min_length": 3}
+    },
     "epistemic_strength": "moderate",
     "claim_type": "descriptive",
     "source_type": "authored",
@@ -82,7 +91,10 @@
     "status": "approved",
     "intent_code": "DISCUSSION_FINDING",
     "canonical_frame": "The observed pattern may reflect {factor} in {context}.",
-    "slots": {"factor": "noun_phrase", "context": "noun_phrase"},
+    "slots": {
+      "factor": {"type": "noun_phrase", "label": "Potential factor", "instruction": "Enter a factor that your evidence supports as a possible explanation.", "example": "prior experience", "required": true, "min_length": 3},
+      "context": {"type": "noun_phrase", "label": "Context", "instruction": "Name the study or setting in which the pattern was observed.", "example": "online courses", "required": true, "min_length": 3}
+    },
     "epistemic_strength": "low",
     "claim_type": "descriptive",
     "source_type": "authored",
@@ -93,7 +105,11 @@
     "status": "approved",
     "intent_code": "DISCUSSION_FINDING",
     "canonical_frame": "These findings suggest that {factor} may contribute to {outcome} under {condition}.",
-    "slots": {"factor": "noun_phrase", "outcome": "noun_phrase", "condition": "noun_phrase"},
+    "slots": {
+      "factor": {"type": "noun_phrase", "label": "Potential factor", "instruction": "Enter a factor that may contribute to the outcome.", "example": "timely feedback", "required": true, "min_length": 3},
+      "outcome": {"type": "noun_phrase", "label": "Outcome", "instruction": "Name the outcome measured in your study.", "example": "course completion", "required": true, "min_length": 3},
+      "condition": {"type": "noun_phrase", "label": "Condition", "instruction": "Describe the condition under which the relationship was observed.", "example": "blended instruction", "required": true, "min_length": 3}
+    },
     "epistemic_strength": "moderate",
     "claim_type": "causal",
     "source_type": "authored",

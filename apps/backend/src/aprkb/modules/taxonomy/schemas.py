@@ -41,6 +41,7 @@ class TaxonomySection(BaseModel):
     code: str
     name: str
     order: int
+    compatible_genres: list[str]
     moves: list[TaxonomyMove]
 
 

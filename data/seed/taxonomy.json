@@ -6,7 +6,10 @@
       "code": "ABSTRACT",
       "name": "Abstract",
       "order": 1,
-      "moves": []
+      "moves": [],
+      "compatible_genres": [
+        "RESEARCH_ARTICLE"
+      ]
     },
     {
       "code": "INTRO",
@@ -30,25 +33,38 @@
             }
           ]
         }
+      ],
+      "compatible_genres": [
+        "RESEARCH_ARTICLE",
+        "SYSTEMATIC_REVIEW"
       ]
     },
     {
       "code": "RELATED_WORK",
       "name": "Related work",
       "order": 3,
-      "moves": []
+      "moves": [],
+      "compatible_genres": [
+        "RESEARCH_ARTICLE"
+      ]
     },
     {
       "code": "METHODS",
       "name": "Methods",
       "order": 4,
-      "moves": []
+      "moves": [],
+      "compatible_genres": [
+        "RESEARCH_ARTICLE"
+      ]
     },
     {
       "code": "RESULTS",
       "name": "Results",
       "order": 5,
-      "moves": []
+      "moves": [],
+      "compatible_genres": [
+        "RESEARCH_ARTICLE"
+      ]
     },
     {
       "code": "DISCUSSION",
@@ -72,19 +88,29 @@
             }
           ]
         }
+      ],
+      "compatible_genres": [
+        "RESEARCH_ARTICLE"
       ]
     },
     {
       "code": "CONCLUSION",
       "name": "Conclusion",
       "order": 7,
-      "moves": []
+      "moves": [],
+      "compatible_genres": [
+        "RESEARCH_ARTICLE"
+      ]
     }
   ],
   "article_genres": [
     {
       "code": "RESEARCH_ARTICLE",
       "name": "Research article"
+    },
+    {
+      "code": "SYSTEMATIC_REVIEW",
+      "name": "Systematic review"
     }
   ],
   "todo": "TODO(owner): replace this draft taxonomy with the approved taxonomy."

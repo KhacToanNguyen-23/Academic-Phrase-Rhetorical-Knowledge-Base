@@ -24,7 +24,7 @@ import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterP
 import { SlrImportPage } from "@/features/slr-import";
 import { VocabularyLemmaPage, VocabularyPage } from "@/features/vocabulary";
 import { safeNext } from "@/shared/lib/safe-next";
-import { Loading } from "@/shared/ui";
+import { DataState } from "@/components/domain";
 
 import { AppShell } from "./AppShell";
 
@@ -36,7 +36,7 @@ export interface RouterContext {
 function Guarded() {
   const auth = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  if (auth.loading) return <Loading />;
+  if (auth.loading) return <DataState state="loading" loadingLabel="Loading" />;
   if (!auth.client) return null;
   if (pathname === "/admin" && auth.client.role !== "admin") {
     return <AdminPage />;

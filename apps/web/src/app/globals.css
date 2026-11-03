@@ -221,3 +221,62 @@ td.num,
 th.num {
   text-align: right;
 }
+
+/* App shell basics that used to live in the legacy styles.css. */
+:root {
+  --container: 80rem;
+  --shell-top: 0px; /* height of the sticky top bar (phone only); 0 on desktop */
+}
+
+@media (max-width: 767px) {
+  :root { --shell-top: 48px; }
+}
+
+@layer base {
+  body {
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a:not([data-slot="button"]) {
+    color: var(--primary);
+    text-decoration: none;
+  }
+
+  a:not([data-slot="button"]):hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Navigation links are text, not teal; only the active item takes the brand ink (see the sidebar tokens). */
+  [data-slot="sidebar"] a {
+    color: var(--sidebar-foreground);
+  }
+
+  [data-slot="sidebar"] a:hover {
+    text-decoration: none;
+  }
+}
+
+@layer components {
+  .skip {
+    position: absolute;
+    left: -999px;
+  }
+
+  .skip:focus {
+    left: 16px;
+    top: 16px;
+    z-index: 999;
+    background: var(--background);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+  }
+
+  .main {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: 32px clamp(16px, 3vw, 32px) 96px;
+  }
+}

@@ -31,3 +31,7 @@
 - `apps/web/README.md`: cách thêm component (`pnpm dlx shadcn@latest add`), token, font, cách chạy gate taste.
 - `README.md` gốc: route mới (`/`, `/signin`, `/app`).
 - Report cuối: `plans/reports/` gồm số đo before/after, critique vòng cuối, credit ảnh, mock còn lại.
+
+## Kết quả (2026-11-04)
+
+Xem `plans/reports/261104-ui-redesign-final-report.md` và `doc/adr/0011-frontend-design-system.md`. Chưa chạy: `code-review` tổng trên toàn nhánh trước PR, bài thử copy tiếng Việt của landing, `pytest` đầy đủ (thiếu `TEST_DATABASE_URL`), và kiểm Gold/Extract/Admin bằng khóa admin.

@@ -45,11 +45,12 @@ Trước khi viết markup riêng: `npx shadcn@latest search <tên>` và `npx sh
 
 ## Trang `/dev/ui`
 
-Chỉ có khi `import.meta.env.DEV`. Hiện mọi component với đủ 8 trạng thái (default/hover/focus/active/disabled/loading/error/success), light và dark. Dùng làm bàn kiểm cho `inspect.mjs --app` và Browser MCP.
+Chỉ có khi `import.meta.env.DEV || import.meta.env.MODE === "inspect"` (cùng điều kiện với demo session ở Phase 00). Route và chunk của trang **không** được có trong `dist/`; kiểm bằng `grep -r "dev/ui" dist/` ra 0 kết quả. Hiện mọi component với đủ 8 trạng thái (default/hover/focus/active/disabled/loading/error/success), light và dark. Dùng làm bàn kiểm cho `inspect.mjs --app` và Browser MCP.
 
 ## Xong khi
 
-- `lint.mjs --app src/components` sạch.
-- `inspect.mjs --app http://127.0.0.1:4173/dev/ui` 0 FAIL.
+- `lint.mjs --app apps/web/src/components` sạch.
+- `inspect.mjs --app http://127.0.0.1:4174/dev/ui` 0 FAIL, chạy trên `npm run build:inspect && npm run preview:inspect` (cổng 4174).
+- `src/shared/ui/*` cũ vẫn còn và các trang cũ không đổi giao diện. Component mới nằm ở `src/components/ui/`, component miền ở `src/components/domain/`. Việc thay import trên từng màn làm ở Phase 05.
 - Không còn `space-y-*`, không còn `dark:` thủ công, không có `className` ghi đè màu hoặc chữ (rule `shadcn/rules/styling.md`).
 - Đã chạy `code-review` trên PR và đã xử lý các finding.

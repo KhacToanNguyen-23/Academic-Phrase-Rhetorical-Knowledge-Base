@@ -31,3 +31,12 @@ Top remaining problems: (1) Journals and Library still leave a tall empty area u
 - Import and Admin: job steps as readable text and a log filter.
 - Writer and Playground: context summary near the result, copy button on JSON.
 - A second look at Library's empty area and a before/after for screens not listed above.
+
+## Round 2
+
+- Gold and Extract show "N of M decided/reviewed" with a neutral progress bar (new `ProgressLine`). Not seen with real data: the demo session is a curator and the admin APIs return 403.
+- Admin request log gains an "Errors only" outcome filter next to the client and endpoint filters.
+- Playground shows the context being sent as badges and each JSON block has a Copy button.
+- Writer lists what the current recommendations were searched with.
+- Import already reports job state in words and numbers, so it was left as it is.
+- **Bug found by the owner:** every Select opened far away from its trigger (item-aligned mode misplaced the list). The shared Select now opens below its trigger (popper mode, left-aligned). Measured on Phrasebank, Library, Playground, Writer and Vocabulary: the list opens 8 to 9px under each trigger, aligned to its left edge.

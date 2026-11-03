@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataState } from "@/components/domain/DataState";
 import { PageHeader } from "@/components/domain/PageHeader";
+import { ProgressLine } from "@/components/domain/ProgressLine";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { ApiError, slrImportClient, unwrap } from "@/features/slr-import/api/client";
 import { ArticleCard } from "./ArticleCard";
@@ -317,6 +318,11 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
             <Metric label="Phrases pending" value={counts.pending} note="Awaiting review" />
             <Metric label="Phrases accepted" value={counts.accepted} note="Saved decisions" />
           </div>
+          <ProgressLine
+            done={counts.accepted + counts.rejected}
+            total={counts.accepted + counts.rejected + counts.pending}
+            label="phrases reviewed"
+          />
           <div
             className={`grid min-w-0 items-start gap-6 ${
               phrasesFirst ? "grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" : "grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]"

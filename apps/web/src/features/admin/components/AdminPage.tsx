@@ -399,10 +399,14 @@ function Clients({
 function Log({ logs, clients }: { logs: RequestLog[]; clients: ApiClient[] }) {
   const [clientId, setClientId] = useState("all");
   const [endpoint, setEndpoint] = useState("all");
+  const [outcome, setOutcome] = useState("all");
   const [open, setOpen] = useState<string>();
   const endpoints = [...new Set(logs.map((item) => item.endpoint))];
   const rows = logs.filter(
-    (item) => (clientId === "all" || item.client_id === clientId) && (endpoint === "all" || item.endpoint === endpoint),
+    (item) =>
+      (clientId === "all" || item.client_id === clientId) &&
+      (endpoint === "all" || item.endpoint === endpoint) &&
+      (outcome === "all" || item.status >= 400),
   );
   const name = (id: string) => clients.find((item) => item.client_id === id)?.name ?? id;
 
@@ -444,6 +448,17 @@ function Log({ logs, clients }: { logs: RequestLog[]; clients: ApiClient[] }) {
               </SelectGroup>
             </SelectContent>
           </Select>
+          <Select value={outcome} onValueChange={setOutcome}>
+            <SelectTrigger aria-label="Outcome" className="w-40">
+              <SelectValue placeholder="All outcomes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="all">All outcomes</SelectItem>
+                <SelectItem value="errors">Errors only</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent>
@@ -451,7 +466,7 @@ function Log({ logs, clients }: { logs: RequestLog[]; clients: ApiClient[] }) {
           <DataState
             state="empty"
             emptyTitle="No requests match"
-            emptyDescription="Change the client or endpoint filters."
+            emptyDescription="Change the client, endpoint or outcome filters."
           />
         ) : (
           <Table>

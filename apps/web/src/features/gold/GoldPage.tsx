@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Textarea } from "@/components/ui/textarea";
 import { DataState } from "@/components/domain/DataState";
 import { PageHeader } from "@/components/domain/PageHeader";
+import { ProgressLine } from "@/components/domain/ProgressLine";
 import { StatusBadge } from "@/components/domain/StatusBadge";
 import { ApiError, unwrap } from "@/features/slr-import/api/client";
 import { goldClient } from "./api";
@@ -180,6 +181,11 @@ export function GoldPage() {
         <Metric label="Test split" value={stats.data?.by_split.test ?? 0} note="Held from tuning" />
         <Metric label="Reviewed edits" value={editedFields} note="Changed fields" />
       </div>
+      <ProgressLine
+        done={(stats.data?.by_status.approved ?? 0) + (stats.data?.by_status.rejected ?? 0)}
+        total={stats.data?.total ?? 0}
+        label="gold items decided"
+      />
       {stats.isError ? (
         <Alert variant="destructive">
           <AlertTitle>Gold statistics unavailable</AlertTitle>

@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,10 +24,12 @@ const scoreLabels: Record<string, string> = {
 export function WriterResults({
   recommendation,
   picked,
+  searchedWith,
   onSelect,
 }: {
   recommendation: Recommendation;
   picked: string;
+  searchedWith: string[];
   onSelect: (versionId: string) => void;
 }) {
   const scoreKeys = recommendation.items[0] ? Object.keys(recommendation.items[0].breakdown) : [];
@@ -42,6 +45,14 @@ export function WriterResults({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          {searchedWith.length ? "Searched with" : "No filters: every eligible pattern is listed."}
+          {searchedWith.map((item) => (
+            <Badge key={item} variant="secondary">
+              {item}
+            </Badge>
+          ))}
+        </p>
         {recommendation.fallback_reason && <Notice>{recommendation.fallback_reason}</Notice>}
         {(recommendation.warnings ?? []).map((warning) => (
           <Notice key={warning}>{warning}</Notice>

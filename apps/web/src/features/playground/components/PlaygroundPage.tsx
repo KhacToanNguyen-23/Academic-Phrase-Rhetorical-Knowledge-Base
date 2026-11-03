@@ -216,6 +216,16 @@ export function PlaygroundPage({ patternId }: { patternId?: string }) {
         </Card>
 
         <div className="flex flex-col gap-6">
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground" aria-label="Context in use">
+            Sending
+            {[ctx.section, ctx.genre, ctx.claim_type, `${ctx.evidence_level} evidence`]
+              .filter((item): item is string => Boolean(item))
+              .map((item) => (
+                <Badge key={item} variant="secondary">
+                  {item}
+                </Badge>
+              ))}
+          </p>
           <Step
             title="Recommend"
             endpoint="POST /v1/recommendations"
@@ -415,11 +425,27 @@ function Waiting({ children }: { children: ReactNode }) {
 }
 
 function JsonBlock({ title, value }: { title: string; value: unknown }) {
+  const [copied, setCopied] = useState(false);
+  const text = JSON.stringify(value, null, 2);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
   return (
     <figure className="flex min-w-0 flex-col gap-2">
-      <figcaption className="text-sm text-muted-foreground">{title}</figcaption>
+      <figcaption className="flex items-center justify-between text-sm text-muted-foreground">
+        {title}
+        <Button type="button" variant="ghost" size="sm" onClick={() => void copy()}>
+          {copied ? "Copied" : "Copy"}
+        </Button>
+      </figcaption>
       <pre className="overflow-x-auto bg-muted p-3 text-sm">
-        <code>{JSON.stringify(value, null, 2)}</code>
+        <code>{text}</code>
       </pre>
     </figure>
   );

@@ -90,6 +90,23 @@ export function OnlineWriterPage() {
   const canCopy = !!activeValidation && !!activeRender &&
     activeValidation.severity !== "block" && activeRender.unfilled_slots.length === 0;
 
+  const optionLabel = (group: string, code: string) =>
+    options.data?.find((item) => item.group === group && item.code === code)?.label;
+  const intentName = (code: string) =>
+    taxonomy.data?.sections
+      .flatMap((s) => s.moves.flatMap((m) => m.steps.flatMap((step) => step.intents)))
+      .find((item) => item.code === code)?.name;
+  // What the current recommendations were searched with, shown next to them.
+  const searchedWith = [
+    taxonomy.data?.article_genres.find((item) => item.code === context.genre)?.name,
+    taxonomy.data?.sections.find((item) => item.code === context.section)?.name,
+    intentName(context.intent),
+    optionLabel("claim_type", context.claimType),
+    optionLabel("evidence_level", context.evidenceLevel),
+    journals.data?.find((item) => item.id === context.journalId)?.name,
+    context.query.trim() ? `"${context.query.trim()}"` : undefined,
+  ].filter((item): item is string => Boolean(item));
+
   // Only the button of the step the writer is on is the primary action.
   const stage: WriterStage = !activeRecommendation
     ? "search"
@@ -217,6 +234,7 @@ export function OnlineWriterPage() {
         {activeRecommendation && <WriterResults
           recommendation={activeRecommendation}
           picked={picked}
+          searchedWith={searchedWith}
           onSelect={selectVersion}
         />}
 

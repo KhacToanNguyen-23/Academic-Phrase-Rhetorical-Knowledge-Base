@@ -774,7 +774,7 @@ export interface components {
             intent_id: string | null;
             /** Slots */
             slots: {
-                [key: string]: components["schemas"]["aprkb__modules__mining__schemas__SlotDefinition"];
+                [key: string]: components["schemas"]["SlotDefinition"];
             };
             /** Source Sentence Ids */
             source_sentence_ids: string[];
@@ -1159,7 +1159,7 @@ export interface components {
             intent_code: string;
             /** Slots */
             slots?: {
-                [key: string]: components["schemas"]["SlotDefinition-Input"] | string;
+                [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
             };
             /**
              * Source Type
@@ -1191,12 +1191,36 @@ export interface components {
             intent_code: string;
             /** Slots */
             slots: {
-                [key: string]: components["schemas"]["aprkb__modules__patterns__schemas__SlotDefinition"] | string;
+                [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
             } | null;
             /** Status */
             status: string;
             /** Version No */
             version_no: number | null;
+        };
+        /**
+         * PatternSlotDefinition
+         * @description Typed writer slot metadata; string values remain valid for older versions.
+         */
+        PatternSlotDefinition: {
+            /** Example */
+            example?: string | null;
+            /** Instruction */
+            instruction?: string | null;
+            /** Label */
+            label?: string | null;
+            /**
+             * Min Length
+             * @default 1
+             */
+            min_length: number;
+            /**
+             * Required
+             * @default true
+             */
+            required: boolean;
+            /** Type */
+            type: string;
         };
         /** PatternSummary */
         PatternSummary: {
@@ -1232,7 +1256,7 @@ export interface components {
             epistemic_strength: "low" | "moderate" | "high" | "absolute";
             /** Slots */
             slots?: {
-                [key: string]: components["schemas"]["SlotDefinition-Input"] | string;
+                [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
             };
         };
         /** PatternVersionRead */
@@ -1257,7 +1281,7 @@ export interface components {
             pattern_id: string;
             /** Slots */
             slots: {
-                [key: string]: components["schemas"]["aprkb__modules__patterns__schemas__SlotDefinition"] | string;
+                [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
             };
             /** Version No */
             version_no: number;
@@ -1534,7 +1558,7 @@ export interface components {
             pattern_id: string;
             /** Slots */
             slots: {
-                [key: string]: components["schemas"]["aprkb__modules__patterns__schemas__SlotDefinition"] | string;
+                [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
             };
             /** Source Type */
             source_type: string;
@@ -1591,29 +1615,11 @@ export interface components {
             /** Section Code */
             section_code?: string | null;
         };
-        /**
-         * SlotDefinition
-         * @description Typed writer slot metadata; string values remain valid for older versions.
-         */
-        "SlotDefinition-Input": {
-            /** Example */
-            example?: string | null;
-            /** Instruction */
-            instruction?: string | null;
-            /** Label */
-            label?: string | null;
-            /**
-             * Min Length
-             * @default 1
-             */
-            min_length: number;
-            /**
-             * Required
-             * @default true
-             */
-            required: boolean;
-            /** Type */
-            type: string;
+        /** SlotDefinition */
+        SlotDefinition: {
+            /** Signals */
+            signals?: components["schemas"]["ProtectedSignal"][];
+            type: components["schemas"]["SlotType"];
         };
         /**
          * SlotType
@@ -1836,36 +1842,6 @@ export interface components {
                 number,
                 number
             ] | null;
-        };
-        /** SlotDefinition */
-        aprkb__modules__mining__schemas__SlotDefinition: {
-            /** Signals */
-            signals?: components["schemas"]["ProtectedSignal"][];
-            type: components["schemas"]["SlotType"];
-        };
-        /**
-         * SlotDefinition
-         * @description Typed writer slot metadata; string values remain valid for older versions.
-         */
-        aprkb__modules__patterns__schemas__SlotDefinition: {
-            /** Example */
-            example?: string | null;
-            /** Instruction */
-            instruction?: string | null;
-            /** Label */
-            label?: string | null;
-            /**
-             * Min Length
-             * @default 1
-             */
-            min_length: number;
-            /**
-             * Required
-             * @default true
-             */
-            required: boolean;
-            /** Type */
-            type: string;
         };
     };
     responses: never;

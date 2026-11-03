@@ -258,7 +258,7 @@
           },
           "slots": {
             "additionalProperties": {
-              "$ref": "#/components/schemas/aprkb__modules__mining__schemas__SlotDefinition"
+              "$ref": "#/components/schemas/SlotDefinition"
             },
             "title": "Slots",
             "type": "object"
@@ -1263,7 +1263,7 @@
             "additionalProperties": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/SlotDefinition-Input"
+                  "$ref": "#/components/schemas/PatternSlotDefinition"
                 },
                 {
                   "type": "string"
@@ -1366,7 +1366,7 @@
                 "additionalProperties": {
                   "anyOf": [
                     {
-                      "$ref": "#/components/schemas/aprkb__modules__patterns__schemas__SlotDefinition"
+                      "$ref": "#/components/schemas/PatternSlotDefinition"
                     },
                     {
                       "type": "string"
@@ -1411,6 +1411,64 @@
           "allowed_genres"
         ],
         "title": "PatternDetail",
+        "type": "object"
+      },
+      "PatternSlotDefinition": {
+        "description": "Typed writer slot metadata; string values remain valid for older versions.",
+        "properties": {
+          "example": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "min_length": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Min Length",
+            "type": "integer"
+          },
+          "required": {
+            "default": true,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "PatternSlotDefinition",
         "type": "object"
       },
       "PatternSummary": {
@@ -1503,7 +1561,7 @@
             "additionalProperties": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/SlotDefinition-Input"
+                  "$ref": "#/components/schemas/PatternSlotDefinition"
                 },
                 {
                   "type": "string"
@@ -1561,7 +1619,7 @@
             "additionalProperties": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/aprkb__modules__patterns__schemas__SlotDefinition"
+                  "$ref": "#/components/schemas/PatternSlotDefinition"
                 },
                 {
                   "type": "string"
@@ -2392,7 +2450,7 @@
             "additionalProperties": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/aprkb__modules__patterns__schemas__SlotDefinition"
+                  "$ref": "#/components/schemas/PatternSlotDefinition"
                 },
                 {
                   "type": "string"
@@ -2588,56 +2646,18 @@
         "title": "SearchResult",
         "type": "object"
       },
-      "SlotDefinition-Input": {
-        "description": "Typed writer slot metadata; string values remain valid for older versions.",
+      "SlotDefinition": {
+        "additionalProperties": false,
         "properties": {
-          "example": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Example"
-          },
-          "instruction": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Instruction"
-          },
-          "label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Label"
-          },
-          "min_length": {
-            "default": 1,
-            "minimum": 1.0,
-            "title": "Min Length",
-            "type": "integer"
-          },
-          "required": {
-            "default": true,
-            "title": "Required",
-            "type": "boolean"
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/ProtectedSignal"
+            },
+            "title": "Signals",
+            "type": "array"
           },
           "type": {
-            "title": "Type",
-            "type": "string"
+            "$ref": "#/components/schemas/SlotType"
           }
         },
         "required": [
@@ -3327,84 +3347,6 @@
           "recommended_action"
         ],
         "title": "ValidationRuleResponse",
-        "type": "object"
-      },
-      "aprkb__modules__mining__schemas__SlotDefinition": {
-        "additionalProperties": false,
-        "properties": {
-          "signals": {
-            "items": {
-              "$ref": "#/components/schemas/ProtectedSignal"
-            },
-            "title": "Signals",
-            "type": "array"
-          },
-          "type": {
-            "$ref": "#/components/schemas/SlotType"
-          }
-        },
-        "required": [
-          "type"
-        ],
-        "title": "SlotDefinition",
-        "type": "object"
-      },
-      "aprkb__modules__patterns__schemas__SlotDefinition": {
-        "description": "Typed writer slot metadata; string values remain valid for older versions.",
-        "properties": {
-          "example": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Example"
-          },
-          "instruction": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Instruction"
-          },
-          "label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Label"
-          },
-          "min_length": {
-            "default": 1,
-            "minimum": 1.0,
-            "title": "Min Length",
-            "type": "integer"
-          },
-          "required": {
-            "default": true,
-            "title": "Required",
-            "type": "boolean"
-          },
-          "type": {
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type"
-        ],
-        "title": "SlotDefinition",
         "type": "object"
       }
     }

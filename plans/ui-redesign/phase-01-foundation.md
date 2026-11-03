@@ -21,9 +21,9 @@ Mục tiêu: cài shadcn thật, đặt token mới, và giữ mọi trang cũ h
    - `--border: var(--border)`, `--input: var(--control)`, `--ring: var(--text)`
    - `--radius: 4px`
    - `--destructive: #c4242a`
-   - Token riêng: `--slot`, `--slot-bg`, `--font-sans: "Switzer"`, `--font-serif: "Newsreader"`
+   - Token riêng: `--slot`, `--slot-bg`, `--font-sans: "Be Vietnam Pro"`, `--font-serif: "Newsreader"`
    - Dark: `.dark` và `[data-theme="dark"]` cùng nhận bộ true-neutral của app-screens §9.5.
-4. **Font.** Tải Switzer woff2 (400/500/600) từ Fontshare vào `public/fonts/switzer/` kèm file licence; khai báo `@font-face` với `font-display: swap`. `npm i @fontsource-variable/newsreader`. Preload Switzer 400 trong `index.html`. **Kiểm tra dấu tiếng Việt** của Switzer (Browser MCP mở trang test có chuỗi "Tiếng Việt: ằ ẩ ẫ ệ ố ợ ữ ỹ đ"). Nếu thiếu glyph, đổi sang sans có tiếng Việt (Be Vietnam Pro hoặc Inter Tight) và ghi lý do vào plan. Newsreader nạp kèm subset `vietnamese`.
+4. **Font.** `npm i @fontsource/be-vietnam-pro @fontsource-variable/newsreader`. Import `@fontsource/be-vietnam-pro/{400,500,600}.css` trong `globals.css`. Ban đầu dùng Switzer nhưng đã bỏ vì thiếu dấu tiếng Việt (xem mục Type trong `plan.md`). Kiểm dấu bằng cmap (fontTools) trên file trong `dist/assets`, không chỉ nhìn bằng mắt.
 5. **Theme.** Giữ hành vi của `shared/lib/theme.ts` (mặc định light, nhớ trong sessionStorage). Mỗi lần đổi theme, cập nhật đồng thời `data-theme` và class `.dark`.
 6. **Cùng tồn tại.** `main.tsx` import `globals.css` trước `styles.css`. `styles.css` cũ để ngoài layer nên thắng preflight trên các trang chưa migrate. Đổi `body` cũ sang biến mới chỉ khi trang đó đã migrate.
 7. **`cn`.** `shared/ui/utils.ts` re-export `cn` từ `@/lib/utils`, để import cũ không vỡ.

@@ -1,5 +1,5 @@
 > **CẢNH BÁO — đọc trước:** §3 Type và §4 Colour bên dưới **đã bị thay thế** (đây là kết quả redraw lần hai, đã bị loại).
-> Dùng Switzer + Newsreader và màu thương hiệu (giấy, mực, teal SLRS `#176b8f` dùng tiết chế) theo mục Token/Type của `../plan.md`. Không dùng crimson hay cam.
+> Dùng Be Vietnam Pro + Newsreader và màu thương hiệu (giấy, mực, teal SLRS `#176b8f` dùng tiết chế) theo mục Token/Type của `../plan.md`. Không dùng crimson hay cam.
 > Mọi mục khác của sheet (direction, hero, sections, motion) vẫn có hiệu lực. Không chạy `draw.mjs --redraw` nữa: lệnh đó ghi đè sheet.
 
 # DIRECTION SHEET — The sentence is the layout

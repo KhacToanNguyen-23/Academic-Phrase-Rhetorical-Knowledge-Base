@@ -66,7 +66,7 @@ Các slot đã deal và các lần redraw:
 |---|---|---|---|
 | Hero | Headline across two fields | Giữ | Hai field phẳng gặp nhau ở đường seam cứng: hình học, không trang trí |
 | Sections | intro → showcase → how-it-works → list → faq → cta → footer | Giữ, đổi nội dung (xem Phase 4) | |
-| Type | Boska (serif cho nước hoa, đám cưới) | **Redraw** → **Switzer** (neo-grotesk, "exact and unshowy") | Boska đi ngược "tối giản, học thuật" |
+| Type | Boska (serif cho nước hoa, đám cưới) | **Redraw** → Switzer, sau đó đổi sang **Be Vietnam Pro** | Boska đi ngược "tối giản, học thuật". Switzer thiếu dấu tiếng Việt (xem mục Type) |
 | Palette | Orange and black | **Redraw** → Black and crimson → **thay bằng màu thương hiệu: giấy + mực + teal SLRS** | Nền cam đi ngược "tối giản, học thuật". Sau đó owner quyết định giữ teal SLRS. Theo special case "existing brand" của taste skill: giữ tỉ lệ của palette (một nền, một mực, một accent dùng rất ít) và lấy màu từ thương hiệu. Không deal lại composition |
 | Motion | Colour by chapter | Giữ | Header đổi ink theo chapter; không đổi màu nền giữa section |
 | Photos | Bộ "People" (picsum) | Không dùng làm ảnh chính | Ảnh người ngắm biển không liên quan chủ đề. Dùng ảnh lưu trữ thật từ open collections (Phase 4) |
@@ -139,11 +139,12 @@ Contrast đã đo (WCAG): teal trên trắng 5.94, trên giấy 5.16, trên nề
 
 ### Type
 
-- **Switzer** (Fontshare, ITF Free Font License): 400/500/600, tự host woff2 trong `public/fonts/` kèm file licence.
+- **Be Vietnam Pro** (OFL, `@fontsource/be-vietnam-pro`): 400/500/600, nạp các file `400.css`/`500.css`/`600.css` (gồm subset latin, latin-ext, vietnamese theo `unicode-range`).
 - **Newsreader** (OFL, `@fontsource-variable/newsreader`): chỉ dùng cho phrase/câu ví dụ/headword.
 - Landing: các bước cỡ chữ lấy theo sheet (`--step-small` … `--step-head`), display tracking −0.04em, leading 0.95. App: cỡ cố định 12/14/16/24px, số dùng `tabular-nums`.
 - Không monospace ngoài ID, key và code thật.
-- **Tiếng Việt về sau:** cả hai font phải có dấu tiếng Việt. Newsreader có subset `vietnamese`. Switzer **chưa xác nhận**: Phase 01 phải kiểm tra bằng chuỗi "Tiếng Việt: ằ ẩ ẫ ệ ố ợ ữ ỹ đ". Nếu thiếu glyph thì chọn sans thay thế có tiếng Việt và cùng tinh thần neo-grotesk (ví dụ Be Vietnam Pro, Inter Tight). Không để trình duyệt tự fallback từng glyph.
+- **Tiếng Việt về sau:** cả hai font phải có dấu tiếng Việt. Newsreader có subset `vietnamese`. Không để trình duyệt tự fallback từng glyph.
+- **Vì sao không dùng Switzer (đo ngày 2026-11-03 bằng fontTools):** Switzer thiếu 46/52 chữ có dấu tiếng Việt (thiếu `ơ ư` và toàn bộ `U+1EA0–1EF9`). Trình duyệt fallback từng glyph sang Arial, nên một từ bị pha hai font, và kiểm bằng mắt qua Browser MCP không phát hiện được. Đã đổi sang Be Vietnam Pro: đủ 63/63 ký tự kiểm tra ở cả 400/500/600 (đo trên `dist/assets`). Khi đổi font, luôn kiểm bằng cmap.
 
 ## Thư viện thêm vào
 

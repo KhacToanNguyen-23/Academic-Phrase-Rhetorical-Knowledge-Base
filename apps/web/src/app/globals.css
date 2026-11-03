@@ -1,33 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource/be-vietnam-pro/400.css";
+@import "@fontsource/be-vietnam-pro/500.css";
+@import "@fontsource/be-vietnam-pro/600.css";
 @import "@fontsource-variable/newsreader";
 
 @custom-variant dark (&:is(.dark *));
-
-@font-face {
-  font-family: "Switzer";
-  src: url("/fonts/switzer/switzer-400.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Switzer";
-  src: url("/fonts/switzer/switzer-500.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Switzer";
-  src: url("/fonts/switzer/switzer-600.woff2") format("woff2");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
 
 @theme inline {
   --font-sans: var(--font-app-sans);
@@ -129,7 +108,7 @@
   --chart-4: #92400e;
   --chart-5: #6b6b6b;
 
-  --font-app-sans: "Switzer", "Helvetica Neue", Arial, sans-serif;
+  --font-app-sans: "Be Vietnam Pro", "Helvetica Neue", Arial, sans-serif;
   --font-app-serif: "Newsreader Variable", Georgia, serif;
   --font-app-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-sans: var(--font-app-sans);

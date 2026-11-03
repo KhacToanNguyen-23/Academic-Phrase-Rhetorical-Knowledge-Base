@@ -52,7 +52,7 @@ export function LibraryPage({ selectedId }: { selectedId?: string }) {
           onRetry={() => void retry()}
         />
       ) : (
-        <div className="grid grid-cols-[22rem_1fr] gap-6">
+        <div className="grid grid-cols-[22rem_1fr] items-start gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Find a pattern</CardTitle>
@@ -257,7 +257,7 @@ function Detail({ id, intentName }: { id: string; intentName: (id: string) => st
           </p>
         </CardContent>
       </Card>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 items-start gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Slots</CardTitle>
@@ -316,7 +316,7 @@ function Detail({ id, intentName }: { id: string; intentName: (id: string) => st
           </CardContent>
         </Card>
       ) : null}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 items-start gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Provenance</CardTitle>

@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataState } from "@/components/domain/DataState";
 import { PageHeader } from "@/components/domain/PageHeader";
@@ -47,6 +48,7 @@ function formatReceivedAt(value: string) {
 export function InboxPage() {
   const [filter, setFilter] = useState<Filter>("pending");
   const [selectedId, setSelectedId] = useState<string>();
+  const [query, setQuery] = useState("");
   const all = useQuery({ queryKey: ["submissions"], queryFn: () => api.submissions() });
   const intents = useQuery({ queryKey: ["intents"], queryFn: api.intents });
   const clients = useQuery({ queryKey: ["clients"], queryFn: api.clients });
@@ -68,7 +70,12 @@ export function InboxPage() {
 
   const count = (status: Filter) =>
     all.data.filter((submission) => status === "all" || submission.status === status).length;
-  const items = all.data.filter((submission) => filter === "all" || submission.status === filter);
+  const needle = query.trim().toLowerCase();
+  const items = all.data.filter(
+    (submission) =>
+      (filter === "all" || submission.status === filter) &&
+      (!needle || `${submission.id} ${submission.text}`.toLowerCase().includes(needle)),
+  );
   const selected = items.find((submission) => submission.id === selectedId) ?? items[0];
 
   return (
@@ -84,20 +91,37 @@ export function InboxPage() {
           setSelectedId(undefined);
         }}
       >
-        <TabsList aria-label="Submission status">
-          {FILTERS.map((item) => (
-            <TabsTrigger key={item.id} value={item.id}>
-              {item.label}
-              <Badge variant="secondary">{count(item.id)}</Badge>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <TabsList aria-label="Submission status">
+            {FILTERS.map((item) => (
+              <TabsTrigger key={item.id} value={item.id}>
+                {item.label}
+                <Badge variant="secondary">{count(item.id)}</Badge>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <Input
+            type="search"
+            aria-label="Search submissions"
+            placeholder="Search text or ID"
+            className="w-64"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setSelectedId(undefined);
+            }}
+          />
+        </div>
         <TabsContent value={filter} className="pt-4">
           {items.length === 0 ? (
             <DataState
               state="empty"
-              emptyTitle="Nothing needs attention here"
-              emptyDescription="Submissions will appear when the Writing Engine sends them."
+              emptyTitle={needle ? "No submissions match this search" : "Nothing needs attention here"}
+              emptyDescription={
+                needle
+                  ? "Try another word or clear the search."
+                  : "Submissions will appear when the Writing Engine sends them."
+              }
             />
           ) : (
             <div className="grid min-w-0 grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)] items-start gap-6">

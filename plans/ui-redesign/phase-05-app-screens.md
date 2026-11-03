@@ -68,3 +68,11 @@ Làm một lần sau đợt 4, trước Phase 06:
 - Reject: thống nhất một kiểu xác nhận giữa Inbox, Gold, Extract (hiện Inbox và Gold có hộp xác nhận, Extract thì không; phím R ở Gold nay mở hộp xác nhận, owner cần đồng ý).
 - Kiểm Gold và Extract bằng khóa admin (phiên demo là curator nên API admin trả 403, chưa thấy dữ liệu thật).
 - Quy tắc nút primary: màn chỉ để đọc là "tối đa một".
+
+### Trạng thái danh sách chỉnh (2026-11-04)
+
+Đã làm: Vocabulary (hàng bộ lọc, bảng chữ cái một hàng, bỏ cột Details), Library (thẻ không còn kéo giãn), Inbox (ô tìm kiếm), Extract (nút "Show all articles", xác nhận khi reject một phrase, giống Inbox và Gold), Admin (bắt lỗi clipboard khi copy key).
+
+Giữ có chủ ý: Extract vẫn chọn batch bằng checkbox, không dùng Combobox một lựa chọn, vì màn này khai thác nhiều batch cùng lúc.
+
+Chưa làm: xác nhận phím R ở Gold (owner đồng ý), kiểm Gold, Extract và hộp tạo key bằng khóa admin thật (phiên demo là curator), soi lại Phrasebank và Journals, xác nhận font app.

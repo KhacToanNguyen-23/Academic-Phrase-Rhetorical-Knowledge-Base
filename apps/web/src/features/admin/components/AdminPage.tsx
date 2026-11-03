@@ -67,6 +67,7 @@ export function AdminPage() {
   const [keyRole, setKeyRole] = useState("client");
   const [createdKey, setCreatedKey] = useState<ApiKeyCreated>();
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const client = useMemo(() => adminClient(auth.apiKey), [auth.apiKey]);
 
   const clients = useQuery({ queryKey: ["admin-clients"], queryFn: api.clients });
@@ -87,6 +88,7 @@ export function AdminPage() {
     onSuccess: (value) => {
       setCreatedKey(value);
       setCopied(false);
+      setCopyFailed(false);
       setKeyName("");
       void queryClient.invalidateQueries({ queryKey: ["admin-api-keys"] });
     },
@@ -146,8 +148,14 @@ export function AdminPage() {
 
   const copyKey = async () => {
     if (!createdKey) return;
-    await navigator.clipboard.writeText(createdKey.api_key);
-    setCopied(true);
+    try {
+      await navigator.clipboard.writeText(createdKey.api_key);
+      setCopied(true);
+      setCopyFailed(false);
+    } catch {
+      // Clipboard permission denied or unavailable: ask the person to copy the key by hand.
+      setCopyFailed(true);
+    }
   };
 
   return (
@@ -174,7 +182,9 @@ export function AdminPage() {
                       {createdKey.api_key}
                     </code>
                     <p className="text-sm text-muted-foreground" aria-live="polite">
-                      {createdKey.name} · {createdKey.role}
+                      {copyFailed
+                        ? "The browser blocked copying. Select the key above and copy it by hand."
+                        : `${createdKey.name} · ${createdKey.role}`}
                     </p>
                   </div>
                   <DialogFooter>

@@ -191,7 +191,7 @@ export function VocabularyPage() {
             </div>
             <TabsContent value="lemmas" className="flex flex-col gap-4">
               <div className="flex items-end gap-6">
-                <Field orientation="horizontal" className="w-auto">
+                <Field orientation="horizontal" className="h-8 w-auto items-center">
                   <Checkbox
                     id="vocabulary-core"
                     checked={coreOnly}
@@ -232,9 +232,9 @@ export function VocabularyPage() {
                   updateSearch({ letter: value === "all" ? undefined : value, q: undefined, offset: 0 });
                 }}
                 aria-label="Filter vocabulary by initial letter"
-                className="flex flex-wrap gap-1"
+                className="flex w-full flex-nowrap justify-between gap-0.5"
               >
-                <ToggleGroupItem value="all" aria-label="All letters" className="h-10 min-w-12 flex-col gap-0">
+                <ToggleGroupItem value="all" aria-label="All letters" className="h-10 min-w-9 flex-col gap-0 px-1">
                   <span>All</span>
                   <small className="tabular-nums text-muted-foreground">{totalLettersCount}</small>
                 </ToggleGroupItem>
@@ -246,7 +246,7 @@ export function VocabularyPage() {
                       value={letter}
                       disabled={!letters.isPending && count === 0}
                       aria-label={`${letter.toUpperCase()} ${count} lemmas`}
-                      className="h-10 min-w-10 flex-col gap-0"
+                      className="h-10 min-w-8 flex-col gap-0 px-1"
                     >
                       <span>{letter.toUpperCase()}</span>
                       <small className="tabular-nums text-muted-foreground">{count}</small>
@@ -295,7 +295,6 @@ export function VocabularyPage() {
                       <TableHead numeric>Rank</TableHead>
                       <TableHead numeric>Band</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -318,13 +317,6 @@ export function VocabularyPage() {
                         <TableCell numeric>{item.band !== null ? `Band ${item.band}` : "—"}</TableCell>
                         <TableCell>
                           <Badge variant={statusVariant(item.status)}>{item.status_label || "Unknown"}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button asChild variant="outline" size="sm">
-                            <Link to="/vocabulary/$lemmaId" params={{ lemmaId: item.id }} search={search}>
-                              Details
-                            </Link>
-                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -1,6 +1,17 @@
 import { useState } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -95,9 +106,27 @@ export function PhraseCard({ phrase, checked, busy, onCheck, onDecide }: Props) 
               : "Review the source evidence before accepting this phrase."}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" disabled={busy} onClick={() => onDecide("reject")}>
-              Reject
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" disabled={busy}>
+                  Reject
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reject this phrase?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    The phrase leaves the pending list and is not saved to the bank.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep phrase</AlertDialogCancel>
+                  <AlertDialogAction variant="destructive" onClick={() => onDecide("reject")}>
+                    Reject phrase
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button
               variant="outline"
               disabled={busy || phrase.blocked}

@@ -331,7 +331,14 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
                       {filteredArticles.length} shown · {ready.length} ready
                     </p>
                   </div>
-                  {articleFilter ? <Badge variant="secondary">One article filtered</Badge> : null}
+                  {articleFilter ? (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">One article filtered</Badge>
+                      <Button variant="ghost" size="sm" onClick={() => setArticleFilter(undefined)}>
+                        Show all articles
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <Input

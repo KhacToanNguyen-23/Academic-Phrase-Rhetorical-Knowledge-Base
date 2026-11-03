@@ -24,6 +24,11 @@ class V02ClaimEvidenceRule(ValidationRule):
         self._evidence_policy = evidence_policy
         self._lexicon = lexicon
         self._severity = severity
+        self._non_inflecting = frozenset(name.casefold() for name in lexicon.non_inflecting)
+        self._irregular_forms = {
+            base.casefold(): tuple(form.casefold() for form in forms)
+            for base, forms in lexicon.irregular_forms.items()
+        }
 
     def evaluate(self, text: str, ctx: ValidationContext) -> RuleResult:
         found = self._strongest_marker(text)
@@ -62,15 +67,51 @@ class V02ClaimEvidenceRule(ValidationRule):
                 return text[match.start() : match.end()], match.span()
         return strength, (0, len(text))
 
-    @staticmethod
-    def _marker_pattern(marker: str) -> re.Pattern[str]:
-        escaped = re.escape(marker.casefold())
+    def _marker_pattern(self, marker: str) -> re.Pattern[str]:
+        folded = marker.casefold()
+        alternatives = [folded] if folded in self._non_inflecting else self._inflected_forms(folded)
+        escaped = "|".join(
+            re.escape(alternative) for alternative in sorted(alternatives, key=len, reverse=True)
+        )
         if marker[0].isalnum():
-            escaped = rf"(?<!\w){escaped}"
+            escaped = rf"(?<!\w)(?:{escaped})"
         if marker[-1].isalnum():
-            escaped = rf"{escaped}s?(?!\w)"
+            escaped = rf"{escaped}(?!\w)"
         return re.compile(escaped)
 
-    @classmethod
-    def _contains_marker(cls, text: str, marker: str) -> bool:
-        return cls._marker_pattern(marker).search(text) is not None
+    def _inflected_forms(self, marker: str) -> list[str]:
+        head, separator, rest = marker.partition(" ")
+        forms = self._verb_forms(self._verb_base(head))
+        if not separator:
+            return list(forms)
+        return [f"{form} {rest}" for form in forms]
+
+    @staticmethod
+    def _verb_base(word: str) -> str:
+        if word.endswith("ies") and len(word) > 3:
+            return f"{word[:-3]}y"
+        if word.endswith(("ches", "shes", "xes", "zes", "ses", "oes")):
+            return word[:-2]
+        if word.endswith("s") and not word.endswith("ss"):
+            return word[:-1]
+        return word
+
+    def _verb_forms(self, base: str) -> tuple[str, ...]:
+        if base.endswith(("s", "x", "z", "ch", "sh", "o")):
+            third_person = f"{base}es"
+        elif base.endswith("y") and len(base) > 1 and base[-2] not in "aeiou":
+            third_person = f"{base[:-1]}ies"
+        else:
+            third_person = f"{base}s"
+        if base.endswith("e"):
+            past = f"{base}d"
+            gerund = f"{base[:-1]}ing"
+        else:
+            past = f"{base}ed"
+            gerund = f"{base}ing"
+        forms = {base, third_person, past, gerund}
+        forms.update(self._irregular_forms.get(base, ()))
+        return tuple(sorted(forms, key=len, reverse=True))
+
+    def _contains_marker(self, text: str, marker: str) -> bool:
+        return self._marker_pattern(marker).search(text) is not None

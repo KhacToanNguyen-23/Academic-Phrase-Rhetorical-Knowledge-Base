@@ -6,7 +6,7 @@ Mục tiêu: shell "Open plane" (sheet app, redraw), có nhóm điều hướng,
 
 - `.agents/skills/design-taste-frontend/references/app-screens.md`: §3 (The shell, gồm §3.2 Sidebar), §4 (Canvas and page title), §12 (The phone)
 - `taste/app-sheet.md` của plan này: §4 Shell — Open plane
-- `.agents/skills/shadcn/rules/composition.md` (Sheet cần Title, item phải nằm trong Group); `npx shadcn@latest docs sidebar`, `docs command`
+- `.agents/skills/shadcn/rules/composition.md` (Sheet cần Title, item phải nằm trong Group); `pnpm dlx shadcn@latest docs sidebar`, `docs command`
 - `.agents/plugins/skills/skills/frontend-mindset/references/responsive-performance.md` (breakpoint, touch target)
 
 ## Route
@@ -48,3 +48,9 @@ Hai layout route trong TanStack Router: `publicLayout` (landing, signin) và `ap
 - Browser MCP: Tab qua toàn bộ nav, Esc đóng sheet, focus quay về nút menu, chuyển trang không đóng/mở lại sidebar.
 - Deep link `/library?p=...` vẫn chạy; chưa đăng nhập thì quay lại đúng `next` sau khi đăng nhập.
 - Đã chạy `code-review` trên PR, chú ý guard đăng nhập trong `beforeLoad` (route nào lọt guard, xử lý `next`).
+
+## Dọn nợ từ Phase 02
+
+- Bỏ `allow: ["edge-text"]` của `inspect.mjs` (cho chữ "Navigation" của sidebar tạm). Sidebar mới không được cần ngoại lệ.
+- Xóa `src/app/Sidebar.tsx` tạm và CSS `side-*`, `masthead*` tương ứng trong `styles.css`.
+- Phase này chưa có landing: `/` tạm render một placeholder công khai (tiêu đề + nút "Sign in"); Phase 04 thay bằng landing thật.

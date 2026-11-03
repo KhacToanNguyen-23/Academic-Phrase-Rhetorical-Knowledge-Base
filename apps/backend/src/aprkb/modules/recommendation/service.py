@@ -5,6 +5,7 @@ from hashlib import sha256
 from uuid import UUID
 
 from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.audit.service import record_event
@@ -267,7 +268,7 @@ async def recommend(
         log = await repository.add_recommendation_log(
             session,
             request=logged_request,
-            results=results,
+            results=jsonable_encoder(results),
             policy_versions=versions,
             created_by=actor.id,
         )

@@ -1,5 +1,5 @@
 import { createRootRoute, createRoute, createRouter, getRouteApi, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AdminPage } from "@/features/admin";
 import { LoginPage } from "@/features/auth/LoginPage";
@@ -18,26 +18,17 @@ import { SlrImportPage } from "@/features/slr-import";
 import { VocabularyLemmaPage, VocabularyPage } from "@/features/vocabulary";
 import { useTheme } from "@/shared/lib/theme";
 
-// "/" là dashboard giới thiệu (mở qua logo). UI là bảng điều khiển của bank: người viết dùng qua Writing Engine (API), không qua UI này.
-// Data out: Library → Playground (mô phỏng API). Data in: Inbox. Giám sát: Admin.
-const NAV = [
-  { to: "/library", label: "Library" },
-  { to: "/phrasebank", label: "Phrasebank" },
-  { to: "/playground", label: "Playground" },
-  { to: "/writer", label: "Writer" },
-  { to: "/inbox", label: "Inbox" },
-  { to: "/journals", label: "Journals" },
-  { to: "/admin", label: "Admin" },
-  { to: "/import", label: "Import" },
-  { to: "/extract", label: "Extract" },
-  { to: "/gold", label: "Gold review" },
-] as const;
+import { Sidebar } from "./Sidebar";
+
+const SIDEBAR_KEY = "aprkb.sidebar.collapsed";
 
 function Shell() {
   // Key theo pathname để animation từng section chạy lại khi chuyển trang.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { theme, toggle } = useTheme();
   const auth = useAuth();
+  const sideToggleRef = useRef<HTMLButtonElement>(null);
+  const appBodyRef = useRef<HTMLDivElement>(null);
   // Bóng đổ header khi cuộn (giống SLRS: data-scrolled)
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -46,11 +37,39 @@ function Shell() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+  // Desktop: thu gọn thành dải icon (nhớ qua localStorage). Mobile (≤ 860px): drawer trượt, đóng khi chọn trang.
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === "1");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => { localStorage.setItem(SIDEBAR_KEY, collapsed ? "1" : "0"); }, [collapsed]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
+  useEffect(() => {
+    appBodyRef.current?.toggleAttribute("inert", mobileOpen);
+  }, [mobileOpen]);
+  const wasMobileOpen = useRef(false);
+  useEffect(() => {
+    if (!mobileOpen && wasMobileOpen.current) sideToggleRef.current?.focus();
+    wasMobileOpen.current = mobileOpen;
+  }, [mobileOpen]);
+  const toggleSidebar = () => {
+    if (window.matchMedia("(max-width: 860px)").matches) setMobileOpen((o) => !o);
+    else setCollapsed((c) => !c);
+  };
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
       <header className="masthead" data-scrolled={scrolled || undefined}>
         <div className="masthead-inner">
+          <button ref={sideToggleRef} type="button" className="side-toggle" onClick={toggleSidebar} aria-controls="sidebar" aria-expanded={mobileOpen}
+            aria-label="Toggle navigation" title="Toggle navigation">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           <Link to="/" className="brand" aria-label="Academic Wordbank — home">
             <span className="brand-mark" aria-hidden>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -59,25 +78,11 @@ function Shell() {
             </span>
             <span className="brand-name">academic <em>wordbank</em></span>
           </Link>
-          <nav aria-label="Contents">
-            <ul className="toc">
-              {NAV.filter((n) => n.to === "/writer" || auth.client).filter((n) => n.to !== "/admin" || auth.client?.role === "admin").map((n) => (
-                <li key={n.to}>
-                  <Link to={n.to} className="toc-link" activeProps={{ "aria-current": "page" }}>
-                    {n.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          <div className="masthead-spacer" />
           <div className="masthead-right">
-            {auth.client ? (
-              <button type="button" className="btn btn-ghost" onClick={auth.logout} title={`${auth.client.name} · ${auth.client.role}`}>
-                Sign out
-              </button>
-            ) : pathname === "/writer" ? (
-              <Link to="/" className="btn btn-ghost">Staff sign in</Link>
-            ) : <span className="caption">Staff sign-in required</span>}
+            {!auth.client && pathname === "/writer" && (
+              <Link to="/" className="btn btn-ghost btn-sm">Staff sign in</Link>
+            )}
             <button type="button" className="theme-toggle" aria-pressed={theme === "dark"} onClick={toggle}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
               <span className="knob" aria-hidden />
@@ -86,6 +91,17 @@ function Shell() {
           </div>
         </div>
       </header>
+      <Sidebar
+        collapsed={collapsed}
+        mobileOpen={mobileOpen}
+        client={auth.client}
+        onLogout={auth.logout}
+        onToggleCollapsed={() => setCollapsed((c) => !c)}
+        onCloseMobile={() => setMobileOpen(false)}
+        onNavigate={() => setMobileOpen(false)}
+      />
+      {mobileOpen && <div className="side-scrim" aria-hidden onClick={() => setMobileOpen(false)} />}
+      <div ref={appBodyRef} className="app-body" data-sidebar={collapsed ? "collapsed" : "expanded"}>
       <main id="main" className="main" key={pathname}>
         {pathname === "/writer" ? <Outlet /> : auth.loading ? <Loading /> : auth.client ? (
           pathname === "/admin" && auth.client.role !== "admin"
@@ -97,6 +113,7 @@ function Shell() {
         <span>© 2026 Academic Wordbank · Patterns are self-authored or used with permission</span>
         <span>Writer dùng API thật · Các trang mô phỏng còn dùng mock</span>
       </footer>
+      </div>
     </>
   );
 }

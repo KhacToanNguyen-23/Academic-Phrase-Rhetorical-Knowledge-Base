@@ -1,4 +1,4 @@
-import { createRootRoute, createRoute, createRouter, getRouteApi, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { createRootRoute, createRoute, createRouter, getRouteApi, lazyRouteComponent, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { AdminPage } from "@/features/admin";
@@ -187,6 +187,14 @@ const journal = createRoute({
   component: () => <JournalProfilePage journalId={getRouteApi("/journals/$journalId").useParams().journalId} />,
 });
 
+const devUiRoute = import.meta.env.DEV || import.meta.env.MODE === "inspect"
+  ? createRoute({
+      getParentRoute: () => root,
+      path: "/dev/ui",
+      component: lazyRouteComponent(() => import("@/features/dev-ui/DevUIPage").then((module) => ({ default: module.DevUIPage }))),
+    })
+  : undefined;
+
 export const router = createRouter({
   routeTree: root.addChildren([
     overview,
@@ -204,6 +212,7 @@ export const router = createRouter({
     gold,
     vocabulary,
     vocabularyLemma,
+    ...(devUiRoute ? [devUiRoute] : []),
   ]),
 });
 

@@ -108,7 +108,13 @@
   --border: var(--app-border);
   --input: var(--control);
   --ring: var(--text);
-  --radius: 4px;
+  /* Radius scale (owner-approved 2026-11-04): panels 8, controls 6, menu items 4, pills for labels. */
+  --radius-panel: 8px;
+  --radius-control: 6px;
+  --radius-item: 4px;
+  --radius-pill: 9999px;
+  --radius-chip: 2px; /* slots in a phrase frame */
+  --radius: var(--radius-control);
 
   --sidebar: var(--surface);
   --sidebar-foreground: var(--text);

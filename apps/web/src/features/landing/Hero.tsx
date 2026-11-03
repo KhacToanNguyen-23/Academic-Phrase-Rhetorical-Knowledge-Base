@@ -28,7 +28,7 @@ function EntryPreview({ copy, active, move }: { copy: LandingCopy; active: MoveF
   const p = copy.hero.preview;
   return (
     <aside aria-label={p.label} className="reveal lg:col-span-5" style={idx(2)}>
-      <div data-ui className="flex flex-col gap-6 bg-white p-7 text-base">
+      <div data-ui className="flex flex-col gap-6 rounded-[var(--radius-panel)] bg-white p-7 text-base">
         <div className="flex items-center justify-between gap-4 text-sm text-neutral-600">
           <span>{p.crumb[move]}</span>
           <Badge variant="success">{p.status}</Badge>

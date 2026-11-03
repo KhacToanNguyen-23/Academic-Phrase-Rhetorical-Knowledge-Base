@@ -109,19 +109,25 @@ Lý do đổi: bản làm theo hướng cũ (radius 4px, ledger không màu, nhi
 | Hàng bảng | 0 (không bo; hover và selected là dải tông phẳng) | không có |
 | Badge, tag, chỉ báo trạng thái gọn | pill (`9999px`) | `--radius-pill` |
 | Slot trong frame | nhỏ, như hiện nay | `--radius-chip` |
-| Landing | xem mục cần duyệt bên dưới | |
+| Landing | nút, ảnh, field 0; khung giao diện xem trước trong hero 8px | |
 
 Không áp một bán kính giống nhau cho mọi thành phần nếu điều đó làm mất thứ bậc: panel mềm hơn control một nấc, control mềm hơn dải hàng bảng, pill chỉ dành cho nhãn.
 
-### Cần owner duyệt trước khi làm
+### Quyết định đã duyệt (owner, 2026-11-04)
 
-1. **Landing có đổi bán kính không?** Hiện nút và khung ở landing là 0. Đề xuất giữ 0 cho nút, ảnh và field (giọng biên tập), nhưng khung giao diện xem trước trong hero dùng 8px như workspace. Cần chốt.
-2. **Slot trong frame:** giữ 2px (chữ ký sắc nét) hay nâng lên 4px cho hợp với control 6px. Đề xuất giữ 2px.
-3. **Tabs, toggle group, toggle item:** tab kiểu gạch chân vẫn không bo; toggle item theo control (6px). Đề xuất như vậy.
-4. **Menu con:** mục trong dropdown, select, command bo 4px, bản thân menu theo panel 8px. Đề xuất như vậy.
-5. **Phạm vi làm lại bề mặt:** áp dụng thang bán kính là một thay đổi nhỏ ở `components/ui` và token; còn gỡ thẻ lồng nhau và giảm viền ở từng màn (ví dụ Library chi tiết có bốn thẻ, Vocabulary có hai thẻ liền nhau) là phần việc lớn hơn. Đề xuất tách thành **Phase 08** (bề mặt và thứ bậc), làm theo đợt như Phase 05, không gộp vào polish.
-6. **Ghi nhận sai lệch với taste skill:** skill yêu cầu một bán kính duy nhất và hạn chế đường kẻ; hướng mới dùng thang ba bậc và viền nhạt có kiểm soát. Cần ghi vào ADR 0011 (sửa phần "Deviations") sau khi duyệt.
-7. **Chế độ tối:** viền và bề mặt cần bộ giá trị riêng. Đề xuất dựng cùng lúc với Phase 08.
+Cả 7 điểm đề xuất đã được duyệt như sau.
+
+1. **Landing:** nút, ảnh và field giữ **0px**. Chỉ khung giao diện xem trước trong hero dùng **8px**.
+2. **Slot:** giữ **2px**.
+3. **Tabs:** kiểu gạch chân, không bo. **Toggle:** 6px.
+4. **Dropdown, select, command:** mục (item) **4px**; khung chứa menu **8px**.
+5. **Phạm vi:** áp thang bán kính là thay đổi tập trung ở `components/ui` và token (**đã làm**, xem dưới). Việc gỡ thẻ lồng và bớt viền ở từng màn chuyển sang **Phase 08**, làm theo đợt như Phase 05.
+6. **Sai lệch với taste skill** (một bán kính duy nhất, ít viền) được ghi vào ADR 0011.
+7. **Chế độ tối:** thiết kế bộ token bề mặt và viền riêng, làm trong Phase 08.
+
+Phạm vi triển khai hiện tại chỉ gồm token và bán kính ở mức component. **Phase 08 chưa bắt đầu.**
+
+Đã triển khai ở mức component: `globals.css` có `--radius-panel` (8px), `--radius-control` (6px), `--radius-item` (4px), `--radius-pill`, `--radius-chip` (2px), và `--radius` nay bằng `--radius-control`. Card, dialog, alert dialog, popover, alert, empty, khung menu của dropdown, select và command dùng panel; button, input, textarea, trigger của select, toggle, toggle group, input group, field label dùng control; mục trong dropdown, select, command và tooltip dùng item; tabs và hàng bảng không bo; badge là pill. Đo bằng trình duyệt: card 8px, button 6px, input 6px, select trigger 6px, select content 8px, select item 4px, tab 0px, landing button 0px, landing toggle 0px, khung xem trước hero 8px, slot 2px.
 
 ## Ngôn ngữ thiết kế
 
@@ -165,12 +171,14 @@ Taste skill cấm hình trang trí, hairline grid, crosshair, crop mark. Vì v�
 --secondary: #e5e5e5;         /* các nút khác: grey pill, chữ --text */
 --nav-active-bg: #ececec;  --nav-active-ink: var(--brand);
 --slot: #125672;    --slot-bg: var(--brand-tint);
-/* Bán kính (cập nhật 2026-11-04, chờ duyệt mục 1 đến 4 ở trên; hiện code vẫn dùng --radius: 4px) */
---radius-panel: 8px;     /* card, panel, dialog, sheet, popover */
---radius-control: 6px;   /* input, select, textarea, button, toggle item */
+/* Bán kính (owner đã duyệt 2026-11-04, đã áp dụng ở globals.css) */
+--radius-panel: 8px;     /* card, panel, dialog, popover, khung menu */
+--radius-control: 6px;   /* input, select trigger, textarea, button, toggle */
+--radius-item: 4px;      /* mục trong dropdown, select, command; tooltip */
 --radius-pill: 9999px;   /* badge, tag, chỉ báo trạng thái */
 --radius-chip: 2px;      /* slot trong frame */
-/* Hàng bảng: không có bán kính */
+--radius: var(--radius-control);
+/* Hàng bảng và tabs: không bo. Landing: nút, ảnh, field 0; chỉ khung xem trước hero 8px. */
 --fs-title: 24px; --fs-section: 16px; --fs-body: 14px; --fs-small: 12px;
 
 /* Dark: true-neutral theo §9.5 (#000/#111/#222), không navy. */
@@ -217,6 +225,7 @@ Không thêm: GSAP, Lenis/smooth scroll, thư viện chart (app-screens dùng `a
 | [05](phase-05-app-screens.md) | Làm lại 11 màn theo 4 đợt, mỗi màn qua gate `--app` | 03 |
 | [06](phase-06-cleanup-verification.md) | Xóa CSS cũ, a11y, hiệu năng, so sánh before/after, cập nhật docs/ADR | 04, 05 |
 | [07](phase-07-polish.md) | Polish: tăng mật độ thông tin, empty state, nhịp làm việc cho các màn. Chấm điểm trước và sau bằng critique | 05, 06 |
+| 08 | Bề mặt và thứ bậc (Refined Editorial Workspace): gỡ thẻ lồng nhau, bớt viền thừa, bảng dày dễ quét, bộ token bề mặt và viền riêng cho chế độ tối. Làm theo đợt như Phase 05. **Chưa bắt đầu, chưa có file phase** | 05, 06, 07 |
 
 Phase 04 và 05 chạy song song được sau Phase 03.
 
@@ -254,5 +263,5 @@ Phase 04 và 05 chạy song song được sau Phase 03.
 | 2 | **Radix UI** cho shadcn | `pnpm dlx shadcn@latest init` chọn Radix; dùng `asChild`, `sonner` |
 | 3 | **`/` là landing công khai**; app sau đăng nhập dùng route riêng, ví dụ **`/app`** | Trang chủ staff là `/app` (thay `/home`). Các màn khác **giữ đường dẫn cũ** (`/library`, `/extract?batch=`...) để không gãy deep link, nhưng nằm trong `appLayout` có guard. Nếu muốn gom hết dưới `/app/*` thì đó là một đợt riêng, có redirect từ đường dẫn cũ (xem Phase 03) |
 | 5 | **Tắt Playwright, dùng Browser MCP** để kiểm tra trên trình duyệt | Không chạy `test:e2e` và không sửa test e2e trong redesign này. File `e2e/*.spec.ts` giữ nguyên trong repo (chỉ đã sửa đường dẫn screenshot ở Phase 00). Baseline có 2/8 test fail từ trước redesign (màu chữ cũ, một chuỗi mô tả trong Writer), ghi trong audit, không phải blocker. Gate là `inspect.mjs` + checklist Browser MCP có ghi lại kết quả. `inspect.mjs` **không** phải Playwright: nó tự mở Chrome qua CDP và vẫn là gate |
-| 6 | **Đổi hướng thiết kế chính sang Refined Editorial Workspace** (2026-11-04), bán kính thang ba bậc, ít thẻ lồng và viền hơn | Cập nhật Mục tiêu, [Hướng thiết kế](#hướng-thiết-kế-cập-nhật-2026-11-04) và token. **Chưa triển khai**; chờ duyệt 7 điểm trong mục đó. Dự kiến thành Phase 08 |
+| 6 | **Đổi hướng thiết kế chính sang Refined Editorial Workspace** (2026-11-04), bán kính thang ba bậc, ít thẻ lồng và viền hơn | Cập nhật Mục tiêu, [Hướng thiết kế](#hướng-thiết-kế-cập-nhật-2026-11-04) và token. 7 điểm đã được duyệt. Bán kính và token đã áp dụng ở `components/ui`; việc theo từng màn là Phase 08 (chưa bắt đầu) |
 | 4 | **Landing tiếng Anh mặc định**, thiết kế để bổ sung tiếng Việt sau | Toàn bộ chuỗi landing nằm trong `copy.en.ts`; `<html lang>` lấy theo locale; layout chịu được chuỗi dài hơn khoảng 30%; font phải có dấu tiếng Việt (xem [Type](#type)). Chưa thêm thư viện i18n |

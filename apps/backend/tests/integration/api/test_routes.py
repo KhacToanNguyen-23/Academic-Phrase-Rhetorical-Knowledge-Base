@@ -700,7 +700,8 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
     body = response.json()
     assert body["items"]
     assert all(
-        item["explanations"] == ["Passed configured intent and section gates"]
+        any(explanation.startswith("Evidence: ") for explanation in item["explanations"])
+        and any("maximum allowed:" in explanation for explanation in item["explanations"])
         for item in body["items"]
     )
     frames = {item["canonical_frame"] for item in body["items"]}
@@ -728,7 +729,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         assert item["breakdown"]["journal_genre"] is None
         assert item["license_flag"] is (item["license_code"] == "PROPRIETARY")
     assert body["policy_versions"] == {
-        "ranking_weights": "0.1.0",
+        "ranking_weights": "0.2.0",
         "license_policy": "0.1.0",
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",

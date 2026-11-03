@@ -1,31 +1,13 @@
 """Database loading for preloaded recommendation views and result logs."""
 
-import re
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aprkb.modules.corpus.models import Article, License
-from aprkb.modules.patterns.models import (
-    EvidenceProvenance,
-    PatternVersion,
-    PhrasePattern,
-    UsageConstraint,
-)
+from aprkb.modules.patterns.read_model import PatternRead, load_current_patterns
 from aprkb.modules.recommendation.models import RecommendationLog
-from aprkb.modules.taxonomy.models import Intent, Move, Step
 from aprkb.shared.models import RefEnum
-
-type PatternRow = tuple[
-    PhrasePattern,
-    Intent,
-    PatternVersion,
-    UsageConstraint | None,
-    EvidenceProvenance | None,
-    License | None,
-    Article | None,
-]
 
 
 async def load_pattern_rows(
@@ -35,55 +17,27 @@ async def load_pattern_rows(
     query: str | None = None,
     move_code: str | None = None,
     claim_type: str | None = None,
-) -> list[PatternRow]:
+    internal_use_codes: frozenset[str] = frozenset(),
+) -> list[PatternRead]:
     """FR-07.1: retrieve DB-backed candidates; query is literal substring matching in this MVP."""
     # FR-07.2 gating happens in the pipeline after retrieval and before ranking
     # or returning any candidate.
-    statement = (
-        select(
-            PhrasePattern,
-            Intent,
-            PatternVersion,
-            UsageConstraint,
-            EvidenceProvenance,
-            License,
-            Article,
-        )
-        .join(Intent, Intent.id == PhrasePattern.intent_id)
-        .join(PatternVersion, PatternVersion.id == PhrasePattern.current_version_id)
-        .outerjoin(UsageConstraint, UsageConstraint.pattern_version_id == PatternVersion.id)
-        .outerjoin(EvidenceProvenance, EvidenceProvenance.pattern_version_id == PatternVersion.id)
-        .outerjoin(License, License.id == EvidenceProvenance.license_id)
-        .outerjoin(Article, Article.id == EvidenceProvenance.article_id)
-        .order_by(PhrasePattern.created_at, PhrasePattern.id)
+    return await load_current_patterns(
+        session,
+        intent_code=intent_code,
+        query=query,
+        move_code=move_code,
+        claim_type=claim_type,
+        internal_use_codes=internal_use_codes,
     )
-    if intent_code:
-        statement = statement.where(Intent.code == intent_code)
-    if query:
-        terms = set(re.findall(r"[^\W_]+", query.casefold(), flags=re.UNICODE))
-        if not terms:
-            return []
-        clauses = []
-        for term in sorted(terms):
-            escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            clauses.append(PatternVersion.canonical_frame.ilike(f"%{escaped}%", escape="\\"))
-        statement = statement.where(or_(*clauses))
-    if move_code:
-        statement = (
-            statement.join(Step, Step.id == Intent.step_id)
-            .join(Move, Move.id == Step.move_id)
-            .where(Move.code == move_code)
-        )
-    if claim_type:
-        statement = statement.where(PatternVersion.claim_type == claim_type)
-    rows = (await session.execute(statement)).unique().all()
-    return [(row[0], row[1], row[2], row[3], row[4], row[5], row[6]) for row in rows]
 
 
 async def reference_strengths(session: AsyncSession) -> list[RefEnum]:
     return list(
         await session.scalars(
-            select(RefEnum).where(RefEnum.group == "epistemic_strength").order_by(RefEnum.order)
+            select(RefEnum)
+            .where(RefEnum.group.in_(["epistemic_strength", "evidence_level"]))
+            .order_by(RefEnum.group, RefEnum.order)
         )
     )
 

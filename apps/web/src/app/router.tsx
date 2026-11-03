@@ -10,7 +10,7 @@ import { JournalProfilePage } from "@/features/journal-profile";
 import { LibraryPage } from "@/features/library";
 import { OverviewPage } from "@/features/overview";
 import { PlaygroundPage } from "@/features/playground";
-import { PhrasebankCategory, PhrasebankHome } from "@/features/phrasebank/PhrasebankPage";
+import { PhrasebankCategory, PhrasebankHome, PhrasebankPatternDetail } from "@/features/phrasebank/PhrasebankPage";
 import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
 import { Loading } from "@/shared/ui";
 import { SlrImportPage } from "@/features/slr-import";
@@ -118,6 +118,11 @@ const phrasebankCategory = createRoute({
   path: "/phrasebank/$slug",
   component: () => <PhrasebankCategory slug={getRouteApi("/phrasebank/$slug").useParams().slug} />,
 });
+const phrasebankPattern = createRoute({
+  getParentRoute: () => root,
+  path: "/phrasebank/pattern/$id",
+  component: () => <PhrasebankPatternDetail id={getRouteApi("/phrasebank/pattern/$id").useParams().id} />,
+});
 
 const playground = createRoute({
   getParentRoute: () => root,
@@ -146,6 +151,7 @@ export const router = createRouter({
     library,
     phrasebank,
     phrasebankCategory,
+    phrasebankPattern,
     playground,
     writer,
     inbox,

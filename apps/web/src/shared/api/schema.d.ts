@@ -1174,14 +1174,26 @@ export interface components {
             allowed_genres: string[];
             /** Allowed Sections */
             allowed_sections: string[];
+            /** Article Id */
+            article_id: string | null;
             /** Canonical Frame */
             canonical_frame: string | null;
             /** Claim Type */
             claim_type: string | null;
+            /** Claim Type Labelled */
+            claim_type_labelled: boolean;
             /** Current Version Id */
             current_version_id: string | null;
+            /** Discipline Affinities */
+            discipline_affinities: components["schemas"]["PatternDisciplineAffinityRead"][];
             /** Epistemic Strength */
             epistemic_strength: string | null;
+            /** Epistemic Strength Labelled */
+            epistemic_strength_labelled: boolean;
+            /** Evidence Min */
+            evidence_min: string | null;
+            /** Forbidden Contexts */
+            forbidden_contexts: string[];
             /**
              * Id
              * Format: uuid
@@ -1189,14 +1201,39 @@ export interface components {
             id: string;
             /** Intent Code */
             intent_code: string;
+            /** Intent Name */
+            intent_name: string;
+            /** License Allows Display */
+            license_allows_display: boolean;
+            /** License Code */
+            license_code: string | null;
+            /** License Flag */
+            license_flag: boolean;
+            /** License Name */
+            license_name: string | null;
             /** Slots */
             slots: {
                 [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
             } | null;
+            /** Source Reference */
+            source_reference: string | null;
+            /** Source Sentence Count */
+            source_sentence_count: number;
+            /** Source Type */
+            source_type: string;
             /** Status */
             status: string;
+            /** Variants */
+            variants: components["schemas"]["PatternVariantRead"][];
             /** Version No */
             version_no: number | null;
+        };
+        /** PatternDisciplineAffinityRead */
+        PatternDisciplineAffinityRead: {
+            /** Discipline Code */
+            discipline_code: string;
+            /** Score */
+            score: number;
         };
         /**
          * PatternSlotDefinition
@@ -1224,8 +1261,30 @@ export interface components {
         };
         /** PatternSummary */
         PatternSummary: {
+            /** Allowed Genres */
+            allowed_genres: string[];
+            /** Allowed Sections */
+            allowed_sections: string[];
+            /** Article Id */
+            article_id: string | null;
             /** Canonical Frame */
             canonical_frame: string | null;
+            /** Claim Type */
+            claim_type: string | null;
+            /** Claim Type Labelled */
+            claim_type_labelled: boolean;
+            /** Current Version Id */
+            current_version_id: string | null;
+            /** Discipline Affinities */
+            discipline_affinities: components["schemas"]["PatternDisciplineAffinityRead"][];
+            /** Epistemic Strength */
+            epistemic_strength: string | null;
+            /** Epistemic Strength Labelled */
+            epistemic_strength_labelled: boolean;
+            /** Evidence Min */
+            evidence_min: string | null;
+            /** Forbidden Contexts */
+            forbidden_contexts: string[];
             /**
              * Id
              * Format: uuid
@@ -1233,10 +1292,39 @@ export interface components {
             id: string;
             /** Intent Code */
             intent_code: string;
+            /** Intent Name */
+            intent_name: string;
+            /** License Allows Display */
+            license_allows_display: boolean;
+            /** License Code */
+            license_code: string | null;
+            /** License Flag */
+            license_flag: boolean;
+            /** License Name */
+            license_name: string | null;
+            /** Slots */
+            slots: {
+                [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
+            } | null;
+            /** Source Reference */
+            source_reference: string | null;
+            /** Source Sentence Count */
+            source_sentence_count: number;
+            /** Source Type */
+            source_type: string;
             /** Status */
             status: string;
+            /** Variants */
+            variants: components["schemas"]["PatternVariantRead"][];
             /** Version No */
             version_no: number | null;
+        };
+        /** PatternVariantRead */
+        PatternVariantRead: {
+            /** Register */
+            register: string | null;
+            /** Text */
+            text: string;
         };
         /** PatternVersionCreate */
         PatternVersionCreate: {
@@ -1266,9 +1354,9 @@ export interface components {
             /** Change Note */
             change_note: string | null;
             /** Claim Type */
-            claim_type: string;
+            claim_type: string | null;
             /** Epistemic Strength */
-            epistemic_strength: string;
+            epistemic_strength: string | null;
             /**
              * Id
              * Format: uuid
@@ -1293,6 +1381,8 @@ export interface components {
         ProtectedSignal: "citation" | "number" | "percentage" | "unit" | "year" | "acronym" | "negation" | "modal" | "comparison";
         /** RecommendationItemResponse */
         RecommendationItemResponse: {
+            /** Article Id */
+            article_id: string | null;
             /** Breakdown */
             breakdown: {
                 [key: string]: number | null;
@@ -1538,19 +1628,47 @@ export interface components {
         };
         /** RenderableVersionRead */
         RenderableVersionRead: {
+            /** Allowed Genres */
+            allowed_genres: string[];
+            /** Allowed Sections */
+            allowed_sections: string[];
+            /** Article Id */
+            article_id: string | null;
             /** Canonical Frame */
             canonical_frame: string;
             /** Change Note */
             change_note: string | null;
             /** Claim Type */
-            claim_type: string;
+            claim_type: string | null;
+            /** Claim Type Labelled */
+            claim_type_labelled: boolean;
+            /** Discipline Affinities */
+            discipline_affinities: components["schemas"]["PatternDisciplineAffinityRead"][];
             /** Epistemic Strength */
-            epistemic_strength: string;
+            epistemic_strength: string | null;
+            /** Epistemic Strength Labelled */
+            epistemic_strength_labelled: boolean;
+            /** Evidence Min */
+            evidence_min: string | null;
+            /** Forbidden Contexts */
+            forbidden_contexts: string[];
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /** Intent Code */
+            intent_code: string;
+            /** Intent Name */
+            intent_name: string;
+            /** License Allows Display */
+            license_allows_display: boolean;
+            /** License Code */
+            license_code: string | null;
+            /** License Flag */
+            license_flag: boolean;
+            /** License Name */
+            license_name: string | null;
             /**
              * Pattern Id
              * Format: uuid
@@ -1560,8 +1678,16 @@ export interface components {
             slots: {
                 [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
             };
+            /** Source Reference */
+            source_reference: string | null;
+            /** Source Sentence Count */
+            source_sentence_count: number;
             /** Source Type */
             source_type: string;
+            /** Status */
+            status: string;
+            /** Variants */
+            variants: components["schemas"]["PatternVariantRead"][];
             /** Version No */
             version_no: number;
         };

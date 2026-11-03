@@ -17,9 +17,9 @@ class EvidenceGate(HardGate):
     def check(self, pattern: PatternView, ctx: RecommendationContext) -> GateResult:
         if not ctx.evidence_level:
             return GateResult(True)
-        claim_type = ctx.claim_type or pattern.claim_type
+        claim_type = ctx.claim_type or pattern.claim_type or ""
         if not self._evidence_policy.is_allowed(
-            claim_type, ctx.evidence_level, pattern.epistemic_strength
+            claim_type, ctx.evidence_level, pattern.epistemic_strength or ""
         ):
             return GateResult(False, "Evidence is missing, unknown, or insufficient")
         return GateResult(True)

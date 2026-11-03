@@ -25,7 +25,7 @@ async def render_pattern(
         pattern_version_id=pattern_version_id,
         client_id=client_id,
     )
-    version, _source = await pattern_service.get_renderable_version(session, pattern_version_id)
+    version = await pattern_service.get_renderable_version(session, pattern_version_id)
     try:
         text, unfilled = render_frame(version.canonical_frame, version.slots, slots)
     except SlotValidationError as error:

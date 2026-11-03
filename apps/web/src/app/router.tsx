@@ -6,7 +6,6 @@ import { SigninPage } from "@/features/auth/SigninPage";
 import { InboxPage } from "@/features/inbox";
 import { GoldPage } from "@/features/gold";
 import { JournalProfilePage } from "@/features/journal-profile";
-import { PublicHome } from "@/features/landing/PublicHome";
 import { LibraryPage } from "@/features/library";
 import { OverviewPage } from "@/features/overview";
 import { ExtractPage } from "@/features/phrase-extraction";
@@ -42,7 +41,7 @@ const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
 // Public pages, no sidebar.
 const publicLayout = createRoute({ getParentRoute: () => root, id: "public", component: Outlet });
-const home = createRoute({ getParentRoute: () => publicLayout, path: "/", component: PublicHome });
+const home = createRoute({ getParentRoute: () => publicLayout, path: "/", component: lazyRouteComponent(() => import("@/features/landing/LandingPage").then((m) => ({ default: m.LandingPage }))) });
 const signin = createRoute({
   getParentRoute: () => publicLayout,
   path: "/signin",

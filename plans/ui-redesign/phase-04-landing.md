@@ -95,3 +95,7 @@ node $S/scripts/inspect.mjs http://127.0.0.1:4173/ --widths 1440 --out .taste-sk
 Ghi vào `plans/reports/261103-landing-report.md`: direction và seed, các lần redraw kèm lý do, câu ý tưởng, live thing, điểm critique vòng cuối và chỗ còn thiếu, credit từng ảnh/clip, nội dung mẫu cần thay trước khi dùng thật.
 
 Sau đó chạy `code-review` trên PR landing và xử lý các finding trước khi merge.
+
+## Kết quả (2026-11-04)
+
+Đã làm xong, xem `plans/reports/261104-landing-report.md`. Khác spec: không dùng `motion` (chính sách `minimumReleaseAge` của pnpm chặn khi thêm gói; dùng CSS transition và IntersectionObserver), frame viết tay trong `frames.ts` (không có script `gen:landing-frames`), và không có no-JS fallback vì app là SPA.

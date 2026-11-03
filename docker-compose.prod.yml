@@ -14,7 +14,7 @@ services:
       - runtime.conf
     command: ["uvicorn", "aprkb.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${API_HOST_PORT:-18080}:8000"
     volumes:
       - aprkb_blobs:/app/data/blobs
     depends_on:
@@ -49,6 +49,26 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  web:
+    image: aprkb-web:${IMAGE_TAG:-local}
+    build:
+      context: ./apps/web
+    ports:
+      - "${TAILSCALE_IP:?Set TAILSCALE_IP in runtime.conf}:${WEB_HOST_PORT:-18081}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   aprkb_blobs:

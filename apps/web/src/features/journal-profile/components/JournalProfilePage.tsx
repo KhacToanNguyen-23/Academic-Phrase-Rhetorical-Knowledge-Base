@@ -1,27 +1,307 @@
-import { useQuery } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { DataState } from "@/components/domain/DataState"
-import { EvidenceLabel } from "@/components/domain/EvidenceLabel"
-import { PageHeader } from "@/components/domain/PageHeader"
-import { api, type JournalFingerprint, type JournalProfile } from "@/shared/api"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataState } from "@/components/domain/DataState";
+import { EvidenceLabel } from "@/components/domain/EvidenceLabel";
+import { PageHeader } from "@/components/domain/PageHeader";
+import { api, type JournalFingerprint, type JournalProfile } from "@/shared/api";
 
-const MIN_SAMPLE = 30
+const MIN_SAMPLE = 30;
 
 export function JournalProfilePage({ journalId }: { journalId?: string }) {
-  const list = useQuery({ queryKey: ["journals"], queryFn: api.journals })
-  const detail = useQuery({ queryKey: ["journal", journalId], queryFn: () => api.journal(journalId!), enabled: !!journalId })
-  return <div className="flex flex-col gap-6"><PageHeader title="Journal profiles" description="Verified author guidelines are reported separately from stylistic tendencies observed in the corpus. Corpus statistics are never presented as journal requirements." /><div className="grid grid-cols-[20rem_1fr] gap-6"><Card><CardHeader><CardTitle>Journals</CardTitle></CardHeader><CardContent>{list.isPending ? <DataState state="loading" loadingLabel="Loading journals" /> : list.isError ? <DataState state="error" errorTitle="Could not load journals" errorDescription={list.error.message} onRetry={() => void list.refetch()} /> : list.data?.length ? <nav aria-label="Journals" className="flex flex-col gap-1">{list.data.map((journal) => <Link key={journal.journal_id} to="/journals/$journalId" params={{ journalId: journal.journal_id }} className="flex flex-col gap-1 rounded-[var(--radius)] px-3 py-3 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/50" activeProps={{ "aria-current": "page", className: "flex flex-col gap-1 rounded-[var(--radius)] bg-muted px-3 py-3 text-primary" }}><strong>{journal.title}</strong><span className="text-sm text-muted-foreground">ISSN-L {journal.issn_l}</span></Link>)}</nav> : <DataState state="empty" emptyTitle="No journals available" emptyDescription="No journal profiles have been added." />}</CardContent></Card><div className="flex flex-col gap-4">{!journalId ? <Card><CardHeader><CardTitle>Overview</CardTitle></CardHeader><CardContent><DataState state="empty" emptyTitle="Select a journal" emptyDescription="Choose a journal to view its verified guidelines and corpus observations." /></CardContent></Card> : detail.isPending ? <DataState state="loading" loadingLabel="Loading journal profile" /> : detail.isError ? <DataState state="error" errorTitle="Could not load journal profile" errorDescription={detail.error.message} onRetry={() => void detail.refetch()} /> : detail.data ? <Profile journal={detail.data} /> : <DataState state="empty" emptyTitle="Journal not found" emptyDescription="The requested journal profile is unavailable." />}</div></div></div>
+  const list = useQuery({ queryKey: ["journals"], queryFn: api.journals });
+  const detail = useQuery({
+    queryKey: ["journal", journalId],
+    queryFn: () => api.journal(journalId!),
+    enabled: !!journalId,
+  });
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Journal profiles"
+        description={
+          "Verified author guidelines are reported separately from stylistic tendencies observed in the corpus. " +
+          "Corpus statistics are never presented as journal requirements."
+        }
+      />
+      <div className="grid grid-cols-[20rem_1fr] gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Journals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {list.isPending ? (
+              <DataState state="loading" loadingLabel="Loading journals" />
+            ) : list.isError ? (
+              <DataState
+                state="error"
+                errorTitle="Could not load journals"
+                errorDescription={list.error.message}
+                onRetry={() => void list.refetch()}
+              />
+            ) : list.data?.length ? (
+              <nav aria-label="Journals" className="flex flex-col gap-1">
+                {list.data.map((journal) => (
+                  <Link
+                    key={journal.journal_id}
+                    to="/journals/$journalId"
+                    params={{ journalId: journal.journal_id }}
+                    className={
+                      "flex flex-col gap-1 rounded-[var(--radius)] px-3 py-3 hover:bg-muted/50 " +
+                      "focus-visible:ring-2 focus-visible:ring-ring/50"
+                    }
+                    activeProps={{
+                      "aria-current": "page",
+                      className: "flex flex-col gap-1 rounded-[var(--radius)] bg-muted px-3 py-3 text-primary",
+                    }}
+                  >
+                    <strong>{journal.title}</strong>
+                    <span className="text-sm text-muted-foreground">ISSN-L {journal.issn_l}</span>
+                  </Link>
+                ))}
+              </nav>
+            ) : (
+              <DataState
+                state="empty"
+                emptyTitle="No journals available"
+                emptyDescription="No journal profiles have been added."
+              />
+            )}
+          </CardContent>
+        </Card>
+        <div className="flex flex-col gap-4">
+          {!journalId ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DataState
+                  state="empty"
+                  emptyTitle="Select a journal"
+                  emptyDescription="Choose a journal to view its verified guidelines and corpus observations."
+                />
+              </CardContent>
+            </Card>
+          ) : detail.isPending ? (
+            <DataState state="loading" loadingLabel="Loading journal profile" />
+          ) : detail.isError ? (
+            <DataState
+              state="error"
+              errorTitle="Could not load journal profile"
+              errorDescription={detail.error.message}
+              onRetry={() => void detail.refetch()}
+            />
+          ) : detail.data ? (
+            <Profile journal={detail.data} />
+          ) : (
+            <DataState
+              state="empty"
+              emptyTitle="Journal not found"
+              emptyDescription="The requested journal profile is unavailable."
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Profile({ journal }: { journal: JournalProfile }) {
-  const lowSample = journal.fingerprints.every((fingerprint) => fingerprint.sample_n < MIN_SAMPLE)
-  return <><Card><CardHeader><div className="flex items-center justify-between gap-4"><CardTitle>{journal.title}</CardTitle><Badge variant="outline">{journal.field}</Badge></div></CardHeader><CardContent className="flex flex-col gap-4"><dl className="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-3 text-sm"><dt className="text-muted-foreground">ISSN-L</dt><dd>{journal.issn_l}</dd><dt className="text-muted-foreground">Publisher</dt><dd>{journal.publisher}</dd><dt className="text-muted-foreground">Guidelines</dt><dd>{journal.guideline_url ? <a href={journal.guideline_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{journal.guideline_url}</a> : <span className="text-muted-foreground">No guideline source on record</span>}</dd>{journal.guideline_url ? <><dt className="text-muted-foreground">Retrieved</dt><dd>v{journal.guideline_version}, {journal.retrieved_at}</dd></> : null}</dl>{lowSample ? <Alert><AlertTitle>Fallback to field-level guidance</AlertTitle><AlertDescription>All fingerprints have N &lt; {MIN_SAMPLE}; recommendations fall back to {journal.field}.</AlertDescription></Alert> : null}</CardContent></Card><Card><CardHeader><div className="flex items-center justify-between gap-4"><CardTitle>Verified guidelines</CardTitle><EvidenceLabel kind="required" /></div></CardHeader><CardContent>{journal.guidelines.length === 0 ? <DataState state="empty" emptyTitle="No verified rule" emptyDescription="Journal requirements are never inferred from corpus statistics." /> : <TableGuidelines journal={journal} />}</CardContent></Card><div className="flex flex-col gap-4"><h2 className="font-serif text-2xl">Observed in corpus</h2>{journal.fingerprints.map((fingerprint) => <Fingerprint key={`${fingerprint.genre}-${fingerprint.date_range}`} fingerprint={fingerprint} field={journal.field} />)}</div></>
+  const lowSample = journal.fingerprints.every((fingerprint) => fingerprint.sample_n < MIN_SAMPLE);
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle>{journal.title}</CardTitle>
+            <Badge variant="outline">{journal.field}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <dl className="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-3 text-sm">
+            <dt className="text-muted-foreground">ISSN-L</dt>
+            <dd>{journal.issn_l}</dd>
+            <dt className="text-muted-foreground">Publisher</dt>
+            <dd>{journal.publisher}</dd>
+            <dt className="text-muted-foreground">Guidelines</dt>
+            <dd>
+              {journal.guideline_url ? (
+                <a
+                  href={journal.guideline_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {journal.guideline_url}
+                </a>
+              ) : (
+                <span className="text-muted-foreground">No guideline source on record</span>
+              )}
+            </dd>
+            {journal.guideline_url ? (
+              <>
+                <dt className="text-muted-foreground">Retrieved</dt>
+                <dd>
+                  v{journal.guideline_version}, {journal.retrieved_at}
+                </dd>
+              </>
+            ) : null}
+          </dl>
+          {lowSample ? (
+            <Alert>
+              <AlertTitle>Fallback to field-level guidance</AlertTitle>
+              <AlertDescription>
+                All fingerprints have N &lt; {MIN_SAMPLE}; recommendations fall back to {journal.field}.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle>Verified guidelines</CardTitle>
+            <EvidenceLabel kind="required" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {journal.guidelines.length === 0 ? (
+            <DataState
+              state="empty"
+              emptyTitle="No verified rule"
+              emptyDescription="Journal requirements are never inferred from corpus statistics."
+            />
+          ) : (
+            <TableGuidelines journal={journal} />
+          )}
+        </CardContent>
+      </Card>
+      <div className="flex flex-col gap-4">
+        <h2 className="font-serif text-2xl">Observed in corpus</h2>
+        {journal.fingerprints.map((fingerprint) => (
+          <Fingerprint
+            key={`${fingerprint.genre}-${fingerprint.date_range}`}
+            fingerprint={fingerprint}
+            field={journal.field}
+          />
+        ))}
+      </div>
+    </>
+  );
 }
 
-function TableGuidelines({ journal }: { journal: JournalProfile }) { return <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="border-b border-border"><tr><th className="h-9 px-2 text-left font-normal text-muted-foreground">Level</th><th className="h-9 px-2 text-left font-normal text-muted-foreground">Rule</th><th className="h-9 px-2 text-left font-normal text-muted-foreground">Source</th><th className="h-9 px-2 text-left font-normal text-muted-foreground">Verified</th></tr></thead><tbody>{journal.guidelines.map((guideline) => <tr key={guideline.rule_id} className="border-b border-border"><td className="p-2"><Badge variant={guideline.level === "required" ? "destructive" : guideline.level === "recommended" ? "warning" : "secondary"}>{guideline.level}</Badge></td><td className="whitespace-normal p-2">{guideline.text}</td><td className="whitespace-normal p-2 text-muted-foreground">{guideline.source_excerpt}</td><td className="whitespace-nowrap p-2">{guideline.verified_at}<br /><span className="text-muted-foreground">{guideline.reviewer}</span></td></tr>)}</tbody></table></div> }
+function TableGuidelines({ journal }: { journal: JournalProfile }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="border-b border-border">
+          <tr>
+            <th className="h-9 px-2 text-left font-normal text-muted-foreground">Level</th>
+            <th className="h-9 px-2 text-left font-normal text-muted-foreground">Rule</th>
+            <th className="h-9 px-2 text-left font-normal text-muted-foreground">Source</th>
+            <th className="h-9 px-2 text-left font-normal text-muted-foreground">Verified</th>
+          </tr>
+        </thead>
+        <tbody>
+          {journal.guidelines.map((guideline) => (
+            <tr key={guideline.rule_id} className="border-b border-border">
+              <td className="p-2">
+                <Badge
+                  variant={
+                    guideline.level === "required"
+                      ? "destructive"
+                      : guideline.level === "recommended"
+                        ? "warning"
+                        : "secondary"
+                  }
+                >
+                  {guideline.level}
+                </Badge>
+              </td>
+              <td className="whitespace-normal p-2">{guideline.text}</td>
+              <td className="whitespace-normal p-2 text-muted-foreground">{guideline.source_excerpt}</td>
+              <td className="whitespace-nowrap p-2">
+                {guideline.verified_at}
+                <br />
+                <span className="text-muted-foreground">{guideline.reviewer}</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-function Fingerprint({ fingerprint, field }: { fingerprint: JournalFingerprint; field: string }) { const max = Math.max(...fingerprint.features.flatMap((feature) => [feature.journal_value, feature.field_baseline])); return <Card><CardHeader><div className="flex items-center justify-between gap-4"><CardTitle>{fingerprint.genre}</CardTitle><EvidenceLabel kind="observed" /></div></CardHeader><CardContent className="flex flex-col gap-4"><p className="text-sm text-muted-foreground">N = {fingerprint.sample_n} articles, {fingerprint.date_range}; method {fingerprint.method_version}. <Badge variant={fingerprint.confidence === "low" ? "warning" : "success"}>{fingerprint.confidence} confidence</Badge></p><table className="w-full text-sm"><caption className="sr-only">Journal compared with the {field} baseline</caption><thead className="border-b border-border"><tr><th className="h-9 px-2 text-left font-normal text-muted-foreground">Feature</th><th className="h-9 px-2 text-left font-normal text-muted-foreground">Journal vs. field baseline ({field})</th></tr></thead><tbody>{fingerprint.features.map((feature) => <tr key={feature.name} className="border-b border-border"><th scope="row" className="p-2 text-left font-normal">{feature.name}</th><td className="p-2"><div className="flex flex-col gap-1"><div className="flex items-center gap-2"><span className="w-32 shrink-0 text-xs text-muted-foreground">Journal</span><span className="h-2 rounded-sm bg-primary" style={{ width: `${(feature.journal_value / max) * 100}%` }} /><span className="whitespace-nowrap tabular-nums">{feature.journal_value} {feature.unit}</span></div><div className="flex items-center gap-2"><span className="w-32 shrink-0 text-xs text-muted-foreground">Field baseline</span><span className="h-2 rounded-sm bg-muted-foreground/50" style={{ width: `${(feature.field_baseline / max) * 100}%` }} /><span className="whitespace-nowrap tabular-nums">{feature.field_baseline} {feature.unit}</span></div></div></td></tr>)}</tbody></table><p className="text-sm text-muted-foreground">Descriptive statistics support soft ranking only; they do not constitute journal policy.</p></CardContent></Card> }
+function Fingerprint({ fingerprint, field }: { fingerprint: JournalFingerprint; field: string }) {
+  const max = Math.max(...fingerprint.features.flatMap((feature) => [feature.journal_value, feature.field_baseline]));
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-4">
+          <CardTitle>{fingerprint.genre}</CardTitle>
+          <EvidenceLabel kind="observed" />
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">
+          N = {fingerprint.sample_n} articles, {fingerprint.date_range}; method {fingerprint.method_version}.{" "}
+          <Badge variant={fingerprint.confidence === "low" ? "warning" : "success"}>
+            {fingerprint.confidence} confidence
+          </Badge>
+        </p>
+        <table className="w-full text-sm">
+          <caption className="sr-only">Journal compared with the {field} baseline</caption>
+          <thead className="border-b border-border">
+            <tr>
+              <th className="h-9 px-2 text-left font-normal text-muted-foreground">Feature</th>
+              <th className="h-9 px-2 text-left font-normal text-muted-foreground">
+                Journal vs. field baseline ({field})
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {fingerprint.features.map((feature) => (
+              <tr key={feature.name} className="border-b border-border">
+                <th scope="row" className="p-2 text-left font-normal">
+                  {feature.name}
+                </th>
+                <td className="p-2">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 shrink-0 text-xs text-muted-foreground">Journal</span>
+                      <span
+                        className="h-2 rounded-sm bg-primary"
+                        style={{ width: `${(feature.journal_value / max) * 100}%` }}
+                      />
+                      <span className="whitespace-nowrap tabular-nums">
+                        {feature.journal_value} {feature.unit}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 shrink-0 text-xs text-muted-foreground">Field baseline</span>
+                      <span
+                        className="h-2 rounded-sm bg-muted-foreground/50"
+                        style={{ width: `${(feature.field_baseline / max) * 100}%` }}
+                      />
+                      <span className="whitespace-nowrap tabular-nums">
+                        {feature.field_baseline} {feature.unit}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="text-sm text-muted-foreground">
+          Descriptive statistics support soft ranking only; they do not constitute journal policy.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}

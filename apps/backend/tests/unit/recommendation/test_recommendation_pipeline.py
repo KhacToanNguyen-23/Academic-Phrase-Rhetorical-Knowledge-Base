@@ -59,8 +59,8 @@ def test_hard_gates_are_registered_in_prd_order(context, evidence_policy):
         "ApprovalGate",
         "RetiredGate",
         "LicenseGate",
-        "IntentSectionGate",
         "ForbiddenContextGate",
+        "IntentSectionGate",
         "EvidenceMinimumGate",
         "EvidenceGate",
         "GuidelineGate",
@@ -307,6 +307,23 @@ def test_usage_gates_report_excluded_counts(context, policy_bundle, evidence_pol
     assert result.excluded == {"GATE_EVIDENCE_MIN": 1, "GATE_FORBIDDEN_CONTEXT": 3}
     assert len(result.items) == 0
     assert len(pipeline.recommend(replace(context, evidence_level=None)).items) == 2
+
+
+def test_forbidden_section_is_reported_before_allowed_section_mismatch(context, evidence_policy):
+    gate = next(
+        gate
+        for gate in build_gates(evidence_policy=evidence_policy)
+        if type(gate).__name__ == "ForbiddenContextGate"
+    )
+    candidate = pattern(allowed_sections=("discussion",), forbidden_contexts=("results",))
+    first_failed_gate = next(
+        gate
+        for gate in build_gates(evidence_policy=evidence_policy)
+        if not gate.check(candidate, context).passed
+    )
+    assert type(first_failed_gate).__name__ == type(gate).__name__
+    assert gate.check(candidate, context).reason == "Requested context is forbidden"
+    assert gate.check(candidate, context).reason == "Requested context is forbidden"
 
 
 def test_fallback_selection_requires_verified_data():

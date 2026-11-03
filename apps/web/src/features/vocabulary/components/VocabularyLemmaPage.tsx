@@ -1,265 +1,40 @@
-import { getRouteApi, Link } from "@tanstack/react-router";
-import type { CSSProperties } from "react";
+import { getRouteApi, Link } from "@tanstack/react-router"
 
-import { Badge, Card, Empty, ErrorState, Loading, PageHeader, Stat } from "@/shared/ui";
-import { useLemma } from "../api/client";
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataState } from "@/components/domain/DataState"
+import { PageHeader } from "@/components/domain/PageHeader"
+import { useLemma } from "../api/client"
 
-const route = getRouteApi("/shell/guarded/vocabulary/$lemmaId");
+const route = getRouteApi("/shell/guarded/vocabulary/$lemmaId")
 
 export function VocabularyLemmaPage() {
-  const { lemmaId } = route.useParams();
-  const search = route.useSearch();
-  const lemma = useLemma(lemmaId);
+  const { lemmaId } = route.useParams()
+  const search = route.useSearch()
+  const lemma = useLemma(lemmaId)
 
-  if (lemma.isPending) {
-    return (
-      <div className="stack">
-        <Loading />
-      </div>
-    );
-  }
+  if (lemma.isPending) return <div className="flex flex-col gap-6"><PageHeader title="Vocabulary lemma" description="Loading the selected lemma." /><div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading lemma"><Skeleton className="h-8 w-1/3" /><Skeleton className="h-40 w-full" /><Skeleton className="h-52 w-full" /></div></div>
+  if (lemma.isError) return <div className="flex flex-col gap-6"><PageHeader title="Vocabulary lemma" description="The selected lemma could not be loaded." /><DataState state="error" errorTitle="Could not load this lemma" errorDescription={lemma.error.message} onRetry={() => void lemma.refetch()} /></div>
+  if (!lemma.data) return <div className="flex flex-col gap-6"><PageHeader title="Vocabulary lemma" description="The selected lemma is not available." /><DataState state="empty" emptyTitle="Vocabulary lemma not found" emptyDescription="The requested lemma is not available in the current lexicon." emptyAction={<Button asChild variant="outline"><Link to="/vocabulary" search={search}>Back to vocabulary</Link></Button>} /></div>
 
-  if (lemma.isError) {
-    return (
-      <div className="stack">
-        <ErrorState onRetry={() => void lemma.refetch()} message={lemma.error.message} />
-      </div>
-    );
-  }
+  const item = lemma.data
+  const maxRatio = Math.max(1.2, ...item.domain_stats.map((stat) => stat.relative_ratio))
+  const hasFamilies = item.families.length > 0
 
-  if (!lemma.data) {
-    return (
-      <div className="stack">
-        <Empty>Vocabulary lemma not found.</Empty>
-      </div>
-    );
-  }
+  return <div className="flex flex-col gap-6">
+    <PageHeader title={<span className="flex items-baseline gap-3"><span className="font-serif text-3xl">{item.word}</span><span className="text-base text-muted-foreground">({item.pos_label})</span></span>} description={`Academic lemma ${item.rank !== null ? `#${item.rank}` : "without a rank"} · Band ${item.band ?? "—"} · ${item.status_label}`} actions={<Button asChild variant="outline"><Link to="/vocabulary" search={search}>Back to vocabulary</Link></Button>} />
 
-  const item = lemma.data;
-  const hasDomainStats = item.domain_stats.length > 0;
-  const hasFamilies = item.families.length > 0;
-
-  const maxRatio = Math.max(1.2, ...item.domain_stats.map((stat) => stat.relative_ratio));
-  const expectationPosition = Math.min(100, (1 / maxRatio) * 100);
-
-  return (
-    <div className="stack">
-      <PageHeader
-        code="Lexicon · Academic Vocabulary List (AVL)"
-        title={
-          <span className="vocab-lemma-title">
-            <span className="vocab-lemma-word">{item.word}</span>
-            <span className="vocab-lemma-pos">({item.pos_label})</span>
-          </span>
-        }
-        lead={`Academic lemma #${item.rank ?? "—"} · Band ${item.band ?? "—"} · Status: ${item.status_label}`}
-        actions={
-          <div className="vocab-header-actions">
-            <Badge tone={item.is_core ? "ok" : "neutral"}>{item.status_label}</Badge>
-            <Link to="/vocabulary" search={search} className="btn btn-ghost btn-sm">
-              ← Back to Vocabulary
-            </Link>
-          </div>
-        }
-      />
-
-      <div className="stat-row vocab-stat-row">
-        <Stat
-          label="Rank"
-          value={item.rank !== null ? `#${item.rank}` : "—"}
-          note="AVL overall frequency rank"
-        />
-        <Stat
-          label="Band"
-          value={item.band !== null ? `Band ${item.band}` : "—"}
-          note="Core academic band"
-        />
-        <Stat
-          label="COCA-Acad"
-          value={
-            item.coca_acad !== null ? (
-              <span title={`${item.coca_acad.toLocaleString()} occurrences`}>
-                {item.coca_acad.toLocaleString()}
-              </span>
-            ) : (
-              "—"
-            )
-          }
-          note="Academic occurrences"
-        />
-        <Stat
-          label="COCA-All"
-          value={
-            item.coca_all !== null ? (
-              <span title={`${item.coca_all.toLocaleString()} occurrences`}>
-                {item.coca_all.toLocaleString()}
-              </span>
-            ) : (
-              "—"
-            )
-          }
-          note="Total corpus occurrences"
-        />
-        <Stat
-          label="Ratio"
-          value={item.ratio !== null ? `${item.ratio.toFixed(2)}x` : "—"}
-          note="Academic vs general ratio"
-          tone={item.ratio !== null && item.ratio >= 1.5 ? "ok" : undefined}
-        />
-        <Stat
-          label="Dispersion"
-          value={item.disp !== null ? item.disp.toFixed(2) : "—"}
-          note="Cross-disciplinary spread (0–1)"
-        />
-        <Stat
-          label="Range"
-          value={item.range !== null ? `${item.range}/9` : "—"}
-          note="Disciplines represented"
-        />
-      </div>
-
-      {hasDomainStats && (
-        <Card
-          title="Disciplinary Distribution"
-          aside={<span className="caption">Relative Ratio · 1.0 = General Expectation</span>}
-        >
-          <div className="vocab-chart-wrapper">
-            <p className="caption vocab-chart-desc">
-              Relative ratio compares frequency in a discipline against uniform academic distribution.
-              Values greater than 1.0 indicate higher specialization in that field.
-            </p>
-            <div className="vocab-chart" role="list" aria-label="Relative ratio by academic domain">
-              {item.domain_stats.map((stat) => {
-                const isOverIndex = stat.relative_ratio >= 1.0;
-                return (
-                  <div className="vocab-chart-row" key={stat.domain} role="listitem">
-                    <span className="vocab-chart-label" title={stat.domain_label}>
-                      {stat.domain_label}
-                    </span>
-                    <div
-                      className="vocab-chart-track"
-                      style={{ "--vocab-expectation": `${expectationPosition}%` } as CSSProperties}
-                    >
-                      <span
-                        className="vocab-chart-expectation"
-                        title="1.0 Expectation threshold"
-                        aria-hidden
-                      />
-                      <span
-                        className={`vocab-chart-bar ${isOverIndex ? "is-enriched" : ""}`}
-                        style={{ width: `${Math.min(100, (stat.relative_ratio / maxRatio) * 100)}%` }}
-                        title={`${stat.domain_label}: ${stat.freq.toLocaleString()} occurrences (${stat.relative_ratio.toFixed(2)}x)`}
-                      />
-                    </div>
-                    <div className="vocab-chart-values">
-                      <strong className={isOverIndex ? "text-ok" : ""}>
-                        {stat.relative_ratio.toFixed(2)}x
-                      </strong>
-                      <span className="caption vocab-chart-count">
-                        {stat.freq.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {hasFamilies && (
-        <Card
-          title="Morphological Word Family"
-          aside={
-            <span className="caption">
-              {item.families.reduce((sum, f) => sum + f.members.length, 0)} member form(s)
-            </span>
-          }
-        >
-          <div className="vocab-family-group">
-            {item.families.map((family) => (
-              <section className="vocab-family" key={family.id}>
-                <div className="vocab-family-heading">
-                  <div className="vocab-family-title-block">
-                    <h3>Headword: <em>{family.headword}</em></h3>
-                    <Badge tone="info">{family.members.length} members</Badge>
-                  </div>
-                  <span className="caption">
-                    Family Rank #{family.rank} · {family.family_freq.toLocaleString()} total frequency
-                  </span>
-                </div>
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Word Form</th>
-                        <th>Part of Speech</th>
-                        <th className="num">Frequency</th>
-                        <th>Category</th>
-                        <th>Domains</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {family.members.map((member) => {
-                        const isCurrent = member.lemma_id === item.id;
-                        return (
-                          <tr
-                            className={isCurrent ? "vocab-current-row" : undefined}
-                            key={`${family.id}-${member.lemma_id}`}
-                          >
-                            <td>
-                              <div className="vocab-word-cell">
-                                {isCurrent ? (
-                                  <>
-                                    <strong>{member.word}</strong>
-                                    <Badge tone="info">Current</Badge>
-                                  </>
-                                ) : (
-                                  <Link
-                                    to="/vocabulary/$lemmaId"
-                                    params={{ lemmaId: member.lemma_id }}
-                                    search={search}
-                                    className="vocab-word-link"
-                                  >
-                                    <strong>{member.word}</strong>
-                                  </Link>
-                                )}
-                              </div>
-                            </td>
-                            <td>
-                              <Badge tone="neutral">{member.pos_label}</Badge>
-                            </td>
-                            <td className="num">{member.freq.toLocaleString()}</td>
-                            <td>
-                              <Badge>{member.category_label}</Badge>
-                            </td>
-                            <td>{member.domains.join(", ") || "—"}</td>
-                            <td>
-                              {isCurrent ? (
-                                <span className="caption">Selected</span>
-                              ) : (
-                                <Link
-                                  to="/vocabulary/$lemmaId"
-                                  params={{ lemmaId: member.lemma_id }}
-                                  search={search}
-                                  className="btn btn-ghost btn-sm"
-                                >
-                                  Inspect →
-                                </Link>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            ))}
-          </div>
-        </Card>
-      )}
+    <div className="grid grid-cols-4 gap-3">
+      {[['Rank', item.rank !== null ? `#${item.rank}` : "—", "AVL frequency rank"], ['Band', item.band !== null ? `Band ${item.band}` : "—", "Core academic band"], ['COCA-Acad', item.coca_acad !== null ? item.coca_acad.toLocaleString() : "—", "Academic occurrences"], ['COCA-All', item.coca_all !== null ? item.coca_all.toLocaleString() : "—", "Total corpus occurrences"], ['Ratio', item.ratio !== null ? `${item.ratio.toFixed(2)}x` : "—", "Academic vs general"], ['Dispersion', item.disp !== null ? item.disp.toFixed(2) : "—", "Cross-disciplinary spread"], ['Range', item.range !== null ? `${item.range}/9` : "—", "Disciplines represented"]].map(([label, value, note]) => <Card key={label}><CardContent className="flex flex-col gap-1 pt-4"><span className="text-xs text-muted-foreground">{label}</span><strong className="text-xl tabular-nums">{value}</strong><span className="text-xs text-muted-foreground">{note}</span></CardContent></Card>)}
     </div>
-  );
+
+    <Card><CardHeader><CardTitle className="font-serif text-xl">Example use</CardTitle></CardHeader><CardContent><p className="font-serif text-lg leading-7">The study uses {item.word} as a precise term for the reported analysis.</p><p className="mt-3 text-sm text-muted-foreground">This illustrative sentence is written for the interface and is not copied from a source corpus.</p></CardContent></Card>
+
+    {item.domain_stats.length > 0 ? <Card><CardHeader><CardTitle>Disciplinary distribution</CardTitle></CardHeader><CardContent className="flex flex-col gap-4"><p className="text-sm text-muted-foreground">Relative ratio compares frequency in each discipline against a uniform academic expectation. Values above 1.0 indicate stronger specialization.</p><div className="flex flex-col gap-3" role="list" aria-label="Relative ratio by academic domain">{item.domain_stats.map((stat) => <div key={stat.domain} className="grid grid-cols-[12rem_1fr_5rem] items-center gap-3" role="listitem"><span className="text-sm">{stat.domain_label}</span><div className="h-3 rounded-sm bg-muted"><span className="block h-3 rounded-sm bg-primary" style={{ width: `${Math.min(100, (stat.relative_ratio / maxRatio) * 100)}%` }} title={`${stat.relative_ratio.toFixed(2)}x`} /></div><span className="text-right text-sm tabular-nums">{stat.relative_ratio.toFixed(2)}x</span></div>)}</div></CardContent></Card> : <Card><CardContent className="pt-4"><DataState state="empty" emptyTitle="No disciplinary distribution" emptyDescription="This lemma has no domain-level frequency data yet." /></CardContent></Card>}
+
+    {hasFamilies ? <Card><CardHeader><CardTitle>Morphological word family</CardTitle></CardHeader><CardContent className="flex flex-col gap-5">{item.families.map((family) => <section key={family.id} className="flex flex-col gap-3"><div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3"><h2 className="font-serif text-xl">{family.headword}</h2><Badge variant="outline">{family.members.length} members</Badge></div><span className="text-sm text-muted-foreground">Rank {family.rank} · {family.family_freq.toLocaleString()} total frequency</span></div><Table><TableHeader><TableRow><TableHead>Word form</TableHead><TableHead>Part of speech</TableHead><TableHead numeric>Frequency</TableHead><TableHead>Category</TableHead><TableHead>Domains</TableHead><TableHead>Action</TableHead></TableRow></TableHeader><TableBody>{family.members.map((member) => { const current = member.lemma_id === item.id; return <TableRow key={`${family.id}-${member.lemma_id}`} data-state={current ? "selected" : undefined}><TableCell>{current ? <span className="font-medium">{member.word} <Badge variant="outline">Selected</Badge></span> : <Link className="font-medium text-primary hover:underline" to="/vocabulary/$lemmaId" params={{ lemmaId: member.lemma_id }} search={search}>{member.word}</Link>}</TableCell><TableCell><Badge variant="outline">{member.pos_label}</Badge></TableCell><TableCell numeric>{member.freq.toLocaleString()}</TableCell><TableCell><Badge>{member.category_label}</Badge></TableCell><TableCell>{member.domains.join(", ") || "—"}</TableCell><TableCell>{current ? <span className="text-sm text-muted-foreground">Current</span> : <Button asChild variant="outline" size="sm"><Link to="/vocabulary/$lemmaId" params={{ lemmaId: member.lemma_id }} search={search}>Inspect</Link></Button>}</TableCell></TableRow> })}</TableBody></Table></section>)}</CardContent></Card> : null}
+  </div>
 }

@@ -1,164 +1,60 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query"
+import { Link, useNavigate } from "@tanstack/react-router"
+import { useState } from "react"
 
-import { api, type PatternQuery, type PatternStatus, type PhrasePattern, type Section } from "@/shared/api";
-import { Badge, Card, Empty, ErrorState, EvidenceLabel, Frame, Loading, PageHeader, ProvenanceTag, StatusBadge } from "@/shared/ui";
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DataState } from "@/components/domain/DataState"
+import { EvidenceLabel } from "@/components/domain/EvidenceLabel"
+import { PageHeader } from "@/components/domain/PageHeader"
+import { PhraseFrame } from "@/components/domain/PhraseFrame"
+import { LicenceStatus, ProvenanceTag } from "@/components/domain/ProvenanceTag"
+import { StatusBadge } from "@/components/domain/StatusBadge"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton"
+import { api, type PatternQuery, type PatternStatus, type PhrasePattern, type Section } from "@/shared/api"
 
-const SECTIONS: Section[] = ["Introduction", "Methods", "Results", "Discussion", "Conclusion"];
-const STATUSES: PatternStatus[] = ["approved", "in_review", "draft", "retired"];
+const SECTIONS: Section[] = ["Introduction", "Methods", "Results", "Discussion", "Conclusion"]
+const STATUSES: PatternStatus[] = ["approved", "in_review", "draft", "retired"]
 
 export function LibraryPage({ selectedId }: { selectedId?: string }) {
-  const [f, setF] = useState<PatternQuery>({});
-  const navigate = useNavigate();
-  const intents = useQuery({ queryKey: ["intents"], queryFn: api.intents });
-  const list = useQuery({ queryKey: ["patterns", f], queryFn: () => api.patterns(f), placeholderData: (p) => p });
+  const [filters, setFilters] = useState<PatternQuery>({})
+  const navigate = useNavigate()
+  const intents = useQuery({ queryKey: ["intents"], queryFn: api.intents })
+  const list = useQuery({ queryKey: ["patterns", filters], queryFn: () => api.patterns(filters), placeholderData: (previous) => previous })
+  const activeId = selectedId ?? list.data?.[0]?.id
+  const intentName = (id: string) => intents.data?.find((intent) => intent.intent_id === id)?.name ?? id
+  const retry = async () => { await Promise.all([intents.refetch(), list.refetch()]) }
 
-  if (intents.isError || list.isError) {
-    return <ErrorState message="The pattern library could not be loaded." onRetry={async () => {
-      await Promise.all([intents.refetch(), list.refetch()]);
-    }} />;
-  }
-
-  const activeId = selectedId ?? list.data?.[0]?.id;
-  const intentName = (id: string) => intents.data?.find((i) => i.intent_id === id)?.name ?? id;
-
-  return (
-    <>
-      <PageHeader
-        code="Pattern bank · WB-01 / WB-02"
-        title="Library"
-        lead="The bank of rhetorical patterns served to the Writing Engine. Only approved, licence-compliant entries are ever returned through the API."
-      />
-      <div className="library">
-        <div className="library-list">
-          <div className="library-filters" role="search">
-            <input type="search" aria-label="Search patterns" placeholder="Search frames or IDs…" value={f.q ?? ""} onChange={(e) => setF({ ...f, q: e.target.value || undefined })} />
-            <div className="filter-row">
-              <select aria-label="Section" value={f.section ?? ""} onChange={(e) => setF({ ...f, section: (e.target.value || undefined) as Section })}>
-                <option value="">All sections</option>
-                {SECTIONS.map((s) => <option key={s}>{s}</option>)}
-              </select>
-              <select aria-label="Status" value={f.status ?? ""} onChange={(e) => setF({ ...f, status: (e.target.value || undefined) as PatternStatus })}>
-                <option value="">All statuses</option>
-                {STATUSES.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
-              </select>
-            </div>
-            <p className="caption" style={{ margin: 0 }}>{list.data?.length ?? 0} entries</p>
-          </div>
-          {list.isPending ? <Loading /> : (
-            <ul className="entry-list">
-              {list.data?.map((p, i) => (
-                <li key={p.id} style={{ animationDelay: `${i * 0.04}s` }}>
-                  <button type="button" className="entry" aria-current={p.id === activeId} onClick={() => navigate({ to: "/library", search: { p: p.id } })}>
-                    <span className="entry-head"><code>{p.id}</code><StatusBadge status={p.status} /></span>
-                    <span className="entry-frame"><Frame frame={p.canonical_frame} /></span>
-                    <span className="entry-meta">{intentName(p.intent_id)} · {p.section_scope.join(", ")}</span>
-                  </button>
-                </li>
-              ))}
-              {list.data?.length === 0 && <Empty>No entries match.</Empty>}
-            </ul>
-          )}
-        </div>
-        <div className="library-detail" key={activeId}>
-          {activeId ? <Detail id={activeId} intentName={intentName} /> : <Empty>Select an entry.</Empty>}
-        </div>
-      </div>
-    </>
-  );
+  return <div className="flex flex-col gap-6">
+    <PageHeader title="Pattern library" description="Approved rhetorical frames are separated from provenance, licence, and corpus evidence so every entry remains auditable." />
+    {intents.isError || list.isError ? <DataState state="error" errorTitle="Could not load the pattern library" errorDescription="The pattern list or intent taxonomy could not be loaded." onRetry={() => void retry()} /> : <div className="grid grid-cols-[22rem_1fr] gap-6">
+      <Card><CardHeader><CardTitle>Find a pattern</CardTitle></CardHeader><CardContent className="flex flex-col gap-4"><Input type="search" aria-label="Search patterns" placeholder="Search frames or IDs" value={filters.q ?? ""} onChange={(event) => setFilters((previous) => ({ ...previous, q: event.target.value || undefined }))} /><div className="grid grid-cols-2 gap-2"><Select value={filters.section ?? "all"} onValueChange={(value) => setFilters((previous) => ({ ...previous, section: value === "all" ? undefined : value as Section }))}><SelectTrigger aria-label="Section"><SelectValue placeholder="Section" /></SelectTrigger><SelectContent><SelectItem value="all">All sections</SelectItem>{SECTIONS.map((section) => <SelectItem key={section} value={section}>{section}</SelectItem>)}</SelectContent></Select><Select value={filters.status ?? "all"} onValueChange={(value) => setFilters((previous) => ({ ...previous, status: value === "all" ? undefined : value as PatternStatus }))}><SelectTrigger aria-label="Status"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{STATUSES.map((status) => <SelectItem key={status} value={status}>{status.replace("_", " ")}</SelectItem>)}</SelectContent></Select></div><p className="text-sm text-muted-foreground">{list.data?.length ?? 0} entries</p>{list.isPending ? <div className="flex flex-col gap-2" aria-busy="true"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : list.data?.length ? <ul className="flex flex-col gap-1">{list.data.map((pattern) => <li key={pattern.id}><button type="button" className="flex w-full flex-col gap-2 rounded-[var(--radius)] border border-transparent px-3 py-3 text-left hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 data-[selected=true]:border-border data-[selected=true]:bg-muted" data-selected={pattern.id === activeId} aria-current={pattern.id === activeId ? "page" : undefined} onClick={() => void navigate({ to: "/library", search: { p: pattern.id } })}><span className="flex items-center justify-between gap-3"><code>{pattern.id}</code><StatusBadge status={pattern.status} /></span><PhraseFrame frame={pattern.canonical_frame} className="text-base" /><span className="text-xs text-muted-foreground">{intentName(pattern.intent_id)} · {pattern.section_scope.join(", ")}</span></button></li>)}</ul> : <DataState state="empty" emptyTitle="No patterns match" emptyDescription="Try a different query, section, or status." />}</CardContent></Card>
+      <div key={activeId}>{activeId ? <Detail id={activeId} intentName={intentName} /> : <DataState state="empty" emptyTitle="Select a pattern" emptyDescription="Choose an entry from the list to inspect its contract." />}</div>
+    </div>}
+  </div>
 }
 
 function Detail({ id, intentName }: { id: string; intentName: (id: string) => string }) {
-  const { data: p, isPending, isError, refetch } = useQuery({ queryKey: ["pattern", id], queryFn: () => api.pattern(id) });
-  if (isPending) return <Loading />;
-  if (isError) return <ErrorState message={`Pattern ${id} could not be loaded.`} onRetry={async () => { await refetch(); }} />;
-  if (!p) return <Empty>Pattern {id} could not be found.</Empty>;
-  const servable = p.status === "approved" && (p.license_status === "own_authored" || p.license_status === "allowed");
+  const query = useQuery({ queryKey: ["pattern", id], queryFn: () => api.pattern(id) })
+  if (query.isPending) return <div className="flex flex-col gap-3" aria-busy="true"><Skeleton className="h-32 w-full" /><Skeleton className="h-48 w-full" /></div>
+  if (query.isError) return <DataState state="error" errorTitle={`Pattern ${id} could not be loaded`} errorDescription={query.error.message} onRetry={() => void query.refetch()} />
+  if (!query.data) return <DataState state="empty" emptyTitle={`Pattern ${id} not found`} emptyDescription="This entry is no longer available." />
+  const pattern = query.data
+  const servable = pattern.status === "approved" && (pattern.license_status === "own_authored" || pattern.license_status === "allowed")
+  const provenance = pattern.provenance === "authored" ? "authored" : pattern.provenance === "adapted_permission" ? "adapted" : "corpus-inferred"
+  const licence = pattern.license_status === "own_authored" || pattern.license_status === "allowed" ? "cleared" : pattern.license_status === "unknown" ? "unknown" : "restricted"
 
-  return (
-    <div className="stack">
-      <Card
-        title={<>{intentName(p.intent_id)}</>}
-        aside={<span className="caption" style={{ margin: 0 }}>{p.id} · v{p.version}</span>}
-        confirm={servable && <Link className="btn btn-primary" to="/playground" search={{ pattern: p.id }}>Try in Playground <span className="arrow">→</span></Link>}
-      >
-        <p className="frame-xl"><Frame frame={p.canonical_frame} /></p>
-        <div className="tags">
-          <StatusBadge status={p.status} />
-          <Badge>{p.claim_type}</Badge>
-          <Badge>{p.epistemic_strength} strength</Badge>
-          {p.section_scope.map((s) => <Badge key={s}>{s}</Badge>)}
-          {p.article_genres.map((g) => <Badge key={g} tone="info">{g}</Badge>)}
-        </div>
-        <p className={`notice ${servable ? "notice-ok" : "notice-warn"}`}>
-          {servable ? "Servable via API — passes approval and licence gates." : `Not servable via API — ${p.status !== "approved" ? `status is ${p.status}` : `licence is ${p.license_status}`}.`}
-        </p>
-      </Card>
-
-      <div className="grid-2">
-        <Card title="Slots">
-          <SlotTable p={p} />
-        </Card>
-        <Card title="Usage contract" aside={<Badge tone="warn">FR-02.4</Badge>}>
-          <dl className="kv">
-            <dt>Minimum evidence</dt><dd>{p.constraint.evidence_min}</dd>
-            <dt>Do not use when</dt>
-            <dd>{p.constraint.forbidden_contexts.length ? <ul>{p.constraint.forbidden_contexts.map((x) => <li key={x}>{x}</li>)}</ul> : "—"}</dd>
-            <dt>Note</dt><dd>{p.constraint.guidance || "—"}</dd>
-          </dl>
-        </Card>
-      </div>
-
-      {p.variants.length > 0 && (
-        <Card title="Variants">
-          <ul className="variant-list">
-            {p.variants.map((v) => (
-              <li key={v.variant_id}>
-                <Frame frame={v.phrase_text} />
-                <div className="tags">
-                  <span className="caption" style={{ margin: 0 }}>{v.transformation}</span>
-                  <Badge tone={v.semantic_status === "equivalent" ? "ok" : "warn"}>{v.semantic_status === "equivalent" ? "Equivalence approved" : "Pending semantic review"}</Badge>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-
-      <div className="grid-2">
-        <Card title="Provenance" aside={<ProvenanceTag value={p.provenance} />}>
-          <dl className="kv">
-            <dt>Source</dt><dd>{p.provenance_note}</dd>
-            <dt>Licence</dt><dd><Badge tone={p.license_status === "restricted" || p.license_status === "unknown" ? "bad" : "ok"}>{p.license_status}</Badge></dd>
-          </dl>
-        </Card>
-        <Card title="Corpus evidence" aside={<EvidenceLabel kind="observed" />}>
-          {p.corpus_support ? (
-            <p className="prose">
-              Observed <strong>{p.corpus_support.occurrences}</strong> times across <strong>{p.corpus_support.documents}</strong> articles ({p.corpus_support.window}).
-              <span className="caption" style={{ display: "block" }}>A descriptive observation, not a journal requirement.</span>
-            </p>
-          ) : <Empty>No corpus statistics.</Empty>}
-        </Card>
-      </div>
-    </div>
-  );
+  return <div className="flex flex-col gap-4"><Card><CardHeader><div className="flex items-start justify-between gap-4"><div><CardTitle>{intentName(pattern.intent_id)}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{pattern.id} · version {pattern.version}</p></div>{servable ? <Button asChild><Link to="/playground" search={{ pattern: pattern.id }}>Try in playground</Link></Button> : null}</div></CardHeader><CardContent className="flex flex-col gap-4"><PhraseFrame frame={pattern.canonical_frame} className="text-xl" /><div className="flex flex-wrap gap-2"><StatusBadge status={pattern.status} /><Badge>{pattern.claim_type}</Badge><Badge>{pattern.epistemic_strength} strength</Badge>{pattern.section_scope.map((section) => <Badge key={section} variant="outline">{section}</Badge>)}{pattern.article_genres.map((genre) => <Badge key={genre} variant="outline">{genre}</Badge>)}</div><p className="rounded-[var(--radius)] border border-border px-3 py-2 text-sm">{servable ? "Servable via API — approval and licence gates pass." : `Not servable via API — ${pattern.status !== "approved" ? `status is ${pattern.status}` : `licence is ${pattern.license_status}`}.`}</p></CardContent></Card>
+    <div className="grid grid-cols-2 gap-4"><Card><CardHeader><CardTitle>Slots</CardTitle></CardHeader><CardContent><SlotTable pattern={pattern} /></CardContent></Card><Card><CardHeader><CardTitle>Usage contract</CardTitle><Badge variant="warning">FR-02.4</Badge></CardHeader><CardContent><dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-3 text-sm"><dt className="text-muted-foreground">Minimum evidence</dt><dd>{pattern.constraint.evidence_min}</dd><dt className="text-muted-foreground">Do not use when</dt><dd>{pattern.constraint.forbidden_contexts.length ? <ul className="flex list-disc flex-col gap-1 pl-5">{pattern.constraint.forbidden_contexts.map((item) => <li key={item}>{item}</li>)}</ul> : "—"}</dd><dt className="text-muted-foreground">Note</dt><dd>{pattern.constraint.guidance || "—"}</dd></dl></CardContent></Card></div>
+    {pattern.variants.length > 0 ? <Card><CardHeader><CardTitle>Variants</CardTitle></CardHeader><CardContent className="flex flex-col gap-3">{pattern.variants.map((variant) => <div key={variant.variant_id} className="flex items-center justify-between gap-4 rounded-[var(--radius)] border border-border p-3"><PhraseFrame frame={variant.phrase_text} className="text-base" /><div className="flex items-center gap-2"><span className="text-sm text-muted-foreground">{variant.transformation}</span><Badge variant={variant.semantic_status === "equivalent" ? "success" : "warning"}>{variant.semantic_status === "equivalent" ? "Equivalence approved" : "Pending semantic review"}</Badge></div></div>)}</CardContent></Card> : null}
+    <div className="grid grid-cols-2 gap-4"><Card><CardHeader><CardTitle>Provenance</CardTitle></CardHeader><CardContent className="flex flex-wrap items-center gap-2"><ProvenanceTag value={provenance} /><LicenceStatus status={licence} /></CardContent></Card><Card><CardHeader><CardTitle>Corpus evidence</CardTitle><EvidenceLabel kind="observed" /></CardHeader><CardContent>{pattern.corpus_support ? <p className="text-sm">Observed <strong className="tabular-nums">{pattern.corpus_support.occurrences}</strong> times across <strong className="tabular-nums">{pattern.corpus_support.documents}</strong> articles ({pattern.corpus_support.window}). This is descriptive evidence, not a journal requirement.</p> : <DataState state="empty" emptyTitle="No corpus statistics" emptyDescription="No descriptive corpus support has been recorded." />}</CardContent></Card></div>
+  </div>
 }
 
-function SlotTable({ p }: { p: PhrasePattern }) {
-  return (
-    <table className="table">
-      <thead><tr><th scope="col">Slot</th><th scope="col">Type</th><th scope="col">Guidance</th></tr></thead>
-      <tbody>
-        {p.slots_schema.map((s) => (
-          <tr key={s.name}>
-            <td><code>{`{${s.name}}`}</code>{s.required && <span className="req" title="required"> *</span>}</td>
-            <td>{s.type}</td>
-            <td>{s.guidance}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
+function SlotTable({ pattern }: { pattern: PhrasePattern }) {
+  return <Table><TableHeader><TableRow><TableHead>Slot</TableHead><TableHead>Type</TableHead><TableHead>Guidance</TableHead></TableRow></TableHeader><TableBody>{pattern.slots_schema.map((slot) => <TableRow key={slot.name}><TableCell><code>{`{${slot.name}}`}</code>{slot.required ? " *" : ""}</TableCell><TableCell>{slot.type}</TableCell><TableCell className="whitespace-normal">{slot.guidance}</TableCell></TableRow>)}</TableBody></Table>
 }

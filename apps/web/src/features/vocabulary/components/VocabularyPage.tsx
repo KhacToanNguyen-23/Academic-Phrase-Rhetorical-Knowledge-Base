@@ -1,474 +1,90 @@
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 
-import { useAuth } from "@/features/auth/AuthProvider";
-import { Badge, Card, Empty, ErrorState, Loading, PageHeader, Tabs } from "@/shared/ui";
-import { useFamilies, useLemmas, useLetters } from "../api/client";
-import { VocabularyImportCard } from "./VocabularyImportCard";
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { DataState } from "@/components/domain/DataState"
+import { PageHeader } from "@/components/domain/PageHeader"
+import { useAuth } from "@/features/auth/AuthProvider"
+import { useFamilies, useLemmas, useLetters } from "../api/client"
+import { VocabularyImportCard } from "./VocabularyImportCard"
 
-const route = getRouteApi("/shell/guarded/vocabulary");
-const alphabet = [..."abcdefghijklmnopqrstuvwxyz", "#"];
+const route = getRouteApi("/shell/guarded/vocabulary")
+const alphabet = [..."abcdefghijklmnopqrstuvwxyz", "#"]
 
-function statusTone(status: string | null): "ok" | "warn" | "info" | "neutral" {
-  if (status === "y") return "ok";
-  if (status === "r") return "warn";
-  if (status === "x") return "info";
-  return "neutral";
+function statusVariant(status: string | null): "success" | "warning" | "secondary" | "default" {
+  if (status === "y") return "success"
+  if (status === "r") return "warning"
+  if (status === "x") return "secondary"
+  return "default"
+}
+
+function QueryState({ pending, error, empty, onRetry, emptyTitle, emptyDescription, emptyAction }: { pending: boolean; error: Error | null; empty: boolean; onRetry: () => void; emptyTitle: string; emptyDescription: string; emptyAction?: ReactNode }) {
+  if (pending) return <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading vocabulary"><Skeleton className="h-8 w-1/3" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+  if (error) return <DataState state="error" errorTitle="Could not load vocabulary" errorDescription={error.message} onRetry={onRetry} />
+  if (empty) return <DataState state="empty" emptyTitle={emptyTitle} emptyDescription={emptyDescription} emptyAction={emptyAction} />
+  return null
 }
 
 export function VocabularyPage() {
-  const { client: authClient } = useAuth();
-  const search = route.useSearch();
-  const navigate = useNavigate({ from: "/vocabulary" });
-
-  const [query, setQuery] = useState(search.q ?? "");
-  const [debouncedQuery, setDebouncedQuery] = useState(search.q ?? "");
-  const [showImport, setShowImport] = useState(false);
-
-  const view = search.view ?? "lemmas";
-  const coreOnly = search.coreOnly ?? false;
-  const sort = search.sort ?? "alpha";
-  const offset = search.offset ?? 0;
-  const limit = 50;
-
-  const isCurator = authClient?.role === "curator" || authClient?.role === "admin";
-  const letters = useLetters(coreOnly);
-
-  const lemmas = useLemmas({
-    q: debouncedQuery || undefined,
-    letter: search.letter,
-    core_only: coreOnly,
-    sort,
-    limit,
-    offset,
-  });
-
-  const families = useFamilies({
-    q: debouncedQuery || undefined,
-    limit,
-    offset,
-  });
+  const { client: authClient } = useAuth()
+  const search = route.useSearch()
+  const navigate = useNavigate({ from: "/vocabulary" })
+  const [query, setQuery] = useState(search.q ?? "")
+  const [debouncedQuery, setDebouncedQuery] = useState(search.q ?? "")
+  const [showImport, setShowImport] = useState(false)
+  const view = search.view ?? "lemmas"
+  const coreOnly = search.coreOnly ?? false
+  const sort = search.sort ?? "alpha"
+  const offset = search.offset ?? 0
+  const limit = 50
+  const isCurator = authClient?.role === "curator" || authClient?.role === "admin"
+  const letters = useLetters(coreOnly)
+  const lemmas = useLemmas({ q: debouncedQuery || undefined, letter: search.letter, core_only: coreOnly, sort, limit, offset })
+  const families = useFamilies({ q: debouncedQuery || undefined, limit, offset })
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setDebouncedQuery(query.trim());
-      void navigate({
-        search: (previous) => ({
-          ...previous,
-          q: query.trim() || undefined,
-          letter: query.trim() ? undefined : previous.letter,
-          offset: 0,
-        }),
-      });
-    }, 250);
-    return () => window.clearTimeout(timer);
-  }, [navigate, query]);
+      setDebouncedQuery(query.trim())
+      void navigate({ search: (previous) => ({ ...previous, q: query.trim() || undefined, letter: query.trim() ? undefined : previous.letter, offset: 0 }) })
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [navigate, query])
+  useEffect(() => { if (search.q !== undefined && search.q !== query) setQuery(search.q) }, [search.q, query])
 
-  useEffect(() => {
-    if (search.q !== undefined && search.q !== query) setQuery(search.q);
-  }, [search.q, query]);
+  const counts = useMemo(() => new Map((letters.data ?? []).map((item) => [item.letter, item.count])), [letters.data])
+  const totalLettersCount = useMemo(() => (letters.data ?? []).reduce((sum, item) => sum + item.count, 0), [letters.data])
+  const total = view === "families" ? (families.data?.total ?? 0) : (lemmas.data?.total ?? 0)
+  const first = total === 0 ? 0 : offset + 1
+  const last = Math.min(offset + limit, total)
+  const hasActiveFilters = Boolean(search.q || search.letter || coreOnly || sort !== "alpha")
+  const updateSearch = (patch: Partial<typeof search>) => void navigate({ search: (previous) => ({ ...previous, ...patch }) })
+  const clearFilters = () => { setQuery(""); setDebouncedQuery(""); updateSearch({ q: undefined, letter: undefined, coreOnly: undefined, sort: undefined, offset: 0 }) }
 
-  const counts = useMemo(
-    () => new Map((letters.data ?? []).map((item) => [item.letter, item.count])),
-    [letters.data],
-  );
-
-  const totalLettersCount = useMemo(
-    () => (letters.data ?? []).reduce((sum, item) => sum + item.count, 0),
-    [letters.data],
-  );
-
-  const total = view === "families" ? (families.data?.total ?? 0) : (lemmas.data?.total ?? 0);
-  const first = total === 0 ? 0 : offset + 1;
-  const last = Math.min(offset + limit, total);
-
-  const updateSearch = (patch: Partial<typeof search>) => {
-    void navigate({ search: (previous) => ({ ...previous, ...patch }) });
-  };
-
-  const hasActiveFilters = Boolean(search.q || search.letter || coreOnly || sort !== "alpha");
-
-  const clearFilters = () => {
-    setQuery("");
-    setDebouncedQuery("");
-    updateSearch({ q: undefined, letter: undefined, coreOnly: undefined, sort: undefined, offset: 0 });
-  };
-
-  return (
-    <div className="stack">
-      <PageHeader
-        code="Lexicon · Academic Vocabulary List (AVL)"
-        title="Academic Vocabulary"
-        lead="Browse, filter, and inspect the core academic vocabulary lexicon, frequency bands, and disciplinary distributions."
-        actions={
-          <div className="vocab-header-actions">
-            {isCurator && (
-              <button
-                type="button"
-                className={`btn ${showImport ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setShowImport((prev) => !prev)}
-              >
-                {showImport ? "✕ Close Import" : "↑ Import AVL Data"}
-              </button>
-            )}
-          </div>
-        }
-      />
-
-      {showImport && isCurator && (
-        <VocabularyImportCard onClose={() => setShowImport(false)} />
-      )}
-
-      <Tabs
-        label="Vocabulary view navigation"
-        value={view}
-        onChange={(nextView) =>
-          updateSearch({
-            view: nextView,
-            offset: 0,
-            letter: nextView === "families" ? undefined : search.letter,
-            coreOnly: nextView === "families" ? undefined : search.coreOnly,
-            sort: nextView === "families" ? undefined : search.sort,
-          })
-        }
-        items={[
-          { id: "lemmas", label: "Lemmas", count: lemmas.data?.total },
-          { id: "families", label: "Word Families", count: families.data?.total },
-        ]}
-      >
-        <Card className="vocab-filter-card">
-          <div className="vocab-toolbar">
-            <div className="vocab-search-wrap">
-              <input
-                type="search"
-                aria-label="Search vocabulary"
-                placeholder={
-                  view === "families"
-                    ? "Search word families by headword..."
-                    : "Search lemmas by prefix (e.g. analys, hypoth, meth)..."
-                }
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              {query && (
-                <button
-                  type="button"
-                  className="vocab-search-clear"
-                  onClick={() => setQuery("")}
-                  aria-label="Clear search input"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {view === "lemmas" && (
-              <div className="vocab-controls-row">
-                <label className="vocab-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={coreOnly}
-                    onChange={(event) =>
-                      updateSearch({ coreOnly: event.target.checked || undefined, offset: 0 })
-                    }
-                  />
-                  <span>Core only</span>
-                </label>
-
-                <label className="vocab-sort-label">
-                  <span className="vocab-label-text">Sort:</span>
-                  <select
-                    value={sort}
-                    aria-label="Sort order"
-                    onChange={(event) =>
-                      updateSearch({ sort: event.target.value as "alpha" | "rank", offset: 0 })
-                    }
-                  >
-                    <option value="alpha">A–Z (Alphabetical)</option>
-                    <option value="rank">Academic Rank</option>
-                  </select>
-                </label>
-
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm vocab-reset-btn"
-                    onClick={clearFilters}
-                  >
-                    Reset filters
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {view === "lemmas" && (
-            <div className="vocab-letters-container">
-              <div className="vocab-letters" role="toolbar" aria-label="Filter by initial letter">
-                <button
-                  type="button"
-                  className={!search.letter ? "vocab-letter is-selected" : "vocab-letter"}
-                  aria-pressed={!search.letter}
-                  onClick={() => {
-                    setQuery("");
-                    setDebouncedQuery("");
-                    updateSearch({ letter: undefined, q: undefined, offset: 0 });
-                  }}
-                >
-                  <span className="vocab-letter-char">ALL</span>
-                  <small className="vocab-letter-count">{totalLettersCount}</small>
-                </button>
-                {alphabet.map((letter) => {
-                  const count = counts.get(letter) ?? 0;
-                  const isSelected = search.letter === letter;
-                  return (
-                    <button
-                      key={letter}
-                      type="button"
-                      className={isSelected ? "vocab-letter is-selected" : "vocab-letter"}
-                      disabled={!letters.isPending && count === 0}
-                      aria-pressed={isSelected}
-                      onClick={() => {
-                        setQuery("");
-                        setDebouncedQuery("");
-                        updateSearch({
-                          letter: isSelected ? undefined : letter,
-                          q: undefined,
-                          offset: 0,
-                        });
-                      }}
-                    >
-                      <span className="vocab-letter-char">{letter.toUpperCase()}</span>
-                      <small className="vocab-letter-count">{count}</small>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </Card>
-
-        <Card
-          title={view === "families" ? "Academic Word Families" : "Academic Lemmas"}
-          aside={
-            total > 0 ? (
-              <span className="caption">
-                Showing {first.toLocaleString()}–{last.toLocaleString()} of {total.toLocaleString()}
-              </span>
-            ) : undefined
-          }
-        >
-          {view === "families" ? (
-            families.isPending ? (
-              <Loading />
-            ) : families.isError ? (
-              <ErrorState onRetry={() => void families.refetch()} message={families.error.message} />
-            ) : families.data.items.length === 0 ? (
-              <Empty>
-                {query ? (
-                  <>
-                    <p>No word families match &ldquo;{query}&rdquo;.</p>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => setQuery("")}
-                    >
-                      Clear search
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p>No word family groups recorded in the database.</p>
-                    {isCurator && (
-                      <p className="caption">
-                        Curators can import the word families spreadsheet via the import tool above.
-                      </p>
-                    )}
-                  </>
-                )}
-              </Empty>
-            ) : (
-              <div className="vocab-families-list">
-                {families.data.items.map((family) => (
-                  <details className="vocab-family-card" key={family.id}>
-                    <summary className="vocab-family-summary">
-                      <div className="vocab-family-summary-left">
-                        <strong className="vocab-family-headword">{family.headword}</strong>
-                        <Badge tone="info">{family.members.length} members</Badge>
-                      </div>
-                      <div className="vocab-family-summary-right">
-                        <span className="caption">Rank #{family.rank}</span>
-                        <span className="caption">
-                          {family.family_freq.toLocaleString()} total frequency
-                        </span>
-                      </div>
-                    </summary>
-                    <div className="table-wrap vocab-family-table-wrap">
-                      <table className="table">
-                        <thead>
-                          <tr>
-                            <th>Word Form</th>
-                            <th>Part of Speech</th>
-                            <th className="num">Frequency</th>
-                            <th>Category</th>
-                            <th>Domains</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {family.members.map((member) => (
-                            <tr key={`${family.id}-${member.lemma_id}`}>
-                              <td>
-                                <Link
-                                  to="/vocabulary/$lemmaId"
-                                  params={{ lemmaId: member.lemma_id }}
-                                  search={search}
-                                  className="vocab-word-link"
-                                >
-                                  <strong>{member.word}</strong>
-                                </Link>
-                              </td>
-                              <td>
-                                <Badge tone="neutral">{member.pos_label}</Badge>
-                              </td>
-                              <td className="num">{member.freq.toLocaleString()}</td>
-                              <td>
-                                <Badge>{member.category_label}</Badge>
-                              </td>
-                              <td>{member.domains.join(", ") || "—"}</td>
-                              <td>
-                                <Link
-                                  to="/vocabulary/$lemmaId"
-                                  params={{ lemmaId: member.lemma_id }}
-                                  search={search}
-                                  className="btn btn-ghost btn-sm"
-                                >
-                                  Inspect →
-                                </Link>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </details>
-                ))}
-              </div>
-            )
-          ) : lemmas.isPending ? (
-            <Loading />
-          ) : lemmas.isError ? (
-            <ErrorState onRetry={() => void lemmas.refetch()} message={lemmas.error.message} />
-          ) : lemmas.data.items.length === 0 ? (
-            <Empty>
-              {hasActiveFilters ? (
-                <div className="vocab-empty-filtered">
-                  <p>
-                    No lemmas found matching current filters
-                    {search.letter ? ` (Letter: ${search.letter.toUpperCase()})` : ""}
-                    {query ? ` (Query: "${query}")` : ""}.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={clearFilters}
-                  >
-                    Reset all filters
-                  </button>
-                </div>
-              ) : (
-                <div className="vocab-empty-initial">
-                  <p>No academic lemmas loaded in the database yet.</p>
-                  {isCurator && (
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm"
-                      onClick={() => setShowImport(true)}
-                    >
-                      Open Import Tool
-                    </button>
-                  )}
-                </div>
-              )}
-            </Empty>
-          ) : (
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Lemma Word</th>
-                    <th>Part of Speech</th>
-                    <th className="num">Rank</th>
-                    <th className="num">Band</th>
-                    <th>Academic Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lemmas.data.items.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <Link
-                          to="/vocabulary/$lemmaId"
-                          params={{ lemmaId: item.id }}
-                          search={search}
-                          className="vocab-word-link"
-                        >
-                          <strong>{item.word}</strong>
-                        </Link>
-                      </td>
-                      <td>
-                        <Badge tone="neutral">{item.pos_label}</Badge>
-                      </td>
-                      <td className="num">{item.rank !== null ? `#${item.rank}` : "—"}</td>
-                      <td className="num">{item.band !== null ? `Band ${item.band}` : "—"}</td>
-                      <td>
-                        <Badge tone={statusTone(item.status)}>{item.status_label || "—"}</Badge>
-                      </td>
-                      <td>
-                        <Link
-                          to="/vocabulary/$lemmaId"
-                          params={{ lemmaId: item.id }}
-                          search={search}
-                          className="btn btn-ghost btn-sm"
-                        >
-                          Details →
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {total > 0 && (
-            <div className="vocab-pagination">
-              <span className="caption">
-                Showing {first.toLocaleString()}–{last.toLocaleString()} of {total.toLocaleString()} {view === "families" ? "families" : "lemmas"}
-              </span>
-              <div className="vocab-pagination-controls">
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  disabled={offset === 0}
-                  onClick={() => updateSearch({ offset: Math.max(0, offset - limit) })}
-                >
-                  ← Previous
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  disabled={last >= total}
-                  onClick={() => updateSearch({ offset: offset + limit })}
-                >
-                  Next →
-                </button>
-              </div>
-            </div>
-          )}
-        </Card>
-      </Tabs>
-    </div>
-  );
+  return <div className="flex flex-col gap-6">
+    <PageHeader title="Academic vocabulary" description="Browse and inspect the academic lexicon by lemma, rank, and word family." actions={isCurator ? <Button variant={showImport ? "outline" : "default"} onClick={() => setShowImport((open) => !open)}>{showImport ? "Close import" : "Import vocabulary"}</Button> : undefined} />
+    {showImport && isCurator ? <VocabularyImportCard onClose={() => setShowImport(false)} /> : null}
+    <Tabs value={view} onValueChange={(nextView) => updateSearch({ view: nextView as "lemmas" | "families", offset: 0, letter: nextView === "families" ? undefined : search.letter, coreOnly: nextView === "families" ? undefined : search.coreOnly, sort: nextView === "families" ? undefined : search.sort })} className="flex flex-col gap-4">
+      <TabsList aria-label="Vocabulary view"><TabsTrigger value="lemmas">Lemmas{lemmas.data ? ` (${lemmas.data.total.toLocaleString()})` : ""}</TabsTrigger><TabsTrigger value="families">Word families{families.data ? ` (${families.data.total.toLocaleString()})` : ""}</TabsTrigger></TabsList>
+      <Card><CardContent className="flex flex-col gap-4 pt-4">
+        <div className="flex items-end gap-4"><Field className="max-w-xl"><FieldLabel htmlFor="vocabulary-search">Search vocabulary</FieldLabel><Input id="vocabulary-search" type="search" placeholder={view === "families" ? "Search word families by headword" : "Search lemmas by prefix"} value={query} onChange={(event) => setQuery(event.target.value)} /></Field>{query ? <Button variant="ghost" onClick={() => setQuery("")}>Clear</Button> : null}</div>
+        <TabsContent value="lemmas" className="flex flex-col gap-4">
+          <div className="flex items-end gap-6"><Field orientation="horizontal" className="w-auto"><Checkbox id="vocabulary-core" checked={coreOnly} onCheckedChange={(checked) => updateSearch({ coreOnly: checked === true ? true : undefined, offset: 0 })} /><FieldLabel htmlFor="vocabulary-core">Core only</FieldLabel></Field><Field className="w-44"><FieldLabel>Sort order</FieldLabel><Select value={sort} onValueChange={(value) => updateSearch({ sort: value as "alpha" | "rank", offset: 0 })}><SelectTrigger aria-label="Sort order"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="alpha">A–Z</SelectItem><SelectItem value="rank">Academic rank</SelectItem></SelectContent></Select></Field>{hasActiveFilters ? <Button variant="outline" onClick={clearFilters}>Reset filters</Button> : null}</div>
+          <ToggleGroup type="single" value={search.letter ?? "all"} onValueChange={(value) => { if (!value) return; setQuery(""); setDebouncedQuery(""); updateSearch({ letter: value === "all" ? undefined : value, q: undefined, offset: 0 }) }} aria-label="Filter vocabulary by initial letter" className="flex flex-wrap gap-1"><ToggleGroupItem value="all" aria-label="All letters" className="h-10 min-w-12 flex-col gap-0"><span>All</span><small className="tabular-nums text-muted-foreground">{totalLettersCount}</small></ToggleGroupItem>{alphabet.map((letter) => { const count = counts.get(letter) ?? 0; return <ToggleGroupItem key={letter} value={letter} disabled={!letters.isPending && count === 0} aria-label={`${letter.toUpperCase()} ${count} lemmas`} className="h-10 min-w-10 flex-col gap-0"><span>{letter.toUpperCase()}</span><small className="tabular-nums text-muted-foreground">{count}</small></ToggleGroupItem> })}</ToggleGroup>
+        </TabsContent>
+      </CardContent></Card>
+      <TabsContent value="lemmas" className="mt-0"><Card><CardHeader><CardTitle>Academic lemmas</CardTitle></CardHeader><CardContent className="flex flex-col gap-4"><QueryState pending={lemmas.isPending} error={lemmas.isError ? lemmas.error : null} empty={!lemmas.isPending && !lemmas.isError && lemmas.data.items.length === 0} onRetry={() => void lemmas.refetch()} emptyTitle={hasActiveFilters ? "No lemmas match these filters" : "No academic lemmas loaded"} emptyDescription={hasActiveFilters ? "Try another search, letter, or sort order." : "The lexicon has not been imported yet."} emptyAction={hasActiveFilters ? <Button variant="outline" onClick={clearFilters}>Reset filters</Button> : isCurator ? <Button variant="outline" onClick={() => setShowImport(true)}>Open import tool</Button> : undefined} />{!lemmas.isPending && !lemmas.isError && lemmas.data.items.length > 0 ? <Table><TableHeader><TableRow><TableHead>Lemma</TableHead><TableHead>Part of speech</TableHead><TableHead numeric>Rank</TableHead><TableHead numeric>Band</TableHead><TableHead>Status</TableHead><TableHead>Action</TableHead></TableRow></TableHeader><TableBody>{lemmas.data.items.map((item) => <TableRow key={item.id}><TableCell><Link className="font-medium text-primary hover:underline" to="/vocabulary/$lemmaId" params={{ lemmaId: item.id }} search={search}>{item.word}</Link></TableCell><TableCell><Badge variant="outline">{item.pos_label}</Badge></TableCell><TableCell numeric>{item.rank !== null ? `#${item.rank}` : "—"}</TableCell><TableCell numeric>{item.band !== null ? `Band ${item.band}` : "—"}</TableCell><TableCell><Badge variant={statusVariant(item.status)}>{item.status_label || "Unknown"}</Badge></TableCell><TableCell><Button asChild variant="outline" size="sm"><Link to="/vocabulary/$lemmaId" params={{ lemmaId: item.id }} search={search}>Details</Link></Button></TableCell></TableRow>)}</TableBody></Table> : null}{total > 0 ? <Pagination><PaginationContent><PaginationItem><PaginationPrevious text="Previous" aria-disabled={offset === 0} className={offset === 0 ? "pointer-events-none opacity-50" : undefined} onClick={(event) => { event.preventDefault(); if (offset > 0) updateSearch({ offset: Math.max(0, offset - limit) }) }} href="#" /></PaginationItem><PaginationItem><span className="px-3 text-sm text-muted-foreground">{first.toLocaleString()}–{last.toLocaleString()} of {total.toLocaleString()}</span></PaginationItem><PaginationItem><PaginationNext text="Next" aria-disabled={last >= total} className={last >= total ? "pointer-events-none opacity-50" : undefined} onClick={(event) => { event.preventDefault(); if (last < total) updateSearch({ offset: offset + limit }) }} href="#" /></PaginationItem></PaginationContent></Pagination> : null}</CardContent></Card></TabsContent>
+      <TabsContent value="families" className="mt-0"><Card><CardHeader><CardTitle>Academic word families</CardTitle></CardHeader><CardContent className="flex flex-col gap-4"><QueryState pending={families.isPending} error={families.isError ? families.error : null} empty={!families.isPending && !families.isError && families.data.items.length === 0} onRetry={() => void families.refetch()} emptyTitle={query ? "No word families match this search" : "No word families recorded"} emptyDescription="Try a different search or import a vocabulary spreadsheet." emptyAction={query ? <Button variant="outline" onClick={() => setQuery("")}>Clear search</Button> : undefined} />{!families.isPending && !families.isError && families.data.items.length > 0 ? <div className="flex flex-col gap-3">{families.data.items.map((family) => <details key={family.id} className="rounded-[var(--radius)] border border-border"><summary className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3 hover:bg-muted/50"><span className="flex items-center gap-3"><strong>{family.headword}</strong><Badge variant="outline">{family.members.length} members</Badge></span><span className="text-sm text-muted-foreground">Rank {family.rank} · {family.family_freq.toLocaleString()} frequency</span></summary><div className="border-t border-border p-2"><Table><TableHeader><TableRow><TableHead>Word form</TableHead><TableHead>Part of speech</TableHead><TableHead numeric>Frequency</TableHead><TableHead>Category</TableHead><TableHead>Domains</TableHead><TableHead>Action</TableHead></TableRow></TableHeader><TableBody>{family.members.map((member) => <TableRow key={`${family.id}-${member.lemma_id}`}><TableCell><Link className="font-medium text-primary hover:underline" to="/vocabulary/$lemmaId" params={{ lemmaId: member.lemma_id }} search={search}>{member.word}</Link></TableCell><TableCell><Badge variant="outline">{member.pos_label}</Badge></TableCell><TableCell numeric>{member.freq.toLocaleString()}</TableCell><TableCell><Badge>{member.category_label}</Badge></TableCell><TableCell>{member.domains.join(", ") || "—"}</TableCell><TableCell><Button asChild variant="outline" size="sm"><Link to="/vocabulary/$lemmaId" params={{ lemmaId: member.lemma_id }} search={search}>Inspect</Link></Button></TableCell></TableRow>)}</TableBody></Table></div></details>)}</div> : null}{total > 0 ? <p className="text-sm text-muted-foreground">Showing {first.toLocaleString()}–{last.toLocaleString()} of {total.toLocaleString()} families.</p> : null}</CardContent></Card></TabsContent>
+    </Tabs>
+  </div>
 }

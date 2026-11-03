@@ -99,7 +99,8 @@
   --primary: var(--brand);
   --primary-foreground: var(--brand-ink);
   --secondary-foreground: var(--text);
-  --muted-foreground: var(--muted);
+  --muted: var(--secondary);
+  --muted-foreground: #5f6368;
   --accent: var(--active);
   --accent-foreground: var(--text);
   --destructive: #c4242a;
@@ -151,7 +152,7 @@
   --rule: #161616;
   --control: #444444;
   --text: #ffffff;
-  --muted: #b4b4b4;
+  --muted: #222222;
   --faint: #949494;
   --secondary: #222222;
   --nav-active-bg: #222222;
@@ -175,7 +176,7 @@
   --primary: var(--brand);
   --primary-foreground: var(--brand-ink);
   --secondary-foreground: var(--text);
-  --muted-foreground: var(--muted);
+  --muted-foreground: #b4b4b4;
   --accent: var(--active);
   --accent-foreground: var(--text);
   --destructive: #e5566f;

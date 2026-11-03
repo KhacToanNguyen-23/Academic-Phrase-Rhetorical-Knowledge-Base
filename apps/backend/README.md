@@ -107,4 +107,8 @@ See [the root README](../../README.md) for the PRD traceability table and comman
 
 ## Internal reference library
 
+## Offline data packs
+
+`modules/pack/` transfers only the PhrasePattern graph. The `approved_phrases` store from ADR-0009 is intentionally out of scope for pack v0.1; pack tooling does not read it. Offline self-check: `uv run python -m aprkb.cli validate-pack <pack-dir>`. Online: run `uv run python -m aprkb.cli init-reference`, then `uv run python -m aprkb.cli import-pack <pack-dir>` (preview with `--dry-run`). Export with `uv run python -m aprkb.cli export-pack --out <pack-dir> --only-approved`. See [data pack spec](../../doc/data-pack-spec.md).
+
 The `/v1/reference-library` GET routes serve a quarantined external reference collection from its own tables. They return 404 unless `REFERENCE_LIBRARY_ENABLED=true`. Import and purge are CLI-only (`uv run python -m aprkb.cli import-reference-library --file <path>` and `uv run python -m aprkb.cli purge-reference-library`). Import replacement and its content-free audit event commit together. Imported entries are disconnected from patterns, recommendations, render, and validation. Keep the source notice in the UI and do not treat these entries as approved or redistributable patterns.

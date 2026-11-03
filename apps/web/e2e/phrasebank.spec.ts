@@ -51,8 +51,15 @@ const taxonomy = {
 };
 const patterns = [{
   id: "pattern-1", status: "approved", intent_code: "INTRO_GAP_INDICATE", canonical_frame: "Alpha invented {topic} frame",
-  version_no: 1, current_version_id: "version-1", slots: {}, epistemic_strength: "moderate", claim_type: "descriptive",
+  intent_name: "Invented intent", version_no: 1, current_version_id: "version-1",
+  slots: { topic: { type: "topic", label: "Topic", instruction: "Name an invented topic", example: "invented method", required: true, min_length: 1 } },
+  epistemic_strength: null, epistemic_strength_labelled: false, claim_type: null, claim_type_labelled: false,
+  variants: [{ text: "Invented alternative {topic}", register: "formal" }],
+  evidence_min: "single_study", forbidden_contexts: ["DISCUSSION"],
   allowed_sections: ["INTRO"], allowed_genres: ["RESEARCH_ARTICLE"],
+  source_type: "mined", license_code: "CC-BY", license_name: "Creative Commons Attribution",
+  license_allows_display: true, license_flag: false, article_id: "article-1", source_reference: null,
+  source_sentence_count: 2, discipline_affinities: [],
 }];
 
 test.use({ baseURL, browserName: "chromium" });
@@ -276,6 +283,31 @@ test("AP-RKB category shows the Writer cross link", async ({ page }) => {
   await expect(page.locator(".badge")).toHaveCount(0);
   await expect(page.locator(".phrasebank-source-credit")).toHaveText("Source: University of Manchester Academic Phrasebank.");
   await expect(page.getByRole("link", { name: "Use in Writer" })).toHaveAttribute("href", "/writer");
+});
+
+test("AP-RKB list opens a complete pattern detail without per-row detail requests", async ({ page }) => {
+  await authenticate(page);
+  await mockLibrary(page);
+  let detailRequests = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/v1/patterns/pattern-1") detailRequests += 1;
+  });
+  await page.goto("/phrasebank/aprkb-patterns");
+  await expect(page.getByText("Alpha invented {topic} frame")).toBeVisible();
+  expect(detailRequests).toBe(0);
+  await page.getByRole("link", { name: "Alpha invented {topic} frame" }).click();
+  await expect(page).toHaveURL(/\/phrasebank\/pattern\/pattern-1$/);
+  await expect(page.getByRole("heading", { name: "Frame" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Slots" })).toBeVisible();
+  await expect(page.getByText(/Type: topic; Label: Topic/)).toBeVisible();
+  await expect(page.getByText("Invented alternative {topic}")).toBeVisible();
+  await expect(page.getByText("single_study")).toBeVisible();
+  await expect(page.getByText("DISCUSSION")).toBeVisible();
+  await expect(page.getByText("Not labelled")).toHaveCount(2);
+  await expect(page.getByText(/Creative Commons Attribution/)).toBeVisible();
+  await expect(page.getByText("article-1")).toBeVisible();
+  await expect(page.getByText("Version 1", { exact: false })).toBeVisible();
+  expect(detailRequests).toBe(1);
 });
 
 test.beforeAll(() => mkdirSync(screenshots, { recursive: true }));

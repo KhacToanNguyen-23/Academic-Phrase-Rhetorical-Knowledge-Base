@@ -162,7 +162,7 @@ function PatternGroups({ patterns, query = "" }: { patterns: PatternDetail[]; qu
       <h3>{group}</h3>
       <ul className="phrasebank-pattern-list">
         {items.map((pattern) => <li id={`pattern-${pattern.id}`} key={pattern.id}>
-          <p><Link to="/phrasebank/$slug" params={{ slug: "aprkb-patterns" }} hash={`pattern-${pattern.id}`}>{pattern.canonical_frame}</Link> <Link to="/writer" className="btn btn-ghost btn-sm">Use in Writer</Link></p>
+          <p><Link to="/phrasebank/pattern/$id" params={{ id: pattern.id }}>{pattern.canonical_frame}</Link> <Link to="/writer" className="btn btn-ghost btn-sm">Use in Writer</Link></p>
         </li>)}
       </ul>
     </section>)}
@@ -281,5 +281,49 @@ export function PhrasebankCategory({ slug }: { slug: string }) {
       <h2>{item.heading}</h2><EntryList entries={item.entries} />
     </section>)}
     <SourceCredit />
+  </div>;
+}
+
+export function PhrasebankPatternDetail({ id }: { id: string }) {
+  const pattern = useQuery({
+    queryKey: ["phrasebank-pattern", id],
+    queryFn: () => phrasebankSources.pattern(id),
+    retry: false,
+  });
+  if (pattern.isPending) return <Loading />;
+  if (pattern.isError || !pattern.data) return <Empty>Pattern detail is unavailable.</Empty>;
+  const item = pattern.data;
+  const list = (values: string[]) => values.length ? values.join(", ") : "—";
+  return <div className="stack">
+    <p><Link to="/phrasebank/$slug" params={{ slug: "aprkb-patterns" }}>← AP-RKB patterns</Link></p>
+    <PageHeader title={item.intent_name || item.intent_code} />
+    <Card title="Frame"><p>{item.canonical_frame}</p></Card>
+    <Card title="Slots">
+      {Object.entries(item.slots ?? {}).length ? <dl>{Object.entries(item.slots ?? {}).map(([name, slot]) => {
+        const metadata = typeof slot === "string" ? { type: slot, label: null, instruction: null, example: null, required: true } : slot;
+        return <div key={name}><dt>{name}</dt><dd>Type: {metadata.type}; Label: {metadata.label ?? "—"}; Instruction: {metadata.instruction ?? "—"}; Example: {metadata.example ?? "—"}; Required: {metadata.required ? "Yes" : "No"}</dd></div>;
+      })}</dl> : <p>—</p>}
+    </Card>
+    <Card title="Variants">{item.variants.length ? <ul>{item.variants.map((variant, index) => <li key={`${index}-${variant.text}`}>{variant.text} {variant.register && <small>({variant.register})</small>}</li>)}</ul> : <p>—</p>}</Card>
+    <Card title="Usage"><dl>
+      <dt>Minimum evidence</dt><dd>{item.evidence_min ?? "—"}</dd>
+      <dt>Forbidden contexts</dt><dd>{list(item.forbidden_contexts)}</dd>
+      <dt>Allowed sections</dt><dd>{list(item.allowed_sections)}</dd>
+      <dt>Allowed genres</dt><dd>{list(item.allowed_genres)}</dd>
+    </dl></Card>
+    <Card title="Evidence"><dl>
+      <dt>Strength</dt><dd>{item.epistemic_strength ?? "Not labelled"}</dd>
+      <dt>Claim type</dt><dd>{item.claim_type ?? "Not labelled"}</dd>
+    </dl></Card>
+    <Card title="Provenance"><dl>
+      <dt>Source type</dt><dd>{item.source_type}</dd>
+      <dt>License</dt><dd>{item.license_name ?? "—"}{item.license_code ? ` (${item.license_code})` : ""}</dd>
+      <dt>Allows display</dt><dd>{item.license_allows_display ? "Yes" : "No"}</dd>
+      <dt>Internal use</dt><dd>{item.license_flag ? "Yes" : "No"}</dd>
+      <dt>Article reference</dt><dd>{item.source_reference ?? "—"}</dd>
+      <dt>Article ID</dt><dd>{item.article_id ?? "—"}</dd>
+      <dt>Source sentences</dt><dd>{item.source_sentence_count}</dd>
+    </dl></Card>
+    <p>Version {item.version_no} · <Link to="/writer">Use in Writer</Link></p>
   </div>;
 }

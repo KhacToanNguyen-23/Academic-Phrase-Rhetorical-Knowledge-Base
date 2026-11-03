@@ -8,7 +8,7 @@ import pytest
 from aprkb.modules.discipline.null_source import NullDisciplineSource
 from aprkb.modules.recommendation.context import RecommendationContext
 from aprkb.modules.recommendation.diversifier import PassThroughDiversifier
-from aprkb.modules.recommendation.fallback import FallbackTierLoader
+from aprkb.modules.recommendation.fallback import FallbackTierLoader, choose_fallback_tier
 from aprkb.modules.recommendation.gates import build_gates
 from aprkb.modules.recommendation.gates.license import LicenseGate
 from aprkb.modules.recommendation.pattern_view import PatternView
@@ -59,7 +59,9 @@ def test_hard_gates_are_registered_in_prd_order(context, evidence_policy):
         "ApprovalGate",
         "RetiredGate",
         "LicenseGate",
+        "ForbiddenContextGate",
         "IntentSectionGate",
+        "EvidenceMinimumGate",
         "EvidenceGate",
         "GuidelineGate",
     ]
@@ -282,6 +284,62 @@ def test_scaffold_diversifier_preserves_ranked_order():
     ranked = [pattern(), pattern()]
 
     assert PassThroughDiversifier().diversify(ranked) == ranked
+
+
+def test_usage_gates_report_excluded_counts(context, policy_bundle, evidence_policy):
+    candidates = [
+        pattern(epistemic_strength="low", evidence_min="multiple_consistent"),
+        pattern(forbidden_contexts=("results",)),
+        pattern(forbidden_contexts=("RESEARCH_ARTICLE",)),
+        pattern(forbidden_contexts=("causal",)),
+    ]
+    pipeline = RecommendationPipeline(
+        gates=build_gates(evidence_policy=evidence_policy),
+        scorers=build_scorers(
+            discipline_source=NullDisciplineSource(), evidence_policy=evidence_policy
+        ),
+        weights=policy_bundle.ranking_weights.weights,
+        tier_loader=FallbackTierLoader(
+            tiers=("generic_genre",), by_tier={"generic_genre": candidates}
+        ),
+    )
+    result = pipeline.recommend(replace(context, genre_code="RESEARCH_ARTICLE"))
+    assert result.excluded == {"GATE_EVIDENCE_MIN": 1, "GATE_FORBIDDEN_CONTEXT": 3}
+    assert len(result.items) == 0
+    assert len(pipeline.recommend(replace(context, evidence_level=None)).items) == 2
+
+
+def test_forbidden_section_is_reported_before_allowed_section_mismatch(context, evidence_policy):
+    gate = next(
+        gate
+        for gate in build_gates(evidence_policy=evidence_policy)
+        if type(gate).__name__ == "ForbiddenContextGate"
+    )
+    candidate = pattern(allowed_sections=("discussion",), forbidden_contexts=("results",))
+    first_failed_gate = next(
+        gate
+        for gate in build_gates(evidence_policy=evidence_policy)
+        if not gate.check(candidate, context).passed
+    )
+    assert type(first_failed_gate).__name__ == type(gate).__name__
+    assert gate.check(candidate, context).reason == "Requested context is forbidden"
+    assert gate.check(candidate, context).reason == "Requested context is forbidden"
+
+
+def test_fallback_selection_requires_verified_data():
+    tiers = (
+        "journal_genre",
+        "similar_journal_genre",
+        "subfield_genre",
+        "field_genre",
+        "generic_genre",
+    )
+    assert choose_fallback_tier(tiers) == "generic_genre"
+    assert choose_fallback_tier(tiers, journal_genre_verified=True) == "journal_genre"
+    assert (
+        choose_fallback_tier(tiers, similar_journal_fingerprint_verified=True)
+        == "similar_journal_genre"
+    )
 
 
 def test_recommendation_applies_limit_after_diversification(

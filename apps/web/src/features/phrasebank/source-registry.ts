@@ -73,14 +73,13 @@ export const phrasebankSources = {
   })),
   taxonomy: async () => unwrap(await client().GET("/v1/taxonomy")),
   patterns: async (): Promise<PatternDetail[]> => {
-    const api = client();
-    const summaries = unwrap(await api.GET("/v1/patterns", {
+    return unwrap(await client().GET("/v1/patterns", {
       params: { query: { status: "approved", limit: 200 } },
     }));
-    return Promise.all(summaries.map(async (item) => unwrap(await api.GET("/v1/patterns/{pattern_id}", {
-      params: { path: { pattern_id: item.id } },
-    }))));
   },
+  pattern: async (id: string): Promise<PatternDetail> => unwrap(await client().GET("/v1/patterns/{pattern_id}", {
+    params: { path: { pattern_id: id } },
+  })),
 };
 
 const referenceSource: PhrasebankSource<ManchesterCategory, ManchesterSearchResult, ManchesterDetail> = {

@@ -33,6 +33,7 @@ class RecommendationItemResponse(BaseModel):
     license_name: str | None
     license_flag: bool
     source_reference: str | None
+    article_id: UUID | None
 
 
 class RecommendationResponse(BaseModel):

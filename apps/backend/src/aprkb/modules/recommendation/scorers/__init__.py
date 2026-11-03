@@ -11,17 +11,23 @@ from aprkb.modules.recommendation.scorers.implementations import (
     ProvenanceScorer,
 )
 from aprkb.policies.evidence import EvidencePolicy
+from aprkb.policies.loader import load_policy_bundle
+from aprkb.policies.schemas import RankingWeightsPolicy
 
 
 def build_scorers(
-    *, discipline_source: DisciplineSource, evidence_policy: EvidencePolicy
+    *,
+    discipline_source: DisciplineSource,
+    evidence_policy: EvidencePolicy,
+    ranking_policy: RankingWeightsPolicy | None = None,
 ) -> list[Scorer]:
+    ranking_policy = ranking_policy or load_policy_bundle().ranking_weights
     return [
         DisciplineScorer(discipline_source),
         JournalGenreScorer(),
         EvidenceScorer(evidence_policy),
         LinguisticScorer(),
-        ProvenanceScorer(),
+        ProvenanceScorer(ranking_policy.provenance_scores),
     ]
 
 

@@ -15,7 +15,7 @@ from aprkb.modules.journals import service as journal_service
 from aprkb.modules.journals.guideline_policy import GuidelinePolicy
 from aprkb.modules.recommendation import repository
 from aprkb.modules.recommendation.context import RecommendationContext
-from aprkb.modules.recommendation.fallback import FallbackTierLoader
+from aprkb.modules.recommendation.fallback import FallbackTierLoader, choose_fallback_tier
 from aprkb.modules.recommendation.gates import build_gates
 from aprkb.modules.recommendation.models import RecommendationLog
 from aprkb.modules.recommendation.pattern_view import PatternView
@@ -26,6 +26,40 @@ from aprkb.modules.taxonomy import repository as taxonomy_repository
 from aprkb.modules.taxonomy import service as taxonomy_service
 from aprkb.policies.evidence import EvidencePolicy
 from aprkb.policies.loader import PolicyBundle
+
+CRITERION_LABELS = {
+    "discipline": "Discipline",
+    "journal_genre": "Journal and genre",
+    "evidence": "Evidence",
+    "linguistic": "Keyword match",
+    "provenance": "Provenance",
+}
+
+
+def score_explanations(
+    breakdown: dict[str, float | None],
+    *,
+    claim_type: str | None,
+    strength: str | None,
+    evidence_level: str | None,
+    evidence_policy: EvidencePolicy,
+) -> list[str]:
+    """Describe each measured score using its actual value and evidence ceiling."""
+    explanations = [
+        f"{CRITERION_LABELS[key]}: {value:.3f}"
+        if value is not None
+        else f"{CRITERION_LABELS[key]}: not available"
+        for key, value in breakdown.items()
+    ]
+    if evidence_level is not None:
+        try:
+            maximum = evidence_policy.max_strength(claim_type or "", evidence_level)
+        except ValueError:
+            maximum = "not available"
+        explanations.append(
+            f"Evidence strength: {strength or 'Not labelled'}; maximum allowed: {maximum}"
+        )
+    return explanations
 
 
 async def require_issued_candidate(
@@ -96,59 +130,44 @@ async def recommend(
         query=query or None,
         move_code=payload.move,
         claim_type=payload.claim_type,
+        internal_use_codes=frozenset(policy_bundle.license.internal_use_codes),
     )
-    rows_by_version: dict[UUID, list[repository.PatternRow]] = {}
-    for row in rows:
-        rows_by_version.setdefault(row[2].id, []).append(row)
     by_tier: dict[str, list[PatternView]] = {
         tier: [] for tier in policy_bundle.fallback_tiers.tiers
     }
-    for version_rows in rows_by_version.values():
-        pattern, _intent, version, usage, provenance, license_row, article = version_rows[0]
-        if len(version_rows) != 1:
-            provenance = None
-            license_row = None
-            article = None
-        source_type = provenance.source_type if provenance else "unknown"
-        allowed_genres = tuple(usage.allowed_genres) if usage else ()
+    for row in rows:
+        allowed_genres = tuple(row.allowed_genres)
         if payload.genre and allowed_genres and payload.genre not in allowed_genres:
             continue
-        # A genre match alone is not evidence of journal-specific suitability.
-        tier = "generic_genre"
-        if tier not in by_tier:
+        tier = choose_fallback_tier(policy_bundle.fallback_tiers.tiers)
+        if tier is None:
             continue
         by_tier[tier].append(
             PatternView(
-                pattern_version_id=version.id,
-                status=pattern.status,
-                intent_code=_intent.code,
-                canonical_frame=version.canonical_frame,
-                claim_type=version.claim_type,
-                epistemic_strength=version.epistemic_strength,
-                allowed_sections=tuple(usage.allowed_sections) if usage else (),
+                pattern_version_id=row.current_version_id,
+                status=row.status,
+                intent_code=row.intent_code,
+                canonical_frame=row.canonical_frame,
+                claim_type=row.claim_type,
+                epistemic_strength=row.epistemic_strength,
+                allowed_sections=tuple(row.allowed_sections),
                 allowed_genres=allowed_genres,
-                source_type=source_type,
+                source_type=row.source_type,
                 license_allows_display=(
-                    source_type == "authored"
+                    row.source_type == "authored"
                     or (
-                        source_type == "mined"
-                        and license_row is not None
-                        and (
-                            license_row.allows_display
-                            or license_row.code in policy_bundle.license.internal_use_codes
-                        )
+                        row.source_type == "mined"
+                        and (row.license_allows_display or row.license_flag)
                     )
                 ),
-                license_flag=(
-                    license_row is not None
-                    and license_row.code in policy_bundle.license.internal_use_codes
-                ),
-                version_no=version.version_no,
-                license_code=license_row.code if license_row else None,
-                license_name=license_row.name if license_row else None,
-                source_reference=(
-                    (article.doi or f"Article {article.id}") if article is not None else None
-                ),
+                license_flag=row.license_flag,
+                version_no=row.version_no,
+                license_code=row.license_code,
+                license_name=row.license_name,
+                source_reference=row.source_reference,
+                article_id=row.article_id,
+                evidence_min=row.evidence_min,
+                forbidden_contexts=tuple(row.forbidden_contexts),
             )
         )
     context = RecommendationContext(
@@ -166,7 +185,9 @@ async def recommend(
     pipeline = RecommendationPipeline(
         gates=build_gates(evidence_policy=evidence_policy, guideline_policy=guideline_policy),
         scorers=build_scorers(
-            discipline_source=NullDisciplineSource(), evidence_policy=evidence_policy
+            discipline_source=NullDisciplineSource(),
+            evidence_policy=evidence_policy,
+            ranking_policy=policy_bundle.ranking_weights,
         ),
         weights=policy_bundle.ranking_weights.weights,
         tier_loader=FallbackTierLoader(tiers=policy_bundle.fallback_tiers.tiers, by_tier=by_tier),
@@ -215,10 +236,14 @@ async def recommend(
             "license_name": item.pattern.license_name,
             "license_flag": item.pattern.license_flag,
             "source_reference": item.pattern.source_reference,
-            "explanations": [
-                *item.explanations,
-                *([fallback_reason] if fallback_reason is not None else []),
-            ],
+            "article_id": item.pattern.article_id,
+            "explanations": score_explanations(
+                item.breakdown,
+                claim_type=payload.claim_type or item.pattern.claim_type,
+                strength=item.pattern.epistemic_strength,
+                evidence_level=payload.evidence_level,
+                evidence_policy=evidence_policy,
+            ),
         }
         for item in result.items
     ]

@@ -46,10 +46,20 @@ class LicensesPolicy(VersionedPolicy):
 
 class RankingWeightsPolicy(VersionedPolicy):
     weights: dict[str, float]
+    provenance_scores: dict[str, float]
     evidence_alignment_formula: Literal[
         "1 - abs(max_supported - candidate_strength) / strength_span"
     ]
     keyword_formula: Literal["matched_keywords / query_keywords"]
+
+    @field_validator("provenance_scores")
+    @classmethod
+    def validate_provenance_scores(cls, scores: dict[str, float]) -> dict[str, float]:
+        if set(scores) != {"authored", "mined"} or any(
+            not isfinite(score) or score < 0 or score > 1 for score in scores.values()
+        ):
+            raise ValueError("provenance_scores must define authored and mined values in [0, 1]")
+        return scores
 
     @field_validator("weights")
     @classmethod

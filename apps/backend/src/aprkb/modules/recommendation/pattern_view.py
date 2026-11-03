@@ -10,8 +10,8 @@ class PatternView:
     status: str
     intent_code: str
     canonical_frame: str
-    claim_type: str
-    epistemic_strength: str
+    claim_type: str | None
+    epistemic_strength: str | None
     allowed_sections: tuple[str, ...]
     allowed_genres: tuple[str, ...]
     source_type: str
@@ -21,7 +21,11 @@ class PatternView:
     license_code: str | None = None
     license_name: str | None = None
     source_reference: str | None = None
+    article_id: UUID | None = None
+    evidence_min: str | None = None
+    forbidden_contexts: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "allowed_sections", tuple(self.allowed_sections))
         object.__setattr__(self, "allowed_genres", tuple(self.allowed_genres))
+        object.__setattr__(self, "forbidden_contexts", tuple(self.forbidden_contexts))

@@ -28,13 +28,18 @@ Admin = Annotated[ApiClient, Depends(require_role("admin"))]
 
 @router.get("/versions/{version_id}", response_model=RenderableVersionRead)
 async def get_renderable_version(
-    version_id: UUID, _client: Client, session: DatabaseSession
+    version_id: UUID, _client: Client, session: DatabaseSession, request: Request
 ) -> RenderableVersionRead:
-    version, source = await service.get_renderable_version(session, version_id)
+    version = await service.get_renderable_version(
+        session,
+        version_id,
+        frozenset(request.app.state.policy_bundle.license.internal_use_codes),
+    )
     return RenderableVersionRead.model_validate(
         {
-            **PatternVersionRead.model_validate(version).model_dump(),
-            "source_type": source.source_type,
+            **version.as_response(),
+            "id": version.current_version_id,
+            "pattern_id": version.id,
         }
     )
 
@@ -43,6 +48,7 @@ async def get_renderable_version(
 async def list_patterns(
     client: Client,
     session: DatabaseSession,
+    request: Request,
     intent: str | None = None,
     section: str | None = None,
     pattern_status: Annotated[str | None, Query(alias="status")] = None,
@@ -57,16 +63,27 @@ async def list_patterns(
         offset=offset,
         limit=limit,
         renderable_only=client.role not in {"curator", "admin"},
+        internal_use_codes=frozenset(request.app.state.policy_bundle.license.internal_use_codes),
     )
     return [PatternSummary.model_validate(row) for row in rows]
 
 
 @router.get("/{pattern_id}", response_model=PatternDetail)
-async def get_pattern(pattern_id: UUID, client: Client, session: DatabaseSession) -> PatternDetail:
+async def get_pattern(
+    pattern_id: UUID, client: Client, session: DatabaseSession, request: Request
+) -> PatternDetail:
     detail = (
-        await service.pattern_detail(session, pattern_id)
+        await service.pattern_detail(
+            session,
+            pattern_id,
+            frozenset(request.app.state.policy_bundle.license.internal_use_codes),
+        )
         if client.role in {"curator", "admin"}
-        else await service.renderable_pattern_detail(session, pattern_id)
+        else await service.renderable_pattern_detail(
+            session,
+            pattern_id,
+            frozenset(request.app.state.policy_bundle.license.internal_use_codes),
+        )
     )
     return PatternDetail.model_validate(detail)
 

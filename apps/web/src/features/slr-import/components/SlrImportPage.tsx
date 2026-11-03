@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Badge, Card, Empty, Field, Loading, PageHeader, Stat, StatusBadge } from "@/shared/ui";
@@ -15,6 +16,7 @@ type JobResult = {
   skipped_format?: number;
   skipped_invalid_content?: number;
   continuation_job_id?: string | null;
+  batch_id?: string | null;
 };
 const taxonFields: Record<string, string> = { domain: "domainId", field: "fieldId", subfield: "subfieldId", topic: "topicId" };
 type TaxonomyPage = { items: { id: string; label: string }[]; nextCursor: string | null };
@@ -621,6 +623,12 @@ export function SlrImportPage() {
                       ⚠️ <strong>Cảnh báo bản quyền:</strong> Hơn 50% số bài bị bỏ qua do thiếu license cho phép mining. Xem chi tiết tại <code>policies/licenses.yaml</code>.
                     </div>
                   )}
+
+                {result?.batch_id && (result.imported ?? 0) > 0 && ["done", "succeeded"].includes(job.data?.status ?? "") && (
+                  <Link to="/extract" search={{ batch: result.batch_id }} className="btn btn-primary" style={{ width: "100%", marginTop: 14 }}>
+                    Trích xuất phrase từ batch này <span className="arrow">→</span>
+                  </Link>
+                )}
 
                 {result?.continuation_job_id && (
                   <button

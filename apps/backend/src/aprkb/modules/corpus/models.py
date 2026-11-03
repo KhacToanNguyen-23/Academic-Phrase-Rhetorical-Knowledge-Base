@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -44,6 +44,8 @@ class Article(MutableEntityMixin, Base):
     license_id: Mapped[UUID] = mapped_column(ForeignKey("licenses.id"))
     blob_key: Mapped[str] = mapped_column(String(1024))
     ingest_status: Mapped[str] = mapped_column(String(32), default="pending")
+    # Id of the first import job of one "Lay bai bao" run; continuation jobs inherit it.
+    import_batch_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), index=True)
 
 
 class ArticleSection(EntityMixin, Base):

@@ -8,6 +8,7 @@ def load_models() -> None:
     for domain in (
         "audit",
         "corpus",
+        "extraction",
         "identity",
         "journals",
         "mining",

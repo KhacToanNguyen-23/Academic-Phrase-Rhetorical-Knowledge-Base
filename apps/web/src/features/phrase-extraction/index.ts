@@ -1,0 +1,1 @@
+export { ExtractPage } from "./ExtractPage";

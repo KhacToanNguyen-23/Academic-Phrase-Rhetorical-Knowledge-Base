@@ -163,6 +163,15 @@ class SlotAbstractionPolicy(VersionedPolicy):
     min_clause_words: int = Field(ge=1, le=20)
     own_determiners: list[str] = Field(min_length=1)
     prior_determiners: list[str] = Field(min_length=1)
+    # Single words between subject and reporting verb that are kept literal in the frame.
+    verb_modifiers: list[str] = Field(default_factory=list)
+
+    @field_validator("verb_modifiers")
+    @classmethod
+    def validate_verb_modifiers(cls, values: list[str]) -> list[str]:
+        if any(not re.fullmatch(r"[A-Za-z]+", value) for value in values):
+            raise ValueError("verb modifiers must be single words")
+        return values
 
     @model_validator(mode="after")
     def validate_determiners(self) -> "SlotAbstractionPolicy":

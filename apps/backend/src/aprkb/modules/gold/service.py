@@ -46,6 +46,9 @@ async def create_sample(
     actor: ApiClient | None,
     request_id: str,
 ) -> GoldSampleResult:
+    # A sentence already in any batch must not be drawn again: it could land in dev in one batch
+    # and test in another, leaking between the partitions.
+    already_sampled = select(GoldItem.sentence_id).where(GoldItem.sentence_id.is_not(None))
     rows = list(
         await session.execute(
             select(Sentence, Article.id, ArticleSection.section_code)
@@ -56,6 +59,7 @@ async def create_sample(
                 License.allows_mining.is_(True),
                 Article.ingest_status == "ready",
                 Article.source == "slr",
+                Sentence.id.not_in(already_sampled),
             )
             .order_by(Sentence.article_id, Sentence.char_start, Sentence.id)
         )

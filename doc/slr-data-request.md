@@ -57,6 +57,22 @@ Nếu không thể cung cấp theo từng bài, xin một **văn bản xác nh�
 - Bộ lọc `fieldId` / `subfieldId` / `domainId` trả đúng kết quả sau khi dữ liệu đã được điền.
 
 ## 4. P1: Thông tin tạp chí và loại bài
+
+### Quan sát từ DB dev (2026-11-02)
+
+- Có 10 bài `source=slr`, cả 10 đã `ingest_status=ready`.
+- 10/10 blob có khối JSON đầu file với `schema=slr-paper-metadata-v1` và `source=PDF`.
+- 6/10 blob có `journal`, 4/10 có `journal` rỗng; 5 tên journal khác nhau xuất hiện: `Computers and Electrical Engineering`, `Engineering Applications of Artificial Intelligence`, `Future Generation Computer Systems`, `International Journal of Critical Infrastructure Protection`, `Tsinghua Science and Technology`.
+- 0/10 bài có `articles.journal_id`; bảng `journal_profiles` hiện có 0 bản ghi. Đây là thiếu mapping trong importer, không phải thiếu journal trong blob.
+- `SlrRepositorySource` hiện chỉ đọc title/DOI/license từ response detail; `SourceArticleRef` chưa có journal và `import_page` ghi nguyên bytes artifact, không tự tạo khối metadata. Cần xác nhận với response SLR detail liệu `journal` đến từ API hay chỉ có trong artifact PDF.
+
+### Đề xuất mapping đang chờ owner duyệt
+
+- Nếu SLR detail trả về `journal`, truyền field này trong `SourceArticleRef` và map trong bước import; không đọc lại journal từ blob.
+- Chuẩn hóa tên bằng casefold, bỏ dấu câu và gộp khoảng trắng; alias (nếu cần) sẽ đặt trong YAML policy có `TODO(owner)`.
+- Journal rỗng hoặc DOI preprint (`preprints...`) giữ `journal_id=NULL`. Không suy ra journal từ DOI khi chưa được owner duyệt; DOI prefix chỉ là tín hiệu phụ có thể xem xét sau.
+- SLR chỉ cần bổ sung `venue.id` ổn định và các ISSN (`issnL`, `issnPrint`, `issnElectronic`) để tăng độ tin cậy khi khớp journal; `venue.publisher` là tùy chọn bổ sung.
+
 | Field | Mô tả | Lý do cần |
 |---|---|---|
 | `venue.id` | ID nguồn ổn định (ví dụ OpenAlex Source ID) | Gom bài theo tạp chí mà không phụ thuộc cách viết tên |

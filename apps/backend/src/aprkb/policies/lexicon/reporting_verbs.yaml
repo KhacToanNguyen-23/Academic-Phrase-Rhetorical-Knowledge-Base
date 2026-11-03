@@ -1,6 +1,6 @@
 # Conservative morphology groups; no cross-lemma synonym merging without review.
 # Provisional vocabulary; TODO(owner, FR-06.2): approve before production use.
-version: 0.1.0
+version: 0.2.0
 classes:
   suggest:
     present: [suggest, suggests]
@@ -30,3 +30,59 @@ classes:
     present: [prove, proves]
     past: [proved, proven]
     present_perfect: [has proved, have proved, has proven, have proven]
+  reveal:
+    present: [reveal, reveals]
+    past: [revealed]
+    present_perfect: [has revealed, have revealed]
+  confirm:
+    present: [confirm, confirms]
+    past: [confirmed]
+    present_perfect: [has confirmed, have confirmed]
+  imply:
+    present: [imply, implies]
+    past: [implied]
+    present_perfect: [has implied, have implied]
+  highlight:
+    present: [highlight, highlights]
+    past: [highlighted]
+    present_perfect: [has highlighted, have highlighted]
+  observe:
+    present: [observe, observes]
+    past: [observed]
+    present_perfect: [has observed, have observed]
+  conclude:
+    present: [conclude, concludes]
+    past: [concluded]
+    present_perfect: [has concluded, have concluded]
+  argue:
+    present: [argue, argues]
+    past: [argued]
+    present_perfect: [has argued, have argued]
+  note:
+    present: [note, notes]
+    past: [noted]
+    present_perfect: [has noted, have noted]
+  establish:
+    present: [establish, establishes]
+    past: [established]
+    present_perfect: [has established, have established]
+  verify:
+    present: [verify, verifies]
+    past: [verified]
+    present_perfect: [has verified, have verified]
+  state:
+    present: [state, states]
+    past: [stated]
+    present_perfect: [has stated, have stated]
+  claim:
+    present: [claim, claims]
+    past: [claimed]
+    present_perfect: [has claimed, have claimed]
+  assume:
+    present: [assume, assumes]
+    past: [assumed]
+    present_perfect: [has assumed, have assumed]
+  propose:
+    present: [propose, proposes]
+    past: [proposed]
+    present_perfect: [has proposed, have proposed]

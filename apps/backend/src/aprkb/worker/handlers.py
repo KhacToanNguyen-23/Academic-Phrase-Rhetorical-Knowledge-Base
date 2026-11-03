@@ -127,6 +127,8 @@ async def _import(
         ):
             return "Job payload contains invalid artifact kinds"
         profile_id = UUID(profile_value) if isinstance(profile_value, str) else None
+        batch_value = job.payload.get("batch_id")
+        batch_id = UUID(batch_value) if isinstance(batch_value, str) else None
     except (ValueError, TypeError):
         return "Job payload contains invalid import options"
     try:
@@ -148,8 +150,13 @@ async def _import(
                 job_id=job.id,
                 options=ImportOptions(filters, tuple(raw_kinds)),
                 profile_id=profile_id,
+                batch_id=batch_id,
             )
-            job.result = {**asdict(summary), "profile_id": str(profile_id) if profile_id else None}
+            job.result = {
+                **asdict(summary),
+                "profile_id": str(profile_id) if profile_id else None,
+                "batch_id": str(batch_id or job.id),
+            }
         logger.info(
             "Import page done job_id=%s source=%s profile_id=%s filters=%s listed=%s imported=%s "
             "skipped_license=%s skipped_format=%s skipped_duplicate=%s "

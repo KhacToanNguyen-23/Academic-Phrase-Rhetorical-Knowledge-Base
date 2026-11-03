@@ -33,6 +33,7 @@ class _Located:
     surface: str
     subject: tuple[int, int]
     clause: tuple[int, int]
+    modifiers: str = ""
 
 
 class SlotAbstractor(MiningStage):
@@ -50,6 +51,7 @@ class SlotAbstractor(MiningStage):
             ):
                 self._forms.extend((form, tense, class_name) for form in values)
         self._forms.sort(key=lambda row: (-len(row[0]), row[0].casefold()))
+        self._modifiers = {word.casefold() for word in policy.verb_modifiers}
 
     def process(self, batch: list[MiningItem]) -> list[MiningItem]:
         extracted: list[MiningItem] = []
@@ -74,6 +76,11 @@ class SlotAbstractor(MiningStage):
         if that is None:
             return "no_that"
         subject_start, subject_end = _trim_span(text, 0, verb_start)
+        subject_end = self._peel_modifiers(text, subject_start, subject_end)
+        modifiers = " ".join(text[subject_end:verb_start].split())
+        if re.search(r"\bdid\b", modifiers, re.I):
+            # "did not show" carries the past tense on the auxiliary, not on the verb form.
+            tense = Tense.PAST
         clause_start, clause_end = _trim_span(text, verb_end + that.end(), len(text))
         subject_words = re.findall(r"\b[\w'-]+\b", text[subject_start:subject_end])
         clause_words = re.findall(r"\b[\w'-]+\b", text[clause_start:clause_end])
@@ -91,7 +98,17 @@ class SlotAbstractor(MiningStage):
             noun_start, noun_end = _trim_span(text, subject_start + determiner.end(), subject_end)
             if noun_start == noun_end:
                 return "empty_noun_phrase"
-        return _Located(tense, surface, (subject_start, subject_end), (clause_start, clause_end))
+        return _Located(
+            tense, surface, (subject_start, subject_end), (clause_start, clause_end), modifiers
+        )
+
+    def _peel_modifiers(self, text: str, start: int, end: int) -> int:
+        """Move ``end`` left past trailing negation, modal and emphasis words of the subject."""
+        while True:
+            match = re.search(r"([A-Za-z]+)\s*$", text[start:end])
+            if match is None or match.group(1).casefold() not in self._modifiers:
+                return end
+            end = _trim_span(text, start, start + match.start())[1]
 
     def _extract(self, item: MiningItem) -> MiningItem | None:
         located = self._locate(item.text)
@@ -140,7 +157,8 @@ class SlotAbstractor(MiningStage):
             }
 
         ownership = self._ownership(item, determiner_text)
-        frame = f"[X] [Y] {surface} that [Z]" if "Z" in spans else f"[X] {surface} that [Y]"
+        verb = f"{located.modifiers} {surface}" if located.modifiers else surface
+        frame = f"[X] [Y] {verb} that [Z]" if "Z" in spans else f"[X] {verb} that [Y]"
         trailing = re.search(r"[.!?]+\s*$", item.text)
         if trailing is not None:
             frame += trailing.group(0).strip()

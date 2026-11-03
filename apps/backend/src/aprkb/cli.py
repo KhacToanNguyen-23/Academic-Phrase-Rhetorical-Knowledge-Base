@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import sys
+from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
@@ -276,6 +277,75 @@ async def _eval_mining(*, split: str) -> None:
         await engine.dispose()
 
 
+async def _mining_stats(*, sample: int, seed: int) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
+    from aprkb.modules.mining.stats import StatsSentence, compute_mining_stats
+    from aprkb.policies.loader import load_policy_bundle
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            rows = await session.execute(
+                select(Sentence, ArticleSection.section_code)
+                .join(Article, Article.id == Sentence.article_id)
+                .join(License, License.id == Article.license_id)
+                .outerjoin(ArticleSection, ArticleSection.id == Sentence.article_section_id)
+                .where(
+                    Article.source == "slr",
+                    Article.ingest_status == "ready",
+                    License.allows_mining.is_(True),
+                )
+                .order_by(Sentence.article_id, Sentence.char_start, Sentence.id)
+            )
+            sentences = [
+                StatsSentence(
+                    text=sentence.text,
+                    section_code=section_code,
+                    sentence_id=sentence.id,
+                    char_start=sentence.char_start,
+                )
+                for sentence, section_code in rows
+            ]
+        stats = compute_mining_stats(sentences, load_policy_bundle(), sample=sample, seed=seed)
+        _print_mining_stats(stats)
+    finally:
+        await engine.dispose()
+
+
+def _print_mining_stats(stats: object) -> None:
+    from aprkb.modules.mining.stats import MiningStats
+
+    if not isinstance(stats, MiningStats):
+        raise TypeError("stats must be MiningStats")
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if callable(reconfigure):
+        with suppress(ValueError):
+            # Test captures and embedded consoles may reject stream reconfiguration.
+            reconfigure(encoding="utf-8", errors="replace")
+    print(f"sentences: {stats.total_sentences}")
+    print(f"filter kept: {stats.filter_kept}")
+    if stats.filter_rejected:
+        print(f"filter rejected: {stats.filter_rejected}")
+    denominator = stats.filter_kept or 1
+    print("extraction reasons (percent of filter-kept sentences):")
+    for reason, count in stats.extraction_reasons.items():
+        print(f"  {reason}: {count} ({count / denominator:.1%})")
+    print(f"distinct frames: {stats.distinct_frames}")
+    print("top frames:")
+    for frame, count in stats.top_frames:
+        print(f"  {count}: {frame}")
+    if stats.extracted_samples:
+        print("sample extracted sentences:")
+        for record in stats.extracted_samples:
+            print(f"  {record.text[:140]} -> {record.frame}")
+    if stats.missed_samples:
+        print("sample missed sentences:")
+        for record in stats.missed_samples:
+            print(f"  {record.text[:140]} -> {record.reason}")
+
+
 def _export_openapi(*, check: bool) -> None:
     from aprkb.api.main import app
 
@@ -313,6 +383,11 @@ def main() -> None:
         "eval-mining", help="Evaluate mining against approved gold only"
     )
     evaluator.add_argument("--split", choices=("dev", "test"), required=True)
+    mining_stats = commands.add_parser(
+        "mining-stats", help="Report unlabeled mining coverage for rights-cleared SLR articles"
+    )
+    mining_stats.add_argument("--sample", type=int, default=0)
+    mining_stats.add_argument("--seed", type=int, default=0)
     reference_import = commands.add_parser(
         "import-reference-library", help="Import quarantined internal reference data"
     )
@@ -337,6 +412,10 @@ def main() -> None:
         asyncio.run(_delete_gold_batch(sample_batch=args.sample_batch))
     elif args.command == "eval-mining":
         asyncio.run(_eval_mining(split=args.split))
+    elif args.command == "mining-stats":
+        if args.sample < 0:
+            parser.error("--sample must be non-negative")
+        asyncio.run(_mining_stats(sample=args.sample, seed=args.seed))
     elif args.command == "import-reference-library":
         asyncio.run(_import_reference_library(file_path=args.file))
     elif args.command == "purge-reference-library":

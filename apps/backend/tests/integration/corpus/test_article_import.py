@@ -166,6 +166,7 @@ async def test_import_fetches_only_minable_articles_and_feeds_the_ingest_path(
             "cursor": "page-2",
             "limit": 10,
             "profile_id": None,
+            "batch_id": str(import_job_id),
             "filters": {"hasFullText": True},
             "artifact_kinds": ["FULLTEXT_MARKDOWN", "FETCHER_FULLTEXT_MARKDOWN", "SOURCE_PDF"],
         }
@@ -188,6 +189,8 @@ async def test_import_fetches_only_minable_articles_and_feeds_the_ingest_path(
     async with import_sessions() as session:
         articles = list(await session.scalars(select(Article).where(Article.source == "fake")))
         assert {article.ingest_status for article in articles} == {"ready"}
+        # The continuation page belongs to the same batch as the first page.
+        assert {article.import_batch_id for article in articles} == {import_job_id}
         headings = set(await session.scalars(select(ArticleSection.heading)))
         assert {"Introduction", "Results"} <= headings
         sentences = list(await session.scalars(select(Sentence)))
@@ -218,6 +221,49 @@ async def test_reimporting_the_same_page_skips_existing_articles(
             select(func.count()).select_from(Article).where(Article.source == "fake")
         )
         assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_same_title_without_doi_is_imported_once_across_work_ids(
+    import_client: tuple[AsyncClient, str],
+    import_sessions: async_sessionmaker,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(core_settings, "article_source", "fake")
+
+    def doi_less(external_id: str, title: str) -> SourceArticleRef:
+        return SourceArticleRef(
+            external_id=external_id,
+            title=title,
+            doi=None,
+            license_code="CC-BY",
+            content_type="text/markdown",
+        )
+
+    source = FakeArticleSource(
+        {
+            None: SourcePage(
+                articles=(doi_less("work-a", "Same paper"), doi_less("work-b", "Same paper")),
+                next_cursor="more",
+            ),
+            "more": SourcePage(
+                articles=(doi_less("work-c", "Same paper"), doi_less("work-d", "Other paper")),
+                next_cursor=None,
+            ),
+        }
+    )
+    client, key = import_client
+    store = LocalBlobStore(tmp_path)
+
+    await _enqueue(client, key)
+    # Drain the queue: the import, its next-page job and the ingest jobs can run in any order.
+    while await run_once(
+        import_sessions, blob_store=store, article_source_factory=_factory(source)
+    ):
+        pass
+
+    assert source.fetched == ["work-a", "work-d"]
 
 
 @pytest.mark.asyncio

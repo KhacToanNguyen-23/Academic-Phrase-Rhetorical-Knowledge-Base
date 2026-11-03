@@ -49,13 +49,16 @@ async def import_page(
     job_id: UUID,
     options: ImportOptions | None = None,
     profile_id: UUID | None = None,
+    batch_id: UUID | None = None,
 ) -> ImportSummary:
     options = options or ImportOptions(filters={}, artifact_kinds=())
+    batch_id = batch_id or job_id
     page = await source.list_articles(cursor=cursor, limit=limit, options=options)
     summary = ImportSummary(listed=len(page.articles), next_cursor=page.next_cursor)
     licenses = {row.code: row for row in await session.scalars(select(License))}
     seen_ids: set[str] = set()
     seen_dois: set[str] = set()
+    seen_titles: set[str] = set()
     written_keys: list[str] = []
     try:
         for ref in page.articles:
@@ -76,7 +79,10 @@ async def import_page(
             if (
                 ref.external_id in seen_ids
                 or (ref.doi is not None and ref.doi in seen_dois)
-                or await _already_imported(session, source.name, ref.external_id, ref.doi)
+                or (ref.doi is None and ref.title is not None and ref.title in seen_titles)
+                or await _already_imported(
+                    session, source.name, ref.external_id, ref.doi, ref.title
+                )
             ):
                 summary.skipped_duplicate += 1
                 logger.info("Skip %s: already imported", ref.external_id)
@@ -84,6 +90,8 @@ async def import_page(
             seen_ids.add(ref.external_id)
             if ref.doi is not None:
                 seen_dois.add(ref.doi)
+            elif ref.title is not None:
+                seen_titles.add(ref.title)
 
             try:
                 content = await source.fetch_content(ref)
@@ -106,6 +114,7 @@ async def import_page(
                     license_id=license_row.id,
                     blob_key=blob_key,
                     ingest_status="pending",
+                    import_batch_id=batch_id,
                 )
             )
             session.add(
@@ -133,6 +142,7 @@ async def import_page(
                     "cursor": page.next_cursor,
                     "limit": limit,
                     "profile_id": str(profile_id) if profile_id else None,
+                    "batch_id": str(batch_id),
                     "filters": dict(options.filters),
                     "artifact_kinds": list(options.artifact_kinds),
                 },
@@ -166,11 +176,22 @@ async def import_page(
 
 
 async def _already_imported(
-    session: AsyncSession, source_name: str, external_id: str, doi: str | None
+    session: AsyncSession,
+    source_name: str,
+    external_id: str,
+    doi: str | None,
+    title: str | None = None,
 ) -> bool:
     condition: ColumnElement[bool] = (Article.source == source_name) & (
         Article.external_id == external_id
     )
     if doi is not None:
         condition = or_(condition, Article.doi == doi)
+    elif title:
+        # The SLR repository can hold one paper under two work ids; without a DOI the title is
+        # the only shared key. Skipping is visible in ``skipped_duplicate``, a silent copy is not.
+        condition = or_(
+            condition,
+            (Article.source == source_name) & Article.doi.is_(None) & (Article.title == title),
+        )
     return await session.scalar(select(Article.id).where(condition).limit(1)) is not None

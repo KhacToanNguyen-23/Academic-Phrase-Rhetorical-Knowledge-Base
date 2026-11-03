@@ -218,7 +218,7 @@ export function Cta({ copy }: { copy: LandingCopy }) {
 
 export function Footer({ copy }: { copy: LandingCopy }) {
   return (
-    <footer data-chapter="ink" className="relative h-svh min-h-[760px] overflow-hidden bg-[var(--dark)] px-[var(--margin)] pt-28 text-[var(--paper)]">
+    <footer data-chapter="ink" className="relative h-svh min-h-[760px] overflow-hidden bg-[var(--dark)] px-[var(--margin)] pt-40 text-[var(--paper)]">
       <div className="grid grid-cols-12 gap-x-6">
         <div className="col-span-7">
           <h2 className="display reveal text-[clamp(48px,5.4vw,84px)]">{copy.footer.invitation}</h2>
@@ -234,12 +234,12 @@ export function Footer({ copy }: { copy: LandingCopy }) {
           ))}
         </nav>
       </div>
-      <div className="absolute inset-x-[var(--margin)] bottom-[calc(22vw*0.7+20px)] flex flex-col gap-3 text-sm">
+      <div className="absolute inset-x-[var(--margin)] bottom-[calc(19vw*0.7+20px)] flex flex-col gap-3 text-sm">
         <p>
           {copy.footer.picturesLabel}:{" "}
           {copy.credits.map((c, i) => (
             <span key={c.href}>
-              <a href={c.href} className="underline underline-offset-2">{c.title}</a>, {c.creator}, {c.licence}
+              <a href={c.href} className="underline underline-offset-2">{c.title}</a>{c.creator ? `, ${c.creator}` : ""}{c.licence !== "public domain" ? `, ${c.licence}` : ""}
               {i < copy.credits.length - 1 ? "; " : "."}
             </span>
           ))}
@@ -249,7 +249,7 @@ export function Footer({ copy }: { copy: LandingCopy }) {
           <span>{copy.footer.provenance}</span>
         </p>
       </div>
-      <p aria-hidden className="display absolute bottom-0 left-[var(--margin)] translate-y-[30%] whitespace-nowrap text-[22vw] leading-none text-[var(--paper)]">
+      <p aria-hidden className="display absolute bottom-0 left-[var(--margin)] translate-y-[30%] whitespace-nowrap text-[19vw] leading-none text-[var(--paper)]">
         {copy.footer.wordmark}
       </p>
     </footer>

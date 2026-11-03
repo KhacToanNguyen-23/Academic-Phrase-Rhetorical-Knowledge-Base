@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:inspect": "tsc -b && vite build --mode inspect --outDir dist-inspect",
     "preview": "vite preview",
+    "preview:inspect": "vite preview --outDir dist-inspect --port 4174",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "gen:api": "openapi-typescript ../../packages/contracts/openapi/openapi.json -o src/shared/api/schema.d.ts",

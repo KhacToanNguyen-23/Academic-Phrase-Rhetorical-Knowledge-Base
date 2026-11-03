@@ -3,7 +3,7 @@ import hooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist/**", "node_modules/**", "src/shared/api/schema.d.ts"] },
+  { ignores: ["dist/**", "dist-inspect/**", "node_modules/**", "src/shared/api/schema.d.ts"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export interface AuthenticatedClient {
   id: string;
@@ -30,13 +30,41 @@ async function fetchIdentity(apiKey: string): Promise<AuthenticatedClient> {
   return client;
 }
 
+const requestDemoSession = import.meta.env.DEV || import.meta.env.MODE === "inspect"
+  ? async (): Promise<{ apiKey: string; identity: AuthenticatedClient }> => {
+      const response = await fetch("/v1/auth/demo-session", { method: "POST" });
+      const result = await response.json() as { api_key?: string; detail?: string };
+      if (!response.ok || !result.api_key) {
+        throw new Error(result.detail ?? "The local demo is unavailable.");
+      }
+      return { apiKey: result.api_key, identity: await fetchIdentity(result.api_key) };
+    }
+  : async (): Promise<{ apiKey: string; identity: AuthenticatedClient }> => {
+      throw new Error("The local demo is available only in development and inspect builds.");
+    };
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<AuthenticatedClient | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const inspectAutoLoginStarted = useRef(false);
+  const demoLogin = useCallback(async () => {
+    const session = await requestDemoSession();
+    sessionStorage.setItem(STORAGE_KEY, session.apiKey);
+    setApiKey(session.apiKey);
+    setClient(session.identity);
+  }, []);
 
   useEffect(() => {
     const savedKey = sessionStorage.getItem(STORAGE_KEY);
+    if (!savedKey && import.meta.env.MODE === "inspect" && import.meta.env.VITE_INSPECT_AUTOLOGIN === "1") {
+      if (inspectAutoLoginStarted.current) return;
+      inspectAutoLoginStarted.current = true;
+      void demoLogin()
+        .catch(() => sessionStorage.removeItem(STORAGE_KEY))
+        .finally(() => setLoading(false));
+      return;
+    }
     if (!savedKey) {
       setLoading(false);
       return;
@@ -48,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => sessionStorage.removeItem(STORAGE_KEY))
       .finally(() => setLoading(false));
-  }, []);
+  }, [demoLogin]);
 
   const value = useMemo<AuthContextValue>(() => ({
     client,
@@ -60,23 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setApiKey(key.trim());
       setClient(identity);
     },
-    demoLogin: async () => {
-      const response = await fetch("/v1/auth/demo-session", { method: "POST" });
-      const result = await response.json() as { api_key?: string; detail?: string };
-      if (!response.ok || !result.api_key) {
-        throw new Error(result.detail ?? "The local demo is unavailable.");
-      }
-      const identity = await fetchIdentity(result.api_key);
-      sessionStorage.setItem(STORAGE_KEY, result.api_key);
-      setApiKey(result.api_key);
-      setClient(identity);
-    },
+    demoLogin,
     logout: () => {
       sessionStorage.removeItem(STORAGE_KEY);
       setApiKey(null);
       setClient(null);
     },
-  }), [apiKey, client, loading]);
+  }), [apiKey, client, demoLogin, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

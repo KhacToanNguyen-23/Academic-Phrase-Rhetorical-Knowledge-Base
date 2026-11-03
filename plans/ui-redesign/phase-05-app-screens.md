@@ -18,8 +18,8 @@ Mỗi màn đi qua cùng một vòng:
 3. Thay markup bằng component shadcn và component miền. Giữ nguyên query, mutation, search params, route.
 4. **States** (§2.6, §11): loading, empty, zero, error cho từng block; hover, selected, focus, disabled cho từng row và control.
 5. Xóa phần CSS tương ứng trong `styles.css`.
-6. **Gate:** `lint.mjs --app` + `inspect.mjs --app` trên build, 0 FAIL. Trả lời 7 câu critique ở §2.7. Tối đa 3 vòng.
-7. Click qua bằng Browser MCP (desktop và cửa sổ hẹp), ghi kết quả từng thao tác và lỗi console. Đo bằng build `inspect` (Phase 00, mục 2b), vì đây là route staff. Không chạy Playwright.
+6. **Gate:** `lint.mjs --app` + `inspect.mjs --app --widths 1440` trên build, 0 FAIL. Trả lời 7 câu critique ở §2.7. Tối đa 3 vòng.
+7. Click qua bằng Browser MCP (chỉ desktop), ghi kết quả từng thao tác và lỗi console. Đo bằng build `inspect` (Phase 00, mục 2b), vì đây là route staff. Không chạy Playwright.
 
 ## Bảng màn
 

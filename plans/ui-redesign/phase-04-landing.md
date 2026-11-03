@@ -54,7 +54,7 @@ Không có số liệu, khách hàng hay trích dẫn bịa. Nếu cần một c
 
 ## 4. Live thing
 
-`ToggleGroup` 4 move nằm ngay dưới câu phụ của hero. Bấm một move thì slot đổi frame (dùng `motion`, chỉ transform/opacity, 240ms) và hiện nhãn độ mạnh. Dữ liệu là `src/features/landing/frames.json`, xuất từ seed tự viết (script `npm run gen:landing-frames` đọc file seed của backend). Phone: các nút cao ≥ 44px. Không có JS: hiện frame mặc định. Có reduced motion: đổi frame không trượt.
+`ToggleGroup` 4 move nằm ngay dưới câu phụ của hero. Bấm một move thì slot đổi frame (dùng `motion`, chỉ transform/opacity, 240ms) và hiện nhãn độ mạnh. Dữ liệu là `src/features/landing/frames.json`, xuất từ seed tự viết (script `npm run gen:landing-frames` đọc file seed của backend). Không có JS: hiện frame mặc định. Có reduced motion: đổi frame không trượt.
 
 ## 5. Ảnh (sàn của inspector: ≥ 4 ảnh thật)
 
@@ -76,19 +76,19 @@ Một cách xử lý ảnh cho cả bộ: grayscale, contrast cao, góc vuông. 
 
 ## 6. Dựng
 
-`src/features/landing/` là lazy route. Thứ tự: token → hero (desktop và 390px) → từng section theo blueprint → ảnh → live thing → frame/fullness → states và semantics. Mỗi section là một chapter màu giấy hoặc mực (giấy / mực / giấy / mực...). **Không có field nào màu teal.** Field dưới của hero là mực. Teal chỉ xuất hiện ở nút hành động, ở slot sống trong headline và ở item đang chọn của `ToggleGroup`. Trên field mực, chữ và slot teal dùng `--accent-on-dark` (`#5fb4cc`); nút teal giữ nền `#176b8f` với chữ trắng. Header đổi ink theo chapter bằng IntersectionObserver, chuyển màu 300ms. Nút dùng shadcn `Button` (variant landing, radius 0, 56px); FAQ dùng `<details>`, chỉ style lại, không bọc Accordion để còn chạy khi không có JS.
+`src/features/landing/` là lazy route. Thứ tự: token → hero (desktop 1440px) → từng section theo blueprint → ảnh → live thing → frame/fullness → states và semantics. Mỗi section là một chapter màu giấy hoặc mực (giấy / mực / giấy / mực...). **Không có field nào màu teal.** Field dưới của hero là mực. Teal chỉ xuất hiện ở nút hành động, ở slot sống trong headline và ở item đang chọn của `ToggleGroup`. Trên field mực, chữ và slot teal dùng `--accent-on-dark` (`#5fb4cc`); nút teal giữ nền `#176b8f` với chữ trắng. Header đổi ink theo chapter bằng IntersectionObserver, chuyển màu 300ms. Nút dùng shadcn `Button` (variant landing, radius 0, 56px); FAQ dùng `<details>`, chỉ style lại, không bọc Accordion để còn chạy khi không có JS.
 
 ## 7–9. Gate, nhìn, chuyển động
 
 ```bash
 node $S/scripts/lint.mjs apps/web/src/features/landing
 pnpm --dir apps/web run build && pnpm --dir apps/web run preview
-node $S/scripts/inspect.mjs http://127.0.0.1:4173/ --out .taste-skill/after/landing
+node $S/scripts/inspect.mjs http://127.0.0.1:4173/ --widths 1440 --out .taste-skill/after/landing
 ```
 
 - Sửa mọi FAIL. Mở **mọi** screenshot, critique theo `references/critique.md` (14 lượt, có điểm), sửa 3 lỗi nặng nhất. Tối đa 3 vòng.
 - Motion: signature move "colour by chapter"; entrance so le 60–90ms cho heading → text → ảnh; feedback trên mọi control; một ảnh chuyển động (scale chậm). Inspector đòi ≥ 8 phần tử chuyển động. Mọi chuyển động có fallback reduced-motion.
-- Browser MCP: test live thing bằng chuột và bàn phím, ở cửa sổ hẹp. Tắt JS để kiểm tra fallback.
+- Browser MCP: test live thing bằng chuột và bàn phím, trên desktop. Tắt JS để kiểm tra fallback.
 
 ## 10. Report
 

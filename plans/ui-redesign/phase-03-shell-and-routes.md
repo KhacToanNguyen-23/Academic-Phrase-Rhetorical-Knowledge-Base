@@ -1,13 +1,13 @@
 # Phase 03: Shell và route
 
-Mục tiêu: shell "Open plane" (sheet app, redraw), có nhóm điều hướng, phone gập gọn; landing nằm ngoài shell.
+Mục tiêu: shell "Open plane" (sheet app, redraw), có nhóm điều hướng; chỉ desktop (xem "Phạm vi thiết bị" trong `plan.md`); landing nằm ngoài shell.
 
 ## Đọc trước khi làm
 
-- `.agents/skills/design-taste-frontend/references/app-screens.md`: §3 (The shell, gồm §3.2 Sidebar), §4 (Canvas and page title), §12 (The phone)
+- `.agents/skills/design-taste-frontend/references/app-screens.md`: §3 (The shell, gồm §3.2 Sidebar), §4 (Canvas and page title)
 - `taste/app-sheet.md` của plan này: §4 Shell — Open plane
 - `.agents/skills/shadcn/rules/composition.md` (Sheet cần Title, item phải nằm trong Group); `pnpm dlx shadcn@latest docs sidebar`, `docs command`
-- `.agents/plugins/skills/skills/frontend-mindset/references/responsive-performance.md` (breakpoint, touch target)
+- `.agents/plugins/skills/skills/frontend-mindset/references/responsive-performance.md` (chỉ phần LCP và hiệu năng; bỏ breakpoint và touch target)
 
 ## Route
 
@@ -37,14 +37,14 @@ Hai layout route trong TanStack Router: `publicLayout` (landing, signin) và `ap
   - Dưới cùng: Admin (chỉ admin), dòng user là `DropdownMenu` (theme light/dark, sign out)
 - Nhịp nav 34px, row 32px, icon lucide 16px stroke 1.5, active là pill xám với icon và nhãn teal.
 - Thu gọn thành rail icon (giữ localStorage `aprkb.sidebar.collapsed`). Rail có mark, tooltip và accessible name.
-- **Phone (≤ 768px):** top bar 48px gồm tên màn, nút menu mở `Sheet` toàn màn chứa nav, tối đa một action. Giữ `inert` và trả focus như code hiện tại.
+- **Không làm mobile/tablet.** Hành vi điện thoại của shadcn Sidebar (top bar, `Sheet`) đã có sẵn trong code, giữ nguyên, không phát triển thêm, không kiểm.
 - Canvas fluid, gutter 32px; `PageHeader` cách đỉnh 32–36px. `Breadcrumb` ở màn detail.
 - Bỏ footer "colophon" trong app. Câu provenance chuyển vào landing footer và trang About/Admin.
 - Thêm `Command` (⌘K), tìm theo tên màn. Tìm lemma/pattern là tùy chọn, chỉ làm nếu API search sẵn có, không thêm endpoint.
 
 ## Xong khi
 
-- `inspect.mjs --app` trên `/app`: sidebar gập trên phone, product được nêu tên, không có panel-void.
+- `inspect.mjs --app --widths 1440` trên `/app`: product được nêu tên, không có panel-void.
 - Browser MCP: Tab qua toàn bộ nav, Esc đóng sheet, focus quay về nút menu, chuyển trang không đóng/mở lại sidebar.
 - Deep link `/library?p=...` vẫn chạy; chưa đăng nhập thì quay lại đúng `next` sau khi đăng nhập.
 - Đã chạy `code-review` trên PR, chú ý guard đăng nhập trong `beforeLoad` (route nào lọt guard, xử lý `next`).
@@ -57,7 +57,7 @@ Hai layout route trong TanStack Router: `publicLayout` (landing, signin) và `ap
 
 ## Kết quả (2026-11-04)
 
-Ưu tiên của owner: **thiết kế cho web desktop**, không cần tối ưu thiết bị khác. Thanh top 48px và `Sheet` cho điện thoại vẫn có (shadcn Sidebar cho sẵn) nhưng không phải gate: không đo inspect ở 390px và không kiểm Browser MCP trên cửa sổ hẹp ở các phase sau, trừ khi owner đổi ý.
+Ưu tiên của owner: **thiết kế cho web desktop**, không cần tối ưu thiết bị khác. Phạm vi này áp dụng cho mọi phase (xem mục "Phạm vi thiết bị" trong `plan.md`). Thanh top 48px và `Sheet` có sẵn trong shadcn Sidebar được giữ nguyên nhưng không phải gate.
 
 Khác với spec ban đầu:
 

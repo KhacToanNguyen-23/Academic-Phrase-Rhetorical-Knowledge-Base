@@ -50,7 +50,7 @@ Chỉ có khi `import.meta.env.DEV || import.meta.env.MODE === "inspect"` (cùng
 ## Xong khi
 
 - `lint.mjs --app apps/web/src/components` sạch.
-- `inspect.mjs --app http://127.0.0.1:4174/dev/ui` 0 FAIL, chạy trên `pnpm run build:inspect && pnpm run preview:inspect` (cổng 4174).
+- `inspect.mjs --app http://127.0.0.1:4174/dev/ui --widths 1440` 0 FAIL, chạy trên `pnpm run build:inspect && pnpm run preview:inspect` (cổng 4174).
 - `src/shared/ui/*` cũ vẫn còn và các trang cũ không đổi giao diện. Component mới nằm ở `src/components/ui/`, component miền ở `src/components/domain/`. Việc thay import trên từng màn làm ở Phase 05.
 - Không còn `space-y-*`, không còn `dark:` thủ công, không có `className` ghi đè màu hoặc chữ (rule `shadcn/rules/styling.md`).
 - Đã chạy `code-review` trên PR và đã xử lý các finding.

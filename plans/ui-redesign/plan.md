@@ -18,7 +18,7 @@ Ngoài phạm vi: không thêm endpoint, không đổi `packages/contracts`, kh�
 
 - Vite 6 + React 18 + TanStack Router/Query/Table. **Chưa có Tailwind**; một file `src/app/styles.css` dài 1683 dòng, token đồng bộ SLRS (`--color-primary: #176b8f`, Inter, radius 6/8/12, shadow).
 - `src/shared/ui/*` là primitive tự viết, *giả* shadcn (`cn` tự viết, class `ui-button-*`), không phải shadcn thật.
-- Shell: masthead 64px + sidebar có icon tự vẽ, thu gọn được, drawer trên mobile. 11 đích điều hướng.
+- Shell: masthead 64px + sidebar có icon tự vẽ, thu gọn được. 11 đích điều hướng.
 - `/` hiện là `OverviewPage` (hero có eyebrow, gradient card, `hero-points` có dấu tick), đòi đăng nhập; chỉ `/writer` công khai.
 - e2e: `e2e/phrasebank.spec.ts`, `e2e/writer.spec.ts`. Đường dẫn screenshot hardcode `C:/Users/khact/...`, máy khác không chạy được.
 - Quản lý gói chỉ bằng **pnpm** (CI dùng `pnpm install --frozen-lockfile`). `package-lock.json` đã bị xóa; `Makefile`, `dev.ps1` dùng `pnpm --dir apps/web`.
@@ -58,7 +58,7 @@ Deal 3 option (`page-is-the-object`, `type-only-statement`, `sentence-as-layout`
 
 **Câu ý tưởng:** *On this page, the slot of a phrase frame becomes the media slot inside the headline.* (Thử thay đối thủ vào: một bộ từ điển khác không có frame có slot mined theo journal, nên ý tưởng này thuộc riêng sản phẩm.)
 
-**Live thing:** một `ToggleGroup` chọn rhetorical move (Gap, Method, Finding, Limitation). Slot trong headline đổi sang một frame tự viết của move đó, kèm nhãn độ mạnh claim (hedged / neutral / strong). Dữ liệu là bản tĩnh xuất từ seed tự viết trong `apps/backend/src/aprkb/seeds/`, không gọi API và không đăng nhập. Trên phone điều khiển được bằng ngón cái; khi không có JS, slot hiện frame mặc định.
+**Live thing:** một `ToggleGroup` chọn rhetorical move (Gap, Method, Finding, Limitation). Slot trong headline đổi sang một frame tự viết của move đó, kèm nhãn độ mạnh claim (hedged / neutral / strong). Dữ liệu là bản tĩnh xuất từ seed tự viết trong `apps/backend/src/aprkb/seeds/`, không gọi API và không đăng nhập. Khi không có JS, slot hiện frame mặc định.
 
 Các slot đã deal và các lần redraw:
 
@@ -167,7 +167,7 @@ Không thêm: GSAP, Lenis/smooth scroll, thư viện chart (app-screens dùng `a
 | [00](phase-00-baseline-and-tooling.md) | Nhánh mới, chụp "before", cài Browser MCP, bản build `inspect` tự đăng nhập để đo route staff | — |
 | [01](phase-01-foundation.md) | Tailwind v4, shadcn init, token, font, theme, cùng tồn tại với CSS cũ | 00 |
 | [02](phase-02-components.md) | Bộ component shadcn đã chỉnh variant + component miền (PhraseFrame, Provenance...) + trang `/dev/ui` | 01 |
-| [03](phase-03-shell-and-routes.md) | Shell "open plane", nhóm nav, mobile sheet, đổi route `/` → landing, `/app`, `/signin` | 02 |
+| [03](phase-03-shell-and-routes.md) | Shell "open plane", nhóm nav, đổi route `/` → landing, `/app`, `/signin` | 02 |
 | [04](phase-04-landing.md) | Landing theo run trang của taste skill (bước 1–10) | 02, 03 |
 | [05](phase-05-app-screens.md) | Làm lại 11 màn theo 4 đợt, mỗi màn qua gate `--app` | 03 |
 | [06](phase-06-cleanup-verification.md) | Xóa CSS cũ, a11y, hiệu năng, so sánh before/after, cập nhật docs/ADR | 04, 05 |
@@ -176,10 +176,10 @@ Phase 04 và 05 chạy song song được sau Phase 03.
 
 ## Định nghĩa "xong"
 
-- `inspect.mjs`: **0 FAIL** ở 1440/768/390 trên bản production build (`vite build && vite preview`). Landing dùng chế độ trang; từng app screen dùng `--app`. Mỗi WARN còn lại có một câu giải thích trong report.
+- `inspect.mjs`: **0 FAIL** ở 1440px (`--widths 1440`) trên bản production build (`vite build && vite preview`). Landing dùng chế độ trang; từng app screen dùng `--app`. Mỗi WARN còn lại có một câu giải thích trong report.
 - `lint.mjs` (và `--app` cho app) sạch trên `apps/web/src`.
 - `pnpm --dir apps/web run lint`, `typecheck`, `build` pass. Không chạy `test:e2e` (quyết định owner #5).
-- Đã click qua mọi link, form, menu từng chạy trước đây bằng Browser MCP, ở desktop và ở cửa sổ hẹp. Kết quả ghi theo từng route vào report của phase: đã thử gì, kết quả ra sao, lỗi console nếu có. Đây là thứ thay cho e2e, nên không được chỉ ghi "đã test".
+- Đã click qua mọi link, form, menu từng chạy trước đây bằng Browser MCP, ở desktop. Kết quả ghi theo từng route vào report của phase: đã thử gì, kết quả ra sao, lỗi console nếu có. Đây là thứ thay cho e2e, nên không được chỉ ghi "đã test".
 - Contrast chữ ≥ 4.5:1 (NFR-08), focus nhìn thấy được, làm được mọi việc bằng bàn phím, có `prefers-reduced-motion`.
 - `make lint` và `make test` vẫn pass (backend không đổi, nhưng `CLAUDE.md` yêu cầu chạy).
 - Mỗi PR đã qua `code-review` và đã xử lý các finding trước khi merge.

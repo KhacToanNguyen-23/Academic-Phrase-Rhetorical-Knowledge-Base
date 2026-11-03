@@ -258,7 +258,7 @@
           },
           "slots": {
             "additionalProperties": {
-              "$ref": "#/components/schemas/SlotDefinition"
+              "$ref": "#/components/schemas/aprkb__modules__mining__schemas__SlotDefinition"
             },
             "title": "Slots",
             "type": "object"
@@ -1260,7 +1260,16 @@
             "type": "string"
           },
           "slots": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SlotDefinition-Input"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
             "title": "Slots",
             "type": "object"
           },
@@ -1354,7 +1363,16 @@
           "slots": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/aprkb__modules__patterns__schemas__SlotDefinition"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
                 "type": "object"
               },
               {
@@ -1482,7 +1500,16 @@
             "type": "string"
           },
           "slots": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SlotDefinition-Input"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
             "title": "Slots",
             "type": "object"
           }
@@ -1531,7 +1558,16 @@
             "type": "string"
           },
           "slots": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/aprkb__modules__patterns__schemas__SlotDefinition"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
             "title": "Slots",
             "type": "object"
           },
@@ -1610,6 +1646,10 @@
             ],
             "title": "License Code"
           },
+          "license_flag": {
+            "title": "License Flag",
+            "type": "boolean"
+          },
           "license_name": {
             "anyOf": [
               {
@@ -1661,6 +1701,7 @@
           "version_no",
           "license_code",
           "license_name",
+          "license_flag",
           "source_reference"
         ],
         "title": "RecommendationItemResponse",
@@ -1713,8 +1754,15 @@
             "title": "Genre"
           },
           "intent": {
-            "title": "Intent",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent"
           },
           "journal_id": {
             "anyOf": [
@@ -1759,14 +1807,17 @@
             "title": "Query"
           },
           "section": {
-            "title": "Section",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
           }
         },
-        "required": [
-          "intent",
-          "section"
-        ],
         "title": "RecommendationRequest",
         "type": "object"
       },
@@ -2130,6 +2181,85 @@
         "title": "ReleaseSummary",
         "type": "object"
       },
+      "RenderError": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RenderErrorDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "RenderError",
+        "type": "object"
+      },
+      "RenderErrorDetails": {
+        "properties": {
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RenderValidationIssue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errors"
+          },
+          "field_errors": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Errors"
+          }
+        },
+        "title": "RenderErrorDetails",
+        "type": "object"
+      },
+      "RenderErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/RenderError"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "request_id"
+        ],
+        "title": "RenderErrorResponse",
+        "type": "object"
+      },
       "RenderRequest": {
         "properties": {
           "pattern_version_id": {
@@ -2184,6 +2314,45 @@
         "title": "RenderResponse",
         "type": "object"
       },
+      "RenderValidationIssue": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Msg",
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "loc",
+          "msg"
+        ],
+        "title": "RenderValidationIssue",
+        "type": "object"
+      },
       "RenderableVersionRead": {
         "properties": {
           "canonical_frame": {
@@ -2220,7 +2389,16 @@
             "type": "string"
           },
           "slots": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/aprkb__modules__patterns__schemas__SlotDefinition"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
             "title": "Slots",
             "type": "object"
           },
@@ -2410,18 +2588,56 @@
         "title": "SearchResult",
         "type": "object"
       },
-      "SlotDefinition": {
-        "additionalProperties": false,
+      "SlotDefinition-Input": {
+        "description": "Typed writer slot metadata; string values remain valid for older versions.",
         "properties": {
-          "signals": {
-            "items": {
-              "$ref": "#/components/schemas/ProtectedSignal"
-            },
-            "title": "Signals",
-            "type": "array"
+          "example": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "min_length": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Min Length",
+            "type": "integer"
+          },
+          "required": {
+            "default": true,
+            "title": "Required",
+            "type": "boolean"
           },
           "type": {
-            "$ref": "#/components/schemas/SlotType"
+            "title": "Type",
+            "type": "string"
           }
         },
         "required": [
@@ -2791,6 +3007,13 @@
             "title": "Code",
             "type": "string"
           },
+          "compatible_genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Compatible Genres",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2817,6 +3040,7 @@
           "code",
           "name",
           "order",
+          "compatible_genres",
           "moves"
         ],
         "title": "TaxonomySection",
@@ -2938,6 +3162,17 @@
             "title": "Claim Type",
             "type": "string"
           },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
           "epistemic_strength": {
             "anyOf": [
               {
@@ -2952,6 +3187,13 @@
           "evidence_level": {
             "title": "Evidence Level",
             "type": "string"
+          },
+          "slots": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Slots",
+            "type": "object"
           },
           "text": {
             "minLength": 1,
@@ -3085,6 +3327,84 @@
           "recommended_action"
         ],
         "title": "ValidationRuleResponse",
+        "type": "object"
+      },
+      "aprkb__modules__mining__schemas__SlotDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/ProtectedSignal"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "type": {
+            "$ref": "#/components/schemas/SlotType"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "SlotDefinition",
+        "type": "object"
+      },
+      "aprkb__modules__patterns__schemas__SlotDefinition": {
+        "description": "Typed writer slot metadata; string values remain valid for older versions.",
+        "properties": {
+          "example": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "min_length": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Min Length",
+            "type": "integer"
+          },
+          "required": {
+            "default": true,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "SlotDefinition",
         "type": "object"
       }
     }
@@ -5589,11 +5909,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/RenderErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid render input"
           }
         },
         "summary": "Render",

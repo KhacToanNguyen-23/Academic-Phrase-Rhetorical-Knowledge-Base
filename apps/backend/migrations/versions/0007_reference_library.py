@@ -4,8 +4,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = "0006_reference_library"
-down_revision = "0005_candidate_occurrences"
+revision = "0007_reference_library"
+down_revision = "0006_section_genre_compatibility"
 branch_labels = None
 depends_on = None
 

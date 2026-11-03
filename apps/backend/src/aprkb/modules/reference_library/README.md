@@ -52,4 +52,4 @@ Also remove any `REFERENCE_LIBRARY_ENABLED` override from that environment's `.e
 
 ## Verification boundary
 
-PostgreSQL integration tests require `TEST_DATABASE_URL` to name only the dedicated `aprkb_test` database. Do not run migrations or imports against a real or demo database while working on this module. Migration `0006_reference_library` is unreleased and may be edited in place before the owner rebuilds the demo database.
+PostgreSQL integration tests require `TEST_DATABASE_URL` to name only the dedicated `aprkb_test` database. Do not run migrations or imports against a real or demo database while working on this module. Migration `0007_reference_library` is unreleased and may be edited in place before the owner rebuilds the demo database.

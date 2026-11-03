@@ -774,7 +774,7 @@ export interface components {
             intent_id: string | null;
             /** Slots */
             slots: {
-                [key: string]: components["schemas"]["SlotDefinition"];
+                [key: string]: components["schemas"]["aprkb__modules__mining__schemas__SlotDefinition"];
             };
             /** Source Sentence Ids */
             source_sentence_ids: string[];
@@ -1159,7 +1159,7 @@ export interface components {
             intent_code: string;
             /** Slots */
             slots?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["SlotDefinition-Input"] | string;
             };
             /**
              * Source Type
@@ -1191,7 +1191,7 @@ export interface components {
             intent_code: string;
             /** Slots */
             slots: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["aprkb__modules__patterns__schemas__SlotDefinition"] | string;
             } | null;
             /** Status */
             status: string;
@@ -1232,7 +1232,7 @@ export interface components {
             epistemic_strength: "low" | "moderate" | "high" | "absolute";
             /** Slots */
             slots?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["SlotDefinition-Input"] | string;
             };
         };
         /** PatternVersionRead */
@@ -1257,7 +1257,7 @@ export interface components {
             pattern_id: string;
             /** Slots */
             slots: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["aprkb__modules__patterns__schemas__SlotDefinition"] | string;
             };
             /** Version No */
             version_no: number;
@@ -1281,6 +1281,8 @@ export interface components {
             fallback_tier: string;
             /** License Code */
             license_code: string | null;
+            /** License Flag */
+            license_flag: boolean;
             /** License Name */
             license_name: string | null;
             /**
@@ -1308,7 +1310,7 @@ export interface components {
             /** Genre */
             genre?: string | null;
             /** Intent */
-            intent: string;
+            intent?: string | null;
             /** Journal Id */
             journal_id?: string | null;
             /**
@@ -1321,7 +1323,7 @@ export interface components {
             /** Query */
             query?: string | null;
             /** Section */
-            section: string;
+            section?: string | null;
         };
         /** RecommendationResponse */
         RecommendationResponse: {
@@ -1449,6 +1451,29 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** RenderError */
+        RenderError: {
+            /** Code */
+            code: string;
+            details?: components["schemas"]["RenderErrorDetails"] | null;
+            /** Message */
+            message: string;
+        };
+        /** RenderErrorDetails */
+        RenderErrorDetails: {
+            /** Errors */
+            errors?: components["schemas"]["RenderValidationIssue"][] | null;
+            /** Field Errors */
+            field_errors?: {
+                [key: string]: string;
+            } | null;
+        };
+        /** RenderErrorResponse */
+        RenderErrorResponse: {
+            error: components["schemas"]["RenderError"];
+            /** Request Id */
+            request_id: string;
+        };
         /** RenderRequest */
         RenderRequest: {
             /**
@@ -1478,6 +1503,15 @@ export interface components {
             /** Unfilled Slots */
             unfilled_slots: string[];
         };
+        /** RenderValidationIssue */
+        RenderValidationIssue: {
+            /** Loc */
+            loc: (string | number)[];
+            /** Msg */
+            msg: string;
+            /** Type */
+            type?: string | null;
+        };
         /** RenderableVersionRead */
         RenderableVersionRead: {
             /** Canonical Frame */
@@ -1500,7 +1534,7 @@ export interface components {
             pattern_id: string;
             /** Slots */
             slots: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["aprkb__modules__patterns__schemas__SlotDefinition"] | string;
             };
             /** Source Type */
             source_type: string;
@@ -1557,11 +1591,29 @@ export interface components {
             /** Section Code */
             section_code?: string | null;
         };
-        /** SlotDefinition */
-        SlotDefinition: {
-            /** Signals */
-            signals?: components["schemas"]["ProtectedSignal"][];
-            type: components["schemas"]["SlotType"];
+        /**
+         * SlotDefinition
+         * @description Typed writer slot metadata; string values remain valid for older versions.
+         */
+        "SlotDefinition-Input": {
+            /** Example */
+            example?: string | null;
+            /** Instruction */
+            instruction?: string | null;
+            /** Label */
+            label?: string | null;
+            /**
+             * Min Length
+             * @default 1
+             */
+            min_length: number;
+            /**
+             * Required
+             * @default true
+             */
+            required: boolean;
+            /** Type */
+            type: string;
         };
         /**
          * SlotType
@@ -1669,6 +1721,8 @@ export interface components {
         TaxonomySection: {
             /** Code */
             code: string;
+            /** Compatible Genres */
+            compatible_genres: string[];
             /**
              * Id
              * Format: uuid
@@ -1728,10 +1782,16 @@ export interface components {
         ValidationRequest: {
             /** Claim Type */
             claim_type: string;
+            /** Context */
+            context?: string | null;
             /** Epistemic Strength */
             epistemic_strength?: string | null;
             /** Evidence Level */
             evidence_level: string;
+            /** Slots */
+            slots?: {
+                [key: string]: string;
+            };
             /** Text */
             text: string;
         };
@@ -1776,6 +1836,36 @@ export interface components {
                 number,
                 number
             ] | null;
+        };
+        /** SlotDefinition */
+        aprkb__modules__mining__schemas__SlotDefinition: {
+            /** Signals */
+            signals?: components["schemas"]["ProtectedSignal"][];
+            type: components["schemas"]["SlotType"];
+        };
+        /**
+         * SlotDefinition
+         * @description Typed writer slot metadata; string values remain valid for older versions.
+         */
+        aprkb__modules__patterns__schemas__SlotDefinition: {
+            /** Example */
+            example?: string | null;
+            /** Instruction */
+            instruction?: string | null;
+            /** Label */
+            label?: string | null;
+            /**
+             * Min Length
+             * @default 1
+             */
+            min_length: number;
+            /**
+             * Required
+             * @default true
+             */
+            required: boolean;
+            /** Type */
+            type: string;
         };
     };
     responses: never;
@@ -3115,13 +3205,13 @@ export interface operations {
                     "application/json": components["schemas"]["RenderResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid render input */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["RenderErrorResponse"];
                 };
             };
         };

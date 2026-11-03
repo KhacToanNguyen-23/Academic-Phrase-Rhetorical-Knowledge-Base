@@ -157,6 +157,124 @@
         "title": "ArticleImportCreate",
         "type": "object"
       },
+      "ArticleRowRead": {
+        "properties": {
+          "batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingest_status": {
+            "title": "Ingest Status",
+            "type": "string"
+          },
+          "journal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal"
+          },
+          "mining_status": {
+            "enum": [
+              "not_started",
+              "queued",
+              "processing",
+              "succeeded",
+              "failed"
+            ],
+            "title": "Mining Status",
+            "type": "string"
+          },
+          "phrases": {
+            "$ref": "#/components/schemas/PhraseCounts"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "doi",
+          "journal",
+          "batch_id",
+          "ingest_status",
+          "mining_status",
+          "phrases"
+        ],
+        "title": "ArticleRowRead",
+        "type": "object"
+      },
+      "ArticleTextRead": {
+        "properties": {
+          "article_id": {
+            "format": "uuid",
+            "title": "Article Id",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SectionText"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "article_id",
+          "title",
+          "sections"
+        ],
+        "title": "ArticleTextRead",
+        "type": "object"
+      },
       "AuthenticatedClient": {
         "properties": {
           "id": {
@@ -179,6 +297,52 @@
           "role"
         ],
         "title": "AuthenticatedClient",
+        "type": "object"
+      },
+      "BatchRead": {
+        "properties": {
+          "articles": {
+            "title": "Articles",
+            "type": "integer"
+          },
+          "batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "title": "Imported At",
+            "type": "string"
+          },
+          "mined": {
+            "title": "Mined",
+            "type": "integer"
+          },
+          "phrases": {
+            "$ref": "#/components/schemas/PhraseCounts"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "batch_id",
+          "imported_at",
+          "articles",
+          "ready",
+          "mined",
+          "phrases"
+        ],
+        "title": "BatchRead",
         "type": "object"
       },
       "Body_upload_article_v1_admin_corpus_articles_post": {
@@ -209,6 +373,89 @@
           "license_code"
         ],
         "title": "Body_upload_article_v1_admin_corpus_articles_post",
+        "type": "object"
+      },
+      "BulkDecisionCreate": {
+        "properties": {
+          "candidate_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Candidate Ids",
+            "type": "array"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "decision": {
+            "enum": [
+              "accept",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_ids",
+          "decision"
+        ],
+        "title": "BulkDecisionCreate",
+        "type": "object"
+      },
+      "BulkDecisionFailure": {
+        "properties": {
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "reason"
+        ],
+        "title": "BulkDecisionFailure",
+        "type": "object"
+      },
+      "BulkDecisionResult": {
+        "properties": {
+          "failed": {
+            "items": {
+              "$ref": "#/components/schemas/BulkDecisionFailure"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PhraseDecisionResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results",
+          "failed"
+        ],
+        "title": "BulkDecisionResult",
         "type": "object"
       },
       "CandidateSummary": {
@@ -1096,6 +1343,62 @@
         "title": "JournalRead",
         "type": "object"
       },
+      "MineRequest": {
+        "properties": {
+          "article_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Article Ids",
+            "type": "array"
+          },
+          "batch_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Batch Ids",
+            "type": "array"
+          },
+          "unbatched": {
+            "default": false,
+            "title": "Unbatched",
+            "type": "boolean"
+          }
+        },
+        "title": "MineRequest",
+        "type": "object"
+      },
+      "MineResult": {
+        "properties": {
+          "articles": {
+            "title": "Articles",
+            "type": "integer"
+          },
+          "job_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Job Ids",
+            "type": "array"
+          },
+          "skipped_not_ready": {
+            "title": "Skipped Not Ready",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_ids",
+          "articles",
+          "skipped_not_ready"
+        ],
+        "title": "MineResult",
+        "type": "object"
+      },
       "PatternCreate": {
         "properties": {
           "allowed_genres": {
@@ -1445,6 +1748,245 @@
           "change_note"
         ],
         "title": "PatternVersionRead",
+        "type": "object"
+      },
+      "PhraseCounts": {
+        "properties": {
+          "accepted": {
+            "default": 0,
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "pending": {
+            "default": 0,
+            "title": "Pending",
+            "type": "integer"
+          },
+          "rejected": {
+            "default": 0,
+            "title": "Rejected",
+            "type": "integer"
+          }
+        },
+        "title": "PhraseCounts",
+        "type": "object"
+      },
+      "PhraseDecisionCreate": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "decision": {
+            "enum": [
+              "accept",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "PhraseDecisionCreate",
+        "type": "object"
+      },
+      "PhraseDecisionResult": {
+        "properties": {
+          "approved_phrase_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Phrase Id"
+          },
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "status",
+          "approved_phrase_id"
+        ],
+        "title": "PhraseDecisionResult",
+        "type": "object"
+      },
+      "PhrasePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PhraseRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "PhrasePage",
+        "type": "object"
+      },
+      "PhraseRead": {
+        "properties": {
+          "blocked": {
+            "title": "Blocked",
+            "type": "boolean"
+          },
+          "canonical_frame": {
+            "title": "Canonical Frame",
+            "type": "string"
+          },
+          "epistemic_strength": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "slots": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SlotDefinition"
+            },
+            "title": "Slots",
+            "type": "object"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/PhraseSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "canonical_frame",
+          "slots",
+          "epistemic_strength",
+          "status",
+          "blocked",
+          "sources"
+        ],
+        "title": "PhraseRead",
+        "type": "object"
+      },
+      "PhraseSource": {
+        "properties": {
+          "article_id": {
+            "format": "uuid",
+            "title": "Article Id",
+            "type": "string"
+          },
+          "article_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Title"
+          },
+          "journal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "sentence_id": {
+            "format": "uuid",
+            "title": "Sentence Id",
+            "type": "string"
+          },
+          "slot_spans": {
+            "additionalProperties": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Slot Spans",
+            "type": "object"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sentence_id",
+          "article_id",
+          "article_title",
+          "journal",
+          "section",
+          "text",
+          "slot_spans"
+        ],
+        "title": "PhraseSource",
         "type": "object"
       },
       "ProtectedSignal": {
@@ -1976,6 +2518,65 @@
           "pattern_version_id"
         ],
         "title": "ReviewDecisionResult",
+        "type": "object"
+      },
+      "SectionText": {
+        "properties": {
+          "heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "section_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Code"
+          },
+          "sentences": {
+            "items": {
+              "$ref": "#/components/schemas/SentenceText"
+            },
+            "title": "Sentences",
+            "type": "array"
+          }
+        },
+        "required": [
+          "heading",
+          "section_code",
+          "sentences"
+        ],
+        "title": "SectionText",
+        "type": "object"
+      },
+      "SentenceText": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "SentenceText",
         "type": "object"
       },
       "SlotDefinition": {
@@ -2798,6 +3399,87 @@
       }
     },
     "/v1/admin/corpus/articles": {
+      "get": {
+        "operationId": "list_articles_v1_admin_corpus_articles_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "batch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Batch Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unbatched",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Unbatched",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ArticleRowRead"
+                  },
+                  "title": "Response List Articles V1 Admin Corpus Articles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Articles",
+        "tags": [
+          "extraction"
+        ]
+      },
       "post": {
         "operationId": "upload_article_v1_admin_corpus_articles_post",
         "parameters": [
@@ -2920,6 +3602,118 @@
         "summary": "Mine Article",
         "tags": [
           "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/corpus/articles/{article_id}/text": {
+      "get": {
+        "operationId": "article_text_v1_admin_corpus_articles__article_id__text_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "article_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Article Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleTextRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Article Text",
+        "tags": [
+          "extraction"
+        ]
+      }
+    },
+    "/v1/admin/corpus/batches": {
+      "get": {
+        "operationId": "list_batches_v1_admin_corpus_batches_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BatchRead"
+                  },
+                  "title": "Response List Batches V1 Admin Corpus Batches Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Batches",
+        "tags": [
+          "extraction"
         ]
       }
     },
@@ -3222,6 +4016,65 @@
         ]
       }
     },
+    "/v1/admin/corpus/mine": {
+      "post": {
+        "operationId": "mine_v1_admin_corpus_mine_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MineResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mine",
+        "tags": [
+          "extraction"
+        ]
+      }
+    },
     "/v1/admin/corpus/sources/slr/taxonomy": {
       "get": {
         "operationId": "slr_taxonomy_v1_admin_corpus_sources_slr_taxonomy_get",
@@ -3322,6 +4175,271 @@
         "summary": "Slr Taxonomy",
         "tags": [
           "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/extraction/phrases": {
+      "get": {
+        "operationId": "list_phrases_v1_admin_extraction_phrases_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "pending",
+              "enum": [
+                "pending",
+                "accepted",
+                "rejected"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "article_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Article Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "batch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Batch Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unbatched",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Unbatched",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhrasePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Phrases",
+        "tags": [
+          "extraction"
+        ]
+      }
+    },
+    "/v1/admin/extraction/phrases/decisions": {
+      "post": {
+        "operationId": "decide_many_v1_admin_extraction_phrases_decisions_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDecisionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDecisionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Many",
+        "tags": [
+          "extraction"
+        ]
+      }
+    },
+    "/v1/admin/extraction/phrases/{candidate_id}/decision": {
+      "post": {
+        "operationId": "decide_phrase_v1_admin_extraction_phrases__candidate_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhraseDecisionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhraseDecisionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Phrase",
+        "tags": [
+          "extraction"
         ]
       }
     },

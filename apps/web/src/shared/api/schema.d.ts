@@ -30,7 +30,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Articles */
+        get: operations["list_articles_v1_admin_corpus_articles_get"];
         put?: never;
         /** Upload Article */
         post: operations["upload_article_v1_admin_corpus_articles_post"];
@@ -51,6 +52,40 @@ export interface paths {
         put?: never;
         /** Mine Article */
         post: operations["mine_article_v1_admin_corpus_articles__article_id__mine_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/corpus/articles/{article_id}/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Article Text */
+        get: operations["article_text_v1_admin_corpus_articles__article_id__text_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/corpus/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Batches */
+        get: operations["list_batches_v1_admin_corpus_batches_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -110,6 +145,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/corpus/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mine */
+        post: operations["mine_v1_admin_corpus_mine_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/corpus/sources/slr/taxonomy": {
         parameters: {
             query?: never;
@@ -121,6 +173,57 @@ export interface paths {
         get: operations["slr_taxonomy_v1_admin_corpus_sources_slr_taxonomy_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/extraction/phrases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Phrases */
+        get: operations["list_phrases_v1_admin_extraction_phrases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/extraction/phrases/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Many */
+        post: operations["decide_many_v1_admin_extraction_phrases_decisions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/extraction/phrases/{candidate_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Phrase */
+        post: operations["decide_phrase_v1_admin_extraction_phrases__candidate_id__decision_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -685,6 +788,42 @@ export interface components {
             /** Profile Id */
             profile_id?: string | null;
         };
+        /** ArticleRowRead */
+        ArticleRowRead: {
+            /** Batch Id */
+            batch_id: string | null;
+            /** Doi */
+            doi: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ingest Status */
+            ingest_status: string;
+            /** Journal */
+            journal: string | null;
+            /**
+             * Mining Status
+             * @enum {string}
+             */
+            mining_status: "not_started" | "queued" | "processing" | "succeeded" | "failed";
+            phrases: components["schemas"]["PhraseCounts"];
+            /** Title */
+            title: string | null;
+        };
+        /** ArticleTextRead */
+        ArticleTextRead: {
+            /**
+             * Article Id
+             * Format: uuid
+             */
+            article_id: string;
+            /** Sections */
+            sections: components["schemas"]["SectionText"][];
+            /** Title */
+            title: string | null;
+        };
         /** AuthenticatedClient */
         AuthenticatedClient: {
             /**
@@ -697,6 +836,23 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** BatchRead */
+        BatchRead: {
+            /** Articles */
+            articles: number;
+            /** Batch Id */
+            batch_id: string | null;
+            /**
+             * Imported At
+             * Format: date-time
+             */
+            imported_at: string;
+            /** Mined */
+            mined: number;
+            phrases: components["schemas"]["PhraseCounts"];
+            /** Ready */
+            ready: number;
+        };
         /** Body_upload_article_v1_admin_corpus_articles_post */
         Body_upload_article_v1_admin_corpus_articles_post: {
             /** File */
@@ -705,6 +861,35 @@ export interface components {
             license_code: string;
             /** Title */
             title?: string | null;
+        };
+        /** BulkDecisionCreate */
+        BulkDecisionCreate: {
+            /** Candidate Ids */
+            candidate_ids: string[];
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accept" | "reject";
+        };
+        /** BulkDecisionFailure */
+        BulkDecisionFailure: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Reason */
+            reason: string;
+        };
+        /** BulkDecisionResult */
+        BulkDecisionResult: {
+            /** Failed */
+            failed: components["schemas"]["BulkDecisionFailure"][];
+            /** Results */
+            results: components["schemas"]["PhraseDecisionResult"][];
         };
         /** CandidateSummary */
         CandidateSummary: {
@@ -1058,6 +1243,27 @@ export interface components {
             /** Subfield */
             subfield: string | null;
         };
+        /** MineRequest */
+        MineRequest: {
+            /** Article Ids */
+            article_ids?: string[];
+            /** Batch Ids */
+            batch_ids?: string[];
+            /**
+             * Unbatched
+             * @default false
+             */
+            unbatched: boolean;
+        };
+        /** MineResult */
+        MineResult: {
+            /** Articles */
+            articles: number;
+            /** Job Ids */
+            job_ids: string[];
+            /** Skipped Not Ready */
+            skipped_not_ready: number;
+        };
         /** PatternCreate */
         PatternCreate: {
             /** Allowed Genres */
@@ -1184,6 +1390,103 @@ export interface components {
             };
             /** Version No */
             version_no: number;
+        };
+        /** PhraseCounts */
+        PhraseCounts: {
+            /**
+             * Accepted
+             * @default 0
+             */
+            accepted: number;
+            /**
+             * Pending
+             * @default 0
+             */
+            pending: number;
+            /**
+             * Rejected
+             * @default 0
+             */
+            rejected: number;
+        };
+        /** PhraseDecisionCreate */
+        PhraseDecisionCreate: {
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accept" | "reject";
+        };
+        /** PhraseDecisionResult */
+        PhraseDecisionResult: {
+            /** Approved Phrase Id */
+            approved_phrase_id: string | null;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Status */
+            status: string;
+        };
+        /** PhrasePage */
+        PhrasePage: {
+            /** Items */
+            items: components["schemas"]["PhraseRead"][];
+            /** Total */
+            total: number;
+        };
+        /** PhraseRead */
+        PhraseRead: {
+            /** Blocked */
+            blocked: boolean;
+            /** Canonical Frame */
+            canonical_frame: string;
+            /** Epistemic Strength */
+            epistemic_strength: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Slots */
+            slots: {
+                [key: string]: components["schemas"]["SlotDefinition"];
+            };
+            /** Sources */
+            sources: components["schemas"]["PhraseSource"][];
+            /** Status */
+            status: string;
+        };
+        /** PhraseSource */
+        PhraseSource: {
+            /**
+             * Article Id
+             * Format: uuid
+             */
+            article_id: string;
+            /** Article Title */
+            article_title: string | null;
+            /** Journal */
+            journal: string | null;
+            /** Section */
+            section: string | null;
+            /**
+             * Sentence Id
+             * Format: uuid
+             */
+            sentence_id: string;
+            /** Slot Spans */
+            slot_spans: {
+                [key: string]: [
+                    number,
+                    number
+                ];
+            };
+            /** Text */
+            text: string;
         };
         /**
          * ProtectedSignal
@@ -1378,6 +1681,25 @@ export interface components {
             pattern_version_id: string | null;
             /** Round */
             round: number;
+        };
+        /** SectionText */
+        SectionText: {
+            /** Heading */
+            heading: string | null;
+            /** Section Code */
+            section_code: string | null;
+            /** Sentences */
+            sentences: components["schemas"]["SentenceText"][];
+        };
+        /** SentenceText */
+        SentenceText: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Text */
+            text: string;
         };
         /** SlotDefinition */
         SlotDefinition: {
@@ -1694,6 +2016,40 @@ export interface operations {
             };
         };
     };
+    list_articles_v1_admin_corpus_articles_get: {
+        parameters: {
+            query?: {
+                batch_id?: string[] | null;
+                unbatched?: boolean;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleRowRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_article_v1_admin_corpus_articles_post: {
         parameters: {
             query?: never;
@@ -1753,6 +2109,70 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    article_text_v1_admin_corpus_articles__article_id__text_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleTextRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_batches_v1_admin_corpus_batches_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchRead"][];
                 };
             };
             /** @description Validation Error */
@@ -1939,6 +2359,41 @@ export interface operations {
             };
         };
     };
+    mine_v1_admin_corpus_mine_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MineRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MineResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     slr_taxonomy_v1_admin_corpus_sources_slr_taxonomy_get: {
         parameters: {
             query: {
@@ -1962,6 +2417,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SlrTaxonomyPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_phrases_v1_admin_extraction_phrases_get: {
+        parameters: {
+            query?: {
+                status?: "pending" | "accepted" | "rejected";
+                article_id?: string[] | null;
+                batch_id?: string[] | null;
+                unbatched?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhrasePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_many_v1_admin_extraction_phrases_decisions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkDecisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkDecisionResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_phrase_v1_admin_extraction_phrases__candidate_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhraseDecisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhraseDecisionResult"];
                 };
             };
             /** @description Validation Error */

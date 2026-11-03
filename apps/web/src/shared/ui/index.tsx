@@ -97,9 +97,9 @@ export function Field({ label, children, hint, error }: { label: string; childre
  * Một "section" kiểu bài báo. `confirm` là hành động chính,
  * chỉ hiện khi hover/focus vào section (luôn hiện trên thiết bị cảm ứng).
  */
-export function Card({ title, aside, confirm, children }: { title?: ReactNode; aside?: ReactNode; confirm?: ReactNode; children: ReactNode }) {
+export function Card({ title, aside, confirm, className, children }: { title?: ReactNode; aside?: ReactNode; confirm?: ReactNode; className?: string; children: ReactNode }) {
   return (
-    <section className="card">
+    <section className={`card ${className ?? ""}`.trim()}>
       {(title || aside) && (
         <div className="card-head">
           {title && <h2>{title}</h2>}

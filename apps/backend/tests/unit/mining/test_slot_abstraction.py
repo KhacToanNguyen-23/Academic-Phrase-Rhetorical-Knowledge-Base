@@ -179,3 +179,44 @@ def test_extractability_reason_names_the_failing_condition():
     assert abstractor.extractability_reason("suggest that cold slows growth.") == "no_subject"
     long_subject = "The very long and winding collection of many separate results suggest that x y."
     assert abstractor.extractability_reason(long_subject) == "subject_too_long"
+
+
+def _frame(text: str) -> str | None:
+    results = _pipeline().process([MiningItem(text=text, source_sentence_ids=[uuid4()])])
+    return results[0].text if results else None
+
+
+def test_negation_and_modals_stay_literal_in_the_frame():
+    assert (
+        _frame("These findings do not suggest that the sample changes.")
+        == "[X] [Y] do not suggest that [Z]."
+    )
+    assert (
+        _frame("Our results may suggest that the sample changes.")
+        == "[X] [Y] may suggest that [Z]."
+    )
+    assert _frame("Smith et al. never show that cold slows growth.") == "[X] never show that [Y]."
+
+
+def test_negated_and_plain_sentences_do_not_share_a_cluster_key():
+    keys = {
+        _pipeline().process([MiningItem(text=text, source_sentence_ids=[uuid4()])])[0].cluster_key
+        for text in (
+            "Our results suggest that the sample changes.",
+            "Our results do not suggest that the sample changes.",
+        )
+    }
+    assert len(keys) == 2
+
+
+def test_did_not_is_past_tense():
+    [result] = _pipeline().process(
+        [
+            MiningItem(
+                text="Our results did not show that the sample changes.",
+                source_sentence_ids=[uuid4()],
+            )
+        ]
+    )
+    assert result.tense == "past"
+    assert result.text == "[X] [Y] did not show that [Z]."

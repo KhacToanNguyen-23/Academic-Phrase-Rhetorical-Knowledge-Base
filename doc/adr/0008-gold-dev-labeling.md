@@ -25,3 +25,11 @@ For development, keep `GROQ_API_KEY` only in the local `.env` and read it when t
 - **Meaning of `keep`:** `keep=true` means a clean running-prose sentence, not that a slot can be extracted. The sentence filter is scored on `keep` and `noise_reason`; the slot abstractor is scored only on `keep=true` sentences, with extraction coverage reported separately from field accuracy. See guideline v1 and `eval/mining/gold/DEV_PROTOCOL.md`.
 - **Frame rule:** a frame is the whole sentence with each slot span replaced by its placeholder. AI drafts that do not match are marked `label_failed`; human edits are not constrained by this check.
 - **Trial result:** a 10-sentence Groq trial with `openai/gpt-oss-120b` labeled all items; a manual review found frame mismatches in 3 of 7 kept items, which led to the frame check and guideline v1. This is a labeling-quality observation, not a quality claim for the mining algorithm.
+
+## Update 2026-11-02 (paused)
+
+Status: **Paused by owner.** Gold review is deferred while the slot abstractor is improved. The code, `/gold` page and evaluator stay in place; nothing is deleted. One sample batch exists (guideline v1, 285 items after a duplicate article was removed, 24 AI drafts, none reviewed); it will be resampled before any review resumes because the sentence filter is still changing.
+
+Interim measurement uses label-free corpus statistics and regression tests built from self-authored sentences. These guard against regressions but give no precision or recall on real text, so no quality claim may be made from them. FR-06.6 remains unmet.
+
+Findings from the paused work that still apply: SLR markdown drops all math (sentences with holes or cut before an equation), some PDFs lose a leading "Th" ligature, and one paper was stored under two work ids without a DOI (import now also skips a DOI-less title already imported from the same source).

@@ -9,6 +9,7 @@ import { GoldPage } from "@/features/gold";
 import { JournalProfilePage } from "@/features/journal-profile";
 import { LibraryPage } from "@/features/library";
 import { OverviewPage } from "@/features/overview";
+import { ExtractPage } from "@/features/phrase-extraction";
 import { PlaygroundPage } from "@/features/playground";
 import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
 import { Loading } from "@/shared/ui";
@@ -25,6 +26,7 @@ const NAV = [
   { to: "/journals", label: "Journals" },
   { to: "/admin", label: "Admin" },
   { to: "/import", label: "Import" },
+  { to: "/extract", label: "Extract" },
   { to: "/gold", label: "Gold review" },
 ] as const;
 
@@ -123,6 +125,13 @@ const inbox = createRoute({ getParentRoute: () => root, path: "/inbox", componen
 const admin = createRoute({ getParentRoute: () => root, path: "/admin", component: AdminPage });
 const slrImport = createRoute({ getParentRoute: () => root, path: "/import", component: SlrImportPage });
 const gold = createRoute({ getParentRoute: () => root, path: "/gold", component: GoldPage });
+// ?batch=<id>[,<id>] preselects batches; the Import page links here when a run finishes.
+const extract = createRoute({
+  getParentRoute: () => root,
+  path: "/extract",
+  validateSearch: (s: Record<string, unknown>): { batch?: string } => ({ batch: str(s.batch) }),
+  component: () => <ExtractPage initialBatch={getRouteApi("/extract").useSearch().batch} />,
+});
 
 const journals = createRoute({ getParentRoute: () => root, path: "/journals", component: () => <JournalProfilePage /> });
 const journal = createRoute({
@@ -142,6 +151,7 @@ export const router = createRouter({
     journal,
     admin,
     slrImport,
+    extract,
     gold,
   ]),
 });

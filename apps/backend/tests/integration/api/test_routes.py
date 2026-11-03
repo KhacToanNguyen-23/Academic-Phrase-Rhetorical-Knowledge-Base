@@ -120,6 +120,14 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/admin/corpus/import-profiles/{id}", "get"),
         ("/v1/admin/corpus/import-profiles/{id}", "patch"),
         ("/v1/admin/corpus/sources/slr/taxonomy", "get"),
+        # ADR-0009 extraction page.
+        ("/v1/admin/corpus/batches", "get"),
+        ("/v1/admin/corpus/articles", "get"),
+        ("/v1/admin/corpus/articles/{id}/text", "get"),
+        ("/v1/admin/corpus/mine", "post"),
+        ("/v1/admin/extraction/phrases", "get"),
+        ("/v1/admin/extraction/phrases/decisions", "post"),
+        ("/v1/admin/extraction/phrases/{id}/decision", "post"),
         ("/v1/admin/jobs/{id}", "get"),
         ("/v1/admin/api-keys", "post"),
         ("/v1/admin/api-keys", "get"),
@@ -978,6 +986,13 @@ async def test_gold_sampling_stores_only_sentence_reference_hash_and_audits_coun
         assert audit.after["filtered_count"] == 0
         assert audit.after["sampling_policy_version"] == load_policy_bundle().gold_sampling.version
         batch = response.json()["sample_batch"]
+        # The only eligible sentence is already sampled, so it must not be drawn again.
+        again = await api_client.post(
+            "/v1/admin/gold/samples",
+            headers={"X-API-Key": key},
+            json={"size": 1, "seed": 742, "max_per_article": 1},
+        )
+        assert again.status_code == 422
         item.ai_labels = {"keep": True}
         await session.commit()
         with pytest.raises(ValueError, match="contains labels"):

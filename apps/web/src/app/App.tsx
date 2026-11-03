@@ -4,7 +4,6 @@ import { RouterProvider } from "@tanstack/react-router";
 
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { router } from "./router";
-import "./styles.css";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, refetchOnWindowFocus: false } } });
 

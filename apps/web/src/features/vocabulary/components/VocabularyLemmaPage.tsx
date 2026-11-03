@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import { Badge, Card, Empty, ErrorState, Loading, PageHeader, Stat } from "@/shared/ui";
 import { useLemma } from "../api/client";
 
-const route = getRouteApi("/vocabulary/$lemmaId");
+const route = getRouteApi("/shell/guarded/vocabulary/$lemmaId");
 
 export function VocabularyLemmaPage() {
   const { lemmaId } = route.useParams();

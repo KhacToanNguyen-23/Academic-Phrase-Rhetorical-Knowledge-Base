@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
+import { PageHeader } from "@/components/domain";
 import { api } from "@/shared/api";
-import { EvidenceLabel, Frame, SeverityBadge, StatusBadge, fmtTime } from "@/shared/ui";
+import { SeverityBadge, StatusBadge, fmtTime } from "@/shared/ui";
 
 const SECTIONS = [
   { to: "/library", title: "Library", text: "Browse every rhetorical pattern, its slots, usage contract, variants and provenance.", tag: "WB-01 / 02" },
@@ -37,42 +38,7 @@ export function OverviewPage() {
 
   return (
     <div className="overview">
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">Rhetorical pattern bank</p>
-          <h1 className="hero-title">The right phrasing for <span>every claim.</span></h1>
-          <p className="lead">
-            Academic Wordbank supplies the Writing Engine with approved, licence-compliant sentence patterns — matched to the
-            section, rhetorical intent and strength of evidence — and never invents citations, figures or research gaps.
-          </p>
-          <div className="hero-actions">
-            <Link className="btn btn-primary btn-lg" to="/library">Explore the library <span className="arrow">→</span></Link>
-            <Link className="btn btn-lg" to="/playground">Try the API <span className="arrow">↗</span></Link>
-          </div>
-          <ul className="hero-points">
-            <li><Check /> Evidence-aware validation</li>
-            <li><Check /> Traceable provenance</li>
-            <li><Check /> Works with OpenAlex disabled</li>
-          </ul>
-        </div>
-
-        <div className="hero-visual" aria-hidden>
-          <div className="hv-card hv-main">
-            <div className="hv-head"><span>Pattern GAP-014</span><span>Introduction · Gap</span></div>
-            <p className="hv-frame"><Frame frame="Although {research_focus} has been examined, its behavior under {specific_condition} remains insufficiently characterized." /></p>
-            <div className="hv-quote">
-              <span className="hv-label">Usage contract</span>
-              Requires a literature synthesis showing limited work under this condition.
-            </div>
-            <div className="hv-foot"><EvidenceLabel kind="observed" /><span className="hv-meta">42 uses · 31 articles</span></div>
-          </div>
-          <div className="hv-card hv-float">
-            <span className="hv-label">Validation</span>
-            <strong>pass</strong>
-            <small>V01–V08 · moderate evidence</small>
-          </div>
-        </div>
-      </section>
+      <PageHeader title="Workspace" description="Queues that need review, the bank at a glance, and recent API activity." />
 
       <section className="kpis" aria-label="At a glance">
         <Kpi value={approved} label="Approved patterns" to="/library" />
@@ -168,13 +134,5 @@ function Flow({ title, sub, steps }: { title: string; sub: string; steps: string
         ))}
       </ol>
     </div>
-  );
-}
-
-function Check() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   );
 }

@@ -6,7 +6,7 @@ export interface AuthenticatedClient {
   role: string;
 }
 
-interface AuthContextValue {
+export interface AuthContextValue {
   client: AuthenticatedClient | null;
   apiKey: string | null;
   loading: boolean;

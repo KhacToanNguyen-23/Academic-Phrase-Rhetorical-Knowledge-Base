@@ -6,7 +6,7 @@ import { Badge, Card, Empty, ErrorState, Loading, PageHeader, Tabs } from "@/sha
 import { useFamilies, useLemmas, useLetters } from "../api/client";
 import { VocabularyImportCard } from "./VocabularyImportCard";
 
-const route = getRouteApi("/vocabulary");
+const route = getRouteApi("/shell/guarded/vocabulary");
 const alphabet = [..."abcdefghijklmnopqrstuvwxyz", "#"];
 
 function statusTone(status: string | null): "ok" | "warn" | "info" | "neutral" {

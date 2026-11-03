@@ -54,3 +54,20 @@ Hai layout route trong TanStack Router: `publicLayout` (landing, signin) và `ap
 - Bỏ `allow: ["edge-text"]` của `inspect.mjs` (cho chữ "Navigation" của sidebar tạm). Sidebar mới không được cần ngoại lệ.
 - Xóa `src/app/Sidebar.tsx` tạm và CSS `side-*`, `masthead*` tương ứng trong `styles.css`.
 - Phase này chưa có landing: `/` tạm render một placeholder công khai (tiêu đề + nút "Sign in"); Phase 04 thay bằng landing thật.
+
+## Kết quả (2026-11-04)
+
+Ưu tiên của owner: **thiết kế cho web desktop**, không cần tối ưu thiết bị khác. Thanh top 48px và `Sheet` cho điện thoại vẫn có (shadcn Sidebar cho sẵn) nhưng không phải gate: không đo inspect ở 390px và không kiểm Browser MCP trên cửa sổ hẹp ở các phase sau, trừ khi owner đổi ý.
+
+Khác với spec ban đầu:
+
+- Các route con nằm dưới layout có id nên `getRouteApi` phải dùng id đầy đủ, ví dụ `getRouteApi("/shell/guarded/library")` (`/shell/guarded/vocabulary` và `/shell/guarded/vocabulary/$lemmaId` ở hai file vocabulary). Đường dẫn URL không đổi.
+- Guard chỉ nằm ở `beforeLoad` của `guarded` (và `signin` tự chuyển người đã đăng nhập). Không dùng `<Navigate>` trong component: nó gây vòng lặp vô hạn trên bản production. `App` gọi `router.invalidate()` mỗi khi phiên đăng nhập đổi.
+- Số đếm chỉ có ở Inbox (đếm submission đang pending từ API có sẵn). Gold và Extract chưa có endpoint đếm rẻ, nên chưa hiện số.
+- `/app` là `OverviewPage` bỏ phần hero (hero chuyển về landing ở Phase 04). Làm lại màn này ở Phase 05.
+- `/` là placeholder công khai (`features/landing/PublicHome.tsx`, có `TODO(owner)`), Phase 04 thay thế.
+- `CommandDialog` của shadcn bản này không bọc `<Command>`; `CommandMenu` tự bọc, nếu không `cmdk` ném lỗi `subscribe` khi mở.
+- Sidebar cần `TooltipProvider` bao ngoài (đặt trong `AppShell`).
+- `styles.css` có một khối tạm để link trong `[data-slot="sidebar"]` không nhận style `a` cũ; xóa cùng `styles.css` ở Phase 06.
+
+Kiểm chứng: typecheck, lint, build pass; `dist/` không có `dev/ui`, `demo-session`; `lint.mjs --app` 0 FAIL trên các file mới (FAIL còn lại nằm trong `styles.css` cũ). Inspect `--app` trên `/app`, `/library`, `/vocabulary`, `/writer`: các lỗi của shell (`edge-text`, `panel-void` của sidebar) đã hết, không cần `allow`; FAIL còn lại là nội dung trang cũ (chữ 10px, nhãn viết hoa), thuộc Phase 05.

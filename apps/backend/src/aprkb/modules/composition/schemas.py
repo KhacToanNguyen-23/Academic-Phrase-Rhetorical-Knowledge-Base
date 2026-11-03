@@ -15,3 +15,25 @@ class RenderResponse(BaseModel):
     pattern_version_id: UUID
     text: str
     unfilled_slots: list[str]
+
+
+class RenderValidationIssue(BaseModel):
+    loc: list[str | int]
+    msg: str
+    type: str | None = None
+
+
+class RenderErrorDetails(BaseModel):
+    field_errors: dict[str, str] | None = None
+    errors: list[RenderValidationIssue] | None = None
+
+
+class RenderError(BaseModel):
+    code: str
+    message: str
+    details: RenderErrorDetails | None = None
+
+
+class RenderErrorResponse(BaseModel):
+    error: RenderError
+    request_id: str

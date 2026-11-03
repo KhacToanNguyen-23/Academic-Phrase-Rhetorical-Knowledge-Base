@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { PageHeader } from "@/shared/ui";
 import { liveApi, type RecommendationRequest } from "../live/api";
@@ -13,6 +13,7 @@ export function OnlineWriterPage() {
   // Online Writer: FR-07 search → FR-07.5 render → FR-08 validation → FR-07.7 feedback.
   const apiKey = "";
   const [context, setContext] = useState<WriterContext>(blankContext);
+  const [supportingContext, setSupportingContext] = useState("");
   const [picked, setPicked] = useState("");
   const [slots, setSlots] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState("");
@@ -21,6 +22,7 @@ export function OnlineWriterPage() {
   const [renderSnapshot, setRenderSnapshot] = useState("");
   const [validationSnapshot, setValidationSnapshot] = useState("");
   const epoch = useRef(0);
+  const initialSearchStarted = useRef(false);
 
   const taxonomy = useQuery({
     queryKey: ["writer", "taxonomy"],
@@ -46,7 +48,9 @@ export function OnlineWriterPage() {
     queryFn: () => liveApi.version(apiKey, picked), enabled: !!activeRecommendation && !!picked, retry: false,
   });
   const validation = useMutation({
-    mutationFn: () => liveApi.validate(apiKey, draft, context.claimType, context.evidenceLevel),
+    mutationFn: () => liveApi.validate(
+      apiKey, draft, context.claimType, context.evidenceLevel, supportingContext, slots,
+    ),
   });
   const render = useMutation({
     mutationFn: ({ recommendationId, versionId, values }: {
@@ -65,6 +69,7 @@ export function OnlineWriterPage() {
   }) ? render.data : undefined;
   const activeValidation = validationSnapshot === JSON.stringify({
     text: draft, claimType: context.claimType, evidenceLevel: context.evidenceLevel,
+    sourceContext: supportingContext, slots,
   }) ? validation.data : undefined;
   const feedback = useMutation({
     mutationFn: () => liveApi.feedback(apiKey, {
@@ -74,6 +79,13 @@ export function OnlineWriterPage() {
       payload: { context_hash: activeRecommendation!.context_hash },
     }),
   });
+
+  useEffect(() => {
+    if (taxonomy.data && options.data && !initialSearchStarted.current) {
+      initialSearchStarted.current = true;
+      search();
+    }
+  }, [taxonomy.data, options.data]);
 
   const canCopy = !!activeValidation && !!activeRender &&
     activeValidation.severity !== "block" && activeRender.unfilled_slots.length === 0;
@@ -86,20 +98,25 @@ export function OnlineWriterPage() {
     setPicked(""); setSlots({}); setDraft(""); setCopyStatus("");
   }
 
+  function changeSupportingContext(value: string) {
+    setSupportingContext(value);
+    setValidationSnapshot("");
+    validation.reset(); feedback.reset(); setCopyStatus("");
+  }
+
   function search() {
-    // FR-07.1 sends the selected writing context; downstream hard gates must not be relaxed to fill results.
-    if (!context.section || !context.intent || !context.genre || !context.claimType || !context.evidenceLevel) return;
+    // CR-01: initial empty context lists every eligible pattern; selected fields only narrow it.
     epoch.current += 1;
     setSearchSnapshot(JSON.stringify(context)); setRenderSnapshot(""); setValidationSnapshot("");
     setPicked(""); setSlots({}); setDraft(""); setCopyStatus("");
     recommendation.reset();
     render.reset(); validation.reset(); feedback.reset();
     recommendation.mutate({ epoch: epoch.current, request: {
-      section: context.section,
-      intent: context.intent,
-      genre: context.genre,
-      claim_type: context.claimType,
-      evidence_level: context.evidenceLevel,
+      section: context.section || null,
+      intent: context.intent || null,
+      genre: context.genre || null,
+      claim_type: context.claimType || null,
+      evidence_level: context.evidenceLevel || null,
       journal_id: context.journalId || null,
       query: context.query.trim() || null,
       limit: 10,
@@ -142,6 +159,7 @@ export function OnlineWriterPage() {
     // FR-08 validates the edited sentence against the claim/evidence context; raw text is not persisted (FR-09.6).
     setValidationSnapshot(JSON.stringify({
       text: draft, claimType: context.claimType, evidenceLevel: context.evidenceLevel,
+      sourceContext: supportingContext, slots,
     }));
     validation.mutate();
   }
@@ -172,8 +190,10 @@ export function OnlineWriterPage() {
             taxonomy={taxonomy.data}
             options={options.data}
             journals={journals.data ?? []}
+            supportingContext={supportingContext}
             searching={recommendation.isPending}
             onChange={resetAfterContextChange}
+            onSupportingContextChange={changeSupportingContext}
             onSearch={search}
           />
           <ErrorText error={recommendation.error} />

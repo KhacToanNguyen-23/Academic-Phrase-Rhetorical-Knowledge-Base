@@ -3,6 +3,8 @@
 from aprkb.modules.validation.rules.base import RuleResult, Severity, ValidationRule
 from aprkb.modules.validation.rules.todo import TodoValidationRule
 from aprkb.modules.validation.rules.v02_claim_evidence import V02ClaimEvidenceRule
+from aprkb.modules.validation.rules.v03_grounding import V03GroundingRule
+from aprkb.modules.validation.rules.v06_style import V06StyleRule
 from aprkb.policies.evidence import EvidencePolicy
 from aprkb.policies.schemas import EpistemicMarkersPolicy, ValidationRulesPolicy
 
@@ -27,6 +29,10 @@ def build_rules(
                     severity=Severity(setting.severity),
                 )
             )
+        elif code == "V03" and setting is not None and setting.enabled:
+            rules.append(V03GroundingRule(Severity(setting.severity)))
+        elif code == "V06" and setting is not None and setting.enabled:
+            rules.append(V06StyleRule(policy.style_warning_phrases))
         else:
             rules.append(TodoValidationRule(code, f"PRD-6.2-{code}"))
     return rules

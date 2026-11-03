@@ -22,7 +22,7 @@ The web app had a hand-written stylesheet (`styles.css`), home-made UI primitive
 
 - Teal is used for the primary action, the active navigation item and slots, where `achromatic-ledger` would use none.
 - The landing's headline slot uses the phrase face (Newsreader) inside a sans headline. It is the product's own live specimen.
-- Pictures on the landing are archival engravings and one clip, all with a commercial licence and credited in the footer. They illustrate the world around the product, not the product itself, and are planned to be replaced by real screenshots.
+- Pictures on the landing are archival engravings and one clip, all with a commercial licence and credited in the footer. They illustrate the world around the product, not the product itself. The owner decided not to use screenshots of the app on the landing page.
 
 ## Consequences
 

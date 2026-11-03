@@ -34,13 +34,13 @@ Branch `feat/ui-redesign`. Desktop web only (1440px). Playwright not run (owner 
 
 ## Pictures
 
-Landing pictures and the clip are archival, openly licensed (public domain, CC0, one CC BY-SA 4.0 clip) and credited in the footer; see `261104-landing-report.md`. They are planned to be replaced by real app screenshots now that the app screens are final.
+Landing pictures and the clip are archival, openly licensed (public domain, CC0, one CC BY-SA 4.0 clip) and credited in the footer; see `261104-landing-report.md`. The owner decided the landing keeps archival pictures and does not use app screenshots.
 
 ## Follow-ups worth a decision
 
 1. Rewrite or delete the e2e specs.
 2. Run Gold, Extract and Admin with an admin key and fix anything the empty states hid.
 3. Split the 711 kB main chunk by route.
-4. Replace the landing's archival pictures with app screenshots.
+4. (Dropped by the owner) Replace the landing's archival pictures with app screenshots. The landing keeps its archival pictures; the pictures could still be resized or converted before launch.
 5. A polish pass (Phase 07) if the screens feel plain: summary figures on large screens, richer empty states, denser tables.
 6. Commit the owner's own changes that were left out of the redesign commits: `CLAUDE.md`, `Makefile`, `README.md`, `SCAFFOLD_PRD.md`, `.codex/hooks.json`, `apps/web/src/features/slr-import/api/client.ts`.

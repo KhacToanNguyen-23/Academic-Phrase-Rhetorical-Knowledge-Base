@@ -1,4 +1,4 @@
-# Plan: Redesign toàn diện UI web (minimalism, geometric, học thuật)
+# Plan: Redesign toàn diện UI web (Refined Editorial Workspace)
 
 Ngày: 2026-11-03
 Rủi ro: trung bình đến cao. Chỉ đổi `apps/web`: thêm Tailwind v4 + shadcn/ui, thay toàn bộ CSS và markup các trang, đổi route `/` và chuyển auth guard. Backend, API contract và dữ liệu không đổi.
@@ -9,7 +9,7 @@ Trạng thái: owner đã chốt 4 quyết định ngày 2026-11-03 (xem [Quyế
 1. Một **landing page** công khai tại `/`, làm theo run trang của taste skill (`design-taste-frontend`), có thể dùng thư viện ngoài. Trang chủ staff chuyển sang `/app`.
 2. Toàn bộ **app screens** (library, phrasebank, vocabulary, journals, inbox, gold, extract, import, admin, playground, writer) làm lại theo `references/app-screens.md` của taste skill.
 3. Mọi control (button, dropdown, select, dialog, tabs, table, toast...) dùng **component shadcn/ui**.
-4. Ngôn ngữ thiết kế: tối giản, hình học, học thuật, phù hợp một công cụ về bài báo và từ điển.
+4. Ngôn ngữ thiết kế: **Refined Editorial Workspace**, tức thẩm mỹ biên tập học thuật kết hợp công cụ nghiên cứu hiện đại (xem [Hướng thiết kế](#hướng-thiết-kế-cập-nhật-2026-11-04)). Thay cho hướng "tối giản, hình học" ban đầu.
 5. Kiểm tra bằng `inspect.mjs` của taste skill (đo theo house rules) và Browser MCP (thao tác thật trên trình duyệt). **Không chạy Playwright** (quyết định owner #5).
 
 Ngoài phạm vi: không thêm endpoint, không đổi `packages/contracts`, không thêm tính năng nghiệp vụ mới. Không admin console mới, không NLP mới (theo `SCAFFOLD_PRD.md`).
@@ -83,21 +83,61 @@ Deal 2 option (`achromatic-ledger`, `editorial-greeting`). Chọn `achromatic-le
 - **Face:** nền blue-grey kiểu sổ cái `#f2f4f7` thay `#f8f8f8`. Tông này hợp với teal; slot teal là chữ ký thị giác.
 - Pattern màn hình: `inbox` → Inbox triage (3 vùng); `settings` → Settings two columns; `list` và `detail` không có pattern trong library, dựng theo rule của app-screens.
 
+## Hướng thiết kế (cập nhật 2026-11-04)
+
+**Hướng chính: Refined Editorial Workspace.** Thẩm mỹ biên tập học thuật kết hợp công cụ nghiên cứu hiện đại. Sản phẩm phải giống một không gian tham khảo học thuật được thiết kế cẩn thận, không giống một dashboard SaaS chung chung, và cũng không phải một giao diện neo-brutalist cứng nhắc. Hướng này **thay** cho "Minimalism & Geometric" làm hướng chính. Chữ "geometric" chỉ còn là một nguyên tắc con (bố cục chính xác, căn lề chặt), không còn là mô tả của cả giao diện.
+
+Lý do đổi: bản làm theo hướng cũ (radius 4px, ledger không màu, nhiều thẻ bao nhau) cho cảm giác cứng và phẳng; owner thấy card và nút "vuông vức quá" và nhiều màn "sơ sài". Hướng mới giữ cấu trúc và độ chính xác nhưng mềm hơn ở lớp bề mặt, và để chữ, khoảng trắng và thứ bậc tổ chức nội dung trước khi dùng viền hay thẻ.
+
+### Nguyên tắc
+
+1. **Chính xác và hình học ở lớp bố cục.** Lưới 12 cột, mọi cạnh rơi vào đường cột, căn lề chặt. Hình học đến từ cấu trúc, không từ họa tiết.
+2. **Chữ, khoảng trắng và thứ bậc đi trước viền và thẻ.** Muốn tách hai nhóm, dùng khoảng cách, tiêu đề hoặc bước đổi tông trước; chỉ khi không đủ mới thêm bề mặt.
+3. **Không lồng thẻ, không viền thừa.** Một vùng nội dung là một panel, trong panel chia bằng tiêu đề và khoảng cách, không đặt thêm thẻ có viền bên trong. Một bề mặt chỉ có **một** trong hai: viền hoặc bước đổi tông, không cả hai.
+4. **Bảng dữ liệu dày nhưng dễ quét.** Tiêu đề cột nhỏ, hàng 36 đến 40px, cột chính nổi hơn cột phụ, số căn phải và `tabular-nums`, trạng thái chọn và hover bằng tông nền. **Hàng bảng không bo góc riêng thành thẻ.**
+5. **Bề mặt và viền kiềm chế, tinh tế.** Viền một pixel màu rất nhạt, bóng chỉ cho thứ nổi (menu, dialog, popover). Nền trang `--ground`, panel `--surface`.
+6. **Giữ teal và giọng học thuật.** Teal SLRS `#176b8f` chỉ ở: tối đa một nút primary mỗi màn, nav active, slot. Serif (Newsreader) chỉ cho ngôn ngữ đang được nghiên cứu: phrase, câu ví dụ, headword.
+7. **Pill chỉ cho badge, tag và chỉ báo trạng thái gọn.** Nút, ô nhập, panel không dùng pill.
+8. **Landing tách biệt với workspace.** Landing giữ giọng biên tập đậm (giấy, mực, chữ lớn, ảnh lưu trữ); workspace sau đăng nhập mềm và dày dữ liệu hơn. Hai bên dùng chung font, màu thương hiệu và chữ ký "slot", nhưng không dùng chung bố cục hay thang bán kính.
+
+### Bán kính (thang ba bậc, thay cho "một radius duy nhất")
+
+| Thành phần | Bán kính | Token |
+|---|---|---|
+| Card và panel lớn, dialog, sheet, popover, command | khoảng 8px | `--radius-panel` |
+| Input, select, textarea, button, toggle item | khoảng 6px | `--radius-control` |
+| Hàng bảng | 0 (không bo; hover và selected là dải tông phẳng) | không có |
+| Badge, tag, chỉ báo trạng thái gọn | pill (`9999px`) | `--radius-pill` |
+| Slot trong frame | nhỏ, như hiện nay | `--radius-chip` |
+| Landing | xem mục cần duyệt bên dưới | |
+
+Không áp một bán kính giống nhau cho mọi thành phần nếu điều đó làm mất thứ bậc: panel mềm hơn control một nấc, control mềm hơn dải hàng bảng, pill chỉ dành cho nhãn.
+
+### Cần owner duyệt trước khi làm
+
+1. **Landing có đổi bán kính không?** Hiện nút và khung ở landing là 0. Đề xuất giữ 0 cho nút, ảnh và field (giọng biên tập), nhưng khung giao diện xem trước trong hero dùng 8px như workspace. Cần chốt.
+2. **Slot trong frame:** giữ 2px (chữ ký sắc nét) hay nâng lên 4px cho hợp với control 6px. Đề xuất giữ 2px.
+3. **Tabs, toggle group, toggle item:** tab kiểu gạch chân vẫn không bo; toggle item theo control (6px). Đề xuất như vậy.
+4. **Menu con:** mục trong dropdown, select, command bo 4px, bản thân menu theo panel 8px. Đề xuất như vậy.
+5. **Phạm vi làm lại bề mặt:** áp dụng thang bán kính là một thay đổi nhỏ ở `components/ui` và token; còn gỡ thẻ lồng nhau và giảm viền ở từng màn (ví dụ Library chi tiết có bốn thẻ, Vocabulary có hai thẻ liền nhau) là phần việc lớn hơn. Đề xuất tách thành **Phase 08** (bề mặt và thứ bậc), làm theo đợt như Phase 05, không gộp vào polish.
+6. **Ghi nhận sai lệch với taste skill:** skill yêu cầu một bán kính duy nhất và hạn chế đường kẻ; hướng mới dùng thang ba bậc và viền nhạt có kiểm soát. Cần ghi vào ADR 0011 (sửa phần "Deviations") sau khi duyệt.
+7. **Chế độ tối:** viền và bề mặt cần bộ giá trị riêng. Đề xuất dựng cùng lúc với Phase 08.
+
 ## Ngôn ngữ thiết kế
 
-### "Geometric" nghĩa là gì ở đây
+### "Geometric" nghĩa là gì ở đây (nguyên tắc con của Refined Editorial Workspace)
 
 Taste skill cấm hình trang trí, hairline grid, crosshair, crop mark. Vì vậy tính hình học **đến từ cấu trúc, không đến từ họa tiết**:
 
 - **Slot là hình khối duy nhất.** Một khối chữ nhật đặc, cao đúng một line-height, nằm trên baseline của dòng chữ. Đó là chữ ký thị giác của cả sản phẩm, từ hero landing tới thẻ phrase trong app.
 - **Field phẳng, seam cứng.** Các section là các field màu đặc, gặp nhau ở cạnh ngang thẳng. Không gradient, không blur.
 - **Lưới 12 cột nghiêm ngặt.** Mọi cạnh trái phải rơi vào đường cột, nhưng không vẽ đường lưới ra.
-- **Góc vuông.** Landing dùng radius 0 cho mọi thứ. App dùng một radius 4px (nhóm "tight" của app-screens §9.4), chip 2px.
+- **Góc bo có thang bậc.** App dùng thang ba bậc (panel 8px, control 6px, pill cho nhãn, hàng bảng không bo), xem mục [Bán kính](#bán-kính-thang-ba-bậc-thay-cho-một-radius-duy-nhất). Landing giữ góc vuông theo giọng biên tập, trừ khung giao diện xem trước (chờ duyệt). Mục này thay cho "radius 0 ở landing, 4px ở app" của bản đầu.
 - **Kiểu chữ có tỉ lệ rõ:** to rất to, nhỏ vừa đủ, không có cỡ ở giữa.
 
 ### Tính học thuật
 
-- **Serif chỉ có một việc:** hiển thị *ngôn ngữ đang được nghiên cứu*, tức phrase frame, câu ví dụ, headword của lemma. Toàn bộ UI dùng Switzer. Nhờ đó người dùng phân biệt được ngay đâu là nội dung học thuật, đâu là giao diện (app-screens §13 cho phép "a second typeface with one job").
+- **Serif chỉ có một việc:** hiển thị *ngôn ngữ đang được nghiên cứu*, tức phrase frame, câu ví dụ, headword của lemma. Toàn bộ UI dùng Be Vietnam Pro (Switzer đã bị bỏ vì thiếu dấu tiếng Việt). Nhờ đó người dùng phân biệt được ngay đâu là nội dung học thuật, đâu là giao diện (app-screens §13 cho phép "a second typeface with one job").
 - Entry từ điển dựng như trang từ điển in: headword lớn, nhãn từ loại, family, ví dụ, provenance.
 - Provenance và trạng thái licence luôn hiện cạnh nội dung (fail closed, theo `EVIDENCE_CONTRACT.md`).
 - Ảnh trên landing là ảnh lưu trữ thật của thế giới học thuật, có ghi credit (Phase 4).
@@ -125,7 +165,12 @@ Taste skill cấm hình trang trí, hairline grid, crosshair, crop mark. Vì v�
 --secondary: #e5e5e5;         /* các nút khác: grey pill, chữ --text */
 --nav-active-bg: #ececec;  --nav-active-ink: var(--brand);
 --slot: #125672;    --slot-bg: var(--brand-tint);
---radius: 4px;      --radius-chip: 2px;
+/* Bán kính (cập nhật 2026-11-04, chờ duyệt mục 1 đến 4 ở trên; hiện code vẫn dùng --radius: 4px) */
+--radius-panel: 8px;     /* card, panel, dialog, sheet, popover */
+--radius-control: 6px;   /* input, select, textarea, button, toggle item */
+--radius-pill: 9999px;   /* badge, tag, chỉ báo trạng thái */
+--radius-chip: 2px;      /* slot trong frame */
+/* Hàng bảng: không có bán kính */
 --fs-title: 24px; --fs-section: 16px; --fs-body: 14px; --fs-small: 12px;
 
 /* Dark: true-neutral theo §9.5 (#000/#111/#222), không navy. */
@@ -209,4 +254,5 @@ Phase 04 và 05 chạy song song được sau Phase 03.
 | 2 | **Radix UI** cho shadcn | `pnpm dlx shadcn@latest init` chọn Radix; dùng `asChild`, `sonner` |
 | 3 | **`/` là landing công khai**; app sau đăng nhập dùng route riêng, ví dụ **`/app`** | Trang chủ staff là `/app` (thay `/home`). Các màn khác **giữ đường dẫn cũ** (`/library`, `/extract?batch=`...) để không gãy deep link, nhưng nằm trong `appLayout` có guard. Nếu muốn gom hết dưới `/app/*` thì đó là một đợt riêng, có redirect từ đường dẫn cũ (xem Phase 03) |
 | 5 | **Tắt Playwright, dùng Browser MCP** để kiểm tra trên trình duyệt | Không chạy `test:e2e` và không sửa test e2e trong redesign này. File `e2e/*.spec.ts` giữ nguyên trong repo (chỉ đã sửa đường dẫn screenshot ở Phase 00). Baseline có 2/8 test fail từ trước redesign (màu chữ cũ, một chuỗi mô tả trong Writer), ghi trong audit, không phải blocker. Gate là `inspect.mjs` + checklist Browser MCP có ghi lại kết quả. `inspect.mjs` **không** phải Playwright: nó tự mở Chrome qua CDP và vẫn là gate |
+| 6 | **Đổi hướng thiết kế chính sang Refined Editorial Workspace** (2026-11-04), bán kính thang ba bậc, ít thẻ lồng và viền hơn | Cập nhật Mục tiêu, [Hướng thiết kế](#hướng-thiết-kế-cập-nhật-2026-11-04) và token. **Chưa triển khai**; chờ duyệt 7 điểm trong mục đó. Dự kiến thành Phase 08 |
 | 4 | **Landing tiếng Anh mặc định**, thiết kế để bổ sung tiếng Việt sau | Toàn bộ chuỗi landing nằm trong `copy.en.ts`; `<html lang>` lấy theo locale; layout chịu được chuỗi dài hơn khoảng 30%; font phải có dấu tiếng Việt (xem [Type](#type)). Chưa thêm thư viện i18n |

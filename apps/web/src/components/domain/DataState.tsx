@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
@@ -5,14 +7,36 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 type DataStateProps = {
   state: "ready" | "loading" | "empty" | "error"
+  /** Label for the ready value, e.g. "Reviewed frames". */
+  label?: string
+  /** Ready value. 0 prints "0"; null/undefined prints "—". */
   value?: number | null
+  loadingLabel?: string
+  emptyTitle?: string
+  emptyDescription?: string
+  emptyAction?: ReactNode
+  errorTitle?: string
+  errorDescription?: string
+  retryLabel?: string
   onRetry?: () => void
 }
 
-function DataState({ state, value, onRetry }: DataStateProps) {
+function DataState({
+  state,
+  label,
+  value,
+  loadingLabel = "Loading",
+  emptyTitle = "Nothing here yet",
+  emptyDescription,
+  emptyAction,
+  errorTitle = "Could not load this",
+  errorDescription,
+  retryLabel = "Try again",
+  onRetry,
+}: DataStateProps) {
   if (state === "loading") {
     return (
-      <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading evidence">
+      <div className="flex flex-col gap-3" aria-busy="true" aria-label={loadingLabel}>
         <Skeleton className="h-4 w-2/3" />
         <Skeleton className="h-8 w-full" />
         <Skeleton className="h-4 w-1/2" />
@@ -24,12 +48,10 @@ function DataState({ state, value, onRetry }: DataStateProps) {
     return (
       <Empty>
         <EmptyHeader>
-          <EmptyTitle>No reviewed frames yet</EmptyTitle>
-          <EmptyDescription>Review a candidate to build the evidence set for this view.</EmptyDescription>
+          <EmptyTitle>{emptyTitle}</EmptyTitle>
+          {emptyDescription ? <EmptyDescription>{emptyDescription}</EmptyDescription> : null}
         </EmptyHeader>
-        <EmptyContent>
-          <Button variant="secondary">Review a candidate</Button>
-        </EmptyContent>
+        {emptyAction ? <EmptyContent>{emptyAction}</EmptyContent> : null}
       </Empty>
     )
   }
@@ -37,10 +59,10 @@ function DataState({ state, value, onRetry }: DataStateProps) {
   if (state === "error") {
     return (
       <Alert variant="destructive" role="alert">
-        <AlertTitle>Evidence could not be loaded</AlertTitle>
+        <AlertTitle>{errorTitle}</AlertTitle>
         <AlertDescription className="flex flex-wrap items-center gap-3">
-          Check the connection and try the request again.
-          {onRetry ? <Button variant="secondary" onClick={onRetry}>Try again</Button> : null}
+          {errorDescription}
+          {onRetry ? <Button variant="secondary" onClick={onRetry}>{retryLabel}</Button> : null}
         </AlertDescription>
       </Alert>
     )
@@ -48,7 +70,8 @@ function DataState({ state, value, onRetry }: DataStateProps) {
 
   return (
     <p className="text-sm text-muted-foreground">
-      Reviewed frames: <strong className="font-medium text-foreground">{value ?? "—"}</strong>
+      {label ? `${label}: ` : null}
+      <strong className="font-medium tabular-nums text-foreground">{value ?? "—"}</strong>
     </p>
   )
 }

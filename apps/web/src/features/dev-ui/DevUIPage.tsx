@@ -95,7 +95,7 @@ function DevUIPage() {
             <StateLabel name="disabled"><Button disabled>Unavailable</Button></StateLabel>
             <StateLabel name="loading"><Button disabled><Spinner data-icon="inline-start" />Saving frame</Button></StateLabel>
             <StateLabel name="error"><Button variant="destructive">Resolve error</Button></StateLabel>
-            <StateLabel name="success"><Button variant="success">Frame saved</Button><StatusBadge status="approved" /></StateLabel>
+            <StateLabel name="success"><StatusBadge status="approved" /></StateLabel>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button size="xl">Landing action</Button>
@@ -247,10 +247,11 @@ function DevUIPage() {
             </Card>
             <div className="flex flex-col gap-4">
               <Alert><AlertTitle>Evidence note</AlertTitle><AlertDescription>Observed examples are not journal requirements.</AlertDescription></Alert>
-              <DataState state="ready" value={0} />
-              <DataState state="ready" value={null} />
-              <DataState state="loading" />
-              <DataState state="error" onRetry={() => toast("Evidence request retried")} />
+              <DataState state="ready" label="Reviewed frames" value={0} />
+              <DataState state="ready" label="Reviewed frames" value={null} />
+              <DataState state="loading" loadingLabel="Loading evidence" />
+              <DataState state="empty" emptyTitle="No reviewed frames yet" emptyDescription="Review a candidate to build the evidence set for this view." emptyAction={<Button variant="secondary">Review a candidate</Button>} />
+              <DataState state="error" errorTitle="Evidence could not be loaded" errorDescription="Check the connection and try the request again." onRetry={() => toast("Evidence request retried")} />
             </div>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">

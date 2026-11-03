@@ -10,10 +10,7 @@ function PhraseFrame({ frame, values = {}, className }: PhraseFrameProps) {
   const parts = frame.split(/(\{[^}]+\})/g)
 
   return (
-    <span
-      className={cn("font-serif text-lg leading-relaxed", className)}
-      aria-label={frame}
-    >
+    <span className={cn("font-serif text-lg leading-relaxed", className)}>
       {parts.map((part, index) => {
         const match = part.match(/^\{([^}]+)\}$/)
         if (!match) return <span key={`${part}-${index}`}>{part}</span>

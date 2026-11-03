@@ -54,3 +54,17 @@ Mỗi đợt một PR vào `feat/ui-redesign`. Không gom nhiều đợt vào m�
 ## Dữ liệu mẫu
 
 Các màn còn dùng mock (`shared/api/mock-*.ts`) phải có tên và số tin được (không Acme, không "User 1"), tổng cộng phải khớp, ngày theo thứ tự. Liệt kê các mock này trong report để thay dần bằng dữ liệu thật.
+
+## Danh sách chỉnh cuối phase (từ review đợt 1 và 2, 2026-11-04)
+
+Làm một lần sau đợt 4, trước Phase 06:
+
+- Vocabulary: hàng bộ lọc lệch nhau, bảng chữ cái tràn sang hàng hai, bỏ cột "Details" vì tên từ đã là link, canvas lệch (cách sidebar 49px, cách mép phải 149px).
+- Library: hai thẻ Slots và Provenance còn khoảng trống, danh sách trái lệch chiều cao với chi tiết phải.
+- Phrasebank, Journals: mình chưa xem tận mắt, cần soi lại (Journals có 4 WARN).
+- Font: inspector báo Be Vietnam Pro "chưa nạp" ở các màn app dù CDP cho thấy đã tải. Xác nhận lại.
+- Extract: đổi checkbox chọn batch thành Combobox (`?batch=`); thêm nút xóa bộ lọc article.
+- Inbox: thêm ô tìm kiếm.
+- Reject: thống nhất một kiểu xác nhận giữa Inbox, Gold, Extract (hiện Inbox và Gold có hộp xác nhận, Extract thì không; phím R ở Gold nay mở hộp xác nhận, owner cần đồng ý).
+- Kiểm Gold và Extract bằng khóa admin (phiên demo là curator nên API admin trả 403, chưa thấy dữ liệu thật).
+- Quy tắc nút primary: màn chỉ để đọc là "tối đa một".

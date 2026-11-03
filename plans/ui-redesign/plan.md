@@ -21,7 +21,7 @@ Ngoài phạm vi: không thêm endpoint, không đổi `packages/contracts`, kh�
 - Shell: masthead 64px + sidebar có icon tự vẽ, thu gọn được, drawer trên mobile. 11 đích điều hướng.
 - `/` hiện là `OverviewPage` (hero có eyebrow, gradient card, `hero-points` có dấu tick), đòi đăng nhập; chỉ `/writer` công khai.
 - e2e: `e2e/phrasebank.spec.ts`, `e2e/writer.spec.ts`. Đường dẫn screenshot hardcode `C:/Users/khact/...`, máy khác không chạy được.
-- Makefile dùng `npm` (`npm --prefix apps/web ...`), dù có cả `pnpm-lock.yaml`.
+- Quản lý gói chỉ bằng **pnpm** (CI dùng `pnpm install --frozen-lockfile`). `package-lock.json` đã bị xóa; `Makefile`, `dev.ps1` dùng `pnpm --dir apps/web`.
 - Browser MCP: `@browsermcp/mcp` mới cấu hình trong Codex (`~/.codex/config.toml`), **chưa có trong Claude Code**. Máy có Chrome và Edge, Node 24, đủ cho `inspect.mjs`.
 - Nhánh hiện tại `feat/academic-vocabulary` còn nhiều thay đổi chưa commit ở `apps/web` (Sidebar, vocabulary, styles.css).
 
@@ -178,7 +178,7 @@ Phase 04 và 05 chạy song song được sau Phase 03.
 
 - `inspect.mjs`: **0 FAIL** ở 1440/768/390 trên bản production build (`vite build && vite preview`). Landing dùng chế độ trang; từng app screen dùng `--app`. Mỗi WARN còn lại có một câu giải thích trong report.
 - `lint.mjs` (và `--app` cho app) sạch trên `apps/web/src`.
-- `npm --prefix apps/web run lint`, `typecheck`, `build` pass. Không chạy `test:e2e` (quyết định owner #5).
+- `pnpm --dir apps/web run lint`, `typecheck`, `build` pass. Không chạy `test:e2e` (quyết định owner #5).
 - Đã click qua mọi link, form, menu từng chạy trước đây bằng Browser MCP, ở desktop và ở cửa sổ hẹp. Kết quả ghi theo từng route vào report của phase: đã thử gì, kết quả ra sao, lỗi console nếu có. Đây là thứ thay cho e2e, nên không được chỉ ghi "đã test".
 - Contrast chữ ≥ 4.5:1 (NFR-08), focus nhìn thấy được, làm được mọi việc bằng bàn phím, có `prefers-reduced-motion`.
 - `make lint` và `make test` vẫn pass (backend không đổi, nhưng `CLAUDE.md` yêu cầu chạy).
@@ -205,7 +205,7 @@ Phase 04 và 05 chạy song song được sau Phase 03.
 | # | Quyết định | Ảnh hưởng tới plan |
 |---|---|---|
 | 1 | **Giữ teal SLRS `#176b8f`** làm màu nhận diện chính, dùng tiết chế: CTA, trạng thái active, điểm nhấn. Không phủ diện rộng, không làm giảm độ tương phản | Palette crimson bị bỏ. Token ở mục [Token](#token). App lệch khỏi move gốc của `achromatic-ledger` (primary mang màu thương hiệu), ghi lại trong report. Không deal lại direction: composition giữ nguyên, chỉ thay màu theo special case "existing brand" |
-| 2 | **Radix UI** cho shadcn | `npx shadcn@latest init` chọn Radix; dùng `asChild`, `sonner` |
+| 2 | **Radix UI** cho shadcn | `pnpm dlx shadcn@latest init` chọn Radix; dùng `asChild`, `sonner` |
 | 3 | **`/` là landing công khai**; app sau đăng nhập dùng route riêng, ví dụ **`/app`** | Trang chủ staff là `/app` (thay `/home`). Các màn khác **giữ đường dẫn cũ** (`/library`, `/extract?batch=`...) để không gãy deep link, nhưng nằm trong `appLayout` có guard. Nếu muốn gom hết dưới `/app/*` thì đó là một đợt riêng, có redirect từ đường dẫn cũ (xem Phase 03) |
 | 5 | **Tắt Playwright, dùng Browser MCP** để kiểm tra trên trình duyệt | Không chạy `test:e2e` và không sửa test e2e trong redesign này. File `e2e/*.spec.ts` giữ nguyên trong repo (chỉ đã sửa đường dẫn screenshot ở Phase 00). Baseline có 2/8 test fail từ trước redesign (màu chữ cũ, một chuỗi mô tả trong Writer), ghi trong audit, không phải blocker. Gate là `inspect.mjs` + checklist Browser MCP có ghi lại kết quả. `inspect.mjs` **không** phải Playwright: nó tự mở Chrome qua CDP và vẫn là gate |
 | 4 | **Landing tiếng Anh mặc định**, thiết kế để bổ sung tiếng Việt sau | Toàn bộ chuỗi landing nằm trong `copy.en.ts`; `<html lang>` lấy theo locale; layout chịu được chuỗi dài hơn khoảng 30%; font phải có dấu tiếng Việt (xem [Type](#type)). Chưa thêm thư viện i18n |

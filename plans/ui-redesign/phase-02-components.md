@@ -12,13 +12,13 @@ Mục tiêu: một bộ component shadcn đã chỉnh theo house rules, cộng c
 ## Component shadcn cần thêm
 
 ```bash
-npx shadcn@latest add button badge input textarea label field input-group select combobox \
+pnpm dlx shadcn@latest add button badge input textarea label field input-group select combobox \
   dropdown-menu popover command dialog alert-dialog sheet tabs toggle-group table \
   checkbox radio-group switch tooltip separator skeleton empty alert sonner \
   sidebar breadcrumb pagination scroll-area kbd spinner card
 ```
 
-Trước khi viết markup riêng: `npx shadcn@latest search <tên>` và `npx shadcn@latest docs <component>`.
+Trước khi viết markup riêng: `pnpm dlx shadcn@latest search <tên>` và `pnpm dlx shadcn@latest docs <component>`.
 
 ## Chỉnh variant một lần (trong `src/components/ui/*`)
 
@@ -50,7 +50,9 @@ Chỉ có khi `import.meta.env.DEV || import.meta.env.MODE === "inspect"` (cùng
 ## Xong khi
 
 - `lint.mjs --app apps/web/src/components` sạch.
-- `inspect.mjs --app http://127.0.0.1:4174/dev/ui` 0 FAIL, chạy trên `npm run build:inspect && npm run preview:inspect` (cổng 4174).
+- `inspect.mjs --app http://127.0.0.1:4174/dev/ui` 0 FAIL, chạy trên `pnpm run build:inspect && pnpm run preview:inspect` (cổng 4174).
 - `src/shared/ui/*` cũ vẫn còn và các trang cũ không đổi giao diện. Component mới nằm ở `src/components/ui/`, component miền ở `src/components/domain/`. Việc thay import trên từng màn làm ở Phase 05.
 - Không còn `space-y-*`, không còn `dark:` thủ công, không có `className` ghi đè màu hoặc chữ (rule `shadcn/rules/styling.md`).
 - Đã chạy `code-review` trên PR và đã xử lý các finding.
+
+> Quy ước gói (owner chọn 2026-11-03): chỉ dùng **pnpm**. Thêm thư viện bằng `pnpm add`, chạy CLI bằng `pnpm dlx`, và commit `pnpm-lock.yaml`. Không tạo `package-lock.json`.

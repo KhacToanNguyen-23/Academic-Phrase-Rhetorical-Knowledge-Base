@@ -82,7 +82,7 @@ Một cách xử lý ảnh cho cả bộ: grayscale, contrast cao, góc vuông. 
 
 ```bash
 node $S/scripts/lint.mjs apps/web/src/features/landing
-npm --prefix apps/web run build && npm --prefix apps/web run preview
+pnpm --dir apps/web run build && pnpm --dir apps/web run preview
 node $S/scripts/inspect.mjs http://127.0.0.1:4173/ --out .taste-skill/after/landing
 ```
 

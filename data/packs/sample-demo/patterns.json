@@ -1,0 +1,333 @@
+[
+  {
+    "current_version_no": 1,
+    "intent": {
+      "intent": "DISCUSSION_FINDING",
+      "move": "DISCUSSION_FINDING",
+      "section": "DISCUSSION",
+      "step": "DISCUSSION_RESULT",
+      "taxonomy_version": "0.1.0"
+    },
+    "pattern_id": "34a3cf29-7227-53c8-b71b-acb5db87f0ea",
+    "status": "approved",
+    "versions": [
+      {
+        "canonical_frame": "These results demonstrate that {finding} in {context}.",
+        "change_note": "Self-authored development seed; TODO(owner, PRD-9): replace with approved examples.",
+        "claim_type": "causal",
+        "epistemic_strength": "high",
+        "provenance": {
+          "source_type": "authored"
+        },
+        "reviews": [],
+        "slots": {
+          "context": {
+            "example": "first-year students",
+            "instruction": "Name the population or setting for this finding.",
+            "label": "Context",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          },
+          "finding": {
+            "example": "the intervention improved retention",
+            "instruction": "Enter a finding supported by your results.",
+            "label": "Finding",
+            "min_length": 5,
+            "required": true,
+            "type": "clause"
+          }
+        },
+        "usage": {
+          "allowed_genres": [
+            "RESEARCH_ARTICLE"
+          ],
+          "allowed_sections": [
+            "DISCUSSION"
+          ],
+          "evidence_min": null,
+          "forbidden_contexts": []
+        },
+        "variants": [],
+        "version_id": "d7591c6f-7ff2-5a50-a811-6c02993e6b3d",
+        "version_no": 1
+      }
+    ]
+  },
+  {
+    "current_version_no": 1,
+    "intent": {
+      "intent": "INTRO_GAP_INDICATE",
+      "move": "INTRO_GAP",
+      "section": "INTRO",
+      "step": "INTRO_INDICATE",
+      "taxonomy_version": "0.1.0"
+    },
+    "pattern_id": "7ad7f93a-f5c4-5b55-999b-5a832ca664b6",
+    "status": "approved",
+    "versions": [
+      {
+        "canonical_frame": "The role of {topic} in {context} remains underexplored.",
+        "change_note": "Self-authored development seed; TODO(owner, PRD-9): replace with approved examples.",
+        "claim_type": "descriptive",
+        "epistemic_strength": "low",
+        "provenance": {
+          "source_type": "authored"
+        },
+        "reviews": [],
+        "slots": {
+          "context": {
+            "example": "higher education",
+            "instruction": "Describe the study or setting relevant to the topic.",
+            "label": "Context",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          },
+          "topic": {
+            "example": "language models",
+            "instruction": "Name the specific topic discussed in your evidence.",
+            "label": "Research topic",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          }
+        },
+        "usage": {
+          "allowed_genres": [
+            "RESEARCH_ARTICLE"
+          ],
+          "allowed_sections": [
+            "INTRO",
+            "DISCUSSION"
+          ],
+          "evidence_min": null,
+          "forbidden_contexts": []
+        },
+        "variants": [],
+        "version_id": "7df4fa60-0870-542f-b7ca-f5598acc1002",
+        "version_no": 1
+      }
+    ]
+  },
+  {
+    "current_version_no": 1,
+    "intent": {
+      "intent": "INTRO_GAP_INDICATE",
+      "move": "INTRO_GAP",
+      "section": "INTRO",
+      "step": "INTRO_INDICATE",
+      "taxonomy_version": "0.1.0"
+    },
+    "pattern_id": "a21d204f-1dff-5708-ac90-6353210ebda1",
+    "status": "approved",
+    "versions": [
+      {
+        "canonical_frame": "An unresolved issue concerns {topic}.",
+        "change_note": "Self-authored development seed; TODO(owner, PRD-9): replace with approved examples.",
+        "claim_type": "descriptive",
+        "epistemic_strength": "moderate",
+        "provenance": {
+          "source_type": "authored"
+        },
+        "reviews": [],
+        "slots": {
+          "topic": {
+            "example": "language models",
+            "instruction": "Name the specific topic discussed in your evidence.",
+            "label": "Research topic",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          }
+        },
+        "usage": {
+          "allowed_genres": [
+            "RESEARCH_ARTICLE"
+          ],
+          "allowed_sections": [
+            "DISCUSSION"
+          ],
+          "evidence_min": null,
+          "forbidden_contexts": []
+        },
+        "variants": [],
+        "version_id": "c0c854f5-7f59-5bf2-9ec3-ef3e42332ae4",
+        "version_no": 1
+      }
+    ]
+  },
+  {
+    "current_version_no": 1,
+    "intent": {
+      "intent": "INTRO_GAP_INDICATE",
+      "move": "INTRO_GAP",
+      "section": "INTRO",
+      "step": "INTRO_INDICATE",
+      "taxonomy_version": "0.1.0"
+    },
+    "pattern_id": "ca343469-1ba5-5f50-a42d-38985fa83476",
+    "status": "approved",
+    "versions": [
+      {
+        "canonical_frame": "Although {topic} has been examined, evidence remains limited for {population}.",
+        "change_note": "Self-authored development seed; TODO(owner, PRD-9): replace with approved examples.",
+        "claim_type": "descriptive",
+        "epistemic_strength": "moderate",
+        "provenance": {
+          "source_type": "authored"
+        },
+        "reviews": [],
+        "slots": {
+          "population": {
+            "example": "adult learners",
+            "instruction": "Name the population for which evidence remains limited.",
+            "label": "Population",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          },
+          "topic": {
+            "example": "online learning",
+            "instruction": "Name the topic examined in prior work.",
+            "label": "Research topic",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          }
+        },
+        "usage": {
+          "allowed_genres": [
+            "RESEARCH_ARTICLE"
+          ],
+          "allowed_sections": [
+            "INTRO"
+          ],
+          "evidence_min": null,
+          "forbidden_contexts": []
+        },
+        "variants": [],
+        "version_id": "35e9f3de-ff24-5c4f-88fd-0812d2ad13fe",
+        "version_no": 1
+      }
+    ]
+  },
+  {
+    "current_version_no": 1,
+    "intent": {
+      "intent": "DISCUSSION_FINDING",
+      "move": "DISCUSSION_FINDING",
+      "section": "DISCUSSION",
+      "step": "DISCUSSION_RESULT",
+      "taxonomy_version": "0.1.0"
+    },
+    "pattern_id": "d76fbce7-0306-5204-8c53-0960a7eebb44",
+    "status": "approved",
+    "versions": [
+      {
+        "canonical_frame": "These findings suggest that {factor} may contribute to {outcome} under {condition}.",
+        "change_note": "Self-authored development seed; TODO(owner, PRD-9): replace with approved examples.",
+        "claim_type": "causal",
+        "epistemic_strength": "moderate",
+        "provenance": {
+          "source_type": "authored"
+        },
+        "reviews": [],
+        "slots": {
+          "condition": {
+            "example": "blended instruction",
+            "instruction": "Describe the condition under which the relationship was observed.",
+            "label": "Condition",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          },
+          "factor": {
+            "example": "timely feedback",
+            "instruction": "Enter a factor that may contribute to the outcome.",
+            "label": "Potential factor",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          },
+          "outcome": {
+            "example": "course completion",
+            "instruction": "Name the outcome measured in your study.",
+            "label": "Outcome",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          }
+        },
+        "usage": {
+          "allowed_genres": [
+            "RESEARCH_ARTICLE"
+          ],
+          "allowed_sections": [
+            "DISCUSSION"
+          ],
+          "evidence_min": null,
+          "forbidden_contexts": []
+        },
+        "variants": [],
+        "version_id": "bf3caca1-47bc-5775-9b7d-44f79be55490",
+        "version_no": 1
+      }
+    ]
+  },
+  {
+    "current_version_no": 1,
+    "intent": {
+      "intent": "DISCUSSION_FINDING",
+      "move": "DISCUSSION_FINDING",
+      "section": "DISCUSSION",
+      "step": "DISCUSSION_RESULT",
+      "taxonomy_version": "0.1.0"
+    },
+    "pattern_id": "eb089fb1-27af-50fc-8172-65c54920fafc",
+    "status": "approved",
+    "versions": [
+      {
+        "canonical_frame": "The observed pattern may reflect {factor} in {context}.",
+        "change_note": "Self-authored development seed; TODO(owner, PRD-9): replace with approved examples.",
+        "claim_type": "descriptive",
+        "epistemic_strength": "low",
+        "provenance": {
+          "source_type": "authored"
+        },
+        "reviews": [],
+        "slots": {
+          "context": {
+            "example": "online courses",
+            "instruction": "Name the study or setting in which the pattern was observed.",
+            "label": "Context",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          },
+          "factor": {
+            "example": "prior experience",
+            "instruction": "Enter a factor that your evidence supports as a possible explanation.",
+            "label": "Potential factor",
+            "min_length": 3,
+            "required": true,
+            "type": "noun_phrase"
+          }
+        },
+        "usage": {
+          "allowed_genres": [
+            "RESEARCH_ARTICLE"
+          ],
+          "allowed_sections": [
+            "DISCUSSION"
+          ],
+          "evidence_min": null,
+          "forbidden_contexts": []
+        },
+        "variants": [],
+        "version_id": "6bd5f15f-8c15-5529-94e9-c03c17e328e4",
+        "version_no": 1
+      }
+    ]
+  }
+]

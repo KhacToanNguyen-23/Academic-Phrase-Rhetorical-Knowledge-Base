@@ -1,0 +1,12 @@
+version: 0.1.0
+# TODO(owner, BR-10): confirm noncommercial policy before changing these rights.
+licenses:
+  - {code: CC0, allows_mining: true}
+  - {code: CC-BY, allows_mining: true}
+  - {code: CC-BY-SA, allows_mining: true}
+  - {code: CC-BY-NC, allows_mining: false}
+  - {code: CC-BY-NC-SA, allows_mining: false}
+  - {code: CC-BY-ND, allows_mining: false}
+  - {code: CC-BY-NC-ND, allows_mining: false}
+  - {code: PROPRIETARY, allows_mining: false}
+  - {code: DEV-UNVERIFIED, allows_mining: true}

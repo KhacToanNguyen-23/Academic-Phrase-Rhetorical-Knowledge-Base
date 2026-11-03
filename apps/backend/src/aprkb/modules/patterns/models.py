@@ -1,11 +1,13 @@
 """SQLAlchemy persistence models for the patterns domain."""
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import (
     ARRAY,
     CheckConstraint,
+    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -65,6 +67,9 @@ class EvidenceProvenance(EntityMixin, Base):
     article_id: Mapped[UUID | None] = mapped_column(ForeignKey("articles.id"))
     sentence_ids: Mapped[list[UUID]] = mapped_column(ARRAY(Uuid(as_uuid=True)), default=list)
     license_id: Mapped[UUID | None] = mapped_column(ForeignKey("licenses.id"))
+    source_sentence_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    occurrence_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_section_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class DisciplineAffinity(EntityMixin, Base):
@@ -90,3 +95,4 @@ class ReviewDecision(EntityMixin, Base):
     decision: Mapped[str] = mapped_column(String(32))
     reviewer_id: Mapped[UUID] = mapped_column(ForeignKey("api_clients.id"))
     comment: Mapped[str | None] = mapped_column(Text)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

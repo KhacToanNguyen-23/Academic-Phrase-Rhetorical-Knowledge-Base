@@ -1,5 +1,6 @@
 """Load reference enums, draft taxonomy, and self-authored sample patterns."""
 
+import argparse
 import asyncio
 import json
 from pathlib import Path
@@ -33,7 +34,7 @@ def _stable_id(kind: str, key: str) -> UUID:
     return uuid5(NAMESPACE_URL, f"aprkb:seed:{kind}:{key}")
 
 
-async def _seed_reference_enums(session: AsyncSession) -> None:
+async def _seed_reference_enums(session: AsyncSession, *, include_dev_license: bool = True) -> None:
     for group, values in _read_json("reference_enums.json").items():
         for value in values:
             row = await session.scalar(
@@ -49,6 +50,8 @@ async def _seed_reference_enums(session: AsyncSession) -> None:
                 row.order = value["order"]
     for entry in load_policy_bundle().licenses.licenses:
         code, name = entry.code, entry.name
+        if code == "DEV-UNVERIFIED" and not include_dev_license:
+            continue
         allows_mining, allows_display = entry.allows_mining, entry.allows_display
         license_row = await session.scalar(select(License).where(License.code == code))
         if license_row is None:
@@ -245,12 +248,24 @@ async def run_seed(session: AsyncSession) -> None:
     await _seed_patterns(session, intents)
 
 
+async def init_reference(session: AsyncSession) -> None:
+    """Production reference profile: no content or development-only license."""
+    await _seed_reference_enums(session, include_dev_license=False)
+    await _seed_taxonomy(session)
+
+
 async def _main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reference-only", action="store_true")
+    args = parser.parse_args()
     engine = create_async_engine(settings.database_url, pool_pre_ping=True)
     factory: async_sessionmaker[AsyncSession] = async_sessionmaker(engine, expire_on_commit=False)
     try:
         async with factory() as session:
-            await run_seed(session)
+            if args.reference_only:
+                await init_reference(session)
+            else:
+                await run_seed(session)
             await session.commit()
     finally:
         await engine.dispose()

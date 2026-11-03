@@ -29,6 +29,7 @@
   },
   {
     "seed_key": "draft",
+    "fixture": true,
     "status": "draft",
     "intent_code": "INTRO_GAP_INDICATE",
     "canonical_frame": "There is limited evidence about {topic}.",
@@ -40,6 +41,7 @@
   },
   {
     "seed_key": "retired",
+    "fixture": true,
     "status": "retired",
     "intent_code": "DISCUSSION_FINDING",
     "canonical_frame": "The findings may relate to {context}.",
@@ -51,6 +53,7 @@
   },
   {
     "seed_key": "mined-proprietary",
+    "fixture": true,
     "status": "approved",
     "intent_code": "INTRO_GAP_INDICATE",
     "canonical_frame": "Prior work has rarely examined {topic}.",

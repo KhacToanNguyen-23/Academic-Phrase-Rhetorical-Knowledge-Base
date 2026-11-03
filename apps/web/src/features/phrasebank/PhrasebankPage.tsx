@@ -3,13 +3,10 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { ApiError } from "@/features/slr-import/api/client";
-import { Badge, Card, Empty, Loading, PageHeader } from "@/shared/ui";
-import { PHRASEBANK_SOURCES, phrasebankSources, SOURCE_REGISTRY, type ManchesterCategory, type ManchesterSearchResult, type PatternDetail, type SourceId, type TaxonomyTree } from "./source-registry";
+import { Card, Empty, Loading, PageHeader } from "@/shared/ui";
+import { PHRASEBANK_SOURCES, phrasebankSources, type ManchesterCategory, type ManchesterSearchResult, type PatternDetail, type SourceId, type TaxonomyTree } from "./source-registry";
 
-const NOTICE = "Source: University of Manchester Academic Phrasebank. Internal reference only; reuse rights are not verified; do not redistribute.";
-function sourceLabel(source: SourceId) {
-  return SOURCE_REGISTRY.find((item) => item.id === source)?.label ?? source;
-}
+const SOURCE_CREDIT = "Source: University of Manchester Academic Phrasebank.";
 
 function isReferenceDisabled(error: unknown) {
   return error instanceof ApiError && error.status === 404 && error.body?.error?.message === "Reference library is disabled";
@@ -21,15 +18,15 @@ function groupBy<T, K extends string>(items: T[], key: (item: T) => K): [K, T[]]
   return [...groups.entries()];
 }
 
-function ManchesterNotice() {
-  return <aside className="notice notice-warn phrasebank-notice" aria-label="Source notice">{NOTICE}</aside>;
+function SourceCredit() {
+  return <p className="phrasebank-source-credit">{SOURCE_CREDIT}</p>;
 }
 
 function CategoryCards({ categories, kind }: { categories: ManchesterCategory[]; kind: "section" | "function" }) {
   const rows = categories.filter((item) => item.kind === kind);
   return <div className="phrasebank-cards">
     {rows.map((item) => <Link key={item.slug} to="/phrasebank/$slug" params={{ slug: item.slug }} className="phrasebank-category-card">
-      <span><Badge tone="warn">{sourceLabel("manchester-reference")}</Badge> {item.title}</span><Badge>{item.entry_count} reference {item.entry_count === 1 ? "item" : "items"}</Badge>
+      <span className="phrasebank-card-title">{item.title}</span><span className="phrasebank-count" title={`${item.entry_count} ${item.entry_count === 1 ? "item" : "items"}`}>{item.entry_count}</span>
     </Link>)}
   </div>;
 }
@@ -81,7 +78,7 @@ function SearchResultEntry({ entry, query, slug, headingPosition }: {
       {openHeading}
     </div>;
   }
-  return <p><HighlightedText text={entry.text ?? ""} query={query} /> {openHeading}</p>;
+  return null;
 }
 
 function scrollToHeading(id: string) {
@@ -135,22 +132,18 @@ function taxonomyUnmappedCount(categories: ManchesterCategory[], intentCode: str
 }
 
 function EntryList({ entries }: { entries: NonNullable<NonNullable<Awaited<ReturnType<typeof phrasebankSources.category>>>["headings"][number]["entries"]> }) {
-  const blocks: ({ kind: "note"; id: string; text: string | null } | { kind: "table"; id: string; entries: typeof entries })[] = [];
+  const blocks: { id: string; entries: typeof entries }[] = [];
   for (const entry of entries) {
-    if (entry.kind === "note") blocks.push({ kind: "note", id: entry.id, text: entry.text });
-    else {
+    if (entry.kind === "phrase") {
       const previous = blocks.at(-1);
-      if (previous?.kind === "table" && previous.id === String(entry.block_index)) previous.entries.push(entry);
-      else blocks.push({ kind: "table", id: String(entry.block_index), entries: [entry] });
+      if (previous?.id === String(entry.block_index)) previous.entries.push(entry);
+      else blocks.push({ id: String(entry.block_index), entries: [entry] });
     }
   }
   return <div className="phrasebank-entry-list">
-    {blocks.map((block) => block.kind === "note"
-      ? <p key={block.id}>{block.text}</p>
-      : <div className="phrasebank-table-wrap" key={`table-${block.id}`}><table className="phrasebank-table"><caption>Phrase pattern row with alternatives</caption><tbody>
+    {blocks.map((block) => <div className="phrasebank-table-wrap" key={`table-${block.id}`}><table className="phrasebank-table"><caption>Phrase pattern row with alternatives</caption><tbody>
         {block.entries.map((entry) => <PhraseRow key={entry.id} cells={entry.cells ?? []} />)}
       </tbody></table></div>)}
-    {entries.length === 0 && <Empty>No entries in this heading.</Empty>}
   </div>;
 }
 
@@ -202,16 +195,15 @@ export function PhrasebankHome() {
     (!sectionCode || Boolean(taxonomy.data && referenceSource.filterBySection(category, sectionCode, taxonomy.data)))
     && (!intentCode || referenceSource.filterByIntent(category, intentCode)));
   const visibleResults = (results.data ?? []).filter((item) =>
-    (!sectionCode || Boolean(taxonomy.data && referenceSource.filterBySection(item, sectionCode, taxonomy.data)))
+    item.entry.kind === "phrase" && (!sectionCode || Boolean(taxonomy.data && referenceSource.filterBySection(item, sectionCode, taxonomy.data)))
     && (!intentCode || referenceSource.filterByIntent(item, intentCode)));
   const hasFilters = Boolean(sectionCode || intentCode);
   const unmapped = query
-    ? results.data ? taxonomyUnmappedCount([], intentCode, results.data) : 0
+    ? results.data ? taxonomyUnmappedCount([], intentCode, results.data.filter((item) => item.entry.kind === "phrase")) : 0
     : taxonomyUnmappedCount(manchester.data ?? [], intentCode);
 
   return <div className="stack phrasebank-home">
-    <PageHeader code="Reference library" title="Phrasebank" lead="Browse source-aware phrase collections. Manchester reference material and AP-RKB patterns remain separate collections." />
-    <ManchesterNotice />
+    <PageHeader title="Phrasebank" />
     <Card title="Search the phrasebank">
       <div className="phrasebank-search-controls">
         <input type="search" aria-label="Search phrasebanks" placeholder="Search phrases and categories" value={search} onChange={(event) => setSearch(event.target.value)} />
@@ -221,33 +213,34 @@ export function PhrasebankHome() {
         <SourceFilters taxonomy={taxonomy.data} sectionCode={sectionCode} intentCode={intentCode} onSectionChange={setSectionCode} onIntentChange={setIntentCode} />
       </div>
     </Card>
-    {hasFilters && source !== "aprkb-patterns" && manchester.data && (!query || results.data) && <p className="notice notice-info" role="status">
-      {unmapped} {query ? "matching reference items" : "reference items"} have no mapping for the active taxonomy filter and are hidden.
+    {hasFilters && source !== "aprkb-patterns" && manchester.data && (!query || results.data) && <p className="phrasebank-filter-note" role="status">
+      {unmapped} {query ? "matching items" : "items"} have no mapping for this filter and are hidden.
     </p>}
     {query ? <>
       <Card title="Search results">
-        {source !== "aprkb-patterns" && (results.isPending ? <Loading /> : disabled ? <p className="notice notice-warn" role="status">Manchester reference is disabled. Enable `REFERENCE_LIBRARY_ENABLED` to browse it.</p> : visibleResults.length === 0 ? <Empty>No Manchester reference results.</Empty> : <div className="stack">
+        {source !== "aprkb-patterns" && (results.isPending ? <Loading /> : disabled ? <p role="status">Manchester reference is disabled. Enable `REFERENCE_LIBRARY_ENABLED` to browse it.</p> : visibleResults.length === 0 ? <Empty>No Manchester reference results.</Empty> : <section className="stack"><h3>Manchester reference</h3>
           {groupBy(visibleResults, (item) => item.category_slug).map(([slug, items]) => <section key={slug}>
-            <h3>{items?.[0]?.category_title} <Badge tone="warn">{sourceLabel("manchester-reference")}</Badge></h3>
+            <h4>{items?.[0]?.category_title}</h4>
             {groupBy(items ?? [], (item) => String(item.entry.heading_position)).map(([position, group]) => <div key={position}>
-              <h4>{group[0]?.heading}</h4>
+              <h5>{group[0]?.heading}</h5>
               {group.map((item) => <SearchResultEntry key={item.entry.id} entry={item.entry} query={query} slug={slug} headingPosition={position} />)}
             </div>)}
           </section>)}
-        </div>)}
-        {source !== "manchester-reference" && <section><h3>AP-RKB patterns <Badge tone="info">{sourceLabel("aprkb-patterns")}</Badge></h3><PatternGroups patterns={patternMatches} query={query} /></section>}
+        </section>)}
+        {source !== "manchester-reference" && <section><h3>AP-RKB patterns</h3><PatternGroups patterns={patternMatches} query={query} /></section>}
       </Card>
     </> : <>
       {source !== "aprkb-patterns" && <Card title="Sections">
-        {disabled ? <p className="notice notice-warn" role="status">Manchester reference is disabled. Enable `REFERENCE_LIBRARY_ENABLED` to browse these categories.</p> : manchester.isPending ? <Loading /> : <CategoryCards categories={visibleCategories} kind="section" />}
+        {disabled ? <p role="status">Manchester reference is disabled. Enable `REFERENCE_LIBRARY_ENABLED` to browse these categories.</p> : manchester.isPending ? <Loading /> : <CategoryCards categories={visibleCategories} kind="section" />}
       </Card>}
       {source !== "aprkb-patterns" && <Card title="General functions">
         {disabled ? <Empty>Manchester general functions are unavailable while the reference API is disabled.</Empty> : manchester.isPending ? <Loading /> : <CategoryCards categories={visibleCategories} kind="function" />}
       </Card>}
-      {source !== "manchester-reference" && <Card title={<Link to="/phrasebank/$slug" params={{ slug: "aprkb-patterns" }}>AP-RKB patterns</Link>} aside={<><Badge tone="info">{sourceLabel("aprkb-patterns")}</Badge> <Badge>{patterns.data?.length ?? 0} approved</Badge></>}>
+      {source !== "manchester-reference" && <Card title={<Link to="/phrasebank/$slug" params={{ slug: "aprkb-patterns" }}>AP-RKB patterns</Link>}>
         {patterns.isPending ? <Loading /> : <PatternGroups patterns={patternMatches} />}
       </Card>}
     </>}
+    <SourceCredit />
   </div>;
 }
 
@@ -264,28 +257,29 @@ export function PhrasebankCategory({ slug }: { slug: string }) {
     window.setTimeout(() => scrollToHeading(targetId), 250);
   }, [locationHref, slug, manchester.data, patterns.data, patterns.isPending]);
   if (slug === "aprkb-patterns") return <div className="stack">
-    <ManchesterNotice /><p><Link to="/phrasebank">← Phrasebank home</Link></p>
-    <PageHeader title={<span className="phrasebank-category-title">Approved AP-RKB patterns <Badge tone="info">{sourceLabel("aprkb-patterns")}</Badge></span>} lead="Self-authored patterns are shown from the approved client view of the existing pattern API." />
+    <p><Link to="/phrasebank">← Phrasebank home</Link></p>
+    <PageHeader title="Approved AP-RKB patterns" />
     {patterns.isPending ? <Loading /> : <PatternGroups patterns={patterns.data ?? []} />}
+    <SourceCredit />
   </div>;
-  if (disabled) return <div className="stack"><ManchesterNotice /><p><Link to="/phrasebank">← Phrasebank home</Link></p><p className="notice notice-warn" role="status">Manchester reference is disabled. Enable `REFERENCE_LIBRARY_ENABLED` to browse this category.</p></div>;
-  if (manchester.isPending) return <div className="stack"><ManchesterNotice /><Loading /></div>;
+  if (disabled) return <div className="stack"><p><Link to="/phrasebank">← Phrasebank home</Link></p><p role="status">Manchester reference is disabled. Enable `REFERENCE_LIBRARY_ENABLED` to browse this category.</p><SourceCredit /></div>;
+  if (manchester.isPending) return <div className="stack"><Loading /><SourceCredit /></div>;
   const category = manchester.data;
-  if (manchester.isError) return <div className="stack"><ManchesterNotice /><Empty>{manchester.error instanceof ApiError && manchester.error.status === 404 ? "Category not found or reference data has not been imported." : "The reference category could not be loaded."}</Empty></div>;
-  if (!category) return <div className="stack"><ManchesterNotice /><Empty>Category not found.</Empty></div>;
+  if (manchester.isError) return <div className="stack"><Empty>{manchester.error instanceof ApiError && manchester.error.status === 404 ? "Category not found or reference data has not been imported." : "The reference category could not be loaded."}</Empty><SourceCredit /></div>;
+  if (!category) return <div className="stack"><Empty>Category not found.</Empty><SourceCredit /></div>;
   const intro = category.headings[0];
   const sections = category.headings.slice(1);
   return <div className="stack">
-    <ManchesterNotice />
     <p><Link to="/phrasebank">← Phrasebank home</Link></p>
-    <PageHeader title={<span className="phrasebank-category-title">{category.category.title} <Badge tone="warn">{sourceLabel("manchester-reference")}</Badge></span>} lead={category.category.kind === "section" ? "Section" : "General function"} />
-    <section id={`heading-${category.category.slug}-${intro?.heading_position ?? 0}`} className="phrasebank-intro"><EntryList entries={intro?.entries ?? []} /></section>
+    <PageHeader title={category.category.title} />
+    {intro?.entries.some((entry) => entry.kind === "phrase") && <section id={`heading-${category.category.slug}-${intro.heading_position}`} className="phrasebank-intro"><EntryList entries={intro.entries} /></section>}
     <nav className="phrasebank-index" aria-label="In-page headings"><strong>On this page</strong><div>{sections.map((item) => {
       const targetId = `heading-${category.category.slug}-${item.heading_position}`;
       return <Link key={item.heading_position} to="/phrasebank/$slug" params={{ slug: category.category.slug }} hash={targetId} onClick={(event) => { event.preventDefault(); void navigate({ to: "/phrasebank/$slug", params: { slug: category.category.slug }, hash: targetId }).then(() => scrollAfterNavigation(targetId)); }}>{item.heading}</Link>;
     })}</div></nav>
     {sections.map((item) => <section className="phrasebank-section" id={`heading-${category.category.slug}-${item.heading_position}`} key={item.heading_position}>
-      <span className="phrasebank-intent-label">Intent-level group{item.intent_code ? ` · ${item.intent_code}` : " · mapping pending"}</span><h2>{item.heading}</h2><EntryList entries={item.entries} />
+      <h2>{item.heading}</h2><EntryList entries={item.entries} />
     </section>)}
+    <SourceCredit />
   </div>;
 }

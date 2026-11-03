@@ -1,0 +1,54 @@
+services:
+  postgres:
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    image: aprkb-backend:${IMAGE_TAG:-local}
+    build:
+      context: ./apps/backend
+    env_file:
+      - runtime.conf
+    command: ["uvicorn", "aprkb.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - aprkb_blobs:/app/data/blobs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    image: aprkb-backend:${IMAGE_TAG:-local}
+    build:
+      context: ./apps/backend
+    env_file:
+      - runtime.conf
+    command: ["python", "-m", "aprkb.worker.runner"]
+    volumes:
+      - aprkb_blobs:/app/data/blobs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  aprkb_blobs:

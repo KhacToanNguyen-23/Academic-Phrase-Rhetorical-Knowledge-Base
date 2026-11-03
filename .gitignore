@@ -6,6 +6,7 @@
 .env.local
 .env.*.local
 !.env.example
+runtime.conf
 *.pem
 *.key
 *.cert

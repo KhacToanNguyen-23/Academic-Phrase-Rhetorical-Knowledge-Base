@@ -22,7 +22,10 @@ from aprkb.modules.taxonomy.models import ArticleGenre, Intent, Move, Section, S
 from aprkb.policies.loader import load_policy_bundle
 from aprkb.shared.models import RefEnum
 
-SEED_DIR = Path(__file__).resolve().parents[5] / "data" / "seed"
+_MODULE_PARENTS = Path(__file__).resolve().parents
+SEED_DIR = (
+    (_MODULE_PARENTS[5] if len(_MODULE_PARENTS) > 5 else _MODULE_PARENTS[-2]) / "data" / "seed"
+)
 
 
 def _read_json(name: str) -> Any:

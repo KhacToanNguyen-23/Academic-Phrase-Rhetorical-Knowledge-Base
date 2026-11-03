@@ -84,6 +84,10 @@ CR-06 changed the current weights; they remain provisional pending owner review.
 | `make web-install` / `make web` / `make fe` | Install frontend dependencies / start the frontend dev server |
 | `.\dev.ps1 be` / `fe` / `worker` / `down` | PowerShell shortcuts for the local development workflow |
 
+## Deployment
+
+Production uses the backend Docker image with the existing PostgreSQL Compose volume, a persistent blob volume, and manually applied migrations. It does not run the development data initializer. Follow the [manual Docker Compose deployment runbook](deploy/README.md) after confirming the server's database volume and reverse proxy.
+
 ## Continuous integration
 
 GitHub Actions runs on pushes to any branch and pull requests. The backend job checks the generated OpenAPI contract, Ruff lint/format, mypy, and pytest against an ephemeral PostgreSQL/pgvector service. The frontend job installs from the pnpm lockfile, checks generated API types, runs TypeScript checks, and builds the app. CI uses a disposable test database and needs no repository secrets.

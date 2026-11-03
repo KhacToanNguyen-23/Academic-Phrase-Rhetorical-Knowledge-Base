@@ -12,7 +12,10 @@ from pydantic import ValidationError
 
 from aprkb.modules.pack.models import Manifest, Pattern
 
-SEED_DIR = Path(__file__).resolve().parents[6] / "data" / "seed"
+_MODULE_PARENTS = Path(__file__).resolve().parents
+SEED_DIR = (
+    (_MODULE_PARENTS[6] if len(_MODULE_PARENTS) > 6 else _MODULE_PARENTS[-2]) / "data" / "seed"
+)
 UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
 PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z_0-9]*)\}")
 BRACKET_RE = re.compile(r"\[[^\[\]]+\]")

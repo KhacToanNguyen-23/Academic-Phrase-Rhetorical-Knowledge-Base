@@ -5,6 +5,9 @@ directory Codex discovers for project-scoped skills. Each skill has a required
 `SKILL.md` and may include `scripts/`, `references/`, `assets/`, or
 `agents/openai.yaml`.
 
+Only project workflow skills are versioned here. Personal skills, plugins,
+session state, and per-machine guard configuration stay local and are ignored.
+
 `.codex/` is kept for Codex configuration and repository support files. It is
 not the canonical skill discovery directory.
 

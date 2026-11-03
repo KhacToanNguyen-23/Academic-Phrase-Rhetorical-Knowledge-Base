@@ -1,0 +1,18 @@
+version: 0.2.0
+rules:
+  V01: {enabled: true, severity: warn}
+  V02: {enabled: true, severity: block}
+  V03: {enabled: true, severity: block}
+  V04: {enabled: false, severity: warn}
+  V05: {enabled: false, severity: warn}
+  V06: {enabled: true, severity: warn}
+  V07: {enabled: false, severity: warn}
+  V08: {enabled: false, severity: warn}
+# Deterministic style screen only; not a grammar checker. TODO(owner, PRD-6.3): review this provisional list.
+style_warning_phrases:
+  - a lot of
+  - really
+  - very interesting
+  - huge
+  - awesome
+  - obviously

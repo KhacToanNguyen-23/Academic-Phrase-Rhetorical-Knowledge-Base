@@ -1,0 +1,26 @@
+# Tokens that end with a period but do not end a sentence. Matched case-insensitively
+# against the word before the period, without the final period.
+# Provisional list; TODO(owner, FR-07): review for production and other disciplines.
+version: 0.1.0
+abbreviations:
+  - e.g
+  - i.e
+  - al
+  - cf
+  - vs
+  - viz
+  - approx
+  - fig
+  - figs
+  - eq
+  - eqs
+  - tab
+  - sec
+  - ref
+  - refs
+  - resp
+  - dr
+  - prof
+  - mr
+  - ms
+  - ca

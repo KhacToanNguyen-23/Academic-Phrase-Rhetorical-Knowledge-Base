@@ -1,0 +1,22 @@
+"""Immutable context passed to pure recommendation components."""
+
+from dataclasses import dataclass
+from uuid import UUID
+
+
+@dataclass(frozen=True)
+class RecommendationContext:
+    intent_code: str | None
+    section_code: str | None
+    genre_code: str | None
+    journal_id: UUID | None
+    claim_type: str | None
+    evidence_level: str | None
+    discipline_code: str | None
+    client_id: UUID
+    limit: int = 10
+    query: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.limit < 1:
+            raise ValueError("limit must be positive")

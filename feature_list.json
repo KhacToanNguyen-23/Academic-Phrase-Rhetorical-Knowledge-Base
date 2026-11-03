@@ -1,0 +1,141 @@
+[
+  {
+    "id": "bootstrap-backend",
+    "title": "Start and seed the backend",
+    "user_visible_behavior": "Run and test the project from a clean checkout",
+    "verification_command": "PRD section 12 command sequence succeeds and /docs lists section 7 endpoints",
+    "status": "passing",
+    "evidence": "uv sync installed 45 packages including greenlet. .env.example parsed with Settings and its asyncpg URL, JSON CORS list, BLOB_DIR and LOG_LEVEL were verified. Ruff check/format and mypy passed; PostgreSQL 16 + pgvector 0.8.7 online Alembic upgrade passed; database-backed pytest 4/4 with 0 skipped and 0 leftover test schemas. Verified 28 entity tables, 59 foreign keys, vector columns, migration revision, mutable updated_at fields, upgrade/downgrade cleanup, and alembic check: No new upgrade operations detected.",
+    "notes": "Phase 01 code review approved. Project Compose PostgreSQL remains healthy; disposable verification containers were stopped. Phase 02 is also complete and review approved.",
+    "priority": "P1"
+  },
+  {
+    "id": "recommendation-validation",
+    "title": "Get recommendations and validation results",
+    "user_visible_behavior": "Receive explanations for recommendations and validation",
+    "verification_command": "Pipeline returns breakdown and fallback tier; V02 blocks prove with single_study",
+    "status": "passing",
+    "evidence": "Phase 03 unit tests 29 passed; Phase 04 HTTP/API integration tests 16 passed; full PostgreSQL-backed suite 63 passed. Ruff check/format, mypy, and fresh-process pure-import checks pass.",
+    "notes": "Implements ordered recommendation gates, fallback deduplication and limit, weighted score breakdown, V01-V08 with shared-policy V02, and database-backed recommendation/validation endpoints with audit logs. Phases 03-04 code review approved.",
+    "priority": "P1"
+  },
+  {
+    "id": "online-writer-compose",
+    "title": "Select a pattern and compose a sentence",
+    "user_visible_behavior": "Fill pattern slots while preserving missing placeholders and pattern provenance",
+    "verification_command": "Real API returns an approved pattern; render validates typed slots and does not invent missing content",
+    "status": "passing",
+    "evidence": "Backend 83 passed, 9 pre-existing skips on isolated pgvector aprkb_test; 1 Edge browser E2E passed against real API/DB. Render rejects unauthorized/unissued versions and preserves missing slots.",
+    "notes": "Phase 03 Composer and V02 path implemented; other validation rules remain explicitly unavailable. Requirement text in plans/online-writer-flow/phase-03-render-and-validation.md",
+    "priority": "P1"
+  },
+  {
+    "id": "online-journal-style-ranking",
+    "title": "Rank suggestions using eligible journal data",
+    "user_visible_behavior": "Use verified guidelines as rules and reviewed fingerprints as observations with transparent fallback",
+    "verification_command": "Real reviewed fingerprint changes ranking reproducibly; ineligible or missing data returns explicit fallback",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "Depends on Thái's Offline fingerprint contract and real reviewed corpus artifact; see phase-05-journal-fingerprint-integration.md",
+    "priority": "P1"
+  },
+  {
+    "id": "online-writer-ui",
+    "title": "Complete the Writer field-to-validation UI flow",
+    "user_visible_behavior": "Enter context, review suggestions, compose, validate, revise and copy through real APIs",
+    "verification_command": "Browser E2E uses PostgreSQL/API and reaches validated copy without calling Online mock engine",
+    "status": "passing",
+    "evidence": "1 Edge browser E2E passed: field input, DB search, version detail, render, validate, edit invalidation, clipboard and feedback; TypeScript typecheck and Vite build passed.",
+    "notes": "Live /writer is separate from mock prototype screens. Journal-specific signal remains unavailable pending reviewed Offline artifacts. Online Writer Flow Phase 04",
+    "priority": "P1"
+  },
+  {
+    "id": "online-journey-acceptance",
+    "title": "Verify the end-to-end Writer journey",
+    "user_visible_behavior": "Receive traceable, privacy-minimized results with correct gate, fallback and validation behavior",
+    "verification_command": "Spec acceptance cases A01-A20 have explicit evidence and one full browser journey passes",
+    "status": "active",
+    "evidence": "Generic browser E2E passed; A01-A20 coverage and real reviewed journal fingerprint acceptance remain incomplete.",
+    "notes": "Online Writer Flow Phase 06 requires approved evidence/guideline/fingerprint contracts and full scenario evidence; existing recommendation-validation entry preserved as-is",
+    "priority": "P1"
+  },
+  {
+    "id": "access-audit",
+    "title": "Manage access and audit writes",
+    "user_visible_behavior": "Control access and trace write operations",
+    "verification_command": "Missing key returns 401; wrong role returns 403; writes produce audit events; plaintext key appears only once",
+    "status": "passing",
+    "evidence": "Phase 02 identity tests and Phase 04 role/audit integration tests pass: client/reviewer/curator/admin hierarchy, API-key create/list/revoke, authenticated route access, and atomic audit writes.",
+    "notes": "Policy loader validates versioned YAML; EvidencePolicy fails closed on unknown values. Seed CLI is idempotent. Last admin cannot be revoked and bootstrap recovers when existing admin keys are inactive. Phases 02-04 code review approved.",
+    "priority": "P1"
+  },
+  {
+    "id": "text-mining",
+    "title": "Ingest and mine text into sourced candidates",
+    "user_visible_behavior": "Create candidates with traceable sources",
+    "verification_command": "Upload .txt and run worker; at least one Candidate has source_sentence_ids and no direct pattern/version writes",
+    "status": "passing",
+    "evidence": "Phase 05 PostgreSQL integration and unit tests pass; upload→ingest→mine produces sourced candidates without pattern/version writes. License refusal, stale-lock recovery, concurrent claims, offsets, parser failures and blob compensation are verified. Final suite: 76 passed, 9 acceptance cases skipped; Ruff, format, mypy and diff checks pass.",
+    "notes": "Phases 05-06 code review approved. Text parser is implemented; JATS and PDF remain explicit TODO stubs. Docs include the D3/D4 decisions and PRD traceability table.",
+    "priority": "P1"
+  },
+  {
+    "id": "mining-reviewable-phrase-candidates",
+    "title": "Review short phrase candidates with source context",
+    "user_visible_behavior": "Review reusable language without losing provenance",
+    "verification_command": "Candidate spans, rendered frames, and per-occurrence slots have distinct representations and valid source offsets",
+    "status": "active",
+    "evidence": "",
+    "notes": "G1 approved. Runtime implementation is in progress; PostgreSQL upload integration awaits TEST_DATABASE_URL=aprkb_test.",
+    "priority": "P1"
+  },
+  {
+    "id": "mining-conservative-variant-grouping",
+    "title": "Keep uncertain phrase variants in separate groups",
+    "user_visible_behavior": "Prevent grouping from weakening shared evidence or section constraints",
+    "verification_command": "Self-authored mock negative pairs for tense, strength and ownership remain separate; same reviewed inflection class shares a key.",
+    "status": "active",
+    "evidence": "",
+    "notes": "Runtime grouping is implemented and unit-tested with self-authored fixtures. PostgreSQL integration awaits TEST_DATABASE_URL=aprkb_test; quality evaluation awaits human-approved gold.",
+    "priority": "P1"
+  },
+  {
+    "id": "mining-reproducible-extraction-evaluation",
+    "title": "Compare extraction rules on independently annotated data",
+    "user_visible_behavior": "Select extraction rules using a dataset and reproducible comparisons",
+    "verification_command": "Future real-article gold has two editor annotations with reported disagreement and adjudication; evaluation reports its evidence and limitations.",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "Deferred until external article API; future gold is sampled from real articles with two editors, disagreement reporting and adjudication.",
+    "priority": "P1"
+  },
+  {
+    "id": "mining-versioned-worker-stages",
+    "title": "Run pure versioned mining stages in the existing worker",
+    "user_visible_behavior": "Connect extraction to the worker without adding endpoints",
+    "verification_command": "Extraction metadata survives every stage and persistence, while mining only writes pending candidates",
+    "status": "active",
+    "evidence": "",
+    "notes": "G1 approved. Typed extraction, private occurrence metadata, rights recheck and worker persistence are implemented; DB-backed verification is pending.",
+    "priority": "P1"
+  },
+  {
+    "id": "gold-ai-draft-human-review",
+    "title": "Review AI drafted gold labels as the final human reviewer",
+    "user_visible_behavior": "Inspect each gold source and accept, edit or reject the AI draft in the review page",
+    "verification_command": "Mock Groq HTTP tests validate JSON, retry-after and safe errors; one reviewer action writes final labels and text-free audit",
+    "status": "active",
+    "evidence": "",
+    "notes": "Groq remains disabled by default. Real labeling awaits owner-confirmed third-party processing rights, model choice and an explicit run request; one reviewer does not satisfy FR-06.6 two-editor validation.",
+    "priority": "P1"
+  },
+  {
+    "id": "mining-ai-assisted-labeling",
+    "title": "Suggest candidate labels for human review",
+    "user_visible_behavior": "Reviewers can accept, edit or reject AI-suggested labels while remaining responsible for final decisions",
+    "verification_command": "Human-reviewed real-article gold measures AI suggestions; candidates remain pending and AI cannot approve, merge provenance or publish patterns",
+    "status": "not_started",
+    "notes": "Deferred until external article API, human-reviewed gold and owner approval of LLM scope; license and privacy decisions remain open. Proposal only.",
+    "priority": "P2"
+  }
+]

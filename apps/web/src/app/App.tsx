@@ -1,4 +1,19 @@
-// Gốc ứng dụng: QueryClientProvider, RouterProvider, auth context sẽ gắn ở đây.
+// Root providers: query cache, staff auth, and router.
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "@tanstack/react-router";
+
+import { AuthProvider } from "@/features/auth/AuthProvider";
+import { router } from "./router";
+import "./styles.css";
+
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, refetchOnWindowFocus: false } } });
+
 export function App() {
-  return <main>Academic Wordbank</main>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
 }

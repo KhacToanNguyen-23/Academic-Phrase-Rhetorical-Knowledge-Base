@@ -1,0 +1,18 @@
+﻿mappings:
+  - reference_slug: introducing-work
+    target_kind: section
+    target_code: INTRO
+  - reference_slug: describing-methods
+    target_kind: section
+    target_code: METHODS
+  - reference_slug: reporting-results
+    target_kind: section
+    target_code: RESULTS
+  - reference_slug: discussing-findings
+    target_kind: section
+    target_code: DISCUSSION
+  - reference_slug: writing-conclusions
+    target_kind: section
+    target_code: CONCLUSION
+# TODO(owner): Review mappings and map headings after comparing both taxonomies.
+# TODO(owner): The seed taxonomy defines no general_function codes; leave those categories unmapped.

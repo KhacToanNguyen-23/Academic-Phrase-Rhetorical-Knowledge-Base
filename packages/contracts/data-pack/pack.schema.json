@@ -1,0 +1,585 @@
+{
+  "$defs": {
+    "ArticleKey": {
+      "additionalProperties": false,
+      "properties": {
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi"
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Id"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        }
+      },
+      "title": "ArticleKey",
+      "type": "object"
+    },
+    "Counts": {
+      "additionalProperties": false,
+      "properties": {
+        "patterns": {
+          "minimum": 0,
+          "title": "Patterns",
+          "type": "integer"
+        },
+        "versions": {
+          "minimum": 0,
+          "title": "Versions",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "patterns",
+        "versions"
+      ],
+      "title": "Counts",
+      "type": "object"
+    },
+    "FileDigest": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "const": "patterns.json",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "sha256"
+      ],
+      "title": "FileDigest",
+      "type": "object"
+    },
+    "IntentPath": {
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "title": "Intent",
+          "type": "string"
+        },
+        "move": {
+          "title": "Move",
+          "type": "string"
+        },
+        "section": {
+          "title": "Section",
+          "type": "string"
+        },
+        "step": {
+          "title": "Step",
+          "type": "string"
+        },
+        "taxonomy_version": {
+          "title": "Taxonomy Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "taxonomy_version",
+        "section",
+        "move",
+        "step",
+        "intent"
+      ],
+      "title": "IntentPath",
+      "type": "object"
+    },
+    "Manifest": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "$ref": "#/$defs/Counts"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/FileDigest"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Files",
+          "type": "array"
+        },
+        "pack_version": {
+          "const": "0.1",
+          "title": "Pack Version",
+          "type": "string"
+        },
+        "producer": {
+          "minLength": 1,
+          "title": "Producer",
+          "type": "string"
+        },
+        "taxonomy_version": {
+          "title": "Taxonomy Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pack_version",
+        "taxonomy_version",
+        "producer",
+        "created_at",
+        "counts",
+        "files"
+      ],
+      "title": "Manifest",
+      "type": "object"
+    },
+    "Pattern": {
+      "additionalProperties": false,
+      "properties": {
+        "current_version_no": {
+          "minimum": 1,
+          "title": "Current Version No",
+          "type": "integer"
+        },
+        "intent": {
+          "$ref": "#/$defs/IntentPath"
+        },
+        "pattern_id": {
+          "format": "uuid",
+          "title": "Pattern Id",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "versions": {
+          "items": {
+            "$ref": "#/$defs/Version"
+          },
+          "minItems": 1,
+          "title": "Versions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "pattern_id",
+        "status",
+        "intent",
+        "current_version_no",
+        "versions"
+      ],
+      "title": "Pattern",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "article": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArticleKey"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "author": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Author"
+        },
+        "license_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "License Code"
+        },
+        "occurrence_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Occurrence Hash"
+        },
+        "section_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section Code"
+        },
+        "source_sentence_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Sentence Count"
+        },
+        "source_type": {
+          "title": "Source Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_type"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Review": {
+      "additionalProperties": false,
+      "properties": {
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decision": {
+          "title": "Decision",
+          "type": "string"
+        },
+        "reviewer": {
+          "title": "Reviewer",
+          "type": "string"
+        },
+        "reviewer_role": {
+          "title": "Reviewer Role",
+          "type": "string"
+        },
+        "round": {
+          "title": "Round",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "round",
+        "decision",
+        "reviewer",
+        "reviewer_role",
+        "decided_at"
+      ],
+      "title": "Review",
+      "type": "object"
+    },
+    "Slot": {
+      "additionalProperties": false,
+      "properties": {
+        "example": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Example"
+        },
+        "instruction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instruction"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "min_length": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Length"
+        },
+        "required": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Required"
+        },
+        "type": {
+          "minLength": 1,
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "Slot",
+      "type": "object"
+    },
+    "Usage": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_genres": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Genres",
+          "type": "array"
+        },
+        "allowed_sections": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Sections",
+          "type": "array"
+        },
+        "evidence_min": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Min"
+        },
+        "forbidden_contexts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Contexts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "allowed_sections"
+      ],
+      "title": "Usage",
+      "type": "object"
+    },
+    "Variant": {
+      "additionalProperties": false,
+      "properties": {
+        "register": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Register"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Variant",
+      "type": "object"
+    },
+    "Version": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_frame": {
+          "minLength": 1,
+          "title": "Canonical Frame",
+          "type": "string"
+        },
+        "change_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change Note"
+        },
+        "claim_type": {
+          "title": "Claim Type",
+          "type": "string"
+        },
+        "epistemic_strength": {
+          "title": "Epistemic Strength",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "reviews": {
+          "items": {
+            "$ref": "#/$defs/Review"
+          },
+          "title": "Reviews",
+          "type": "array"
+        },
+        "slots": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Slot"
+          },
+          "title": "Slots",
+          "type": "object"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "variants": {
+          "items": {
+            "$ref": "#/$defs/Variant"
+          },
+          "title": "Variants",
+          "type": "array"
+        },
+        "version_id": {
+          "format": "uuid",
+          "title": "Version Id",
+          "type": "string"
+        },
+        "version_no": {
+          "minimum": 1,
+          "title": "Version No",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version_id",
+        "version_no",
+        "canonical_frame",
+        "slots",
+        "claim_type",
+        "epistemic_strength",
+        "usage",
+        "provenance"
+      ],
+      "title": "Version",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Combined schema exported for implementers; files are separately validated.",
+  "properties": {
+    "manifest": {
+      "$ref": "#/$defs/Manifest"
+    },
+    "patterns": {
+      "items": {
+        "$ref": "#/$defs/Pattern"
+      },
+      "title": "Patterns",
+      "type": "array"
+    }
+  },
+  "required": [
+    "manifest",
+    "patterns"
+  ],
+  "title": "PackSchema",
+  "type": "object"
+}

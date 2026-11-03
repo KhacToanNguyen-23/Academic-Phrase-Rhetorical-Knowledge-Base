@@ -12,7 +12,7 @@
 credentials.json
 
 # ==========================================
-# 2. Python Backend (FastAPI / Celery / uv)
+# 2. Python Backend (FastAPI / uv)
 # ==========================================
 __pycache__/
 *.py[cod]
@@ -51,6 +51,9 @@ pnpm-debug.log*
 # 4. Data, Corpus & NLP Cache (Dung lượng lớn & Bản quyền)
 # ==========================================
 data/corpus/
+data/blobs/
+# BLOB_DIR=./data/blobs resolves under apps/backend when commands run with uv --directory
+apps/backend/data/
 data/raw/
 data/processed/
 data/cache/
@@ -83,10 +86,22 @@ logs/
 # JetBrains (PyCharm / WebStorm / IDEA)
 .idea/
 
-# VS Code (Giữ lại extension gợi ý & debug config chung nếu có, bỏ setting giao diện cá nhân)
+# VS Code (giữ extension dùng chung; bỏ cấu hình và launch riêng từng máy)
 .vscode/*
 !.vscode/extensions.json
-!.vscode/launch.json
+
+# Local AI plugins, session state, and per-machine guard configuration
+.agents/plugins/
+.codex/session-data/
+.ck.json
+
+# Personal AI skills kept locally but not shared by this project
+.agents/skills/gpt-taste/
+.agents/skills/high-end-visual-design/
+.agents/skills/redesign-existing-projects/
+.agents/skills/short-clip/
+.agents/skills/sequential-thinking/
+.agents/skills/skill-creator/
 
 # macOS
 .DS_Store
@@ -104,3 +119,14 @@ $RECYCLE.BIN/
 
 # Linux
 *~
+
+# ==========================================
+# 7. AI agent local state (Codex / Claude Code)
+# ==========================================
+# Trạng thái runtime theo từng session do hook ghi ra, mỗi máy khác nhau
+.codex/session-data/
+.claude/settings.local.json
+# Con trỏ brainstorm đang làm dở của từng người; spec/report trong plans/ vẫn được commit
+plans/.current-brainstorm.md
+# Script thu thập thử từ Manchester Academic Phrasebank: chỉ dùng local, không đưa vào repo (BR-10, seed phải own_authored)
+scripts/collect_manchester_demo.py

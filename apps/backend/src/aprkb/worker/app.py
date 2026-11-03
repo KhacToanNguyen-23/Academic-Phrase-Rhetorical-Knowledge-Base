@@ -1,10 +1,6 @@
-"""Celery app cho các job nền: ingest, OpenAlex sync, mining, fingerprint."""
+"""Compatibility entrypoint for the PostgreSQL polling worker."""
 
-from celery import Celery
+from aprkb.worker.runner import main
 
-from aprkb.core.config import settings
-
-celery_app = Celery("aprkb", broker=settings.redis_url, backend=settings.redis_url)
-celery_app.autodiscover_tasks(["aprkb.worker"])
-
-app = celery_app
+if __name__ == "__main__":
+    main()

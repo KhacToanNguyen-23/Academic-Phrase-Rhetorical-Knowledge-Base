@@ -1,0 +1,20 @@
+# MVP runtime policy aligned to SCAFFOLD_PRD.md §4.6 and §8.
+# It remains provisional for production. Missing claim/evidence cells use low.
+version: 0.1.0
+default_max_strength: low
+matrix:
+  descriptive:
+    none: low
+    anecdotal: moderate
+    single_study: high
+    multiple_consistent: high
+    systematic_synthesis: high
+  causal:
+    none: low
+    anecdotal: low
+    single_study: moderate
+    multiple_consistent: high
+    systematic_synthesis: high
+  # TODO(owner): comparative and generalization rows are not approved yet. The
+  # policy fails closed, so no pattern passes for those claim types until the
+  # cells are approved.

@@ -1,0 +1,12 @@
+# Provisional regex span bounds and determiner cues; TODO(owner, FR-06.2): approve.
+version: 0.2.0
+max_subject_words: 8
+min_clause_words: 2
+own_determiners: [our, this, these, "the only"]
+prior_determiners: [prior, previous, earlier]
+# Words right before the reporting verb that change meaning (negation, modality, emphasis).
+# They are peeled off the subject and kept literal, so "do not suggest" is never masked.
+# TODO(owner, FR-06.2): approve the list.
+verb_modifiers:
+  [do, does, did, not, never, may, might, could, can, should, would, must,
+   also, further, thus, therefore, clearly, strongly, consistently, generally, often]

@@ -1,0 +1,15 @@
+# Provisional relative weights and proximity formula; review against user studies.
+# TODO(owner): approve ranking weights and keyword normalization.
+version: 0.2.0
+evidence_alignment_formula: "1 - abs(max_supported - candidate_strength) / strength_span"
+keyword_formula: "matched_keywords / query_keywords"
+# TODO(owner, CR-06): approve provisional source confidence scores.
+provenance_scores:
+  authored: 1.0
+  mined: 0.7
+weights:
+  discipline: 0.20
+  journal_genre: 0.20
+  evidence: 0.30
+  linguistic: 0.15
+  provenance: 0.15

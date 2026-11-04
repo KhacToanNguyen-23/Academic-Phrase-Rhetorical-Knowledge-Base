@@ -85,6 +85,9 @@ export function OnlineWriterPage() {
       initialSearchStarted.current = true;
       search();
     }
+    // `search` is intentionally omitted: initialSearchStarted guards this to run once per
+    // mount, and including the recreated-every-render `search` would re-fire the effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taxonomy.data, options.data]);
 
   const canCopy = !!activeValidation && !!activeRender &&

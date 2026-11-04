@@ -81,14 +81,40 @@ CR-06 changed the current weights; they remain provisional pending owner review.
 | `make run` | Start FastAPI with reload |
 | `make worker` | Poll PostgreSQL jobs and process ingestion/mining |
 | `make test` | Run backend unit, integration, and scaffold acceptance tests |
+| `make test-db-required` | Fail if `tests/integration` collects zero tests or any test in it skips (needs `TEST_DATABASE_URL`) |
 | `make lint` | Run Ruff, format verification, and mypy |
+| `make lint-web` | Run the frontend's zero-warning ESLint check |
 | `make contracts` | Export OpenAPI and regenerate frontend types |
+| `make container-build` | Build the one backend image the API and worker both run from |
+| `make container-smoke-api` / `make container-smoke-worker` | Run the image's API/worker command against a disposable PostgreSQL and verify health/graceful shutdown |
+| `make container-audit` | Build-context canary: fail if secrets/caches/blobs/test output leak into the image |
 | `make web-install` / `make web` / `make fe` | Install frontend dependencies / start the frontend dev server |
 | `.\dev.ps1 be` / `fe` / `worker` / `down` | PowerShell shortcuts for the local development workflow |
 
 ## Continuous integration
 
-GitHub Actions runs on pushes to any branch and pull requests. The backend job checks the generated OpenAPI contract, Ruff lint/format, mypy, and pytest against an ephemeral PostgreSQL/pgvector service. The frontend job installs from the pnpm lockfile, checks generated API types, runs TypeScript checks, and builds the app. CI uses a disposable test database and needs no repository secrets.
+GitHub Actions runs on pushes and pull requests, with superseded runs on the same branch cancelled automatically (except `dev`). Third-party actions are pinned to reviewed commit SHAs. Jobs:
+
+- `CI / backend-quality-and-tests` — OpenAPI contract check, Ruff lint/format, mypy, Alembic migration, then PostgreSQL integration tests (which must never silently skip; see `scripts/ci/require-db-tests.sh`), then the full suite.
+- `CI / frontend-quality-and-build` — zero-warning ESLint, generated API types drift check, TypeScript, and build.
+- `CI / backend-image-contract` — builds the one image the API and worker both run from, runs the build-context canary, then smokes both commands against a disposable PostgreSQL. Exists and runs on every push/PR; not yet a required check (see the CI runbook).
+- `CI / frontend-e2e-smoke` — Playwright against a migrated/seeded database and a running API/frontend. Stage A observability only (`continue-on-error: true`); promotes to required only after the stability window in `plans/ci-cd-team-standard/phase-02-enforced-ci.md`.
+
+CI uses a disposable test database and needs no repository secrets.
+
+### Deployment (production)
+
+Platform decision recorded in [ADR-0010](doc/adr/0010-ci-cd-platform.md): GHCR
+registry, Docker Compose on a self-managed homeserver, `aprkb_blobs` named volume,
+short downtime per release. `docker-compose.prod.yml` plus `scripts/cd/deploy.sh`,
+`rollback.sh`, and `backup-blobs.sh` implement it; `.github/workflows/cd-deploy.yml`
+is a manual `workflow_dispatch` gated by the `production` GitHub Environment's
+required reviewer, running on a self-hosted runner on the homeserver itself (no
+inbound SSH needed). See [the deploy runbook](doc/runbooks/deploy.md) for one-time
+setup and the known gaps that still need closing before this track is
+production-rehearsed (not just scripted).
+
+Team delivery changes become PR-only once the ruleset is activated — see "Still pending before branch protection is enabled" in [the CI runbook](doc/runbooks/ci.md); only `backend-quality-and-tests` and `frontend-quality-and-build` are candidates for that first activation. Workflow, Docker, migration, policy, lockfile, infrastructure, and runbook changes require CODEOWNER review. Every PR records verification evidence plus migration, rollback, secret/data-handling, and `BLOB_DIR` impact. Required checks may not be bypassed silently; the time-limited break-glass process and check-rename procedure are defined in the CI runbook. Database releases follow [the migration runbook](doc/runbooks/migrations.md), and application/database recovery follows [the rollback runbook](doc/runbooks/rollback.md).
 
 ### Logs
 

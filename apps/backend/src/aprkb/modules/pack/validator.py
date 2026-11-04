@@ -12,7 +12,14 @@ from pydantic import ValidationError
 
 from aprkb.modules.pack.models import Manifest, Pattern
 
-SEED_DIR = Path(__file__).resolve().parents[6] / "data" / "seed"
+
+def _find_seed_dir() -> Path | None:
+    """Locate the monorepo-root data/seed directory; absent in a standalone container checkout."""
+    parents = Path(__file__).resolve().parents
+    return parents[6] / "data" / "seed" if len(parents) > 6 else None
+
+
+SEED_DIR = _find_seed_dir()
 UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
 PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z_0-9]*)\}")
 BRACKET_RE = re.compile(r"\[[^\[\]]+\]")
@@ -62,7 +69,12 @@ class ValidationReport:
         }
 
 
-def load_references(reference_dir: Path = SEED_DIR) -> References:
+def load_references(reference_dir: Path | None = SEED_DIR) -> References:
+    if reference_dir is None:
+        raise RuntimeError(
+            "Reference data is only available from a monorepo checkout, not a standalone "
+            "backend build."
+        )
     taxonomy = json.loads((reference_dir / "taxonomy.json").read_text(encoding="utf-8"))
     enums = json.loads((reference_dir / "reference_enums.json").read_text(encoding="utf-8"))
     licenses = yaml.safe_load((reference_dir / "licenses.yaml").read_text(encoding="utf-8"))

@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import signal
 import time
 
 from sqlalchemy import select
@@ -92,10 +93,18 @@ async def run_forever() -> None:
     logger.info(
         "Worker started env=%s article_source=%s", settings.app_env, settings.article_source
     )
+    # Deployment rollout/drain relies on SIGTERM stopping polling before the current job
+    # finishes, instead of the default signal behavior that kills the process mid-job.
+    stop = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        with contextlib.suppress(NotImplementedError):
+            loop.add_signal_handler(sig, stop.set)
     try:
-        while True:
+        while not stop.is_set():
             if not await run_once(session_factory):
-                await asyncio.sleep(0.5)
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(stop.wait(), timeout=0.5)
     finally:
         await engine.dispose()
         logger.info("Worker stopped")

@@ -220,13 +220,7 @@ async def load_current_patterns(
                 license_flag=license_flag,
                 article_id=source.article_id if source else None,
                 source_reference=article.doi if article else None,
-                source_sentence_count=(
-                    source.source_sentence_count
-                    if source.source_sentence_count is not None
-                    else len(source.sentence_ids or [])
-                )
-                if source
-                else 0,
+                source_sentence_count=len(source.sentence_ids or []) if source else 0,
                 provenance_count=len(provenance),
                 discipline_affinities=[
                     {"discipline_code": item.discipline_code, "score": item.score}

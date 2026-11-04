@@ -154,6 +154,15 @@
     "verification_command": "Boundary API regressions beyond 200 patterns and 50 Manchester hits; focused Phrasebank e2e",
     "status": "passing",
     "evidence": "167 focused backend unit tests, 31 pattern/render API tests, 3 reference API tests, and 9 Edge Phrasebank tests passed. Boundary regressions cover >200 patterns and >50 reference hits. Web build/typecheck and lint passed (one existing hook warning).",
-    "notes": "Plan: plans/2026-11-04-internal-use-rendering/phase-02-phrasebank-filtering.md. Import-flow standardization explicitly deferred."
+    "notes": "Plan: plans/2026-11-04-internal-use-rendering/phase-02-phrasebank-filtering.md."
+  },
+  {
+    "id": "shared-phrasebank-initialization",
+    "title": "Initialize both Phrasebank sources through one manifest",
+    "user_visible_behavior": "Set up AP-RKB patterns, Manchester references, and filter mappings through one repeatable workflow",
+    "verification_command": "Combined initialization API tests plus existing pack/reference/read-filter suites",
+    "status": "passing",
+    "evidence": "96 compatibility unit tests plus 15 manifest/reference API/pack-round-trip tests passed on isolated aprkb_test schemas. Ruff, formatting, mypy and unchanged OpenAPI checks passed; review found no actionable defects.",
+    "notes": "Plan: plans/existing-pack-adoption/plan.md. Other ingestion and runtime flows remain unchanged."
   }
 ]

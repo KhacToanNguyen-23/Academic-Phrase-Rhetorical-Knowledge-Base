@@ -2,7 +2,7 @@
 
 ## Ownership and required checks
 
-`@KhacToanNguyen-23` is the initial delivery owner. Phase 02/03 implemented the stable required check names below (2026-11-04); branch protection itself is not yet enabled — see "Still pending" at the end of this section.
+`@KhacToanNguyen-23` is the initial delivery owner. Phase 02/03 implemented the stable required check names below (2026-11-04); GitHub branch protection cannot technically enforce them on this private repository under a personal free plan — see "Branch protection is not technically enforceable on this plan" below. Treat the required checks as a team convention instead.
 
 The handle and repository access were verified through the GitHub API on 2026-11-04: the account is a user, the private repository default branch is `main`, and the account has repository admin access. CODEOWNER routing still requires a draft-PR proof before enforcement.
 
@@ -41,15 +41,31 @@ unique sentinel strings in every build-context path category that must be exclud
 (`.env.canary`, a cache file, test output, a local blob) and fails if the built image's
 filesystem contains them.
 
-### Still pending before branch protection is enabled
+### Branch protection is not technically enforceable on this plan (decided 2026-11-04)
 
-The ruleset itself is not yet configured. Per `plans/ci-cd-team-standard/phase-01-governance-and-baseline.md` and `phase-02-enforced-ci.md`, enabling it still needs:
+GitHub confirmed on both the Rulesets and classic branch-protection pages: "Your
+rules won't be enforced on this private repository until you move to a GitHub Team
+or Enterprise organization account." Neither mechanism blocks a merge on a private
+repository under a personal free account — this is a plan limitation, not a
+configuration mistake, and was verified via `gh api
+repos/.../branches/dev` returning `"protected": false` even after a rule appeared to
+save.
 
-1. A disposable branch/PR proving the staged ruleset: required-check failure blocks merge, stale approvals get dismissed, CODEOWNER review is enforced, and a renamed/missing check is recoverable.
-2. The repository administrator's sign-off on the settings proven in step 1.
-3. Confirmation that fork-origin PRs run `backend-quality-and-tests`/`frontend-quality-and-build` without access to any deployment secret (none exist yet, so this is currently true by construction — re-check once Phase 04/05 add any).
+The repository owner decided (2026-11-04) not to upgrade or make the repository
+public. **There is therefore no technical merge gate.** CI still runs and reports
+pass/fail on every push and PR exactly as described above — contributors must treat
+a failing `backend-quality-and-tests` or `frontend-quality-and-build` check as a hard
+"do not merge" by convention, not by GitHub enforcement. CODEOWNER review in
+`.github/CODEOWNERS` is similarly advisory only under this plan (GitHub won't block
+merging without it on a private repo).
 
-`backend-image-contract` and `frontend-e2e-smoke` are deliberately excluded from the first ruleset activation; add them as required only after their own promotion criteria in the table above are met.
+If this ever needs to become a real technical gate, the options are: move the
+repository to a GitHub Team/Enterprise organization, or make the repository public.
+Re-open `plans/ci-cd-team-standard/phase-01-governance-and-baseline.md`'s disposable-PR
+proof steps only if one of those happens.
+
+`backend-image-contract` and `frontend-e2e-smoke` remain non-required/non-blocking
+regardless, per their own promotion criteria in the table above.
 
 ### Known package-manager ambiguity (tracked, not yet resolved)
 

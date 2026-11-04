@@ -5,7 +5,14 @@ from pathlib import Path
 from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_ROOT_ENV_FILE = Path(__file__).resolve().parents[5] / ".env"
+
+def _find_root_env_file() -> Path | None:
+    """Locate the monorepo-root .env file; absent in a standalone container checkout."""
+    parents = Path(__file__).resolve().parents
+    return parents[5] / ".env" if len(parents) > 5 else None
+
+
+_ROOT_ENV_FILE = _find_root_env_file()
 DEV_APP_ENVS = frozenset({"local", "test"})
 
 
@@ -20,6 +27,8 @@ class Settings(BaseSettings):
     blob_dir: str = "./data/blobs"
     log_level: str = "INFO"
     reference_library_enabled: bool = False
+    # Set by the production image build (BUILD_COMMIT_SHA); never a self-asserted image digest.
+    build_commit_sha: str = "unknown"
 
     # Nguồn bài báo ngoài (ADR-0005): chỉ worker gọi, mặc định "null" (không nhập gì).
     article_source: str = "null"

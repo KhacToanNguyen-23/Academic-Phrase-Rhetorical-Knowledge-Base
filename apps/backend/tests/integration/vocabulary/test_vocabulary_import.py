@@ -4,6 +4,7 @@ import pytest
 from openpyxl import Workbook
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
+from sqlalchemy.orm import selectinload
 
 from aprkb.modules.audit.models import AuditEvent
 from aprkb.modules.vocabulary.models import VocabLemma
@@ -132,7 +133,13 @@ async def test_vocabulary_sources_preserve_source_owned_fields(
             policy=policy,
         )
         assert acad_core.source_kind == "acad_core"
-        run = await session.scalar(select(VocabLemma).where(VocabLemma.word == "run"))
+        # The import upserts through Core statements, so refresh the already-loaded ORM object.
+        run = await session.scalar(
+            select(VocabLemma)
+            .where(VocabLemma.word == "run")
+            .options(selectinload(VocabLemma.domain_stats))
+            .execution_options(populate_existing=True)
+        )
         assert run is not None
         assert run.is_core is True
         assert run.rank == 7

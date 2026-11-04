@@ -1,0 +1,108 @@
+cases:
+  - text: "Previous work (Smith et al., 2020) reported gains. However, they ignored noise."
+    expected:
+      - "Previous work (Smith et al., 2020) reported gains."
+      - "However, they ignored noise."
+  - text: "Accuracy rose to 92.5% (see Fig. 3). This suggests robustness."
+    expected:
+      - "Accuracy rose to 92.5% (see Fig. 3)."
+      - "This suggests robustness."
+  - text: "We used three datasets, i.e. MNIST, CIFAR and SVHN. Results are shown below."
+    expected:
+      - "We used three datasets, i.e. MNIST, CIFAR and SVHN."
+      - "Results are shown below."
+  - text: "The model was trained on the U.S. Census data. Then we evaluated it."
+    expected:
+      - "The model was trained on the U.S. Census data."
+      - "Then we evaluated it."
+  - text: "As shown in Table 2, our method wins. Section 4.1 describes it."
+    expected:
+      - "As shown in Table 2, our method wins."
+      - "Section 4.1 describes it."
+  - text: "Prior studies [3, 5] used CNNs.Our approach differs."
+    expected:
+      - "Prior studies [3, 5] used CNNs."
+      - "Our approach differs."
+  - text: "Does this hold? We argue it does! Moreover, see Eq. (2)."
+    expected:
+      - "Does this hold?"
+      - "We argue it does!"
+      - "Moreover, see Eq. (2)."
+  - text: "Performance was measured in ms. Latency dropped by 30 ms on average."
+    expected:
+      - "Performance was measured in ms."
+      - "Latency dropped by 30 ms on average."
+  - text: "We thank Dr. Nguyen for comments. Funding was provided by NSF."
+    expected:
+      - "We thank Dr. Nguyen for comments."
+      - "Funding was provided by NSF."
+  - text: "Results were significant (p < 0.05). No. 5 participants dropped out."
+    expected:
+      - "Results were significant (p < 0.05)."
+      - "No. 5 participants dropped out."
+  - text: "The approach of Lee et al. outperforms baselines. Wang et al. disagree."
+    expected:
+      - "The approach of Lee et al. outperforms baselines."
+      - "Wang et al. disagree."
+  - text: "1. Introduction\nDeep learning has transformed vision. It now dominates."
+    expected:
+      - "1. Introduction"
+      - "Deep learning has transformed vision."
+      - "It now dominates."
+  - text: "Fig. 2 shows the pipeline. Approx. 40 samples were removed."
+    expected:
+      - "Fig. 2 shows the pipeline."
+      - "Approx. 40 samples were removed."
+  - text: "This method is efficient; however, it scales poorly. We fix this."
+    expected:
+      - "This method is efficient; however, it scales poorly."
+      - "We fix this."
+  - text: "Recent models (e.g., BERT [12]; GPT-3 [13]) achieve strong results."
+    expected:
+      - "Recent models (e.g., BERT [12]; GPT-3 [13]) achieve strong results."
+  - text: "Data were collected between Jan. and Mar. 2021. Analysis followed."
+    expected:
+      - "Data were collected between Jan. and Mar. 2021."
+      - "Analysis followed."
+  - text: "The F1-score improved from 0.71 to 0.84 (Δ = 0.13). This is large."
+    expected:
+      - "The F1-score improved from 0.71 to 0.84 (Δ = 0.13)."
+      - "This is large."
+  - text: "In contrast to [7], we find that X. These findings suggest that Y."
+    expected:
+      - "In contrast to [7], we find that X."
+      - "These findings suggest that Y."
+  - text: "We define the loss as L = α·L1 + β·L2, where α, β ∈ [0, 1]."
+    expected:
+      - "We define the loss as L = α·L1 + β·L2, where α, β ∈ [0, 1]."
+  - text: "First paragraph ends here.\n\nSecond paragraph starts here."
+    expected:
+      - "First paragraph ends here."
+      - "Second paragraph starts here."
+  - text: "This follows Lee et al. Our method differs."
+    expected:
+      - "This follows Lee et al."
+      - "Our method differs."
+  - text: "Many models exist, e.g. CNNs, RNNs, etc. We then test them."
+    expected:
+      - "Many models exist, e.g. CNNs, RNNs, etc."
+      - "We then test them."
+  - text: "CNNs.Our approach differs."
+    expected:
+      - "CNNs."
+      - "Our approach differs."
+  - text: "The question (\"does it scale?\") remains open."
+    expected:
+      - "The question (\"does it scale?\") remains open."
+
+slot_cases:
+  - "These results suggest that the method is robust to noise."
+  - "Our experiments clearly show that the proposed model converges faster."
+  - "We show that the gain, as Lee demonstrated, is stable across all tested settings."
+  - "Previous studies have reported that larger batches reduce variance."
+  - "The analysis did not reveal that the effect depends on sample size."
+  - "It is widely argued that transfer learning reduces annotation cost."
+  - "These findings may indicate that the baseline was undertrained."
+  - "In this paper, we propose a framework that unifies both objectives."
+  - "Smith et al. (2020) found that accuracy drops under domain shift."
+  - "The proposed approach significantly improves classification accuracy."

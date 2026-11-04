@@ -63,3 +63,7 @@ asyncio_default_fixture_loop_scope = "function"
 python_version = "3.12"
 strict = true
 files = ["src/aprkb"]
+
+[[tool.mypy.overrides]]
+module = ["spacy", "spacy.*"]
+ignore_missing_imports = true

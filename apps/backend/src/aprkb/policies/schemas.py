@@ -215,6 +215,25 @@ class AbbreviationsPolicy(VersionedPolicy):
         return normalized
 
 
+class SentenceRulesPolicy(VersionedPolicy):
+    """Provisional vocabulary and limits for shared sentence-boundary rules."""
+
+    sentence_starters: list[str] = Field(min_length=1)
+    unit_tokens: list[str] = Field(min_length=1)
+    heading_max_chars: int = Field(ge=1, le=240)
+    heading_max_words: int = Field(ge=1, le=40)
+
+    @field_validator("sentence_starters", "unit_tokens")
+    @classmethod
+    def validate_tokens(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().casefold() for value in values]
+        if any(not value or " " in value for value in normalized):
+            raise ValueError("sentence rule vocabularies must contain non-empty single tokens")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("sentence rule vocabularies must not contain duplicates")
+        return normalized
+
+
 _SECTION_CODE = re.compile(r"^[A-Z][A-Z_]*$")
 
 

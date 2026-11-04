@@ -121,7 +121,8 @@ def main() -> None:
 def _load_config(name: str, model_name: str, abbreviation_guard: bool) -> Config:
     started = time.perf_counter()
     try:
-        engine = SpacyEngine(model_name, abbreviation_guard=abbreviation_guard)
+        del abbreviation_guard
+        engine = SpacyEngine(model_name)
     except Exception as error:  # pragma: no cover - depends on optional installed models
         return Config(name, error=f"not available: {type(error).__name__}: {error}")
     return Config(name, engine=engine, load_ms=(time.perf_counter() - started) * 1000)

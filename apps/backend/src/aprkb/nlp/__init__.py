@@ -1,4 +1,4 @@
-"""TODO(owner, FR-06.2): spike only; not wired into ingest or mining."""
+"""Ingest-time NLP feature contract; mining receives features but does not consume them yet."""
 
 from aprkb.nlp.features import (
     FEATURES_SCHEMA_VERSION,

@@ -28,7 +28,8 @@ from aprkb.modules.mining.models import Candidate, Job
 from aprkb.modules.mining.pipeline import MiningPipeline
 from aprkb.modules.mining.stages import build_stages
 from aprkb.modules.mining.stages.base import MiningItem
-from aprkb.policies.loader import load_policy_bundle
+from aprkb.nlp import NlpEngineInfo, SentenceAnalysis, SpacyEngine
+from aprkb.policies.loader import PolicyBundle, load_policy_bundle
 
 _PARSERS: tuple[DocumentParser, ...] = (
     TextParser(),
@@ -38,6 +39,7 @@ _PARSERS: tuple[DocumentParser, ...] = (
 )
 ArticleSourceFactory = Callable[[str], ArticleSource]
 logger = get_logger(__name__)
+_SPACY_ENGINES: dict[str, SpacyEngine] = {}
 
 
 class _SessionCandidateRepository:
@@ -202,8 +204,13 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
         return "Unsupported article format"
     document = parser.parse(content)
     policies = load_policy_bundle()
+    try:
+        nlp_info, section_analyser = _build_section_analyser(policies)
+    except RuntimeError as error:
+        article.ingest_status = "failed"
+        return str(error)
+    article.nlp_engine = nlp_info.to_json()
     section_codes = SectionDetector(policies.section_headings).detect(document.sections)
-    abbreviations = policies.abbreviations.abbreviations
     section_rows: dict[int, ArticleSection] = {}
     for parsed_section, section_code in zip(document.sections, section_codes, strict=True):
         section_row = ArticleSection(
@@ -217,18 +224,82 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
     await session.flush()
     for parsed_section in document.sections:
         section_row = section_rows[parsed_section.order]
-        for span in split_sentences(parsed_section.text, abbreviations=abbreviations):
+        for text, char_start, char_end, features, boundary_source in section_analyser(
+            parsed_section.text
+        ):
             session.add(
                 Sentence(
                     article_id=article.id,
                     article_section_id=section_row.id,
-                    text=span.text,
-                    char_start=parsed_section.char_start + span.char_start,
-                    char_end=parsed_section.char_start + span.char_end,
+                    text=text,
+                    char_start=parsed_section.char_start + char_start,
+                    char_end=parsed_section.char_start + char_end,
+                    nlp_features=features,
+                    boundary_source=boundary_source,
                 )
             )
     article.ingest_status = "ready"
     return None
+
+
+def _build_section_analyser(
+    policies: PolicyBundle,
+) -> tuple[
+    NlpEngineInfo,
+    Callable[[str], list[tuple[str, int, int, dict[str, object] | None, str]]],
+]:
+    if settings.nlp_engine == "regex":
+        info = NlpEngineInfo(
+            engine="regex",
+            spacy_version="",
+            model_name="regex",
+            model_version="",
+            components=("sentence_splitter",),
+            schema_version=1,
+            abbreviation_guard=False,
+            boundary_policy_version=policies.sentence_rules.version,
+        )
+
+        def regex_analyse(text: str) -> list[tuple[str, int, int, dict[str, object] | None, str]]:
+            return [
+                (span.text, span.char_start, span.char_end, None, span.boundary_source)
+                for span in split_sentences(text, rules=policies.sentence_rules)
+            ]
+
+        return info, regex_analyse
+
+    if settings.nlp_engine != "spacy":
+        raise RuntimeError(f"Unsupported NLP_ENGINE={settings.nlp_engine!r}")
+    engine = _get_spacy_engine(settings.nlp_model)
+
+    def spacy_analyse(text: str) -> list[tuple[str, int, int, dict[str, object] | None, str]]:
+        return [
+            (
+                text[analysis.char_start : analysis.char_end],
+                analysis.char_start,
+                analysis.char_end,
+                analysis.to_json(),
+                analysis.boundary_source,
+            )
+            for analysis in engine.analyze(text)
+        ]
+
+    return engine.info, spacy_analyse
+
+
+def _get_spacy_engine(model_name: str) -> SpacyEngine:
+    engine = _SPACY_ENGINES.get(model_name)
+    if engine is not None:
+        return engine
+    try:
+        engine = SpacyEngine(model_name)
+    except Exception as error:
+        raise RuntimeError(
+            f"NLP_ENGINE=spacy requires spaCy and model {model_name!r}; "
+            f"installation/load failed: {type(error).__name__}"
+        ) from error
+    _SPACY_ENGINES[model_name] = engine
+    return engine
 
 
 @dataclass(frozen=True)
@@ -320,6 +391,12 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
     previous_section: str | None = None
     for sentence, code in rows:
         context = previous_text if code is not None and code == previous_section else None
+        tokens = None
+        if sentence.nlp_features is not None:
+            try:
+                tokens = SentenceAnalysis.from_json(sentence.nlp_features).tokens
+            except ValueError:
+                return "Stored NLP features are invalid"
         mining_rows.append(
             MiningItem(
                 text=sentence.text,
@@ -327,6 +404,7 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
                 section_code=code,
                 char_start=sentence.char_start,
                 previous_text=context,
+                tokens=tokens,
             )
         )
         previous_text = sentence.text

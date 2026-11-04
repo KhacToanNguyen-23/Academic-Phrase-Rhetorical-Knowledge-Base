@@ -1,6 +1,7 @@
 """Cấu hình ứng dụng, đọc từ biến môi trường (.env)."""
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,6 +21,8 @@ class Settings(BaseSettings):
     blob_dir: str = "./data/blobs"
     log_level: str = "INFO"
     reference_library_enabled: bool = False
+    nlp_engine: Literal["regex", "spacy"] = "regex"
+    nlp_model: str = "en_core_web_sm"
 
     # Nguồn bài báo ngoài (ADR-0005): chỉ worker gọi, mặc định "null" (không nhập gì).
     article_source: str = "null"

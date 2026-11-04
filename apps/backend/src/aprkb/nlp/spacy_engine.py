@@ -1,11 +1,14 @@
-"""TODO(owner, FR-06.2): spike only; not wired into ingest or mining."""
+"""spaCy parser with shared character-level sentence-boundary rules."""
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable, Iterator
 from typing import Any
 
+from aprkb.modules.corpus.sentence_splitter import (
+    BoundaryDecision,
+    boundary_candidates,
+)
 from aprkb.nlp.features import (
     FEATURES_SCHEMA_VERSION,
     NlpEngineInfo,
@@ -13,41 +16,29 @@ from aprkb.nlp.features import (
     TokenFeature,
 )
 from aprkb.policies.loader import load_policy_bundle
+from aprkb.policies.schemas import SentenceRulesPolicy
 
 _COMPONENT_NAME = "aprkb_sentence_rules"
-_HEADING_LINE = re.compile(r"^\s*\d+(?:\.\d+)*\.\s+\S.*$")
-_BLANK_LINE = re.compile(r"\n[ \t]*\n")
-_SENTENCE_STARTERS = frozenset(
-    {"a", "an", "the", "this", "that", "these", "those", "we", "they", "it", "our"}
-)
 
 
 class SpacyEngine:
     """Run one lazily-loaded spaCy pipeline while preserving source offsets."""
 
-    def __init__(self, model_name: str = "en_core_web_sm", *, abbreviation_guard: bool = True):
+    def __init__(self, model_name: str = "en_core_web_sm"):
         import spacy
         from spacy.language import Language
 
-        abbreviations = (
-            frozenset(
-                value.casefold() for value in load_policy_bundle().abbreviations.abbreviations
-            )
-            if abbreviation_guard
-            else frozenset()
-        )
+        self._sentence_rules = load_policy_bundle().sentence_rules
+        self._repaired_sentences = 0
         _register_sentence_rules(Language)
         self._nlp = spacy.load(model_name, exclude=("ner",))
-        config = {
-            "abbreviations": sorted(abbreviations),
-            "abbreviation_guard": abbreviation_guard,
-        }
         if _COMPONENT_NAME not in self._nlp.pipe_names:
+            config = {"rules": self._sentence_rules.model_dump(mode="json")}
             if "parser" in self._nlp.pipe_names:
                 self._nlp.add_pipe(_COMPONENT_NAME, before="parser", config=config)
             else:
                 self._nlp.add_pipe(_COMPONENT_NAME, first=True, config=config)
-
+        self._rules_component = self._nlp.get_pipe(_COMPONENT_NAME)
         meta = self._nlp.meta
         self._info = NlpEngineInfo(
             engine="spacy",
@@ -56,31 +47,57 @@ class SpacyEngine:
             model_version=str(meta.get("version", "unknown")),
             components=tuple(self._nlp.pipe_names),
             schema_version=FEATURES_SCHEMA_VERSION,
-            abbreviation_guard=abbreviation_guard,
+            abbreviation_guard=False,
+            boundary_policy_version=self._sentence_rules.version,
         )
 
     @property
     def info(self) -> NlpEngineInfo:
         return self._info
 
+    @property
+    def alignment_misses(self) -> int:
+        """Count candidate offsets that did not align to a spaCy token start."""
+        return int(getattr(self._rules_component, "alignment_misses", 0))
+
+    @property
+    def repaired_sentences(self) -> int:
+        """Count analyses whose token tree needed a recorded repair."""
+        return self._repaired_sentences
+
     def analyze(self, text: str) -> list[SentenceAnalysis]:
         doc = self._nlp(text)
-        return [
-            self._analysis_from_sentence(doc, sentence)
-            for sentence in doc.sents
-            if sentence.text.strip()
-        ]
+        return self._analyses(doc)
 
     def analyze_many(self, texts: Iterable[str]) -> Iterator[list[SentenceAnalysis]]:
         for doc in self._nlp.pipe(texts):
-            yield [
-                self._analysis_from_sentence(doc, sentence)
-                for sentence in doc.sents
-                if sentence.text.strip()
-            ]
+            yield self._analyses(doc)
+
+    def _analyses(self, doc: Any) -> list[SentenceAnalysis]:
+        candidates = {
+            item.offset: item for item in boundary_candidates(doc.text, self._sentence_rules)
+        }
+        analyses: list[SentenceAnalysis] = []
+        first = True
+        for sentence in doc.sents:
+            if not sentence.text.strip():
+                continue
+            analyses.append(
+                self._analysis_from_sentence(
+                    doc,
+                    sentence,
+                    candidates,
+                    is_first=first,
+                )
+            )
+            first = False
+        self._repaired_sentences += sum(analysis.repaired for analysis in analyses)
+        return analyses
 
     @staticmethod
-    def _analysis_from_sentence(doc: Any, sentence: Any) -> SentenceAnalysis:
+    def _analysis_from_sentence(
+        doc: Any, sentence: Any, candidates: dict[int, Any], *, is_first: bool = False
+    ) -> SentenceAnalysis:
         char_start, char_end = _trim_offsets(doc.text, sentence.start_char, sentence.end_char)
         sentence_tokens = [
             token
@@ -94,13 +111,15 @@ class SpacyEngine:
             if head is None and not token.head.is_space:
                 raise AssertionError("spaCy token head escaped its sentence")
             resolved.append((token, head, token.dep_))
-        repair_root = not any(head is not None and dep == "ROOT" for _, head, dep in resolved)
+        repaired = not any(head is not None and dep == "ROOT" for _, head, dep in resolved)
+        repair_root = repaired
         features: list[TokenFeature] = []
         for index, (token, head, dep) in enumerate(resolved):
             if head is None:
                 head = index
                 dep = "ROOT" if repair_root else "dep"
                 repair_root = False
+                repaired = True
             features.append(
                 TokenFeature(
                     i=index,
@@ -117,14 +136,22 @@ class SpacyEngine:
             )
         if sum(feature.dep == "ROOT" for feature in features) != 1:
             raise AssertionError("spaCy sentence must contain exactly one ROOT")
-        return SentenceAnalysis(char_start, char_end, tuple(features))
+        candidate = candidates.get(sentence.start_char)
+        boundary_source = (
+            "rule:start"
+            if is_first
+            else (
+                f"rule:{candidate.rule}"
+                if candidate is not None and candidate.decision is not BoundaryDecision.UNSURE
+                else "parser"
+            )
+        )
+        return SentenceAnalysis(char_start, char_end, tuple(features), boundary_source, repaired)
 
 
-def get_engine(
-    model_name: str = "en_core_web_sm", *, abbreviation_guard: bool = True
-) -> SpacyEngine:
+def get_engine(model_name: str = "en_core_web_sm") -> SpacyEngine:
     """Create a lazily-importing spaCy engine for the requested model."""
-    return SpacyEngine(model_name, abbreviation_guard=abbreviation_guard)
+    return SpacyEngine(model_name)
 
 
 def _register_sentence_rules(language: Any) -> None:
@@ -133,104 +160,40 @@ def _register_sentence_rules(language: Any) -> None:
 
     @language.factory(  # type: ignore[untyped-decorator]
         _COMPONENT_NAME,
-        default_config={"abbreviations": [], "abbreviation_guard": True},
+        default_config={"rules": {}},
     )
-    def create_sentence_rules(
-        nlp: Any, name: str, abbreviations: list[str], abbreviation_guard: bool
-    ) -> Any:
+    def create_sentence_rules(nlp: Any, name: str, rules: dict[str, Any]) -> Any:
         del nlp, name
-        return _SentenceRules(abbreviations, abbreviation_guard)
+        return _SentenceRules(SentenceRulesPolicy.model_validate(rules))
 
 
 class _SentenceRules:
-    """spaCy component for policy abbreviations and deterministic hard boundaries."""
+    """Apply tri-state character rules before the spaCy dependency parser."""
 
-    def __init__(self, abbreviations: Iterable[str], abbreviation_guard: bool) -> None:
-        self._abbreviations = frozenset(value.casefold().rstrip(".") for value in abbreviations)
-        self._abbreviation_guard = abbreviation_guard
+    def __init__(self, rules: SentenceRulesPolicy) -> None:
+        self._rules = rules
+        self.alignment_misses = 0
 
     def __call__(self, doc: Any) -> Any:
-        for index, token in enumerate(doc):
-            next_token = _next_content_token(doc, index)
-            if next_token is None:
+        candidates = boundary_candidates(doc.text, self._rules)
+        by_offset = {token.idx: token for token in doc if not token.is_space}
+        for token in doc:
+            token.is_sent_start = False
+        first = next((token for token in doc if not token.is_space), None)
+        if first is not None:
+            first.is_sent_start = True
+        for candidate in candidates:
+            token = by_offset.get(candidate.offset)
+            if token is None:
+                self.alignment_misses += 1
                 continue
-            blank_line = _is_blank_line_between(doc.text, token, next_token)
-            if blank_line:
-                next_token.is_sent_start = True
-            if _is_numeric_heading_boundary(doc.text, token, next_token):
-                next_token.is_sent_start = True
-            if _is_unspaced_sentence_boundary(doc.text, token, next_token):
-                next_token.is_sent_start = True
-            if _is_protected_delimited_boundary(doc.text, token, next_token):
-                next_token.is_sent_start = False
-            if _is_terminal_punctuation_boundary(doc.text, token, next_token):
-                next_token.is_sent_start = True
-            if (
-                self._abbreviation_guard
-                and not blank_line
-                and _is_guarded_abbreviation(token, self._abbreviations)
-            ):
-                next_token.is_sent_start = _is_sentence_starter(next_token)
+            if candidate.decision is BoundaryDecision.SPLIT:
+                token.is_sent_start = True
+            elif candidate.decision is BoundaryDecision.NO_SPLIT:
+                token.is_sent_start = False
+            else:
+                token.is_sent_start = None
         return doc
-
-
-def _is_guarded_abbreviation(token: Any, abbreviations: frozenset[str]) -> bool:
-    normalized = token.text.casefold().rstrip(".")
-    if normalized not in abbreviations:
-        return False
-    # The policy contains `ms`, but only capitalised `Ms.` is a title. Lowercase
-    # `ms.` is treated as the unit so that "measured in ms. Latency" can split.
-    return not (normalized == "ms" and token.text == "ms")
-
-
-def _is_sentence_starter(token: Any) -> bool:
-    return token.text[:1].isupper() and token.text.casefold() in _SENTENCE_STARTERS
-
-
-def _next_content_token(doc: Any, index: int) -> Any | None:
-    next_index = index + 1
-    while next_index < len(doc) and doc[next_index].is_space:
-        next_index += 1
-    return doc[next_index] if next_index < len(doc) else None
-
-
-def _is_blank_line_between(text: str, token: Any, next_token: Any) -> bool:
-    return bool(_BLANK_LINE.search(text[token.idx + len(token.text) : next_token.idx]))
-
-
-def _is_numeric_heading_boundary(text: str, token: Any, next_token: Any) -> bool:
-    if "\n" not in text[token.idx + len(token.text) : next_token.idx]:
-        return False
-    line_start = text.rfind("\n", 0, token.idx + len(token.text)) + 1
-    line_end = text.find("\n", token.idx + len(token.text))
-    if line_end == -1:
-        return False
-    return bool(_HEADING_LINE.fullmatch(text[line_start:line_end]))
-
-
-def _is_unspaced_sentence_boundary(text: str, token: Any, next_token: Any) -> bool:
-    gap = text[token.idx + len(token.text) : next_token.idx]
-    return not gap and token.text in {".", "!", "?"} and next_token.text[:1].isupper()
-
-
-def _is_terminal_punctuation_boundary(text: str, token: Any, next_token: Any) -> bool:
-    gap = text[token.idx + len(token.text) : next_token.idx]
-    return (
-        bool(gap) and gap.isspace() and token.text in {"!", "?"} and next_token.text[:1].isupper()
-    )
-
-
-def _is_protected_delimited_boundary(text: str, token: Any, next_token: Any) -> bool:
-    if token.text == ")":
-        opening = text.rfind("(", 0, token.idx)
-        closing = text.rfind(")", 0, token.idx)
-        return opening > closing and any(mark in text[opening : token.idx] for mark in {"?", "!"})
-    if token.text in {'"', "'"}:
-        prefix = text[: token.idx]
-        return prefix.count(token.text) % 2 == 1 and any(
-            mark in prefix[prefix.rfind(token.text) :] for mark in {"?", "!"}
-        )
-    return False
 
 
 def _trim_offsets(text: str, start: int, end: int) -> tuple[int, int]:

@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from uuid import UUID
 
 from aprkb.modules.mining.schemas import Ownership, SlotDefinition, Tense
+from aprkb.nlp.features import TokenFeature
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class MiningItem:
     section_code: str | None = None
     char_start: int = 0
     previous_text: str | None = None
+    tokens: tuple[TokenFeature, ...] | None = None
     slots: dict[str, SlotDefinition] = field(default_factory=dict)
     occurrences: list[ExtractionOccurrence] = field(default_factory=list)
     tense: Tense = Tense.UNKNOWN

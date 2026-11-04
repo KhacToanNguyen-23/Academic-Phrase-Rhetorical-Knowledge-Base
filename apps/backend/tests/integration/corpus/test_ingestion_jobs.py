@@ -21,6 +21,7 @@ from aprkb.modules.identity.service import create_api_key
 from aprkb.modules.mining.models import Candidate, Job
 from aprkb.modules.mining.queue import claim_next
 from aprkb.modules.patterns.models import PatternVersion, PhrasePattern
+from aprkb.nlp.features import SentenceAnalysis
 from aprkb.seeds.load import run_seed
 from aprkb.worker.runner import run_once
 
@@ -170,6 +171,58 @@ async def test_upload_preserves_scholarly_sentence_boundaries_and_offsets(
             source[sentence.char_start : sentence.char_end] == sentence.text
             for sentence in sentences
         )
+
+
+@pytest.mark.asyncio
+async def test_ingest_persists_selected_nlp_contract(
+    phase05_client: tuple[AsyncClient, str],
+    phase05_sessions: async_sessionmaker,
+    tmp_path: Path,
+) -> None:
+    async with phase05_sessions() as session:
+        await run_seed(session)
+        await session.commit()
+    client, key = phase05_client
+    source = "These results are robust. Our method scales."
+    response = await client.post(
+        "/v1/admin/corpus/articles",
+        headers={"X-API-Key": key},
+        data={"title": "NLP contract fixture", "license_code": "CC-BY"},
+        files={"file": ("contract.txt", source.encode(), "text/plain")},
+    )
+    assert response.status_code == 202
+    article_id = UUID(response.json()["article_id"])
+    await run_once(phase05_sessions)
+
+    async with phase05_sessions() as session:
+        article = await session.get(Article, article_id)
+        sentences = list(
+            await session.scalars(
+                select(Sentence)
+                .where(Sentence.article_id == article_id)
+                .order_by(Sentence.char_start)
+            )
+        )
+        assert article is not None
+        assert article.nlp_engine is not None
+        assert article.nlp_engine["engine"] == core_settings.nlp_engine
+        assert sentences
+        for index, sentence in enumerate(sentences):
+            assert source[sentence.char_start : sentence.char_end] == sentence.text
+            assert sentence.boundary_source
+            if index == 0:
+                assert sentence.boundary_source == "rule:start"
+            if core_settings.nlp_engine == "regex":
+                assert sentence.nlp_features is None
+                continue
+            assert sentence.nlp_features is not None
+            analysis = SentenceAnalysis.from_json(sentence.nlp_features)
+            assert analysis.char_end - analysis.char_start == len(sentence.text)
+            assert all(
+                0 <= token.start < token.end <= len(sentence.text) for token in analysis.tokens
+            )
+
+    assert (tmp_path / f"articles/{article_id.hex}.txt").exists()
 
 
 @pytest.mark.asyncio

@@ -1,4 +1,4 @@
-"""TODO(owner, FR-06.2): spike only; not wired into ingest or mining."""
+"""Serializable token features persisted by the phase-2 ingest path."""
 
 from __future__ import annotations
 
@@ -78,6 +78,7 @@ class NlpEngineInfo:
     components: tuple[str, ...]
     schema_version: int
     abbreviation_guard: bool
+    boundary_policy_version: str = "0.1.0"
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -88,6 +89,7 @@ class NlpEngineInfo:
             "components": list(self.components),
             "schema_version": self.schema_version,
             "abbreviation_guard": self.abbreviation_guard,
+            "boundary_policy_version": self.boundary_policy_version,
         }
 
 
@@ -98,6 +100,8 @@ class SentenceAnalysis:
     char_start: int
     char_end: int
     tokens: tuple[TokenFeature, ...]
+    boundary_source: str = "parser"
+    repaired: bool = False
 
     def to_json(self) -> dict[str, Any]:
         """Return a compact JSON-compatible object suitable for JSONB."""
@@ -106,6 +110,7 @@ class SentenceAnalysis:
             "char_start": self.char_start,
             "char_end": self.char_end,
             "tokens": [token.to_json() for token in self.tokens],
+            "repaired": self.repaired,
         }
 
     @classmethod
@@ -119,14 +124,18 @@ class SentenceAnalysis:
         char_start = payload.get("char_start")
         char_end = payload.get("char_end")
         tokens = payload.get("tokens")
+        repaired = payload.get("repaired", False)
         if not isinstance(char_start, int) or not isinstance(char_end, int):
             raise ValueError("sentence analysis offsets must be integers")
         if not isinstance(tokens, list):
             raise ValueError("sentence analysis tokens must be a list")
+        if not isinstance(repaired, bool):
+            raise ValueError("sentence analysis repaired flag must be a boolean")
         restored = cls(
             char_start=char_start,
             char_end=char_end,
             tokens=tuple(TokenFeature.from_json(token) for token in tokens),
+            repaired=repaired,
         )
         _validate_tokens(restored.tokens)
         return restored
@@ -136,7 +145,10 @@ class SentenceAnalysis:
         if not 0 <= self.char_start <= self.char_end <= len(source_text):
             raise ValueError("sentence analysis offsets are outside the source text")
         return SentenceSpan(
-            source_text[self.char_start : self.char_end], self.char_start, self.char_end
+            source_text[self.char_start : self.char_end],
+            self.char_start,
+            self.char_end,
+            self.boundary_source,
         )
 
 

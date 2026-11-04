@@ -1,11 +1,14 @@
-"""TODO(owner, FR-06.2): spike only; not wired into ingest or mining."""
+"""Hybrid sentence boundaries and stored token-feature invariants."""
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
 
-from aprkb.nlp import SpacyEngine
+from aprkb.modules.corpus.sentence_splitter import boundary_candidates
+from aprkb.nlp import SentenceAnalysis, SpacyEngine
+from aprkb.policies.loader import load_policy_bundle
 from scripts.nlp_spike_compare import _syntax_spans
 
 spacy = pytest.importorskip("spacy")
@@ -77,6 +80,69 @@ def test_info_reports_real_versions_and_schema() -> None:
     assert info.model_name == "en_core_web_sm"
     assert info.model_version
     assert info.schema_version == 1
+    assert info.boundary_policy_version == load_policy_bundle().sentence_rules.version
+
+
+def test_first_sentence_boundary_is_rule_start() -> None:
+    engine = SpacyEngine()
+
+    for case in _cases():
+        analyses = engine.analyze(case["text"])
+        assert analyses[0].boundary_source == "rule:start"
+
+
+def test_whitespace_head_repair_is_recorded_in_json() -> None:
+    space = SimpleNamespace(i=1, is_space=True, text=" ", idx=5, lemma_=" ")
+    word = SimpleNamespace(
+        i=0,
+        is_space=False,
+        text="Word",
+        idx=0,
+        head=space,
+        dep_="dep",
+        pos_="NOUN",
+        tag_="NN",
+        lemma_="word",
+        morph="",
+    )
+
+    class FakeSentence:
+        start_char = 0
+        end_char = 4
+        text = "Word"
+
+        def __iter__(self):
+            return iter((word,))
+
+    doc = SimpleNamespace(text="Word")
+    sentence = FakeSentence()
+
+    analysis = SpacyEngine._analysis_from_sentence(doc, sentence, {}, is_first=True)
+
+    assert analysis.repaired
+    assert analysis.tokens[0].dep == "ROOT"
+    assert analysis.to_json()["repaired"] is True
+    assert SentenceAnalysis.from_json(analysis.to_json()).repaired
+
+
+def test_hybrid_never_starts_a_sentence_outside_a_rule_candidate() -> None:
+    engine = SpacyEngine()
+    for case in _cases():
+        text = case["text"]
+        doc = engine._nlp(text)
+        candidates = {candidate.offset for candidate in boundary_candidates(text)}
+        first_content = next(token.idx for token in doc if not token.is_space)
+
+        assert {token.idx for token in doc if token.is_sent_start} <= candidates | {first_content}
+
+
+def test_hybrid_preserves_cases_solved_by_regex_or_round_two_web() -> None:
+    engine = SpacyEngine()
+    for index, case in enumerate(_cases(), start=1):
+        if index in {8, 12}:
+            continue
+        actual = [item.to_sentence_span(case["text"]).text for item in engine.analyze(case["text"])]
+        assert actual == case["expected"]
 
 
 def test_syntax_probe_uses_only_direct_root_dependencies() -> None:

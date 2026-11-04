@@ -431,17 +431,17 @@ Chạy mọi rule trong `build_rules()` rồi trả danh sách `RuleResult`. Sev
 
 ### 6.3 Mining (`modules/mining/pipeline.py`) — chạy trong worker
 
-**Mở rộng M2 được chủ sở hữu duyệt ngày 2026-10-31:** triển khai slot abstraction regex, protected spans, lexicon reporting/subject và keying bảo thủ, bật trong worker; candidate vẫn pending và qua hai vòng review. Kiểm thử bằng dữ liệu giả tự viết. Chưa đánh giá chất lượng trên dữ liệu thật; gold và evaluator chờ API bài báo. spaCy và NER hoãn `TODO(owner, FR-06.2)`. Xem [ADR-0006](doc/adr/0007-rule-based-slot-abstraction.md).
+**Mở rộng M2 được chủ sở hữu duyệt ngày 2026-10-31:** triển khai slot abstraction regex, protected spans, lexicon reporting/subject và keying bảo thủ, bật trong worker; candidate vẫn pending và qua hai vòng review. Kiểm thử bằng dữ liệu giả tự viết. Chưa đánh giá chất lượng trên dữ liệu thật; gold và evaluator chờ API bài báo. Từ phase 2, spaCy được dùng ở ingest sau lớp boundary rule-first qua `NLP_ENGINE` (mặc định `regex`), còn NER và việc để syntax-based filter/slot extraction đọc feature hoãn đến phase 3 (`TODO(owner, FR-06.2)`). Xem [ADR-0007](doc/adr/0007-rule-based-slot-abstraction.md) và [ADR-0010](doc/adr/0010-spacy-ingest-token-features.md).
 
 ```
-job "ingest_article": corpus.ingest → license_check → parser → section_detector → sentence_splitter
+job "ingest_article": corpus.ingest → license_check → parser → section_detector → sentence_boundary_resolver → sentence_features?
 job "mine_article"  : Sentence[] → sentence_filter → move_classifier → epistemic_tagger
                       → slot_abstractor → frame_normalizer → clusterer → dedup_matcher
                       → candidate_writer (Candidate.status = pending)
 ```
 
 - `license_check`: nếu `allows_mining = false` thì dừng job, ghi lý do. **Cài thật.**
-- `sentence_splitter`: bản cài đơn giản dựa trên regex, giữ nguyên `char_start/char_end`. **Cài thật** (tạm thời).
+- `sentence_boundary_resolver`: boundary rule-first dùng chung cho regex và spaCy, giữ nguyên `char_start/char_end`; `NLP_ENGINE=regex` là mặc định, `NLP_ENGINE=spacy` lưu feature token vào `sentences.nlp_features`. **Cài thật** (phase 2).
 - `sentence_filter`: lọc theo độ dài và bỏ trích dẫn dạng `[12]`, `(Author, 2020)`. **Cài thật** (đơn giản).
 - Các stage còn lại: trả nguyên batch, có `TODO`.
 - `candidate_writer`: **bắt buộc** ghi `source_sentence_ids`. Mining **không bao giờ** ghi vào `phrase_patterns` / `pattern_versions`.

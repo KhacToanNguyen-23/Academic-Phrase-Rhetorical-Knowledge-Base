@@ -83,6 +83,14 @@ async def _export_pack(*, out: Path, only_approved: bool) -> None:
         async with factory() as session:
             counts = await export_pack(session, out, only_approved=only_approved)
         print(f"Exported {counts['patterns']} patterns, {counts['versions']} versions to {out}.")
+        for excluded in counts["excluded"]:
+            for finding in excluded["findings"]:
+                print(
+                    f"Excluded {excluded['pattern_id']}: {finding['code']} {finding['path']}",
+                    file=sys.stderr,
+                )
+        if counts["excluded"]:
+            print(f"Excluded {len(counts['excluded'])} approved patterns.", file=sys.stderr)
     finally:
         await engine.dispose()
 

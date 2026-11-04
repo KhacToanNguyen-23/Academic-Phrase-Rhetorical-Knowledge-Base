@@ -108,6 +108,7 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/journals/{id}", "get"),
         ("/v1/journals/{id}/guidelines", "post"),
         ("/v1/admin/review-queue", "get"),
+        ("/v1/admin/review-queue/{id}/intent", "put"),
         ("/v1/admin/review-queue/{id}/decisions", "post"),
         ("/v1/admin/gold/samples", "post"),
         ("/v1/admin/gold/samples/{id}/label", "post"),
@@ -1087,6 +1088,50 @@ async def _create_candidate(session_factory: async_sessionmaker, *, unsafe: bool
         session.add(candidate)
         await session.commit()
         return candidate.id
+
+
+@pytest.mark.asyncio
+async def test_original_reviewer_can_complete_legacy_missing_intent(api_client, session_factory):
+    await run_seed_in_session(session_factory)
+    first_reviewer, first_key = await create_key(
+        session_factory, "reviewer", "legacy first reviewer"
+    )
+    _, other_key = await create_key(session_factory, "reviewer", "legacy second reviewer")
+    candidate_id = await _create_candidate(session_factory)
+    async with session_factory() as session:
+        candidate = await session.get(Candidate, candidate_id)
+        assert candidate is not None
+        intent_id = candidate.intent_id
+        candidate.intent_id = None
+        # Older code allowed approving the phrase before an intent had been assigned.
+        session.add(
+            ReviewDecision(
+                candidate_id=candidate_id,
+                round=1,
+                decision="approve",
+                reviewer_id=first_reviewer.id,
+            )
+        )
+        await session.commit()
+    path = f"/v1/admin/review-queue/{candidate_id}/intent"
+    payload = {"intent_id": str(intent_id)}
+    denied = await api_client.put(path, headers={"X-API-Key": other_key}, json=payload)
+    assert denied.status_code == 409
+    confirmed = await api_client.put(path, headers={"X-API-Key": first_key}, json=payload)
+    assert confirmed.status_code == 200, confirmed.text
+    frozen = await api_client.put(path, headers={"X-API-Key": first_key}, json=payload)
+    assert frozen.status_code == 409
+    async with session_factory() as session:
+        event = await session.scalar(
+            select(AuditEvent).where(
+                AuditEvent.action == "candidate.intent.update",
+                AuditEvent.entity_id == candidate_id,
+            )
+        )
+        assert event is not None and event.after["first_reviewer_confirmed_intent"] is True
+    second = await _decision_payload(api_client, other_key, candidate_id, "approve")
+    assert second.status_code == 200, second.text
+    assert second.json()["candidate_status"] == "accepted"
 
 
 async def _version_count(session_factory: async_sessionmaker) -> int:

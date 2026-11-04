@@ -88,6 +88,8 @@ CR-06 changed the current weights; they remain provisional pending owner review.
 
 GitHub Actions runs on pushes to any branch and pull requests. The backend job checks the generated OpenAPI contract, Ruff lint/format, mypy, and pytest against an ephemeral PostgreSQL/pgvector service. The frontend job installs from the pnpm lockfile, checks generated API types, runs TypeScript checks, and builds the app. CI uses a disposable test database and needs no repository secrets.
 
+Team delivery changes become PR-only once the Phase 02 ruleset is activated. Workflow, Docker, migration, policy, lockfile, infrastructure, and runbook changes require CODEOWNER review. Every PR records verification evidence plus migration, rollback, secret/data-handling, and `BLOB_DIR` impact. Required checks may not be bypassed silently; the time-limited break-glass process and check-rename procedure are defined in [the CI runbook](doc/runbooks/ci.md). Database releases follow [the migration runbook](doc/runbooks/migrations.md), and application/database recovery follows [the rollback runbook](doc/runbooks/rollback.md). Phase 01 does not activate branch protection; it must remain unenforced until the stable Phase 02 check names have been proven on a disposable PR.
+
 ### Logs
 
 The API and worker write logs to stderr under the `aprkb.*` loggers; set the level with `LOG_LEVEL` (default `INFO`).

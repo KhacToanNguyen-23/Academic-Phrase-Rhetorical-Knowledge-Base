@@ -137,5 +137,50 @@
     "status": "not_started",
     "notes": "Deferred until external article API, human-reviewed gold and owner approval of LLM scope; license and privacy decisions remain open. Proposal only.",
     "priority": "P2"
+  },
+  {
+    "id": "ci-cd-governance-baseline",
+    "title": "Establish CI/CD ownership and team governance",
+    "user_visible_behavior": "",
+    "verification_command": "",
+    "status": "active",
+    "evidence": "",
+    "notes": "Phase 01 of plans/ci-cd-team-standard/plan.md"
+  },
+  {
+    "id": "ci-cd-enforced-ci",
+    "title": "Make deterministic CI checks mandatory for pull requests",
+    "user_visible_behavior": "",
+    "verification_command": "",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "Phase 02 of plans/ci-cd-team-standard/plan.md"
+  },
+  {
+    "id": "ci-cd-production-container-contract",
+    "title": "Create the production API and worker container contract",
+    "user_visible_behavior": "",
+    "verification_command": "",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "Phase 03 of plans/ci-cd-team-standard/plan.md"
+  },
+  {
+    "id": "ci-cd-deployment-decision-gate",
+    "title": "Record the production deployment platform decision",
+    "user_visible_behavior": "",
+    "verification_command": "",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "Phase 04 of plans/ci-cd-team-standard/plan.md"
+  },
+  {
+    "id": "ci-cd-track-rollout",
+    "title": "Implement and rehearse the selected CD track",
+    "user_visible_behavior": "",
+    "verification_command": "",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "Phase 05 of plans/ci-cd-team-standard/plan.md"
   }
 ]

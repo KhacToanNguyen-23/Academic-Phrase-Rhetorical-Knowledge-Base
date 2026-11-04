@@ -138,6 +138,12 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/admin/api-keys", "get"),
         ("/v1/admin/api-keys", "delete"),
         ("/v1/admin/releases/{id}/publish", "post"),
+        ("/v1/vocabulary/families", "get"),
+        ("/v1/vocabulary/lemmas", "get"),
+        ("/v1/vocabulary/letters", "get"),
+        ("/v1/vocabulary/lemmas/{id}", "get"),
+        ("/v1/admin/vocabulary/imports", "get"),
+        ("/v1/admin/vocabulary/imports", "post"),
     }
 
     assert actual == expected

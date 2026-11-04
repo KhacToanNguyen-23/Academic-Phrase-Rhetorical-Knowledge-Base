@@ -30,9 +30,9 @@ switch ($Target) {
     }
     "fe" {
         if (-not (Test-Path "apps/web/node_modules")) {
-            Invoke-DevTool npm @("--prefix", "apps/web", "install")
+            Invoke-DevTool pnpm @("--dir", "apps/web", "install")
         }
-        Invoke-DevTool npm @("--prefix", "apps/web", "run", "dev") -LongRunning
+        Invoke-DevTool pnpm @("--dir", "apps/web", "run", "dev") -LongRunning
     }
     "worker" {
         Invoke-DevTool uv @("run", "--directory", "apps/backend", "python", "-m", "aprkb.worker.runner") -LongRunning

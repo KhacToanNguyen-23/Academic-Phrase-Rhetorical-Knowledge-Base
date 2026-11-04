@@ -1,29 +1,81 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 
-import { api } from "@/shared/api";
-import { EvidenceLabel, Frame, SeverityBadge, StatusBadge, fmtTime } from "@/shared/ui";
+import { BarList, DataState, PageHeader, SeverityBadge } from "@/components/domain";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { api, type PatternStatus, type Section, type Submission } from "@/shared/api";
+import { relativeTime } from "@/shared/lib";
 
-const SECTIONS = [
-  { to: "/library", title: "Library", text: "Browse every rhetorical pattern, its slots, usage contract, variants and provenance.", tag: "WB-01 / 02" },
-  { to: "/playground", title: "Playground", text: "Replay a Writing Engine call — recommend, render, validate — with the exact JSON.", tag: "WB-03 / 08" },
-  { to: "/inbox", title: "Inbox", text: "Review sentences and frames sent by the Writing Engine before they enter the bank.", tag: "WB-07" },
-  { to: "/journals", title: "Journals", text: "Verified author guidelines kept apart from stylistic trends observed in the corpus.", tag: "WB-04" },
-  { to: "/admin", title: "Admin", text: "API clients, the request log, and every entry that left or arrived in the bank.", tag: "WB-09" },
-] as const;
+const ROW_LIMIT = 5;
+const SECTIONS: Section[] = ["Introduction", "Methods", "Results", "Discussion", "Conclusion"];
+const STATUS_LABEL: Record<PatternStatus, string> = {
+  approved: "Approved",
+  in_review: "In review",
+  draft: "Draft",
+  retired: "Retired",
+};
 
-const FLOW_OUT = [
-  ["Context", "Writing sends section, intent, genre, claim and evidence level."],
-  ["Hard gates", "Unapproved, unlicensed or over-claiming patterns are removed."],
-  ["Ranking", "Candidates are scored with a visible breakdown and fallback tier."],
-  ["Validation", "The rendered sentence is checked against V01–V08 before use."],
-];
-const FLOW_IN = [
-  ["Submission", "Writing proposes a sentence or frame with its context."],
-  ["Quarantine", "Licence and author opt-in are verified; unknown rights stay locked."],
-  ["Editor review", "Near-duplicates are flagged; an editor approves, rejects or asks for revision."],
-  ["Bank", "Approved entries become immutable, versioned patterns."],
-];
+type Destination = "/library" | "/inbox" | "/admin";
+
+const isQuarantined = (s: Submission) =>
+  s.license_status === "unknown" || s.license_status === "restricted" || !s.user_opt_in;
+
+function Figure({
+  value,
+  label,
+  note,
+  to,
+  failed,
+}: {
+  value?: number;
+  label: string;
+  note?: string;
+  to: Destination;
+  failed?: boolean;
+}) {
+  return (
+    <Link to={to} className="flex flex-col gap-1 py-2 text-foreground hover:no-underline">
+      <span className="text-3xl font-semibold tabular-nums">{value ?? "—"}</span>
+      <span className="text-sm">{failed ? `${label} (could not be loaded)` : label}</span>
+      {note ? <span className="text-sm text-muted-foreground">{note}</span> : null}
+    </Link>
+  );
+}
+
+function Panel({
+  title,
+  description,
+  to,
+  linkLabel,
+  children,
+}: {
+  title: string;
+  description?: string;
+  to?: Destination;
+  linkLabel?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        {description ? <CardDescription>{description}</CardDescription> : null}
+        {to ? (
+          <CardAction>
+            <Button asChild variant="ghost" size="sm">
+              <Link to={to}>{linkLabel}</Link>
+            </Button>
+          </CardAction>
+        ) : null}
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
 
 export function OverviewPage() {
   const patterns = useQuery({ queryKey: ["patterns", {}], queryFn: () => api.patterns({}) });
@@ -31,150 +83,168 @@ export function OverviewPage() {
   const logs = useQuery({ queryKey: ["logs"], queryFn: api.logs });
   const clients = useQuery({ queryKey: ["clients"], queryFn: api.clients });
 
+  const all = patterns.data ?? [];
   const approved = patterns.data?.filter((p) => p.status === "approved").length;
+  const inReview = patterns.data?.filter((p) => p.status === "in_review").length;
   const pending = subs.data?.filter((s) => s.status === "pending");
-  const name = (id: string) => clients.data?.find((c) => c.client_id === id)?.name ?? id;
+  const quarantined = pending?.filter(isQuarantined).length;
+  const clientName = (id: string) => clients.data?.find((c) => c.client_id === id)?.name ?? id;
+  const active = clients.data?.filter((c) => c.status === "active").length;
+  const oldest = pending?.length
+    ? [...pending].sort((a, b) => a.received_at.localeCompare(b.received_at))[0]
+    : undefined;
+
+  const byStatus = (Object.keys(STATUS_LABEL) as PatternStatus[]).map((status) => ({
+    label: STATUS_LABEL[status],
+    value: all.filter((p) => p.status === status).length,
+    emphasis: status === "approved",
+  }));
+  const bySection = SECTIONS.map((section) => ({
+    label: section,
+    value: all.filter((p) => p.status === "approved" && p.section_scope.includes(section)).length,
+  }));
 
   return (
-    <div className="overview">
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">Rhetorical pattern bank</p>
-          <h1 className="hero-title">The right phrasing for <span>every claim.</span></h1>
-          <p className="lead">
-            Academic Wordbank supplies the Writing Engine with approved, licence-compliant sentence patterns — matched to the
-            section, rhetorical intent and strength of evidence — and never invents citations, figures or research gaps.
-          </p>
-          <div className="hero-actions">
-            <Link className="btn btn-primary btn-lg" to="/library">Explore the library <span className="arrow">→</span></Link>
-            <Link className="btn btn-lg" to="/playground">Try the API <span className="arrow">↗</span></Link>
-          </div>
-          <ul className="hero-points">
-            <li><Check /> Evidence-aware validation</li>
-            <li><Check /> Traceable provenance</li>
-            <li><Check /> Works with OpenAlex disabled</li>
-          </ul>
-        </div>
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title="Workspace"
+        description="What needs review, how big the bank is, and who has been calling the API."
+      />
 
-        <div className="hero-visual" aria-hidden>
-          <div className="hv-card hv-main">
-            <div className="hv-head"><span>Pattern GAP-014</span><span>Introduction · Gap</span></div>
-            <p className="hv-frame"><Frame frame="Although {research_focus} has been examined, its behavior under {specific_condition} remains insufficiently characterized." /></p>
-            <div className="hv-quote">
-              <span className="hv-label">Usage contract</span>
-              Requires a literature synthesis showing limited work under this condition.
-            </div>
-            <div className="hv-foot"><EvidenceLabel kind="observed" /><span className="hv-meta">42 uses · 31 articles</span></div>
-          </div>
-          <div className="hv-card hv-float">
-            <span className="hv-label">Validation</span>
-            <strong>pass</strong>
-            <small>V01–V08 · moderate evidence</small>
-          </div>
-        </div>
+      <section aria-label="At a glance" className="grid grid-cols-4 gap-6">
+        <Figure
+          value={pending?.length}
+          label="Submissions awaiting review"
+          note={oldest ? `Oldest ${relativeTime(oldest.received_at)}` : "Queue is clear"}
+          to="/inbox"
+          failed={subs.isError}
+        />
+        <Figure
+          value={approved}
+          label="Approved patterns"
+          note={patterns.data ? `of ${all.length} in the bank` : undefined}
+          to="/library"
+          failed={patterns.isError}
+        />
+        <Figure value={logs.data?.length} label="API requests today" to="/admin" failed={logs.isError} />
+        <Figure value={active} label="Active API clients" to="/admin" failed={clients.isError} />
       </section>
 
-      <section className="kpis" aria-label="At a glance">
-        <Kpi value={approved} label="Approved patterns" to="/library" />
-        <Kpi value={pending?.length} label="Awaiting review" to="/inbox" tone={pending?.length ? "warn" : undefined} />
-        <Kpi value={logs.data?.length} label="API requests today" to="/admin" />
-        <Kpi value={clients.data?.filter((c) => c.status === "active").length} label="Active API clients" to="/admin" />
-      </section>
-
-      <section className="ov-section">
-        <div className="ov-head">
-          <h2>Two flows, one bank.</h2>
-          <p className="lead">Data leaves the bank only through hard gates, and enters it only through editorial review.</p>
+      <div className="grid grid-cols-12 items-start gap-6">
+        <div className="col-span-7">
+          <Panel
+            title="Needs attention"
+            description="The next things an editor can act on."
+            to="/inbox"
+            linkLabel="Open inbox"
+          >
+            {subs.isPending ? (
+              <DataState state="loading" loadingLabel="Loading submissions" />
+            ) : subs.isError ? (
+              <DataState
+                state="error"
+                errorTitle="Submissions could not be loaded"
+                errorDescription="Check the connection and try again."
+                onRetry={() => void subs.refetch()}
+              />
+            ) : !pending?.length ? (
+              <DataState
+                state="empty"
+                emptyTitle="Nothing is waiting"
+                emptyDescription="New submissions from the Writing Engine appear here."
+              />
+            ) : (
+              <div className="flex flex-col gap-4">
+                <Table>
+                  <TableBody>
+                    {pending.slice(0, ROW_LIMIT).map((s) => (
+                      <TableRow key={s.id}>
+                        <TableCell className="whitespace-normal">
+                          <span className="line-clamp-2">{s.text}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {s.kind === "frame" ? "Frame" : "Sentence"} · {relativeTime(s.received_at)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="w-32 text-right">
+                          {isQuarantined(s) ? <Badge variant="warning">Quarantined</Badge> : null}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <p className="text-sm text-muted-foreground">
+                  {pending.length > ROW_LIMIT ? `${pending.length - ROW_LIMIT} more in the inbox. ` : ""}
+                  {quarantined ? `${quarantined} quarantined for an unknown or restricted licence. ` : ""}
+                  {inReview
+                    ? `${inReview} ${inReview === 1 ? "pattern is" : "patterns are"} in review in the library.`
+                    : ""}
+                </p>
+              </div>
+            )}
+          </Panel>
         </div>
-        <div className="flows">
-          <Flow title="Data out" sub="Writing Engine asks for phrasing" steps={FLOW_OUT} />
-          <Flow title="Data in" sub="Writing Engine contributes phrasing" steps={FLOW_IN} />
-        </div>
-      </section>
 
-      <section className="ov-section">
-        <div className="ov-head"><h2>Explore the workspace.</h2></div>
-        <div className="explore-grid">
-          {SECTIONS.map((s) => (
-            <Link key={s.to} to={s.to} className="explore-card">
-              <span className="explore-tag">{s.tag}</span>
-              <strong>{s.title}</strong>
-              <span className="explore-text">{s.text}</span>
-              <span className="explore-go">Open <span className="arrow">→</span></span>
-            </Link>
-          ))}
+        <div className="col-span-5">
+          <Panel title="The bank" description="Patterns by status, and approved patterns by manuscript section.">
+            {patterns.isPending ? (
+              <DataState state="loading" loadingLabel="Loading patterns" />
+            ) : patterns.isError ? (
+              <DataState
+                state="error"
+                errorTitle="Patterns could not be loaded"
+                errorDescription="Check the connection and try again."
+                onRetry={() => void patterns.refetch()}
+              />
+            ) : (
+              <div className="flex flex-col gap-6">
+                <BarList label="Patterns by status" items={byStatus} />
+                <BarList label="Approved patterns by section" items={bySection} />
+              </div>
+            )}
+          </Panel>
         </div>
-      </section>
+      </div>
 
-      <section className="ov-section">
-        <div className="ov-head"><h2>Recent activity.</h2></div>
-        <div className="grid-2">
-          <div className="card">
-            <div className="card-head"><h2>Latest API requests</h2><Link to="/admin">View log →</Link></div>
-            <ul className="activity">
-              {logs.data?.slice(0, 5).map((l) => (
-                <li key={l.request_id}>
-                  <code className="endpoint">{l.endpoint}</code>
-                  <span className="activity-main">{name(l.client_id)}</span>
-                  <span className="activity-side">
-                    {l.verdict ? <SeverityBadge value={l.verdict} /> : l.status >= 400 ? <span className="badge badge-bad">{l.status}</span> : <span className="badge badge-ok">{l.status}</span>}
-                    <small>{fmtTime(l.at)}</small>
-                  </span>
-                </li>
+      <Panel title="Latest API requests" to="/admin" linkLabel="Open admin">
+        {logs.isPending ? (
+          <DataState state="loading" loadingLabel="Loading requests" />
+        ) : logs.isError ? (
+          <DataState
+            state="error"
+            errorTitle="Requests could not be loaded"
+            errorDescription="Check the connection and try again."
+            onRetry={() => void logs.refetch()}
+          />
+        ) : !logs.data?.length ? (
+          <DataState
+            state="empty"
+            emptyTitle="No requests yet"
+            emptyDescription="Calls from API clients appear here."
+          />
+        ) : (
+          <Table>
+            <TableBody>
+              {logs.data.slice(0, ROW_LIMIT + 1).map((l) => (
+                <TableRow key={l.request_id}>
+                  <TableCell>
+                    <code className="text-sm">{l.endpoint}</code>
+                  </TableCell>
+                  <TableCell>{clientName(l.client_id)}</TableCell>
+                  <TableCell>
+                    {l.verdict ? (
+                      <SeverityBadge value={l.verdict} />
+                    ) : (
+                      <Badge variant={l.status >= 400 ? "destructive" : "success"}>{l.status}</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{l.latency_ms} ms</TableCell>
+                  <TableCell className="text-right text-muted-foreground">{relativeTime(l.at)}</TableCell>
+                </TableRow>
               ))}
-            </ul>
-          </div>
-          <div className="card">
-            <div className="card-head"><h2>Awaiting review</h2><Link to="/inbox">Open inbox →</Link></div>
-            <ul className="activity">
-              {pending?.slice(0, 5).map((s) => (
-                <li key={s.id}>
-                  <code className="endpoint">{s.id}</code>
-                  <span className="activity-main activity-text">{s.text}</span>
-                  <span className="activity-side">
-                    {s.license_status === "unknown" || s.license_status === "restricted" || !s.user_opt_in
-                      ? <span className="badge badge-bad">quarantined</span>
-                      : <StatusBadge status={s.status} />}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
+            </TableBody>
+          </Table>
+        )}
+      </Panel>
     </div>
-  );
-}
-
-function Kpi({ value, label, to, tone }: { value?: number; label: string; to: "/library" | "/inbox" | "/admin"; tone?: "warn" }) {
-  return (
-    <Link to={to} className={`kpi ${tone ? `kpi-${tone}` : ""}`}>
-      <span className="kpi-value">{value ?? "—"}</span>
-      <span className="kpi-label">{label}</span>
-    </Link>
-  );
-}
-
-function Flow({ title, sub, steps }: { title: string; sub: string; steps: string[][] }) {
-  return (
-    <div className="flow">
-      <div className="flow-head"><strong>{title}</strong><span>{sub}</span></div>
-      <ol className="flow-steps">
-        {steps.map(([h, t], i) => (
-          <li key={h} style={{ animationDelay: `${i * 0.06}s` }}>
-            <span className="flow-num">{i + 1}</span>
-            <div><strong>{h}</strong><p>{t}</p></div>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
-
-function Check() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   );
 }

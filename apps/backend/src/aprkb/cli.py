@@ -151,6 +151,34 @@ async def _bootstrap_key() -> None:
         await engine.dispose()
 
 
+async def _import_vocabulary(*, files: list[Path]) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.vocabulary.service import import_workbook
+    from aprkb.policies.loader import load_policy_bundle
+
+    policy = load_policy_bundle().vocabulary_import
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        for file_path in files:
+            content = file_path.read_bytes()
+            async with factory() as session:
+                result = await import_workbook(
+                    session,
+                    content=content,
+                    filename=file_path.name,
+                    actor=None,
+                    request_id="cli-vocab-import",
+                    policy=policy,
+                )
+            print(
+                f"{file_path.name}: {result.source_kind}, rows={result.rows_read}, "
+                f"inserted={result.inserted}, updated={result.updated}, skipped={result.skipped}"
+            )
+    finally:
+        await engine.dispose()
+
+
 async def _reingest(*, source: str) -> None:
     from aprkb.api.main import app as _app  # noqa: F401
     from aprkb.modules.corpus.models import Article
@@ -487,6 +515,8 @@ def main() -> None:
     commands.add_parser("export-pack-schema")
     commands.add_parser("init-reference")
     commands.add_parser("bootstrap-key")
+    vocabulary_import = commands.add_parser("vocab-import")
+    vocabulary_import.add_argument("--file", type=Path, action="append", required=True)
     openapi = commands.add_parser("export-openapi")
     openapi.add_argument("--check", action="store_true")
     reingest = commands.add_parser(
@@ -532,6 +562,8 @@ def main() -> None:
         asyncio.run(_init_reference())
     elif args.command == "bootstrap-key":
         asyncio.run(_bootstrap_key())
+    elif args.command == "vocab-import":
+        asyncio.run(_import_vocabulary(files=args.file))
     elif args.command == "export-openapi":
         _export_openapi(check=args.check)
     elif args.command == "reingest":

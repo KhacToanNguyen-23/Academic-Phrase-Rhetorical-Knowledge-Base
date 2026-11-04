@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 const baseURL = process.env.WRITER_E2E_BASE_URL ?? "http://127.0.0.1:5173";
-const screenshots = "test-results/phrasebank-screens";
+const screenshots = process.env.E2E_SCREENSHOT_DIR ?? "test-results/phrasebank-screens";
 const notice = {
   name: "Example University Phrase Library",
   url: "https://example.test/",

@@ -400,6 +400,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/review-queue/{candidate_id}/intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Assign Intent */
+        put: operations["assign_intent_v1_admin_review_queue__candidate_id__intent_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/vocabulary/imports": {
         parameters: {
             query?: never;
@@ -3543,6 +3560,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewDecisionResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_intent_v1_admin_review_queue__candidate_id__intent_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateIntentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateSummary"];
                 };
             };
             /** @description Validation Error */

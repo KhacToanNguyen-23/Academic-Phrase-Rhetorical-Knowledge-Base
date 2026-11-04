@@ -52,7 +52,42 @@
       "code": "METHODS",
       "name": "Methods",
       "order": 4,
-      "moves": [],
+      "moves": [
+        {
+          "code": "METHODS_DESCRIBE",
+          "name": "Describe the method used",
+          "steps": [
+            {
+              "code": "METHODS_DESCRIBE_APPROACH",
+              "name": "State the approach taken",
+              "intents": [
+                {
+                  "code": "METHODS_DESCRIBE_APPROACH",
+                  "name": "Describe the approach used",
+                  "description": "State which method, instrument, or sample was used."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "code": "METHODS_JUSTIFY",
+          "name": "Justify the choice of method",
+          "steps": [
+            {
+              "code": "METHODS_JUSTIFY_REASON",
+              "name": "Give a reason for the choice",
+              "intents": [
+                {
+                  "code": "METHODS_JUSTIFY_REASON",
+                  "name": "Justify a method choice",
+                  "description": "Explain why a particular method, instrument, or design was chosen."
+                }
+              ]
+            }
+          ]
+        }
+      ],
       "compatible_genres": [
         "RESEARCH_ARTICLE"
       ]

@@ -117,5 +117,88 @@
     "claim_type": "causal",
     "source_type": "authored",
     "allowed_sections": ["DISCUSSION"]
+  },
+  {
+    "seed_key": "methods-describe-instrument",
+    "status": "approved",
+    "intent_code": "METHODS_DESCRIBE_APPROACH",
+    "canonical_frame": "Data on {variable} were collected through {instrument}.",
+    "slots": {
+      "variable": {"type": "noun_phrase", "label": "Variable", "instruction": "Name what was measured or observed.", "example": "task completion time", "required": true, "min_length": 3},
+      "instrument": {"type": "noun_phrase", "label": "Instrument", "instruction": "Name the tool, test, or procedure used to collect this data.", "example": "a timed usability task", "required": true, "min_length": 3}
+    },
+    "epistemic_strength": "low",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["METHODS"]
+  },
+  {
+    "seed_key": "methods-describe-sample",
+    "status": "approved",
+    "intent_code": "METHODS_DESCRIBE_APPROACH",
+    "canonical_frame": "{sample} were recruited from {source} for this study.",
+    "slots": {
+      "sample": {"type": "noun_phrase", "label": "Sample", "instruction": "Describe who or what was recruited.", "example": "Thirty undergraduate students", "required": true, "min_length": 3},
+      "source": {"type": "noun_phrase", "label": "Source", "instruction": "Name where the sample was drawn from.", "example": "two partner universities", "required": true, "min_length": 3}
+    },
+    "epistemic_strength": "low",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["METHODS"]
+  },
+  {
+    "seed_key": "methods-describe-approach",
+    "status": "approved",
+    "intent_code": "METHODS_DESCRIBE_APPROACH",
+    "canonical_frame": "{approach} was used to {goal} in this study.",
+    "slots": {
+      "approach": {"type": "noun_phrase", "label": "Approach", "instruction": "Name the method or approach used.", "example": "A mixed-methods survey", "required": true, "min_length": 3},
+      "goal": {"type": "clause", "label": "Goal", "instruction": "State what the approach was meant to accomplish.", "example": "assess user satisfaction", "required": true, "min_length": 3}
+    },
+    "epistemic_strength": "low",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["METHODS"]
+  },
+  {
+    "seed_key": "methods-justify-benefit",
+    "status": "approved",
+    "intent_code": "METHODS_JUSTIFY_REASON",
+    "canonical_frame": "{approach} was chosen because it allows {benefit}.",
+    "slots": {
+      "approach": {"type": "noun_phrase", "label": "Approach", "instruction": "Name the method or approach that was chosen.", "example": "A case-study design", "required": true, "min_length": 3},
+      "benefit": {"type": "clause", "label": "Benefit", "instruction": "State the specific benefit this approach provides.", "example": "detailed examination of context", "required": true, "min_length": 3}
+    },
+    "epistemic_strength": "low",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["METHODS"]
+  },
+  {
+    "seed_key": "methods-justify-design",
+    "status": "approved",
+    "intent_code": "METHODS_JUSTIFY_REASON",
+    "canonical_frame": "The {design} design was adopted to {purpose}.",
+    "slots": {
+      "design": {"type": "noun_phrase", "label": "Design", "instruction": "Name the study design adopted.", "example": "longitudinal", "required": true, "min_length": 3},
+      "purpose": {"type": "clause", "label": "Purpose", "instruction": "State the purpose this design serves.", "example": "track change over time", "required": true, "min_length": 3}
+    },
+    "epistemic_strength": "low",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["METHODS"]
+  },
+  {
+    "seed_key": "methods-justify-alternative",
+    "status": "approved",
+    "intent_code": "METHODS_JUSTIFY_REASON",
+    "canonical_frame": "This method was selected over alternatives due to its {advantage}.",
+    "slots": {
+      "advantage": {"type": "noun_phrase", "label": "Advantage", "instruction": "Name the advantage that made this method preferable.", "example": "lower cost and faster turnaround", "required": true, "min_length": 3}
+    },
+    "epistemic_strength": "low",
+    "claim_type": "descriptive",
+    "source_type": "authored",
+    "allowed_sections": ["METHODS"]
   }
 ]

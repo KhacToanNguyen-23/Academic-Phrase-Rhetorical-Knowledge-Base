@@ -184,12 +184,21 @@ async def get_category(session: AsyncSession, slug: str) -> CategoryDetailRespon
 
 
 async def search_entries(
-    session: AsyncSession, query: str, category_slug: str | None, limit: int
+    session: AsyncSession,
+    query: str,
+    category_slug: str | None,
+    limit: int,
+    *,
+    section: str | None = None,
+    intent: str | None = None,
+    phrase_only: bool = False,
 ) -> SearchResponse:
     source, _ = await repository.categories(session)
     if source is None:
         return SearchResponse(source=None, query=query, results=[])
-    rows = await repository.search(session, query, category_slug, limit)
+    # Taxonomy metadata is resolved below. Apply its predicates before the output cap.
+    filtered = bool(section or intent or phrase_only)
+    rows = await repository.search(session, query, category_slug, None if filtered else limit)
     category_ids = list({category.id for category, _entry in rows})
     mappings = await repository.mappings_for_categories(session, category_ids)
     intent_sections = await repository.intent_sections(session)
@@ -198,6 +207,8 @@ async def search_entries(
         mappings_by_category[mapping.reference_category_id].append(mapping)
     results: list[SearchResult] = []
     for category, entry in rows:
+        if phrase_only and entry.kind != "phrase":
+            continue
         indexed = _mapping_index(mappings_by_category[category.id])
         category_mapping = indexed.get(f"category:{category.slug}")
         heading_mapping = indexed.get(f"heading:{category.slug}:{entry.heading_position}")
@@ -230,4 +241,10 @@ async def search_entries(
                 ),
             )
         )
+    results = [
+        item
+        for item in results
+        if (section is None or item.section_code == section)
+        and (intent is None or item.intent_code == intent)
+    ][:limit]
     return SearchResponse(source=source_notice(source), query=query, results=results)

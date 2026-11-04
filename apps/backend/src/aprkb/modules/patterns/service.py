@@ -23,7 +23,7 @@ async def get_renderable_version(
     version_id: UUID,
     internal_use_codes: frozenset[str] = frozenset(),
 ) -> read_model.PatternRead:
-    """Return the current approved version with display rights."""
+    """Return the current approved version permitted in this internal-use app."""
     rows = await read_model.load_current_patterns(
         session,
         version_id=version_id,
@@ -43,6 +43,7 @@ async def list_patterns(
     status: str | None,
     offset: int,
     limit: int,
+    query: str | None = None,
     renderable_only: bool = False,
     internal_use_codes: frozenset[str] = frozenset(),
 ) -> list[dict[str, object]]:
@@ -51,6 +52,7 @@ async def list_patterns(
         intent_code=intent,
         section_code=section,
         status=status,
+        browse_query=query,
         offset=offset,
         limit=limit,
         display_only=renderable_only,
@@ -93,12 +95,14 @@ async def pattern_versions(session: AsyncSession, pattern_id: UUID) -> list[Patt
 
 
 async def renderable_pattern_versions(
-    session: AsyncSession, pattern_id: UUID
+    session: AsyncSession,
+    pattern_id: UUID,
+    internal_use_codes: frozenset[str] = frozenset(),
 ) -> list[PatternVersion]:
     pattern = await repository.get_pattern(session, pattern_id)
     if pattern is None or pattern.current_version_id is None:
         raise HTTPException(status_code=404, detail="Renderable pattern not found")
-    await get_renderable_version(session, pattern.current_version_id)
+    await get_renderable_version(session, pattern.current_version_id, internal_use_codes)
     version = await session.get(PatternVersion, pattern.current_version_id)
     return [version] if version else []
 

@@ -472,6 +472,22 @@
         "title": "BulkDecisionResult",
         "type": "object"
       },
+      "CandidateIntentUpdate": {
+        "additionalProperties": false,
+        "description": "Human intent assignment, completed before either approval is recorded.",
+        "properties": {
+          "intent_id": {
+            "format": "uuid",
+            "title": "Intent Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_id"
+        ],
+        "title": "CandidateIntentUpdate",
+        "type": "object"
+      },
       "CandidateSummary": {
         "properties": {
           "canonical_frame": {
@@ -2163,6 +2179,18 @@
             "title": "Allowed Sections",
             "type": "array"
           },
+          "article_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Id"
+          },
           "canonical_frame": {
             "anyOf": [
               {
@@ -2185,6 +2213,10 @@
             ],
             "title": "Claim Type"
           },
+          "claim_type_labelled": {
+            "title": "Claim Type Labelled",
+            "type": "boolean"
+          },
           "current_version_id": {
             "anyOf": [
               {
@@ -2197,6 +2229,13 @@
             ],
             "title": "Current Version Id"
           },
+          "discipline_affinities": {
+            "items": {
+              "$ref": "#/components/schemas/PatternDisciplineAffinityRead"
+            },
+            "title": "Discipline Affinities",
+            "type": "array"
+          },
           "epistemic_strength": {
             "anyOf": [
               {
@@ -2208,6 +2247,28 @@
             ],
             "title": "Epistemic Strength"
           },
+          "epistemic_strength_labelled": {
+            "title": "Epistemic Strength Labelled",
+            "type": "boolean"
+          },
+          "evidence_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Min"
+          },
+          "forbidden_contexts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Forbidden Contexts",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2216,6 +2277,40 @@
           "intent_code": {
             "title": "Intent Code",
             "type": "string"
+          },
+          "intent_name": {
+            "title": "Intent Name",
+            "type": "string"
+          },
+          "license_allows_display": {
+            "title": "License Allows Display",
+            "type": "boolean"
+          },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "license_flag": {
+            "title": "License Flag",
+            "type": "boolean"
+          },
+          "license_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Name"
           },
           "slots": {
             "anyOf": [
@@ -2238,9 +2333,35 @@
             ],
             "title": "Slots"
           },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_sentence_count": {
+            "title": "Source Sentence Count",
+            "type": "integer"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/PatternVariantRead"
+            },
+            "title": "Variants",
+            "type": "array"
           },
           "version_no": {
             "anyOf": [
@@ -2258,16 +2379,49 @@
           "id",
           "status",
           "intent_code",
+          "intent_name",
           "canonical_frame",
           "version_no",
           "current_version_id",
           "slots",
           "epistemic_strength",
+          "epistemic_strength_labelled",
           "claim_type",
+          "claim_type_labelled",
+          "variants",
+          "evidence_min",
+          "forbidden_contexts",
           "allowed_sections",
-          "allowed_genres"
+          "allowed_genres",
+          "source_type",
+          "license_code",
+          "license_name",
+          "license_allows_display",
+          "license_flag",
+          "article_id",
+          "source_reference",
+          "source_sentence_count",
+          "discipline_affinities"
         ],
         "title": "PatternDetail",
+        "type": "object"
+      },
+      "PatternDisciplineAffinityRead": {
+        "properties": {
+          "discipline_code": {
+            "title": "Discipline Code",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "discipline_code",
+          "score"
+        ],
+        "title": "PatternDisciplineAffinityRead",
         "type": "object"
       },
       "PatternSlotDefinition": {
@@ -2330,6 +2484,32 @@
       },
       "PatternSummary": {
         "properties": {
+          "allowed_genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Genres",
+            "type": "array"
+          },
+          "allowed_sections": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Sections",
+            "type": "array"
+          },
+          "article_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Id"
+          },
           "canonical_frame": {
             "anyOf": [
               {
@@ -2341,6 +2521,73 @@
             ],
             "title": "Canonical Frame"
           },
+          "claim_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Type"
+          },
+          "claim_type_labelled": {
+            "title": "Claim Type Labelled",
+            "type": "boolean"
+          },
+          "current_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Version Id"
+          },
+          "discipline_affinities": {
+            "items": {
+              "$ref": "#/components/schemas/PatternDisciplineAffinityRead"
+            },
+            "title": "Discipline Affinities",
+            "type": "array"
+          },
+          "epistemic_strength": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
+          },
+          "epistemic_strength_labelled": {
+            "title": "Epistemic Strength Labelled",
+            "type": "boolean"
+          },
+          "evidence_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Min"
+          },
+          "forbidden_contexts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Forbidden Contexts",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2350,9 +2597,90 @@
             "title": "Intent Code",
             "type": "string"
           },
+          "intent_name": {
+            "title": "Intent Name",
+            "type": "string"
+          },
+          "license_allows_display": {
+            "title": "License Allows Display",
+            "type": "boolean"
+          },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "license_flag": {
+            "title": "License Flag",
+            "type": "boolean"
+          },
+          "license_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Name"
+          },
+          "slots": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PatternSlotDefinition"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slots"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_sentence_count": {
+            "title": "Source Sentence Count",
+            "type": "integer"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/PatternVariantRead"
+            },
+            "title": "Variants",
+            "type": "array"
           },
           "version_no": {
             "anyOf": [
@@ -2370,10 +2698,56 @@
           "id",
           "status",
           "intent_code",
+          "intent_name",
           "canonical_frame",
-          "version_no"
+          "version_no",
+          "current_version_id",
+          "slots",
+          "epistemic_strength",
+          "epistemic_strength_labelled",
+          "claim_type",
+          "claim_type_labelled",
+          "variants",
+          "evidence_min",
+          "forbidden_contexts",
+          "allowed_sections",
+          "allowed_genres",
+          "source_type",
+          "license_code",
+          "license_name",
+          "license_allows_display",
+          "license_flag",
+          "article_id",
+          "source_reference",
+          "source_sentence_count",
+          "discipline_affinities"
         ],
         "title": "PatternSummary",
+        "type": "object"
+      },
+      "PatternVariantRead": {
+        "properties": {
+          "register": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "register"
+        ],
+        "title": "PatternVariantRead",
         "type": "object"
       },
       "PatternVersionCreate": {
@@ -2455,12 +2829,26 @@
             "title": "Change Note"
           },
           "claim_type": {
-            "title": "Claim Type",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Type"
           },
           "epistemic_strength": {
-            "title": "Epistemic Strength",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
           },
           "id": {
             "format": "uuid",
@@ -2760,6 +3148,18 @@
       },
       "RecommendationItemResponse": {
         "properties": {
+          "article_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Id"
+          },
           "breakdown": {
             "additionalProperties": {
               "anyOf": [
@@ -2856,7 +3256,8 @@
           "license_code",
           "license_name",
           "license_flag",
-          "source_reference"
+          "source_reference",
+          "article_id"
         ],
         "title": "RecommendationItemResponse",
         "type": "object"
@@ -3509,6 +3910,32 @@
       },
       "RenderableVersionRead": {
         "properties": {
+          "allowed_genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Genres",
+            "type": "array"
+          },
+          "allowed_sections": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Sections",
+            "type": "array"
+          },
+          "article_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Id"
+          },
           "canonical_frame": {
             "title": "Canonical Frame",
             "type": "string"
@@ -3525,17 +3952,102 @@
             "title": "Change Note"
           },
           "claim_type": {
-            "title": "Claim Type",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Type"
+          },
+          "claim_type_labelled": {
+            "title": "Claim Type Labelled",
+            "type": "boolean"
+          },
+          "discipline_affinities": {
+            "items": {
+              "$ref": "#/components/schemas/PatternDisciplineAffinityRead"
+            },
+            "title": "Discipline Affinities",
+            "type": "array"
           },
           "epistemic_strength": {
-            "title": "Epistemic Strength",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
+          },
+          "epistemic_strength_labelled": {
+            "title": "Epistemic Strength Labelled",
+            "type": "boolean"
+          },
+          "evidence_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Min"
+          },
+          "forbidden_contexts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Forbidden Contexts",
+            "type": "array"
           },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "intent_code": {
+            "title": "Intent Code",
+            "type": "string"
+          },
+          "intent_name": {
+            "title": "Intent Name",
+            "type": "string"
+          },
+          "license_allows_display": {
+            "title": "License Allows Display",
+            "type": "boolean"
+          },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "license_flag": {
+            "title": "License Flag",
+            "type": "boolean"
+          },
+          "license_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Name"
           },
           "pattern_id": {
             "format": "uuid",
@@ -3556,9 +4068,35 @@
             "title": "Slots",
             "type": "object"
           },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_sentence_count": {
+            "title": "Source Sentence Count",
+            "type": "integer"
+          },
           "source_type": {
             "title": "Source Type",
             "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/PatternVariantRead"
+            },
+            "title": "Variants",
+            "type": "array"
           },
           "version_no": {
             "title": "Version No",
@@ -3574,7 +4112,25 @@
           "epistemic_strength",
           "claim_type",
           "change_note",
-          "source_type"
+          "source_type",
+          "intent_code",
+          "intent_name",
+          "status",
+          "epistemic_strength_labelled",
+          "claim_type_labelled",
+          "variants",
+          "evidence_min",
+          "forbidden_contexts",
+          "allowed_sections",
+          "allowed_genres",
+          "license_code",
+          "license_name",
+          "license_allows_display",
+          "license_flag",
+          "article_id",
+          "source_reference",
+          "source_sentence_count",
+          "discipline_affinities"
         ],
         "title": "RenderableVersionRead",
         "type": "object"
@@ -6900,6 +7456,23 @@
           },
           {
             "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
             "name": "status",
             "required": false,
             "schema": {
@@ -7558,6 +8131,48 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "section",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Section"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "phrase_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Phrase Only",
+              "type": "boolean"
             }
           },
           {

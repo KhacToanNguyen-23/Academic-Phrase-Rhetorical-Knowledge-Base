@@ -137,5 +137,68 @@
     "status": "not_started",
     "notes": "Deferred until external article API, human-reviewed gold and owner approval of LLM scope; license and privacy decisions remain open. Proposal only.",
     "priority": "P2"
+  },
+  {
+    "id": "ci-cd-governance-baseline",
+    "title": "Establish CI/CD ownership and team governance",
+    "user_visible_behavior": "",
+    "verification_command": "",
+    "status": "passing",
+    "evidence": "CODEOWNERS, PR template, and ci/migrations/rollback/deploy runbooks committed. GitHub branch protection confirmed unenforceable on this private repo under a personal free plan (both Rulesets and classic protection show 'won't be enforced until you move to a GitHub Team or Enterprise organization account'; verified via `gh api repos/.../branches/dev` returning protected:false even after a rule appeared to save). Owner decided 2026-11-04 not to upgrade or make the repo public; required checks are enforced as a team convention instead, documented in doc/runbooks/ci.md.",
+    "notes": "Phase 01 of plans/ci-cd-team-standard/plan.md. See the 'Known deviation' note on the Global Acceptance Criteria in plan.md."
+  },
+  {
+    "id": "ci-cd-enforced-ci",
+    "title": "Make deterministic CI checks mandatory for pull requests",
+    "user_visible_behavior": "",
+    "verification_command": "",
+    "status": "active",
+    "evidence": "ci.yml hardened: stable job names (backend-quality-and-tests, frontend-quality-and-build), per-job timeouts, concurrency cancellation, pinned action SHAs, zero-warning frontend lint, and scripts/ci/require-db-tests.sh failing CI if tests/integration collects zero tests or any test in it skips. Verified locally: make lint, mypy, backend suite (485 passed, 8 intentional acceptance skips), require-db-tests.sh (pass with TEST_DATABASE_URL set, fails loudly without it), frontend lint/typecheck/build. Branch protection cannot technically enforce this on a private repo under a personal free plan (see ci-cd-governance-baseline); required checks are a team convention instead. Playwright Stage A->B promotion still needs the live-history stability window from plan.md.",
+    "notes": "Phase 02 of plans/ci-cd-team-standard/plan.md. frontend-e2e-smoke job added as Stage A (continue-on-error) observability only, per plan."
+  },
+  {
+    "id": "ci-cd-production-container-contract",
+    "title": "Create the production API and worker container contract",
+    "user_visible_behavior": "",
+    "verification_command": "",
+    "status": "active",
+    "evidence": "apps/backend/Dockerfile rewritten as a multi-stage, non-root image with digest-pinned python/uv bases, locked uv.lock install, and copied alembic.ini/migrations (missing before this change). Fixed two production-breaking bugs the container run surfaced: core/config.py and seeds/load.py (and modules/pack/validator.py) assumed a fixed monorepo directory depth to find .env/data/seed, which crashed with IndexError when the backend runs standalone in a container. Added graceful SIGTERM/SIGINT handling to worker/runner.py so it drains and exits 0 instead of being killed mid-job. /v1/health now reports build_commit_sha. Verified locally: docker build succeeds; non-root UID confirmed (999); API container migrates and serves /v1/health with the commit SHA; worker container starts, logs startup, and exits 0 on SIGTERM with a logged graceful-stop line; scripts/ci/container-canary.sh passes against the real .dockerignore. CI wires the same scripts into backend-image-contract. Not yet done: adding backend-image-contract as a required check (needs default-branch green runs + disposable-PR ruleset test first, per plan), and no registry push exists (Phase 04 decision).",
+    "notes": "Phase 03 of plans/ci-cd-team-standard/plan.md."
+  },
+  {
+    "id": "ci-cd-deployment-decision-gate",
+    "title": "Record the production deployment platform decision",
+    "user_visible_behavior": "",
+    "verification_command": "",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "Phase 04 of plans/ci-cd-team-standard/plan.md"
+  },
+  {
+    "id": "ci-cd-track-rollout",
+    "title": "Implement and rehearse the selected CD track",
+    "user_visible_behavior": "",
+    "verification_command": "",
+    "status": "active",
+    "evidence": "Scaffolding implemented per ADR-0010: docker-compose.prod.yml (postgres+api+worker, aprkb_blobs/pgdata named volumes); scripts/cd/deploy.sh (pull -> migrate once in a disposable container -> start api/worker -> verify running digest matches resolved digest), rollback.sh (restart on previous digest only, no migration/downgrade), backup-blobs.sh. .github/workflows/cd-deploy.yml: manual workflow_dispatch on a self-hosted homeserver runner, gated by the production GitHub Environment's required reviewer, concurrency cancel-in-progress:false. ci.yml's backend-image-contract now publishes the already-smoke-tested image to GHCR on push to dev. All YAML/compose syntax validated locally; shell scripts syntax-checked. NOT done: no PostgreSQL advisory/release lock around migration (only workflow concurrency), no automated job-count reconciliation during worker drain, no synthetic blob-sentinel smoke script, no staging environment, no actual run on the real homeserver (self-hosted runner and production Environment reviewers must still be configured by the repo admin), no game day / rehearsal by a second person. See doc/runbooks/deploy.md 'Known gaps'.",
+    "notes": "Phase 05 of plans/ci-cd-team-standard/plan.md. Deliberately reduced scope per ADR-0010 Hệ quả: scaffolding verified locally, not a production-rehearsed release pipeline."
+  },
+  {
+    "id": "internal-use-rendering",
+    "title": "Align internal-use phrase rendering",
+    "user_visible_behavior": "Render phrases with explicit internal-use permission consistently with recommendations",
+    "verification_command": "Focused read-model/composition/recommendation tests and isolated recommendation-to-render API regression",
+    "status": "passing",
+    "evidence": "167 focused backend unit tests and 31 PostgreSQL pattern/render API tests passed; includes internal-use reads/render and permission revocation. Ruff and code review passed.",
+    "notes": "Plan: plans/2026-11-04-internal-use-rendering/plan.md"
+  },
+  {
+    "id": "phrasebank-filtering-before-limits",
+    "title": "Filter Phrasebank before result limits",
+    "user_visible_behavior": "Find matching phrases beyond the first unfiltered result subset",
+    "verification_command": "Boundary API regressions beyond 200 patterns and 50 Manchester hits; focused Phrasebank e2e",
+    "status": "passing",
+    "evidence": "167 focused backend unit tests, 31 pattern/render API tests, 3 reference API tests, and 9 Edge Phrasebank tests passed. Boundary regressions cover >200 patterns and >50 reference hits. Web build/typecheck and lint passed (one existing hook warning).",
+    "notes": "Plan: plans/2026-11-04-internal-use-rendering/phase-02-phrasebank-filtering.md. Import-flow standardization explicitly deferred."
   }
 ]

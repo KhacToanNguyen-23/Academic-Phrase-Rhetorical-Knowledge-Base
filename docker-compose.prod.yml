@@ -1,0 +1,70 @@
+name: aprkb-prod
+
+# Production topology on the self-managed homeserver (ADR-0010). Frontend deployment
+# is not yet covered by this scaffold's container contract (apps/web has no
+# Dockerfile); it remains TODO(owner) until specifically requested.
+#
+# BACKEND_IMAGE must be a full ghcr.io reference pinned by tag or digest, e.g.
+#   ghcr.io/khactoannguyen-23/aprkb-backend:sha-<commit>
+# Never "latest" for a real release — deployment must reference the exact digest
+# that passed backend-image-contract, not a moving tag.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aprkb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-aprkb}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aprkb}"]
+      interval: 5s
+      retries: 10
+    networks: [aprkb]
+
+  api:
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE to a ghcr.io tag or digest}
+    restart: unless-stopped
+    command: ["uvicorn", "aprkb.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      APP_ENV: production
+      APP_SECRET_KEY: ${APP_SECRET_KEY:?Set APP_SECRET_KEY}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-[]}
+      BLOB_DIR: /data/blobs
+      ARTICLE_SOURCE: ${ARTICLE_SOURCE:-null}
+    volumes:
+      - aprkb_blobs:/data/blobs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    networks: [aprkb]
+
+  worker:
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE to a ghcr.io tag or digest}
+    restart: unless-stopped
+    command: ["python", "-m", "aprkb.worker.runner"]
+    environment:
+      APP_ENV: production
+      APP_SECRET_KEY: ${APP_SECRET_KEY:?Set APP_SECRET_KEY}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      BLOB_DIR: /data/blobs
+      ARTICLE_SOURCE: ${ARTICLE_SOURCE:-null}
+    volumes:
+      - aprkb_blobs:/data/blobs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [aprkb]
+
+networks:
+  aprkb:
+
+volumes:
+  pgdata:
+  aprkb_blobs:

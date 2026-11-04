@@ -8,6 +8,7 @@ from aprkb.modules.recommendation.gates.guideline import GuidelineGate
 from aprkb.modules.recommendation.gates.intent_section import IntentSectionGate
 from aprkb.modules.recommendation.gates.license import LicenseGate
 from aprkb.modules.recommendation.gates.retired import RetiredGate
+from aprkb.modules.recommendation.gates.usage import EvidenceMinimumGate, ForbiddenContextGate
 from aprkb.policies.evidence import EvidencePolicy
 
 
@@ -20,7 +21,9 @@ def build_gates(
         ApprovalGate(),
         RetiredGate(),
         LicenseGate(),
+        ForbiddenContextGate(),
         IntentSectionGate(),
+        EvidenceMinimumGate(evidence_policy),
         EvidenceGate(evidence_policy),
         GuidelineGate(guideline_policy),
     ]

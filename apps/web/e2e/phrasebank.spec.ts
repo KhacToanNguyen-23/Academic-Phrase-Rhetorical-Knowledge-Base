@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 const baseURL = process.env.WRITER_E2E_BASE_URL ?? "http://127.0.0.1:5173";
-const screenshots = "C:/Users/khact/AppData/Local/Temp/claude/phrasebank-screens";
+const screenshots = "test-results/phrasebank-screens";
 const notice = {
   name: "Example University Phrase Library",
   url: "https://example.test/",
@@ -51,11 +51,22 @@ const taxonomy = {
 };
 const patterns = [{
   id: "pattern-1", status: "approved", intent_code: "INTRO_GAP_INDICATE", canonical_frame: "Alpha invented {topic} frame",
-  version_no: 1, current_version_id: "version-1", slots: {}, epistemic_strength: "moderate", claim_type: "descriptive",
+  intent_name: "Invented intent", version_no: 1, current_version_id: "version-1",
+  slots: { topic: { type: "topic", label: "Topic", instruction: "Name an invented topic", example: "invented method", required: true, min_length: 1 } },
+  epistemic_strength: null, epistemic_strength_labelled: false, claim_type: null, claim_type_labelled: false,
+  variants: [{ text: "Invented alternative {topic}", register: "formal" }],
+  evidence_min: "single_study", forbidden_contexts: ["DISCUSSION"],
   allowed_sections: ["INTRO"], allowed_genres: ["RESEARCH_ARTICLE"],
+  source_type: "mined", license_code: "CC-BY", license_name: "Creative Commons Attribution",
+  license_allows_display: true, license_flag: false, article_id: "article-1", source_reference: null,
+  source_sentence_count: 2, discipline_affinities: [],
 }];
 
-test.use({ baseURL, browserName: "chromium" });
+test.use({
+  baseURL,
+  browserName: "chromium",
+  ...(process.env.WRITER_E2E_BROWSER === "msedge" ? { channel: "msedge" as const } : {}),
+});
 
 async function authenticate(page: Page) {
   await page.addInitScript(() => sessionStorage.setItem("aprkb-staff-session", "test-staff-key"));
@@ -72,13 +83,26 @@ async function mockLibrary(page: Page) {
   await page.route("**/v1/reference-library/categories", (route) => route.fulfill({
     status: 200, contentType: "application/json", body: JSON.stringify({ source: notice, categories }),
   }));
-  await page.route("**/v1/reference-library/search**", (route) => route.fulfill({
-    status: 200, contentType: "application/json", body: JSON.stringify(search),
-  }));
-  await page.route("**/v1/patterns**", (route) => {
-    const isDetail = new URL(route.request().url()).pathname.endsWith("/pattern-1");
+  await page.route("**/v1/reference-library/search**", (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    const filtered = search.results.filter((item) =>
+      (!params.get("section") || item.section_code === params.get("section"))
+      && (!params.get("intent") || item.intent_code === params.get("intent"))
+      && (params.get("phrase_only") !== "true" || item.entry.kind === "phrase"));
     return route.fulfill({
-      status: 200, contentType: "application/json", body: JSON.stringify(isDetail ? patterns[0] : patterns),
+      status: 200, contentType: "application/json", body: JSON.stringify({ ...search, results: filtered }),
+    });
+  });
+  await page.route("**/v1/patterns**", (route) => {
+    const url = new URL(route.request().url());
+    const isDetail = url.pathname.endsWith("/pattern-1");
+    const params = url.searchParams;
+    const filtered = patterns.filter((item) =>
+      (!params.get("section") || item.allowed_sections.includes(params.get("section")!))
+      && (!params.get("intent") || item.intent_code === params.get("intent"))
+      && (!params.get("q") || `${item.canonical_frame} ${item.intent_code} ${item.allowed_sections.join(" ")}`.toLowerCase().includes(params.get("q")!.toLowerCase())));
+    return route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify(isDetail ? patterns[0] : filtered),
     });
   });
 }
@@ -241,7 +265,8 @@ test("Section and Intent filters cover both sources and report unmapped referenc
   await page.getByRole("combobox", { name: "Intent filter" }).selectOption("");
   await page.getByRole("combobox", { name: "Section filter" }).selectOption("RESULTS");
   await page.getByRole("searchbox", { name: "Search phrasebanks" }).fill("alpha");
-  await expect(page.getByRole("status")).toContainText("1 matching items have no mapping");
+  await expect(page.getByText("No Manchester reference results.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveCount(0);
   await page.getByRole("searchbox", { name: "Search phrasebanks" }).fill("");
 
   await page.getByRole("combobox", { name: "Section filter" }).selectOption("INTRO");
@@ -249,6 +274,34 @@ test("Section and Intent filters cover both sources and report unmapped referenc
   await expect(page.getByRole("link", { name: "Use in Writer" })).toBeVisible();
   await page.getByRole("combobox", { name: "Section filter" }).selectOption("RESULTS");
   await expect(page.getByRole("link", { name: "Use in Writer" })).toHaveCount(0);
+});
+
+test("combined filters refetch both sources instead of searching their initial capped cache", async ({ page }) => {
+  await authenticate(page);
+  await mockLibrary(page);
+  const latePattern = { ...patterns[0]!, id: "late-pattern", canonical_frame: "Needle beyond the original pattern cap" };
+  const lateReference = { ...search.results[0]!, entry: { ...search.results[0]!.entry, id: "late-reference", cells: [["Needle beyond the original reference cap"]] } };
+  const matches = (params: URLSearchParams) => params.get("q") === "needle"
+    && params.get("section") === "INTRO" && params.get("intent") === "INTRO_GAP_INDICATE";
+  await page.route("**/v1/patterns**", (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(matches(params) ? [latePattern] : []) });
+  });
+  await page.route("**/v1/reference-library/search**", (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...search, results: matches(params) && params.get("phrase_only") === "true" ? [lateReference] : [] }) });
+  });
+  await page.goto("/phrasebank");
+  await expect(page.getByRole("link", { name: latePattern.canonical_frame })).toHaveCount(0);
+  await page.getByRole("searchbox", { name: "Search phrasebanks" }).fill("needle");
+  await page.getByRole("combobox", { name: "Section filter" }).selectOption("INTRO");
+  await page.getByRole("combobox", { name: "Intent filter" }).selectOption("INTRO_GAP_INDICATE");
+  await expect(page.getByRole("link", { name: latePattern.canonical_frame })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Needle beyond the original reference cap" })).toBeVisible();
+  await expect(page.getByText("Showing up to 50 Manchester and 200 AP-RKB matching results.")).toBeVisible();
+  await page.getByRole("combobox", { name: "Intent filter" }).selectOption("");
+  await expect(page.getByRole("link", { name: latePattern.canonical_frame })).toHaveCount(0);
+  await expect(page.getByRole("cell", { name: "Needle beyond the original reference cap" })).toHaveCount(0);
 });
 
 test("an empty reference source after purge leaves the page and AP-RKB source available", async ({ page }) => {
@@ -276,6 +329,31 @@ test("AP-RKB category shows the Writer cross link", async ({ page }) => {
   await expect(page.locator(".badge")).toHaveCount(0);
   await expect(page.locator(".phrasebank-source-credit")).toHaveText("Source: University of Manchester Academic Phrasebank.");
   await expect(page.getByRole("link", { name: "Use in Writer" })).toHaveAttribute("href", "/writer");
+});
+
+test("AP-RKB list opens a complete pattern detail without per-row detail requests", async ({ page }) => {
+  await authenticate(page);
+  await mockLibrary(page);
+  let detailRequests = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/v1/patterns/pattern-1") detailRequests += 1;
+  });
+  await page.goto("/phrasebank/aprkb-patterns");
+  await expect(page.getByText("Alpha invented {topic} frame")).toBeVisible();
+  expect(detailRequests).toBe(0);
+  await page.getByRole("link", { name: "Alpha invented {topic} frame" }).click();
+  await expect(page).toHaveURL(/\/phrasebank\/pattern\/pattern-1$/);
+  await expect(page.getByRole("heading", { name: "Frame" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Slots" })).toBeVisible();
+  await expect(page.getByText(/Type: topic; Label: Topic/)).toBeVisible();
+  await expect(page.getByText("Invented alternative {topic}")).toBeVisible();
+  await expect(page.getByText("single_study")).toBeVisible();
+  await expect(page.getByText("DISCUSSION")).toBeVisible();
+  await expect(page.getByText("Not labelled")).toHaveCount(2);
+  await expect(page.getByText(/Creative Commons Attribution/)).toBeVisible();
+  await expect(page.getByText("article-1")).toBeVisible();
+  await expect(page.getByText("Version 1", { exact: false })).toBeVisible();
+  expect(detailRequests).toBe(1);
 });
 
 test.beforeAll(() => mkdirSync(screenshots, { recursive: true }));

@@ -197,8 +197,11 @@ jobs:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
         with:
-          enable-cache: true
-          cache-dependency-glob: apps/backend/uv.lock
+          # Cache disabled here only: this job's bottleneck is the Playwright
+          # browser install, not uv dependency resolution, and the post-job
+          # cache-prune step was observed hanging ~5 minutes before failing
+          # (uv exit code 2) when the GitHub Actions cache backend degrades.
+          enable-cache: false
       - name: Install backend dependencies
         run: uv sync --directory apps/backend --locked
       - name: Migrate and seed the disposable database

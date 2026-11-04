@@ -19,7 +19,7 @@ import { LibraryPage } from "@/features/library";
 import { OverviewPage } from "@/features/overview";
 import { ExtractPage } from "@/features/phrase-extraction";
 import { PlaygroundPage } from "@/features/playground";
-import { PhrasebankCategory, PhrasebankHome } from "@/features/phrasebank/PhrasebankPage";
+import { PhrasebankCategory, PhrasebankHome, PhrasebankPatternDetail } from "@/features/phrasebank/PhrasebankPage";
 import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
 import { SlrImportPage } from "@/features/slr-import";
 import { VocabularyLemmaPage, VocabularyPage } from "@/features/vocabulary";
@@ -98,6 +98,11 @@ const phrasebankCategory = createRoute({
   path: "/phrasebank/$slug",
   component: () => <PhrasebankCategory slug={getRouteApi("/shell/guarded/phrasebank/$slug").useParams().slug} />,
 });
+const phrasebankPattern = createRoute({
+  getParentRoute: () => guarded,
+  path: "/phrasebank/pattern/$id",
+  component: () => <PhrasebankPatternDetail id={getRouteApi("/shell/guarded/phrasebank/pattern/$id").useParams().id} />,
+});
 
 const playground = createRoute({
   getParentRoute: () => guarded,
@@ -174,6 +179,7 @@ export const router = createRouter({
         library,
         phrasebank,
         phrasebankCategory,
+        phrasebankPattern,
         playground,
         inbox,
         journals,

@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.core.deps import get_db_session
@@ -26,7 +26,7 @@ Client = Annotated[ApiClient, Depends(require_role("client"))]
     responses={422: {"model": RenderErrorResponse, "description": "Invalid render input"}},
 )
 async def render(
-    payload: RenderRequest, client: Client, session: DatabaseSession
+    payload: RenderRequest, client: Client, session: DatabaseSession, request: Request
 ) -> RenderResponse:
     """FR-07.5: render only the selected candidate/version issued to the authenticated client."""
     result = await service.render_pattern(
@@ -35,5 +35,6 @@ async def render(
         pattern_version_id=payload.pattern_version_id,
         client_id=client.id,
         slots=payload.slots,
+        internal_use_codes=frozenset(request.app.state.policy_bundle.license.internal_use_codes),
     )
     return RenderResponse.model_validate(result)

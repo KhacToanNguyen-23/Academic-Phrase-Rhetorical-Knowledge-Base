@@ -23,7 +23,7 @@ export interface PhrasebankSource<TGroup, TSearch, TDetail> {
   label: string;
   listGroups(): Promise<TGroup[]>;
   getGroup(id: string): Promise<TDetail>;
-  search(query: string, filter?: TaxonomyFilter, groups?: TGroup[]): Promise<TSearch[]>;
+  search(query: string, filter?: TaxonomyFilter): Promise<TSearch[]>;
   filterBySection(item: TGroup | TSearch, sectionCode: string, taxonomy?: TaxonomyTree): boolean;
   filterByIntent(item: TGroup | TSearch, intentCode: string): boolean;
 }
@@ -68,19 +68,18 @@ export const phrasebankSources = {
   category: async (slug: string) => unwrap(await client().GET("/v1/reference-library/categories/{slug}", {
     params: { path: { slug } },
   })),
-  search: async (q: string) => unwrap(await client().GET("/v1/reference-library/search", {
-    params: { query: { q, limit: 50 } },
+  search: async (q: string, filter: TaxonomyFilter = {}) => unwrap(await client().GET("/v1/reference-library/search", {
+    params: { query: { q, section: filter.sectionCode, intent: filter.intentCode, phrase_only: true, limit: 50 } },
   })),
   taxonomy: async () => unwrap(await client().GET("/v1/taxonomy")),
-  patterns: async (): Promise<PatternDetail[]> => {
-    const api = client();
-    const summaries = unwrap(await api.GET("/v1/patterns", {
-      params: { query: { status: "approved", limit: 200 } },
+  patterns: async (q?: string, filter: TaxonomyFilter = {}): Promise<PatternDetail[]> => {
+    return unwrap(await client().GET("/v1/patterns", {
+      params: { query: { status: "approved", q: q || undefined, section: filter.sectionCode, intent: filter.intentCode, limit: 200 } },
     }));
-    return Promise.all(summaries.map(async (item) => unwrap(await api.GET("/v1/patterns/{pattern_id}", {
-      params: { path: { pattern_id: item.id } },
-    }))));
   },
+  pattern: async (id: string): Promise<PatternDetail> => unwrap(await client().GET("/v1/patterns/{pattern_id}", {
+    params: { path: { pattern_id: id } },
+  })),
 };
 
 const referenceSource: PhrasebankSource<ManchesterCategory, ManchesterSearchResult, ManchesterDetail> = {
@@ -91,11 +90,7 @@ const referenceSource: PhrasebankSource<ManchesterCategory, ManchesterSearchResu
   },
   getGroup: phrasebankSources.category,
   async search(query, filter = {}) {
-    const taxonomy = filter.sectionCode ? await phrasebankSources.taxonomy().catch(() => undefined) : undefined;
-    const result = (await phrasebankSources.search(query)).results;
-    return result.filter((item) =>
-      (!filter.sectionCode || (taxonomy && referenceItemMatchesSection(item, filter.sectionCode, taxonomy)))
-      && (!filter.intentCode || item.intent_code === filter.intentCode));
+    return (await phrasebankSources.search(query, filter)).results;
   },
   filterBySection: referenceItemMatchesSection,
   filterByIntent(item, intentCode) {
@@ -106,15 +101,10 @@ const referenceSource: PhrasebankSource<ManchesterCategory, ManchesterSearchResu
 const patternsSource: PhrasebankSource<PatternDetail, PatternDetail, PatternDetail[]> = {
   id: "aprkb-patterns",
   label: "AP-RKB patterns",
-  listGroups: phrasebankSources.patterns,
+  listGroups: () => phrasebankSources.patterns(),
   getGroup: () => phrasebankSources.patterns(),
-  async search(query, filter = {}, groups) {
-    const patterns = groups ?? await phrasebankSources.patterns();
-    const normalized = query.trim().toLocaleLowerCase();
-    return patterns.filter((pattern) =>
-      (!normalized || `${pattern.canonical_frame ?? ""} ${pattern.intent_code} ${pattern.allowed_sections.join(" ")}`.toLocaleLowerCase().includes(normalized))
-      && (!filter.sectionCode || pattern.allowed_sections.includes(filter.sectionCode))
-      && (!filter.intentCode || pattern.intent_code === filter.intentCode));
+  async search(query, filter = {}) {
+    return phrasebankSources.patterns(query, filter);
   },
   filterBySection(item, sectionCode) {
     return item.allowed_sections.includes(sectionCode);

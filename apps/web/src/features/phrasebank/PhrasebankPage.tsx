@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -265,15 +265,8 @@ function EntryList({
     </div>
   );
 }
-function PatternGroups({ patterns, query = "" }: { patterns: PatternDetail[]; query?: string }) {
-  const filtered = patterns.filter(
-    (pattern) =>
-      !query ||
-      `${pattern.canonical_frame ?? ""} ${pattern.intent_code} ${pattern.allowed_sections.join(" ")}`
-        .toLowerCase()
-        .includes(query.toLowerCase()),
-  );
-  if (!filtered.length)
+function PatternGroups({ patterns }: { patterns: PatternDetail[] }) {
+  if (!patterns.length)
     return (
       <DataState
         state="empty"
@@ -282,7 +275,7 @@ function PatternGroups({ patterns, query = "" }: { patterns: PatternDetail[]; qu
       />
     );
   const groups = new Map<string, PatternDetail[]>();
-  for (const pattern of filtered)
+  for (const pattern of patterns)
     for (const section of pattern.allowed_sections) {
       const key = `${section} · ${pattern.intent_code}`;
       groups.set(key, [...(groups.get(key) ?? []), pattern]);
@@ -300,9 +293,8 @@ function PatternGroups({ patterns, query = "" }: { patterns: PatternDetail[]; qu
                 className="flex items-center justify-between gap-4 rounded-[var(--radius)] border border-border p-3"
               >
                 <Link
-                  to="/phrasebank/$slug"
-                  params={{ slug: "aprkb-patterns" }}
-                  hash={`pattern-${pattern.id}`}
+                  to="/phrasebank/pattern/$id"
+                  params={{ id: pattern.id }}
                   className="font-serif text-lg text-primary hover:underline"
                 >
                   {pattern.canonical_frame}
@@ -331,61 +323,31 @@ export function PhrasebankHome() {
     queryFn: PHRASEBANK_SOURCES["manchester-reference"].listGroups,
     retry: false,
   });
-  const patterns = useQuery({
-    queryKey: ["phrasebank-patterns"],
-    queryFn: PHRASEBANK_SOURCES["aprkb-patterns"].listGroups,
-    enabled: source !== "manchester-reference",
-    retry: false,
-  });
+  const disabled = isReferenceDisabled(manchester.error);
+  const filters = { sectionCode: sectionCode || undefined, intentCode: intentCode || undefined };
   const results = useQuery({
-    queryKey: ["phrasebank-search", query],
-    queryFn: () => PHRASEBANK_SOURCES["manchester-reference"].search(query),
+    queryKey: ["phrasebank-search", query, sectionCode, intentCode],
+    queryFn: () => PHRASEBANK_SOURCES["manchester-reference"].search(query, filters),
     enabled: Boolean(query) && source !== "aprkb-patterns",
     retry: false,
   });
   const patternSearch = useQuery({
     queryKey: ["phrasebank-pattern-search", query, sectionCode, intentCode],
-    queryFn: () =>
-      PHRASEBANK_SOURCES["aprkb-patterns"].search(
-        query,
-        { sectionCode: sectionCode || undefined, intentCode: intentCode || undefined },
-        patterns.data ?? [],
-      ),
-    enabled: source !== "manchester-reference" && patterns.data !== undefined,
+    queryFn: () => PHRASEBANK_SOURCES["aprkb-patterns"].search(query, filters),
+    enabled: source !== "manchester-reference",
     retry: false,
   });
-  const disabled = isReferenceDisabled(manchester.error);
+  const patternMatches = patternSearch.data ?? [];
   const referenceSource = PHRASEBANK_SOURCES["manchester-reference"];
-  const patternSource = PHRASEBANK_SOURCES["aprkb-patterns"];
-  const patternMatches = query
-    ? (patternSearch.data ?? [])
-    : (patterns.data ?? []).filter(
-        (pattern) =>
-          (!sectionCode || patternSource.filterBySection(pattern, sectionCode, taxonomy.data as TaxonomyTree)) &&
-          (!intentCode || patternSource.filterByIntent(pattern, intentCode)),
-      );
   const visibleCategories = (manchester.data ?? []).filter(
     (category) =>
       (!sectionCode ||
         Boolean(taxonomy.data && referenceSource.filterBySection(category, sectionCode, taxonomy.data))) &&
       (!intentCode || referenceSource.filterByIntent(category, intentCode)),
   );
-  const visibleResults = (results.data ?? []).filter(
-    (item) =>
-      item.entry.kind === "phrase" &&
-      (!sectionCode || Boolean(taxonomy.data && referenceSource.filterBySection(item, sectionCode, taxonomy.data))) &&
-      (!intentCode || referenceSource.filterByIntent(item, intentCode)),
-  );
+  const visibleResults = results.data ?? [];
   const hasFilters = Boolean(sectionCode || intentCode);
-  const unmapped = query
-    ? results.data
-      ? taxonomyUnmappedCount(
-          [],
-          intentCode,
-          results.data.filter((item) => item.entry.kind === "phrase"),
-        )
-      : 0
-    : taxonomyUnmappedCount(manchester.data ?? [], intentCode);
+  const unmapped = taxonomyUnmappedCount(manchester.data ?? [], intentCode);
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -425,9 +387,9 @@ export function PhrasebankHome() {
           <Button onClick={() => setSearch((value) => value)}>Search</Button>
         </CardContent>
       </Card>
-      {hasFilters && source !== "aprkb-patterns" && manchester.data && (!query || results.data) ? (
+      {hasFilters && !query && source !== "aprkb-patterns" && manchester.data ? (
         <p role="status" className="text-sm text-muted-foreground">
-          {unmapped} {query ? "matching items" : "items"} have no mapping for this filter and are hidden.
+          {unmapped} items have no mapping for this filter and are hidden.
         </p>
       ) : null}
       {query ? (
@@ -436,6 +398,15 @@ export function PhrasebankHome() {
             <CardTitle>Search results</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
+            <p className="text-sm text-muted-foreground">
+              Showing up to{" "}
+              {source === "aprkb-patterns"
+                ? "200 AP-RKB"
+                : source === "manchester-reference"
+                  ? "50 Manchester"
+                  : "50 Manchester and 200 AP-RKB"}{" "}
+              matching results.
+            </p>
             {source !== "aprkb-patterns" ? (
               results.isPending ? (
                 <DataState state="loading" loadingLabel="Loading reference results" />
@@ -475,7 +446,18 @@ export function PhrasebankHome() {
             {source !== "manchester-reference" ? (
               <section className="flex flex-col gap-3">
                 <h3 className="font-medium">AP-RKB patterns</h3>
-                <PatternGroups patterns={patternMatches} query={query} />
+                {patternSearch.isPending ? (
+                  <DataState state="loading" loadingLabel="Loading approved patterns" />
+                ) : patternSearch.isError ? (
+                  <DataState
+                    state="error"
+                    errorTitle="Could not load approved patterns"
+                    errorDescription={patternSearch.error.message}
+                    onRetry={() => void patternSearch.refetch()}
+                  />
+                ) : (
+                  <PatternGroups patterns={patternMatches} />
+                )}
               </section>
             ) : null}
           </CardContent>
@@ -548,15 +530,16 @@ export function PhrasebankHome() {
                   </Link>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                {patterns.isPending ? (
+              <CardContent className="flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground">Showing up to 200 matching patterns.</p>
+                {patternSearch.isPending ? (
                   <DataState state="loading" loadingLabel="Loading approved patterns" />
-                ) : patterns.isError ? (
+                ) : patternSearch.isError ? (
                   <DataState
                     state="error"
                     errorTitle="Could not load approved patterns"
-                    errorDescription={patterns.error.message}
-                    onRetry={() => void patterns.refetch()}
+                    errorDescription={patternSearch.error.message}
+                    onRetry={() => void patternSearch.refetch()}
                   />
                 ) : (
                   <PatternGroups patterns={patternMatches} />
@@ -742,4 +725,146 @@ function scrollAfterNavigation(id: string) {
     else if (attempts++ < 40) window.setTimeout(tryScroll, 50);
   };
   window.setTimeout(tryScroll, 0);
+}
+
+function DetailField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[12rem_1fr] gap-3 text-sm">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}
+
+export function PhrasebankPatternDetail({ id }: { id: string }) {
+  const pattern = useQuery({
+    queryKey: ["phrasebank-pattern", id],
+    queryFn: () => phrasebankSources.pattern(id),
+    retry: false,
+  });
+  if (pattern.isPending) return <DataState state="loading" loadingLabel="Loading pattern" />;
+  if (pattern.isError || !pattern.data)
+    return (
+      <DataState
+        state="error"
+        errorTitle="Pattern detail is unavailable"
+        errorDescription={pattern.error?.message ?? "The pattern could not be found."}
+        onRetry={() => void pattern.refetch()}
+      />
+    );
+  const item = pattern.data;
+  const list = (values: string[]) => (values.length ? values.join(", ") : "—");
+  const slots = Object.entries(item.slots ?? {});
+  return (
+    <div className="flex flex-col gap-6">
+      <Link
+        to="/phrasebank/$slug"
+        params={{ slug: "aprkb-patterns" }}
+        className="text-sm text-primary hover:underline"
+      >
+        ← AP-RKB patterns
+      </Link>
+      <PageHeader title={item.intent_name || item.intent_code} description={`Version ${item.version_no}`} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Frame</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <p className="font-serif text-lg">{item.canonical_frame}</p>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/writer">Use in writer</Link>
+          </Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Slots</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {slots.length ? (
+            <dl className="flex flex-col gap-2">
+              {slots.map(([name, slot]) => {
+                const metadata =
+                  typeof slot === "string"
+                    ? { type: slot, label: null, instruction: null, example: null, required: true }
+                    : slot;
+                return (
+                  <DetailField key={name} label={name}>
+                    Type: {metadata.type}; Label: {metadata.label ?? "—"}; Instruction: {metadata.instruction ?? "—"};
+                    Example: {metadata.example ?? "—"}; Required: {metadata.required ? "Yes" : "No"}
+                  </DetailField>
+                );
+              })}
+            </dl>
+          ) : (
+            <p className="text-sm text-muted-foreground">—</p>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Variants</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {item.variants.length ? (
+            <ul className="flex flex-col gap-1">
+              {item.variants.map((variant, index) => (
+                <li key={`${index}-${variant.text}`}>
+                  {variant.text}{" "}
+                  {variant.register ? (
+                    <span className="text-sm text-muted-foreground">({variant.register})</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">—</p>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Usage</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="flex flex-col gap-2">
+            <DetailField label="Minimum evidence">{item.evidence_min ?? "—"}</DetailField>
+            <DetailField label="Forbidden contexts">{list(item.forbidden_contexts)}</DetailField>
+            <DetailField label="Allowed sections">{list(item.allowed_sections)}</DetailField>
+            <DetailField label="Allowed genres">{list(item.allowed_genres)}</DetailField>
+          </dl>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Evidence</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="flex flex-col gap-2">
+            <DetailField label="Strength">{item.epistemic_strength ?? "Not labelled"}</DetailField>
+            <DetailField label="Claim type">{item.claim_type ?? "Not labelled"}</DetailField>
+          </dl>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Provenance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="flex flex-col gap-2">
+            <DetailField label="Source type">{item.source_type}</DetailField>
+            <DetailField label="License">
+              {item.license_name ?? "—"}
+              {item.license_code ? ` (${item.license_code})` : ""}
+            </DetailField>
+            <DetailField label="Allows display">{item.license_allows_display ? "Yes" : "No"}</DetailField>
+            <DetailField label="Internal use">{item.license_flag ? "Yes" : "No"}</DetailField>
+            <DetailField label="Article reference">{item.source_reference ?? "—"}</DetailField>
+            <DetailField label="Article ID">{item.article_id ?? "—"}</DetailField>
+            <DetailField label="Source sentences">{item.source_sentence_count}</DetailField>
+          </dl>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

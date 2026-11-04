@@ -24,6 +24,13 @@ def evidence_policy(policy_bundle):
             RefEnum(group="epistemic_strength", code="moderate", label="Moderate", order=2),
             RefEnum(group="epistemic_strength", code="high", label="High", order=3),
             RefEnum(group="epistemic_strength", code="absolute", label="Absolute", order=4),
+            RefEnum(group="evidence_level", code="none", label="None", order=1),
+            RefEnum(group="evidence_level", code="anecdotal", label="Anecdotal", order=2),
+            RefEnum(group="evidence_level", code="single_study", label="Single study", order=3),
+            RefEnum(group="evidence_level", code="multiple_consistent", label="Multiple", order=4),
+            RefEnum(
+                group="evidence_level", code="systematic_synthesis", label="Synthesis", order=5
+            ),
         ],
     )
 

@@ -17,6 +17,7 @@ async def render_pattern(
     pattern_version_id: UUID,
     client_id: UUID,
     slots: dict[str, str],
+    internal_use_codes: frozenset[str] = frozenset(),
 ) -> dict[str, object]:
     """FR-07.5 / BR-01: render only a displayable approved version issued to this client."""
     await recommendation_service.require_issued_candidate(
@@ -25,7 +26,9 @@ async def render_pattern(
         pattern_version_id=pattern_version_id,
         client_id=client_id,
     )
-    version, _source = await pattern_service.get_renderable_version(session, pattern_version_id)
+    version = await pattern_service.get_renderable_version(
+        session, pattern_version_id, internal_use_codes
+    )
     try:
         text, unfilled = render_frame(version.canonical_frame, version.slots, slots)
     except SlotValidationError as error:

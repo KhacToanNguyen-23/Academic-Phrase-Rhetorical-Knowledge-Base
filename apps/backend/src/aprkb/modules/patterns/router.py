@@ -28,13 +28,18 @@ Admin = Annotated[ApiClient, Depends(require_role("admin"))]
 
 @router.get("/versions/{version_id}", response_model=RenderableVersionRead)
 async def get_renderable_version(
-    version_id: UUID, _client: Client, session: DatabaseSession
+    version_id: UUID, _client: Client, session: DatabaseSession, request: Request
 ) -> RenderableVersionRead:
-    version, source = await service.get_renderable_version(session, version_id)
+    version = await service.get_renderable_version(
+        session,
+        version_id,
+        frozenset(request.app.state.policy_bundle.license.internal_use_codes),
+    )
     return RenderableVersionRead.model_validate(
         {
-            **PatternVersionRead.model_validate(version).model_dump(),
-            "source_type": source.source_type,
+            **version.as_response(),
+            "id": version.current_version_id,
+            "pattern_id": version.id,
         }
     )
 
@@ -43,8 +48,10 @@ async def get_renderable_version(
 async def list_patterns(
     client: Client,
     session: DatabaseSession,
+    request: Request,
     intent: str | None = None,
     section: str | None = None,
+    q: Annotated[str | None, Query(max_length=500)] = None,
     pattern_status: Annotated[str | None, Query(alias="status")] = None,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
@@ -53,32 +60,48 @@ async def list_patterns(
         session,
         intent=intent,
         section=section,
+        query=q,
         status=pattern_status,
         offset=offset,
         limit=limit,
         renderable_only=client.role not in {"curator", "admin"},
+        internal_use_codes=frozenset(request.app.state.policy_bundle.license.internal_use_codes),
     )
     return [PatternSummary.model_validate(row) for row in rows]
 
 
 @router.get("/{pattern_id}", response_model=PatternDetail)
-async def get_pattern(pattern_id: UUID, client: Client, session: DatabaseSession) -> PatternDetail:
+async def get_pattern(
+    pattern_id: UUID, client: Client, session: DatabaseSession, request: Request
+) -> PatternDetail:
     detail = (
-        await service.pattern_detail(session, pattern_id)
+        await service.pattern_detail(
+            session,
+            pattern_id,
+            frozenset(request.app.state.policy_bundle.license.internal_use_codes),
+        )
         if client.role in {"curator", "admin"}
-        else await service.renderable_pattern_detail(session, pattern_id)
+        else await service.renderable_pattern_detail(
+            session,
+            pattern_id,
+            frozenset(request.app.state.policy_bundle.license.internal_use_codes),
+        )
     )
     return PatternDetail.model_validate(detail)
 
 
 @router.get("/{pattern_id}/versions", response_model=list[PatternVersionRead])
 async def get_versions(
-    pattern_id: UUID, client: Client, session: DatabaseSession
+    pattern_id: UUID, client: Client, session: DatabaseSession, request: Request
 ) -> list[PatternVersionRead]:
     versions = (
         await service.pattern_versions(session, pattern_id)
         if client.role in {"curator", "admin"}
-        else await service.renderable_pattern_versions(session, pattern_id)
+        else await service.renderable_pattern_versions(
+            session,
+            pattern_id,
+            frozenset(request.app.state.policy_bundle.license.internal_use_codes),
+        )
     )
     return [PatternVersionRead.model_validate(version) for version in versions]
 

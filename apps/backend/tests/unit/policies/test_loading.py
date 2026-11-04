@@ -14,7 +14,8 @@ from aprkb.shared.models import RefEnum
 def test_policy_bundle_loads_versioned_sample_policies() -> None:
     bundle = load_policy_bundle()
 
-    assert bundle.ranking_weights.version == "0.1.0"
+    assert bundle.ranking_weights.version == "0.2.0"
+    assert bundle.ranking_weights.provenance_scores == {"authored": 1.0, "mined": 0.7}
     assert bundle.ranking_weights.evidence_alignment_formula.startswith("1 - abs")
     assert bundle.ranking_weights.keyword_formula == "matched_keywords / query_keywords"
     assert bundle.license.internal_use_codes == ["PROPRIETARY"]

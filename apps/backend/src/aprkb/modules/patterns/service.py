@@ -7,9 +7,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.audit.service import record_event
-from aprkb.modules.corpus.models import License
 from aprkb.modules.identity.models import ApiClient
-from aprkb.modules.patterns import repository
+from aprkb.modules.patterns import read_model, repository
 from aprkb.modules.patterns.models import (
     EvidenceProvenance,
     PatternVersion,
@@ -17,34 +16,23 @@ from aprkb.modules.patterns.models import (
     UsageConstraint,
 )
 from aprkb.modules.patterns.schemas import PatternCreate, PatternVersionCreate
-from aprkb.modules.taxonomy.models import Intent
 
 
 async def get_renderable_version(
-    session: AsyncSession, version_id: UUID
-) -> tuple[PatternVersion, EvidenceProvenance]:
-    """Return only the current approved version with one displayable source."""
-    version = await session.get(PatternVersion, version_id)
-    pattern = await session.get(PhrasePattern, version.pattern_id) if version else None
-    if (
-        version is None
-        or pattern is None
-        or pattern.status != "approved"
-        or pattern.current_version_id != version_id
-    ):
+    session: AsyncSession,
+    version_id: UUID,
+    internal_use_codes: frozenset[str] = frozenset(),
+) -> read_model.PatternRead:
+    """Return the current approved version permitted in this internal-use app."""
+    rows = await read_model.load_current_patterns(
+        session,
+        version_id=version_id,
+        display_only=True,
+        internal_use_codes=internal_use_codes,
+    )
+    if not rows:
         raise HTTPException(status_code=404, detail="Renderable pattern version not found")
-    sources = await repository.list_provenances(session, version_id)
-    if len(sources) != 1:
-        raise HTTPException(status_code=404, detail="Renderable pattern version not found")
-    source = sources[0]
-    if source.source_type == "mined":
-        license_row = await session.get(License, source.license_id) if source.license_id else None
-        allowed = license_row is not None and license_row.allows_display
-    else:
-        allowed = source.source_type == "authored"
-    if not allowed:
-        raise HTTPException(status_code=404, detail="Renderable pattern version not found")
-    return version, source
+    return rows[0]
 
 
 async def list_patterns(
@@ -55,62 +43,49 @@ async def list_patterns(
     status: str | None,
     offset: int,
     limit: int,
+    query: str | None = None,
     renderable_only: bool = False,
+    internal_use_codes: frozenset[str] = frozenset(),
 ) -> list[dict[str, object]]:
-    rows = await repository.list_patterns(
+    rows = await read_model.load_current_patterns(
         session,
         intent_code=intent,
         section_code=section,
         status=status,
+        browse_query=query,
         offset=offset,
         limit=limit,
-        renderable_only=renderable_only,
+        display_only=renderable_only,
+        internal_use_codes=internal_use_codes,
     )
-    return [
-        _pattern_detail_data(pattern, intent, version, usage)
-        for pattern, intent, version, usage in rows
-    ]
+    return [row.as_response() for row in rows]
 
 
-async def pattern_detail(session: AsyncSession, pattern_id: UUID) -> dict[str, object]:
-    pattern = await repository.get_pattern(session, pattern_id)
-    if pattern is None:
-        raise HTTPException(status_code=404, detail="Pattern not found")
-    intent = await session.get(Intent, pattern.intent_id)
-    version = await repository.get_current_version(session, pattern)
-    usage = await repository.get_usage_constraint(session, version.id) if version else None
-    return _pattern_detail_data(pattern, intent, version, usage)
-
-
-async def renderable_pattern_detail(session: AsyncSession, pattern_id: UUID) -> dict[str, object]:
-    pattern = await repository.get_pattern(session, pattern_id)
-    if pattern is None or pattern.current_version_id is None:
-        raise HTTPException(status_code=404, detail="Renderable pattern not found")
-    version, _ = await get_renderable_version(session, pattern.current_version_id)
-    intent = await session.get(Intent, pattern.intent_id)
-    usage = await repository.get_usage_constraint(session, version.id)
-    return _pattern_detail_data(pattern, intent, version, usage)
-
-
-def _pattern_detail_data(
-    pattern: PhrasePattern,
-    intent: Intent | None,
-    version: PatternVersion | None,
-    usage: UsageConstraint | None,
+async def pattern_detail(
+    session: AsyncSession, pattern_id: UUID, internal_use_codes: frozenset[str] = frozenset()
 ) -> dict[str, object]:
-    return {
-        "id": pattern.id,
-        "status": pattern.status,
-        "intent_code": intent.code if intent else "",
-        "canonical_frame": version.canonical_frame if version else None,
-        "version_no": version.version_no if version else None,
-        "current_version_id": version.id if version else None,
-        "slots": version.slots if version else None,
-        "epistemic_strength": version.epistemic_strength if version else None,
-        "claim_type": version.claim_type if version else None,
-        "allowed_sections": usage.allowed_sections if usage else [],
-        "allowed_genres": usage.allowed_genres if usage else [],
-    }
+    rows = await read_model.load_current_patterns(
+        session, pattern_id=pattern_id, internal_use_codes=internal_use_codes
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Pattern not found")
+    return rows[0].as_response()
+
+
+async def renderable_pattern_detail(
+    session: AsyncSession,
+    pattern_id: UUID,
+    internal_use_codes: frozenset[str] = frozenset(),
+) -> dict[str, object]:
+    rows = await read_model.load_current_patterns(
+        session,
+        pattern_id=pattern_id,
+        display_only=True,
+        internal_use_codes=internal_use_codes,
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Renderable pattern not found")
+    return rows[0].as_response()
 
 
 async def pattern_versions(session: AsyncSession, pattern_id: UUID) -> list[PatternVersion]:
@@ -120,13 +95,16 @@ async def pattern_versions(session: AsyncSession, pattern_id: UUID) -> list[Patt
 
 
 async def renderable_pattern_versions(
-    session: AsyncSession, pattern_id: UUID
+    session: AsyncSession,
+    pattern_id: UUID,
+    internal_use_codes: frozenset[str] = frozenset(),
 ) -> list[PatternVersion]:
     pattern = await repository.get_pattern(session, pattern_id)
     if pattern is None or pattern.current_version_id is None:
         raise HTTPException(status_code=404, detail="Renderable pattern not found")
-    version, _ = await get_renderable_version(session, pattern.current_version_id)
-    return [version]
+    await get_renderable_version(session, pattern.current_version_id, internal_use_codes)
+    version = await session.get(PatternVersion, pattern.current_version_id)
+    return [version] if version else []
 
 
 async def create_pattern(
@@ -228,8 +206,10 @@ async def append_version(
         session.add(
             UsageConstraint(
                 pattern_version_id=version.id,
-                allowed_sections=old_usage.allowed_sections if old_usage else [],
-                allowed_genres=old_usage.allowed_genres if old_usage else [],
+                allowed_sections=list(old_usage.allowed_sections) if old_usage else [],
+                allowed_genres=list(old_usage.allowed_genres) if old_usage else [],
+                evidence_min=old_usage.evidence_min if old_usage else None,
+                forbidden_contexts=list(old_usage.forbidden_contexts) if old_usage else [],
             )
         )
         session.add(
@@ -237,8 +217,13 @@ async def append_version(
                 pattern_version_id=version.id,
                 source_type=old_provenance.source_type if old_provenance else "authored",
                 article_id=old_provenance.article_id if old_provenance else None,
-                sentence_ids=old_provenance.sentence_ids if old_provenance else [],
+                sentence_ids=list(old_provenance.sentence_ids) if old_provenance else [],
                 license_id=old_provenance.license_id if old_provenance else None,
+                source_sentence_count=(
+                    old_provenance.source_sentence_count if old_provenance else None
+                ),
+                occurrence_hash=old_provenance.occurrence_hash if old_provenance else None,
+                source_section_code=old_provenance.source_section_code if old_provenance else None,
             )
         )
         await record_event(

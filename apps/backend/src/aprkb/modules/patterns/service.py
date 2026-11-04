@@ -202,8 +202,10 @@ async def append_version(
         session.add(
             UsageConstraint(
                 pattern_version_id=version.id,
-                allowed_sections=old_usage.allowed_sections if old_usage else [],
-                allowed_genres=old_usage.allowed_genres if old_usage else [],
+                allowed_sections=list(old_usage.allowed_sections) if old_usage else [],
+                allowed_genres=list(old_usage.allowed_genres) if old_usage else [],
+                evidence_min=old_usage.evidence_min if old_usage else None,
+                forbidden_contexts=list(old_usage.forbidden_contexts) if old_usage else [],
             )
         )
         session.add(
@@ -211,8 +213,13 @@ async def append_version(
                 pattern_version_id=version.id,
                 source_type=old_provenance.source_type if old_provenance else "authored",
                 article_id=old_provenance.article_id if old_provenance else None,
-                sentence_ids=old_provenance.sentence_ids if old_provenance else [],
+                sentence_ids=list(old_provenance.sentence_ids) if old_provenance else [],
                 license_id=old_provenance.license_id if old_provenance else None,
+                source_sentence_count=(
+                    old_provenance.source_sentence_count if old_provenance else None
+                ),
+                occurrence_hash=old_provenance.occurrence_hash if old_provenance else None,
+                source_section_code=old_provenance.source_section_code if old_provenance else None,
             )
         )
         await record_event(

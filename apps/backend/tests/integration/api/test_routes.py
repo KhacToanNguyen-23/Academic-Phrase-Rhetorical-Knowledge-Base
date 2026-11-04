@@ -270,6 +270,21 @@ async def test_patterns_list_detail_history_create_and_append_version(api_client
         )
         assert first_version is not None and first_version.version_no == 1
         first_version_id = first_version.id
+        usage = await session.scalar(
+            select(UsageConstraint).where(UsageConstraint.pattern_version_id == first_version_id)
+        )
+        provenance = await session.scalar(
+            select(EvidenceProvenance).where(
+                EvidenceProvenance.pattern_version_id == first_version_id
+            )
+        )
+        assert usage is not None and provenance is not None
+        usage.evidence_min = "multiple_consistent"
+        usage.forbidden_contexts = ["DISCUSSION"]
+        provenance.source_sentence_count = 12
+        provenance.occurrence_hash = "invented-hash"
+        provenance.source_section_code = "INTRO"
+        await session.commit()
         audit_before_append = (
             await session.scalar(select(func.count()).select_from(AuditEvent)) or 0
         )
@@ -303,6 +318,21 @@ async def test_patterns_list_detail_history_create_and_append_version(api_client
         assert versions[0].id == first_version_id
         assert versions[0].canonical_frame == "The project introduces {topic}."
         assert versions[1].canonical_frame == "This project presents {topic}."
+        for version in versions:
+            usage = await session.scalar(
+                select(UsageConstraint).where(UsageConstraint.pattern_version_id == version.id)
+            )
+            provenance = await session.scalar(
+                select(EvidenceProvenance).where(
+                    EvidenceProvenance.pattern_version_id == version.id
+                )
+            )
+            assert usage is not None and provenance is not None
+            assert usage.evidence_min == "multiple_consistent"
+            assert usage.forbidden_contexts == ["DISCUSSION"]
+            assert provenance.source_sentence_count == 12
+            assert provenance.occurrence_hash == "invented-hash"
+            assert provenance.source_section_code == "INTRO"
         audit_count = await session.scalar(select(func.count()).select_from(AuditEvent)) or 0
         assert audit_count >= audit_before_append + 1
 

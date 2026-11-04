@@ -458,6 +458,22 @@
         "title": "BulkDecisionResult",
         "type": "object"
       },
+      "CandidateIntentUpdate": {
+        "additionalProperties": false,
+        "description": "Human intent assignment, completed before either approval is recorded.",
+        "properties": {
+          "intent_id": {
+            "format": "uuid",
+            "title": "Intent Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_id"
+        ],
+        "title": "CandidateIntentUpdate",
+        "type": "object"
+      },
       "CandidateSummary": {
         "properties": {
           "canonical_frame": {
@@ -6377,6 +6393,75 @@
           }
         },
         "summary": "Decide Candidate",
+        "tags": [
+          "candidate review"
+        ]
+      }
+    },
+    "/v1/admin/review-queue/{candidate_id}/intent": {
+      "put": {
+        "operationId": "assign_intent_v1_admin_review_queue__candidate_id__intent_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateIntentUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assign Intent",
         "tags": [
           "candidate review"
         ]

@@ -14,6 +14,10 @@ ROOT = Path(__file__).resolve().parents[4]
 SAMPLE = ROOT / "data" / "packs" / "sample-demo"
 
 
+def test_shipped_sample_matches_manifest_and_contract() -> None:
+    assert not validate_pack(SAMPLE).has_errors
+
+
 def first_slot(patterns: list[dict[str, Any]]) -> dict[str, Any]:
     return next(iter(patterns[0]["versions"][0]["slots"].values()))
 

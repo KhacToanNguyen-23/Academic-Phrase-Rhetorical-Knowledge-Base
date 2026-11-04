@@ -143,9 +143,9 @@
     "title": "Establish CI/CD ownership and team governance",
     "user_visible_behavior": "",
     "verification_command": "",
-    "status": "active",
-    "evidence": "CODEOWNERS, PR template, and ci/migrations/rollback runbooks committed (17f77f4). Still missing: repository administrator sign-off on branch protection settings and a disposable-PR proof of the staged ruleset.",
-    "notes": "Phase 01 of plans/ci-cd-team-standard/plan.md"
+    "status": "passing",
+    "evidence": "CODEOWNERS, PR template, and ci/migrations/rollback/deploy runbooks committed. GitHub branch protection confirmed unenforceable on this private repo under a personal free plan (both Rulesets and classic protection show 'won't be enforced until you move to a GitHub Team or Enterprise organization account'; verified via `gh api repos/.../branches/dev` returning protected:false even after a rule appeared to save). Owner decided 2026-11-04 not to upgrade or make the repo public; required checks are enforced as a team convention instead, documented in doc/runbooks/ci.md.",
+    "notes": "Phase 01 of plans/ci-cd-team-standard/plan.md. See the 'Known deviation' note on the Global Acceptance Criteria in plan.md."
   },
   {
     "id": "ci-cd-enforced-ci",
@@ -153,7 +153,7 @@
     "user_visible_behavior": "",
     "verification_command": "",
     "status": "active",
-    "evidence": "ci.yml hardened: stable job names (backend-quality-and-tests, frontend-quality-and-build), per-job timeouts, concurrency cancellation, pinned action SHAs, zero-warning frontend lint, and scripts/ci/require-db-tests.sh failing CI if tests/integration collects zero tests or any test in it skips. Verified locally: make lint, mypy, backend suite (485 passed, 8 intentional acceptance skips), require-db-tests.sh (pass with TEST_DATABASE_URL set, fails loudly without it), frontend lint/typecheck/build. Not yet done: branch protection activation and the Playwright Stage A->B stability-window promotion, both of which need live GitHub Actions history.",
+    "evidence": "ci.yml hardened: stable job names (backend-quality-and-tests, frontend-quality-and-build), per-job timeouts, concurrency cancellation, pinned action SHAs, zero-warning frontend lint, and scripts/ci/require-db-tests.sh failing CI if tests/integration collects zero tests or any test in it skips. Verified locally: make lint, mypy, backend suite (485 passed, 8 intentional acceptance skips), require-db-tests.sh (pass with TEST_DATABASE_URL set, fails loudly without it), frontend lint/typecheck/build. Branch protection cannot technically enforce this on a private repo under a personal free plan (see ci-cd-governance-baseline); required checks are a team convention instead. Playwright Stage A->B promotion still needs the live-history stability window from plan.md.",
     "notes": "Phase 02 of plans/ci-cd-team-standard/plan.md. frontend-e2e-smoke job added as Stage A (continue-on-error) observability only, per plan."
   },
   {

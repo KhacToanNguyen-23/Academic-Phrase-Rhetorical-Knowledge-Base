@@ -104,7 +104,7 @@ This is the union of intended files; exact platform-specific paths are selected 
 ## Global Acceptance Criteria
 
 - A new contributor can follow documented commands and reproduce all required PR checks.
-- Protected branches reject direct pushes and reject merges when any required check or required owner review is missing.
+- Protected branches reject direct pushes and reject merges when any required check or required owner review is missing. **Known deviation (decided 2026-11-04, see `doc/runbooks/ci.md`):** GitHub does not enforce branch protection/rulesets on a private repository under a personal free account; the owner chose not to upgrade or make the repository public, so this criterion is satisfied as a team convention (CI still reports pass/fail; nothing technically blocks a merge) rather than a GitHub-enforced gate.
 - CI uses a database named `aprkb_test`; logs demonstrate it never targets production.
 - Frontend lint is blocking with zero errors; the existing warning is either fixed or explicitly time-boxed before enabling zero-warning policy.
 - Playwright adoption is staged: deterministic smoke tests become blocking first; broader or flaky coverage remains non-blocking with an owner and deadline.

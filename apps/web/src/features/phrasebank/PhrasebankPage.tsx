@@ -147,16 +147,15 @@ function EntryList({ entries }: { entries: NonNullable<NonNullable<Awaited<Retur
   </div>;
 }
 
-function PatternGroups({ patterns, query = "" }: { patterns: PatternDetail[]; query?: string }) {
-  const filtered = patterns.filter((pattern) => !query || `${pattern.canonical_frame ?? ""} ${pattern.intent_code} ${pattern.allowed_sections.join(" ")}`.toLowerCase().includes(query.toLowerCase()));
+function PatternGroups({ patterns }: { patterns: PatternDetail[] }) {
   const groups = new Map<string, PatternDetail[]>();
-  for (const pattern of filtered) {
+  for (const pattern of patterns) {
     for (const section of pattern.allowed_sections) {
       const key = `${section} · ${pattern.intent_code}`;
       groups.set(key, [...(groups.get(key) ?? []), pattern]);
     }
   }
-  if (!filtered.length) return <Empty>No approved AP-RKB patterns match this search.</Empty>;
+  if (!patterns.length) return <Empty>No approved AP-RKB patterns match this search.</Empty>;
   return <div className="stack">
     {[...groups.entries()].map(([group, items]) => <section key={group}>
       <h3>{group}</h3>
@@ -177,30 +176,23 @@ export function PhrasebankHome() {
   const query = useDebounced(search.trim());
   const taxonomy = useQuery({ queryKey: ["phrasebank-taxonomy"], queryFn: phrasebankSources.taxonomy, retry: false });
   const manchester = useQuery({ queryKey: ["phrasebank-categories"], queryFn: PHRASEBANK_SOURCES["manchester-reference"].listGroups, retry: false });
-  const patterns = useQuery({ queryKey: ["phrasebank-patterns"], queryFn: PHRASEBANK_SOURCES["aprkb-patterns"].listGroups, enabled: source !== "manchester-reference", retry: false });
-  const results = useQuery({ queryKey: ["phrasebank-search", query], queryFn: () => PHRASEBANK_SOURCES["manchester-reference"].search(query), enabled: Boolean(query) && source !== "aprkb-patterns", retry: false });
   const disabled = isReferenceDisabled(manchester.error);
   const filters = { sectionCode: sectionCode || undefined, intentCode: intentCode || undefined };
+  const results = useQuery({ queryKey: ["phrasebank-search", query, sectionCode, intentCode], queryFn: () => PHRASEBANK_SOURCES["manchester-reference"].search(query, filters), enabled: Boolean(query) && source !== "aprkb-patterns", retry: false });
   const patternSearch = useQuery({
     queryKey: ["phrasebank-pattern-search", query, sectionCode, intentCode],
-    queryFn: () => PHRASEBANK_SOURCES["aprkb-patterns"].search(query, filters, patterns.data ?? []),
-    enabled: source !== "manchester-reference" && patterns.data !== undefined,
+    queryFn: () => PHRASEBANK_SOURCES["aprkb-patterns"].search(query, filters),
+    enabled: source !== "manchester-reference",
     retry: false,
   });
-  const patternMatches = query ? patternSearch.data ?? [] : (patterns.data ?? []).filter((pattern) =>
-    (!sectionCode || PHRASEBANK_SOURCES["aprkb-patterns"].filterBySection(pattern, sectionCode, taxonomy.data as TaxonomyTree))
-    && (!intentCode || PHRASEBANK_SOURCES["aprkb-patterns"].filterByIntent(pattern, intentCode)));
+  const patternMatches = patternSearch.data ?? [];
   const referenceSource = PHRASEBANK_SOURCES["manchester-reference"];
   const visibleCategories = (manchester.data ?? []).filter((category) =>
     (!sectionCode || Boolean(taxonomy.data && referenceSource.filterBySection(category, sectionCode, taxonomy.data)))
     && (!intentCode || referenceSource.filterByIntent(category, intentCode)));
-  const visibleResults = (results.data ?? []).filter((item) =>
-    item.entry.kind === "phrase" && (!sectionCode || Boolean(taxonomy.data && referenceSource.filterBySection(item, sectionCode, taxonomy.data)))
-    && (!intentCode || referenceSource.filterByIntent(item, intentCode)));
+  const visibleResults = results.data ?? [];
   const hasFilters = Boolean(sectionCode || intentCode);
-  const unmapped = query
-    ? results.data ? taxonomyUnmappedCount([], intentCode, results.data.filter((item) => item.entry.kind === "phrase")) : 0
-    : taxonomyUnmappedCount(manchester.data ?? [], intentCode);
+  const unmapped = taxonomyUnmappedCount(manchester.data ?? [], intentCode);
 
   return <div className="stack phrasebank-home">
     <PageHeader title="Phrasebank" />
@@ -213,11 +205,12 @@ export function PhrasebankHome() {
         <SourceFilters taxonomy={taxonomy.data} sectionCode={sectionCode} intentCode={intentCode} onSectionChange={setSectionCode} onIntentChange={setIntentCode} />
       </div>
     </Card>
-    {hasFilters && source !== "aprkb-patterns" && manchester.data && (!query || results.data) && <p className="phrasebank-filter-note" role="status">
-      {unmapped} {query ? "matching items" : "items"} have no mapping for this filter and are hidden.
+    {hasFilters && !query && source !== "aprkb-patterns" && manchester.data && <p className="phrasebank-filter-note" role="status">
+      {unmapped} items have no mapping for this filter and are hidden.
     </p>}
     {query ? <>
       <Card title="Search results">
+        <p>Showing up to {source === "aprkb-patterns" ? "200 AP-RKB" : source === "manchester-reference" ? "50 Manchester" : "50 Manchester and 200 AP-RKB"} matching results.</p>
         {source !== "aprkb-patterns" && (results.isPending ? <Loading /> : disabled ? <p role="status">Manchester reference is disabled. Enable `REFERENCE_LIBRARY_ENABLED` to browse it.</p> : visibleResults.length === 0 ? <Empty>No Manchester reference results.</Empty> : <section className="stack"><h3>Manchester reference</h3>
           {groupBy(visibleResults, (item) => item.category_slug).map(([slug, items]) => <section key={slug}>
             <h4>{items?.[0]?.category_title}</h4>
@@ -227,7 +220,7 @@ export function PhrasebankHome() {
             </div>)}
           </section>)}
         </section>)}
-        {source !== "manchester-reference" && <section><h3>AP-RKB patterns</h3><PatternGroups patterns={patternMatches} query={query} /></section>}
+        {source !== "manchester-reference" && <section><h3>AP-RKB patterns</h3>{patternSearch.isPending ? <Loading /> : patternSearch.isError ? <Empty>AP-RKB patterns could not be loaded.</Empty> : <PatternGroups patterns={patternMatches} />}</section>}
       </Card>
     </> : <>
       {source !== "aprkb-patterns" && <Card title="Sections">
@@ -237,7 +230,8 @@ export function PhrasebankHome() {
         {disabled ? <Empty>Manchester general functions are unavailable while the reference API is disabled.</Empty> : manchester.isPending ? <Loading /> : <CategoryCards categories={visibleCategories} kind="function" />}
       </Card>}
       {source !== "manchester-reference" && <Card title={<Link to="/phrasebank/$slug" params={{ slug: "aprkb-patterns" }}>AP-RKB patterns</Link>}>
-        {patterns.isPending ? <Loading /> : <PatternGroups patterns={patternMatches} />}
+        <p>Showing up to 200 matching patterns.</p>
+        {patternSearch.isPending ? <Loading /> : patternSearch.isError ? <Empty>AP-RKB patterns could not be loaded.</Empty> : <PatternGroups patterns={patternMatches} />}
       </Card>}
     </>}
     <SourceCredit />

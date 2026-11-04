@@ -102,6 +102,7 @@ async def load_current_patterns(
     section_code: str | None = None,
     status: str | None = None,
     query: str | None = None,
+    browse_query: str | None = None,
     move_code: str | None = None,
     claim_type: str | None = None,
     offset: int = 0,
@@ -143,7 +144,7 @@ async def load_current_patterns(
             clauses.append(PatternVersion.canonical_frame.ilike(f"%{escaped}%", escape="\\"))
         statement = statement.where(or_(*clauses))
     statement = statement.order_by(PhrasePattern.created_at, PhrasePattern.id)
-    if not display_only:
+    if not display_only and not browse_query:
         statement = statement.offset(offset)
         if limit is not None:
             statement = statement.limit(limit)
@@ -184,7 +185,19 @@ async def load_current_patterns(
         if display_only and (
             pattern.status != "approved"
             or len(provenance) != 1
-            or not (source_type == "authored" or bool(license_row and license_row.allows_display))
+            or not (
+                source_type == "authored"
+                or (source_type == "mined" and (allows_display or license_flag))
+            )
+        ):
+            continue
+        if (
+            browse_query
+            and browse_query.strip().casefold()
+            not in (
+                f"{normalized_frame(version.canonical_frame, version.slots)} "
+                f"{intent.code} {' '.join(usage.allowed_sections if usage else [])}"
+            ).casefold()
         ):
             continue
         result.append(
@@ -220,7 +233,13 @@ async def load_current_patterns(
                 license_flag=license_flag,
                 article_id=source.article_id if source else None,
                 source_reference=article.doi if article else None,
-                source_sentence_count=len(source.sentence_ids or []) if source else 0,
+                source_sentence_count=(
+                    source.source_sentence_count
+                    if source.source_sentence_count is not None
+                    else len(source.sentence_ids or [])
+                )
+                if source
+                else 0,
                 provenance_count=len(provenance),
                 discipline_affinities=[
                     {"discipline_code": item.discipline_code, "score": item.score}
@@ -230,5 +249,7 @@ async def load_current_patterns(
             )
         )
     return (
-        result[offset : offset + limit if limit is not None else None] if display_only else result
+        result[offset : offset + limit if limit is not None else None]
+        if display_only or browse_query
+        else result
     )

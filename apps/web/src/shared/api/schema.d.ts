@@ -400,6 +400,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/review-queue/{candidate_id}/intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Assign Intent */
+        put: operations["assign_intent_v1_admin_review_queue__candidate_id__intent_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/demo-session": {
         parameters: {
             query?: never;
@@ -941,6 +958,17 @@ export interface components {
             failed: components["schemas"]["BulkDecisionFailure"][];
             /** Results */
             results: components["schemas"]["PhraseDecisionResult"][];
+        };
+        /**
+         * CandidateIntentUpdate
+         * @description Human intent assignment, completed before either approval is recorded.
+         */
+        CandidateIntentUpdate: {
+            /**
+             * Intent Id
+             * Format: uuid
+             */
+            intent_id: string;
         };
         /** CandidateSummary */
         CandidateSummary: {
@@ -3264,6 +3292,43 @@ export interface operations {
             };
         };
     };
+    assign_intent_v1_admin_review_queue__candidate_id__intent_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateIntentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_local_demo_session_v1_auth_demo_session_post: {
         parameters: {
             query?: never;
@@ -3478,6 +3543,7 @@ export interface operations {
             query?: {
                 intent?: string | null;
                 section?: string | null;
+                q?: string | null;
                 status?: string | null;
                 offset?: number;
                 limit?: number;
@@ -3819,6 +3885,9 @@ export interface operations {
                 q: string;
                 category?: string | null;
                 limit?: number;
+                section?: string | null;
+                intent?: string | null;
+                phrase_only?: boolean;
             };
             header?: {
                 "X-API-Key"?: string | null;

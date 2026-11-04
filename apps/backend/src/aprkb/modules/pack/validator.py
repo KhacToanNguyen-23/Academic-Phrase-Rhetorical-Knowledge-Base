@@ -153,6 +153,62 @@ def _scan_provenance(items: list[Finding], value: Any, path: str) -> None:
         _finding(items, "E14", path, "UUID values are forbidden in provenance")
 
 
+def validate_pattern(
+    raw: Any, references: References, *, base: str = "pattern"
+) -> tuple[Pattern | None, list[Finding]]:
+    """Apply the same graph checks to imported and exported patterns."""
+    items: list[Finding] = []
+    try:
+        pattern = Pattern.model_validate_json(json.dumps(raw))
+    except ValidationError as error:
+        pattern = None
+        _schema_findings(items, error, base)
+    if not isinstance(raw, dict):
+        return pattern, items
+    if raw.get("status") != "approved":
+        _finding(items, "E04", f"{base}.status", "Only approved patterns may be imported")
+    intent = raw.get("intent", {})
+    if isinstance(intent, dict):
+        keys = (
+            intent.get("taxonomy_version"),
+            intent.get("section"),
+            intent.get("move"),
+            intent.get("step"),
+            intent.get("intent"),
+        )
+        if intent.get("taxonomy_version") != references.taxonomy_version:
+            _finding(
+                items,
+                "E02",
+                f"{base}.intent.taxonomy_version",
+                "Taxonomy version is unavailable",
+            )
+        if not all(isinstance(key, str) for key in keys) or keys not in references.intent_paths:
+            _finding(items, "E03", f"{base}.intent", "Full intent path is unresolved")
+    versions = raw.get("versions", [])
+    if not isinstance(versions, list):
+        return pattern, items
+    numbers = [v.get("version_no") for v in versions if isinstance(v, dict)]
+    if numbers != list(range(1, len(versions) + 1)):
+        _finding(
+            items,
+            "E16",
+            f"{base}.versions",
+            "Version numbers must be unique and consecutive from 1",
+        )
+    if raw.get("current_version_no") != (numbers[-1] if numbers else None):
+        _finding(
+            items,
+            "E16",
+            f"{base}.current_version_no",
+            "Current version must be the latest version",
+        )
+    for j, version in enumerate(versions):
+        if isinstance(version, dict):
+            _check_version(items, version, f"{base}.versions[{j}]", references)
+    return pattern, items
+
+
 def validate_pack(path: Path, references: References | None = None) -> ValidationReport:
     """Return all actionable findings; missing/unreadable files raise OSError/ValueError."""
     references = references or load_references()
@@ -176,54 +232,10 @@ def validate_pack(path: Path, references: References | None = None) -> Validatio
             manifest = None
     patterns: list[Pattern] = []
     for index, raw in enumerate(patterns_raw):
-        try:
-            patterns.append(Pattern.model_validate_json(json.dumps(raw)))
-        except ValidationError as error:
-            _schema_findings(items, error, f"patterns[{index}]")
-        if not isinstance(raw, dict):
-            continue
-        base = f"patterns[{index}]"
-        if raw.get("status") != "approved":
-            _finding(items, "E04", f"{base}.status", "Only approved patterns may be imported")
-        intent = raw.get("intent", {})
-        if isinstance(intent, dict):
-            keys = (
-                intent.get("taxonomy_version"),
-                intent.get("section"),
-                intent.get("move"),
-                intent.get("step"),
-                intent.get("intent"),
-            )
-            if intent.get("taxonomy_version") != references.taxonomy_version:
-                _finding(
-                    items,
-                    "E02",
-                    f"{base}.intent.taxonomy_version",
-                    "Taxonomy version is unavailable",
-                )
-            if not all(isinstance(key, str) for key in keys) or keys not in references.intent_paths:
-                _finding(items, "E03", f"{base}.intent", "Full intent path is unresolved")
-        versions = raw.get("versions", [])
-        if not isinstance(versions, list):
-            continue
-        numbers = [v.get("version_no") for v in versions if isinstance(v, dict)]
-        if numbers != list(range(1, len(versions) + 1)):
-            _finding(
-                items,
-                "E16",
-                f"{base}.versions",
-                "Version numbers must be unique and consecutive from 1",
-            )
-        if raw.get("current_version_no") != (numbers[-1] if numbers else None):
-            _finding(
-                items,
-                "E16",
-                f"{base}.current_version_no",
-                "Current version must be the latest version",
-            )
-        for j, version in enumerate(versions):
-            if isinstance(version, dict):
-                _check_version(items, version, f"{base}.versions[{j}]", references)
+        pattern, findings = validate_pattern(raw, references, base=f"patterns[{index}]")
+        items.extend(findings)
+        if pattern is not None:
+            patterns.append(pattern)
     if manifest is not None:
         if manifest.taxonomy_version != references.taxonomy_version:
             _finding(items, "E02", "manifest.taxonomy_version", "Taxonomy version is unavailable")

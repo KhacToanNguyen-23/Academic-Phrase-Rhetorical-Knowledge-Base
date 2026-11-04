@@ -106,9 +106,6 @@ jobs:
     needs: [backend-quality-and-tests]
     permissions:
       contents: read
-      # Only used by the publish step below, and only on a push to dev; a PR from a
-      # fork never has write access to packages regardless of this declaration.
-      packages: write
     env:
       BACKEND_IMAGE: aprkb-backend:ci
       CONTAINER_SMOKE_NETWORK: aprkb-ci-net
@@ -145,20 +142,6 @@ jobs:
         run: |
           docker rm -f pg || true
           docker network rm "$CONTAINER_SMOKE_NETWORK" || true
-      # Publish only from a push to dev (never from a fork PR, which has no write
-      # access to packages regardless). Pushes the exact image already smoke-tested
-      # above; never rebuilds. ADR-0010 selected GHCR as the registry.
-      - name: Publish the smoke-tested digest to GHCR
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
-        run: |
-          owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
-          image="ghcr.io/${owner}/aprkb-backend"
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          docker tag "$BACKEND_IMAGE" "${image}:sha-${{ github.sha }}"
-          docker tag "$BACKEND_IMAGE" "${image}:dev"
-          docker push "${image}:sha-${{ github.sha }}"
-          docker push "${image}:dev"
-          echo "Published: ${image}:sha-${{ github.sha }} (digest $(docker image inspect --format '{{.Id}}' "$BACKEND_IMAGE"))"
 
   # Stage A (observability only, per plans/ci-cd-team-standard/phase-02-enforced-ci.md):
   # collects trace/screenshot evidence and measures flakiness. It is intentionally not

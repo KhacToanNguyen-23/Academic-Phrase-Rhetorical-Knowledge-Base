@@ -1,8 +1,19 @@
 # ADR-0010: Nền tảng CI/CD — registry, lưu trữ blob, và chính sách downtime
 
-- Trạng thái: Accepted
+- Trạng thái: **Superseded** (2026-11-04, cùng ngày được chấp nhận — xem "Bị thay thế" ở cuối)
 - Ngày: 2026-11-04
 - Liên quan: `plans/ci-cd-team-standard/plan.md` (Phase 04)
+
+## Bị thay thế
+
+Quyết định dưới đây được đưa ra **trước khi phát hiện** nhánh `main` đã có sẵn một
+quy trình deploy thủ công đang chạy thật: build local + Docker Compose + mạng
+Tailscale, tài liệu tại `deploy/README.md` trên `main`. Hệ thống đó là nguồn sự thật
+cho production, không phải GHCR/self-hosted-runner mô tả bên dưới. Toàn bộ
+scaffolding Phase 05 dựa trên ADR này (`docker-compose.prod.yml`,
+`scripts/cd/*.sh`, `.github/workflows/cd-deploy.yml`) đã được gỡ khỏi `dev` cùng
+ngày. Giữ lại file này chỉ để ghi lại lý do tại sao hướng đó từng được chọn rồi bị
+huỷ, không dùng làm tài liệu vận hành.
 
 ## Bối cảnh
 

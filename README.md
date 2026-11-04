@@ -49,6 +49,8 @@ The Writer loads approved, renderable samples into a table without requiring a f
 
 The Online read contract combines each current pattern version with its intent name, typed slots, variants, usage constraints, evidence labels, provenance, and discipline affinities. `unknown` evidence or claim labels are returned as `null` with `labelled=false`. Provenance includes the license, DOI when present (otherwise `null`), separate `article_id`, and a source sentence count; it does not return sentence text. Mined bracket placeholders are interpreted as slots on read only when every marker matches the declared slot names.
 
+The entire app is for internal use. Licenses explicitly listed in `license_policy.yaml` under `internal_use_codes` permit recommendations, pattern reads, and rendering even when public-display permission is false. Sources with neither display permission nor configured internal-use permission remain excluded. The response preserves the actual public-display permission and marks the internal-use exception with `license_flag`.
+
 `UsageConstraint.evidence_min` excludes a recommendation when the writer declares a lower evidence level, using the seeded `evidence_level` order through `EvidencePolicy`; without a declared level, table-first results are unchanged. `forbidden_contexts` currently matches literal requested section, genre, or claim type codes and reports `GATE_FORBIDDEN_CONTEXT`. **TODO(owner, FR-02.4):** confirm these matching semantics before treating the field as a broader context vocabulary.
 
 The fallback tier chooser requires verified journal/genre, similar-journal fingerprint, subfield/genre, or field/genre data for the corresponding tier. Those signals are not available to Online yet, so every current recommendation uses `generic_genre`. Provenance scores are provisional values in `ranking_weights.yaml`: authored `1.0`, mined `0.7` (**TODO(owner, CR-06):** approve both values). The API retains the `linguistic` key for compatibility; the UI calls it **Keyword match** because it measures keyword overlap only.
@@ -116,6 +118,8 @@ The original acceptance cases that depend on excluded product behavior remain sk
 ## Unified phrasebank reference
 
 Each AP-RKB pattern opens a WB-02 detail view for frame, slots, variants, usage, evidence, provenance, and version. The list uses the full read contract without an extra request per pattern.
+
+Phrasebank applies keyword, section, and intent filters on the backend before limiting results to 200 AP-RKB patterns or 50 Manchester phrases. These are capped matching lists, not total counts. Manchester search resolves heading and category taxonomy mappings before filtering and limiting; its ordinary API search retains notes unless `phrase_only=true` is requested.
 
 `/phrasebank` is a source-aware browser for Manchester reference material and AP-RKB's existing approved patterns. The Manchester collection is stored only in the separate `reference_sources`, `reference_categories`, and `reference_entries` tables; it never enters `phrase_patterns`, recommendations, render, or validate. Its API and UI are off by default (`REFERENCE_LIBRARY_ENABLED=false`). Manchester items always show the notice that reuse rights are unverified and the material must not be redistributed. Treat this as an internal, removable reference collection, not approved patterns. The AP-RKB group reads approved client-visible patterns through `/v1/patterns`; taxonomy sections are not mapped to Manchester categories (`TODO(owner)`).
 

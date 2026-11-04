@@ -5,6 +5,7 @@ import hashlib
 import re
 from collections import Counter
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -358,6 +359,15 @@ async def test_client_pattern_reads_hide_drafts_and_restricted_provenance(
         assert draft is not None and restricted is not None
         draft_id = draft.id
         restricted_id = restricted.id
+        denied_license = await session.scalar(select(License).where(License.code == "CC-BY-NC"))
+        source = await session.scalar(
+            select(EvidenceProvenance).where(
+                EvidenceProvenance.pattern_version_id == restricted.current_version_id
+            )
+        )
+        assert denied_license is not None and source is not None
+        source.license_id = denied_license.id
+        await session.commit()
 
     _, client_key = await create_key(session_factory, "client", "pattern API client")
     _, curator_key = await create_key(session_factory, "curator", "pattern curator")
@@ -847,6 +857,99 @@ async def test_proprietary_recommendation_is_flagged_for_internal_use(
     assert item["license_code"] == "PROPRIETARY"
     assert item["license_flag"] is True
 
+    headers = {"X-API-Key": key}
+    for path in (
+        f"/v1/patterns/{pattern.id}",
+        f"/v1/patterns/versions/{version.id}",
+        f"/v1/patterns/{pattern.id}/versions",
+    ):
+        detail = await api_client.get(path, headers=headers)
+        assert detail.status_code == 200, detail.text
+    listed = await api_client.get("/v1/patterns", headers=headers)
+    assert listed.status_code == 200
+    metadata = next(row for row in listed.json() if row["id"] == str(pattern.id))
+    assert metadata["license_allows_display"] is False
+    assert metadata["license_flag"] is True
+    render_payload = {
+        "recommendation_id": response.json()["recommendation_id"],
+        "pattern_version_id": str(version.id),
+        "slots": {"topic": "an invented topic"},
+    }
+    rendered = await api_client.post("/v1/render", headers=headers, json=render_payload)
+    assert rendered.status_code == 200, rendered.text
+    assert rendered.json()["text"] == "The proprietary fixture suggests an invented topic."
+
+    # An issued recommendation must not keep access after its source loses permission.
+    async with session_factory() as session:
+        denied_license = await session.scalar(select(License).where(License.code == "CC-BY-NC"))
+        source = await session.scalar(
+            select(EvidenceProvenance).where(EvidenceProvenance.pattern_version_id == version.id)
+        )
+        assert denied_license is not None and source is not None
+        source.license_id = denied_license.id
+        await session.commit()
+    denied = await api_client.post("/v1/render", headers=headers, json=render_payload)
+    assert denied.status_code == 404
+    denied_detail = await api_client.get(f"/v1/patterns/versions/{version.id}", headers=headers)
+    assert denied_detail.status_code == 404
+    recommended_again = await api_client.post(
+        "/v1/recommendations", headers=headers, json={"limit": 100}
+    )
+    assert recommended_again.status_code == 200
+    assert str(version.id) not in {
+        row["pattern_version_id"] for row in recommended_again.json()["items"]
+    }
+
+
+@pytest.mark.asyncio
+async def test_pattern_browsing_filters_keyword_and_taxonomy_before_old_200_cap(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "late pattern reader")
+    async with session_factory() as session:
+        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        assert intent is not None
+        final_pattern_id = None
+        for index in range(201):
+            pattern = PhrasePattern(
+                intent_id=intent.id,
+                status="approved",
+                created_at=datetime(2030, 1, 1, tzinfo=UTC) + timedelta(seconds=index),
+            )
+            session.add(pattern)
+            await session.flush()
+            version = PatternVersion(
+                pattern_id=pattern.id,
+                version_no=1,
+                canonical_frame="Late needle phrase" if index == 200 else "Ordinary phrase",
+                slots={},
+                epistemic_strength="low",
+                claim_type="descriptive",
+            )
+            session.add(version)
+            await session.flush()
+            pattern.current_version_id = version.id
+            session.add_all(
+                [
+                    UsageConstraint(
+                        pattern_version_id=version.id, allowed_sections=["INTRO"], allowed_genres=[]
+                    ),
+                    EvidenceProvenance(
+                        pattern_version_id=version.id, source_type="authored", sentence_ids=[]
+                    ),
+                ]
+            )
+            final_pattern_id = pattern.id
+        await session.commit()
+    response = await api_client.get(
+        "/v1/patterns",
+        headers={"X-API-Key": key},
+        params={"q": "NEEDLE", "section": "INTRO", "intent": "INTRO_GAP_INDICATE", "limit": 1},
+    )
+    assert response.status_code == 200, response.text
+    assert [row["id"] for row in response.json()] == [str(final_pattern_id)]
+
 
 @pytest.mark.asyncio
 async def test_recommendation_search_keeps_query_private_and_uses_honest_journal_fallback(
@@ -940,6 +1043,13 @@ async def test_render_uses_approved_version_and_validates_slots(
             )
         )
         assert approved is not None and restricted is not None
+        denied_license = await session.scalar(select(License).where(License.code == "CC-BY-NC"))
+        source = await session.scalar(
+            select(EvidenceProvenance).where(EvidenceProvenance.pattern_version_id == restricted.id)
+        )
+        assert denied_license is not None and source is not None
+        source.license_id = denied_license.id
+        await session.commit()
 
     endpoint = "/v1/render"
     headers = {"X-API-Key": key}

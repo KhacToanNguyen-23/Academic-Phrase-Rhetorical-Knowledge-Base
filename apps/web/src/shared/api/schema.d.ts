@@ -3543,6 +3543,7 @@ export interface operations {
             query?: {
                 intent?: string | null;
                 section?: string | null;
+                q?: string | null;
                 status?: string | null;
                 offset?: number;
                 limit?: number;
@@ -3884,6 +3885,9 @@ export interface operations {
                 q: string;
                 category?: string | null;
                 limit?: number;
+                section?: string | null;
+                intent?: string | null;
+                phrase_only?: boolean;
             };
             header?: {
                 "X-API-Key"?: string | null;

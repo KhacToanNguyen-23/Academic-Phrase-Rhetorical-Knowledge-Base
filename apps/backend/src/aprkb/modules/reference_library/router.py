@@ -42,5 +42,10 @@ async def search(
     q: Annotated[str, Query(min_length=1, max_length=200)],
     category: str | None = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    section: str | None = None,
+    intent: str | None = None,
+    phrase_only: bool = False,
 ) -> SearchResponse:
-    return await service.search_entries(session, q, category, limit)
+    return await service.search_entries(
+        session, q, category, limit, section=section, intent=intent, phrase_only=phrase_only
+    )

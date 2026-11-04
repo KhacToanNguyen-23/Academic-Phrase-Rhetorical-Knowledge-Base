@@ -13,7 +13,7 @@ The handle and repository access were verified through the GitHub API on 2026-11
 - No flaky test is currently registered. A future retry does not establish a flake until evidence and the quarantine process below are recorded.
 - As of 2026-11-04, `apps/backend/Dockerfile` is a multi-stage, non-root, digest-pinned-base image that runs both the API (default `CMD`) and worker (`python -m aprkb.worker.runner`) from one build; `scripts/ci/container-smoke-api.sh`/`container-smoke-worker.sh`/`container-canary.sh` verify this locally and in CI. It is still local-only: no registry push exists yet (Phase 04 decision).
 - Deployment owner is `@KhacToanNguyen-23`; target runtime is Docker Compose on a homeserver. No automated production deploy actor exists in the repository.
-- No container registry is configured. GHCR is recommended but remains a Phase 04 decision.
+- No container registry is configured and CI does not publish anywhere. Production deploys are manual from `main` via Docker Compose over Tailscale (`deploy/README.md` on `main`); a GHCR-based CD track was tried and reverted the same day (2026-11-04) once that existing deployment was discovered — see "Bị thay thế" in `doc/adr/0010-ci-cd-platform.md`.
 - Migrations are currently applied with Alembic through `make migrate`; there is no serialized production migrator or implemented advisory release lock.
 - `BLOB_DIR` defaults to `./data/blobs`. The checked-in Compose file only defines PostgreSQL, so no shared production API/worker blob mount is established. The proposed homeserver mapping `/srv/aprkb/blobs:/data/blobs` remains unverified until the production Compose artifact exists.
 

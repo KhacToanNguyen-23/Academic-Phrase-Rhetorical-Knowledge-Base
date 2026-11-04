@@ -104,15 +104,11 @@ CI uses a disposable test database and needs no repository secrets.
 
 ### Deployment (production)
 
-Platform decision recorded in [ADR-0010](doc/adr/0010-ci-cd-platform.md): GHCR
-registry, Docker Compose on a self-managed homeserver, `aprkb_blobs` named volume,
-short downtime per release. `docker-compose.prod.yml` plus `scripts/cd/deploy.sh`,
-`rollback.sh`, and `backup-blobs.sh` implement it; `.github/workflows/cd-deploy.yml`
-is a manual `workflow_dispatch` gated by the `production` GitHub Environment's
-required reviewer, running on a self-hosted runner on the homeserver itself (no
-inbound SSH needed). See [the deploy runbook](doc/runbooks/deploy.md) for one-time
-setup and the known gaps that still need closing before this track is
-production-rehearsed (not just scripted).
+Production deploys are manual, from `main`, via Docker Compose over Tailscale — see
+`deploy/README.md` on `main`. [ADR-0010](doc/adr/0010-ci-cd-platform.md) is
+superseded: it proposed a GHCR/self-hosted-runner CD track before that existing
+deployment was discovered, and the corresponding scaffolding was removed from
+`dev`. CI (this workflow) does not build or publish anything toward production.
 
 Team delivery changes become PR-only once the ruleset is activated — see "Still pending before branch protection is enabled" in [the CI runbook](doc/runbooks/ci.md); only `backend-quality-and-tests` and `frontend-quality-and-build` are candidates for that first activation. Workflow, Docker, migration, policy, lockfile, infrastructure, and runbook changes require CODEOWNER review. Every PR records verification evidence plus migration, rollback, secret/data-handling, and `BLOB_DIR` impact. Required checks may not be bypassed silently; the time-limited break-glass process and check-rename procedure are defined in the CI runbook. Database releases follow [the migration runbook](doc/runbooks/migrations.md), and application/database recovery follows [the rollback runbook](doc/runbooks/rollback.md).
 

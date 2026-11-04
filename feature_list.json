@@ -171,17 +171,17 @@
     "user_visible_behavior": "",
     "verification_command": "",
     "status": "not_started",
-    "evidence": "",
-    "notes": "Phase 04 of plans/ci-cd-team-standard/plan.md"
+    "evidence": "ADR-0010 (GHCR, named volume, short downtime) was accepted then superseded the same day (2026-11-04): discovered that `main` already has an in-use manual Docker Compose + Tailscale deployment (deploy/README.md on main), which the original plan's scope challenge did not account for. See 'Bị thay thế' in doc/adr/0010-ci-cd-platform.md.",
+    "notes": "Phase 04 of plans/ci-cd-team-standard/plan.md. Superseded; no new platform decision pending unless the existing Tailscale deployment is deliberately replaced in a future, separately-scoped decision."
   },
   {
     "id": "ci-cd-track-rollout",
     "title": "Implement and rehearse the selected CD track",
     "user_visible_behavior": "",
     "verification_command": "",
-    "status": "active",
-    "evidence": "Scaffolding implemented per ADR-0010: docker-compose.prod.yml (postgres+api+worker, aprkb_blobs/pgdata named volumes); scripts/cd/deploy.sh (pull -> migrate once in a disposable container -> start api/worker -> verify running digest matches resolved digest), rollback.sh (restart on previous digest only, no migration/downgrade), backup-blobs.sh. .github/workflows/cd-deploy.yml: manual workflow_dispatch on a self-hosted homeserver runner, gated by the production GitHub Environment's required reviewer, concurrency cancel-in-progress:false. ci.yml's backend-image-contract now publishes the already-smoke-tested image to GHCR on push to dev. All YAML/compose syntax validated locally; shell scripts syntax-checked. NOT done: no PostgreSQL advisory/release lock around migration (only workflow concurrency), no automated job-count reconciliation during worker drain, no synthetic blob-sentinel smoke script, no staging environment, no actual run on the real homeserver (self-hosted runner and production Environment reviewers must still be configured by the repo admin), no game day / rehearsal by a second person. See doc/runbooks/deploy.md 'Known gaps'.",
-    "notes": "Phase 05 of plans/ci-cd-team-standard/plan.md. Deliberately reduced scope per ADR-0010 Hệ quả: scaffolding verified locally, not a production-rehearsed release pipeline."
+    "status": "not_started",
+    "evidence": "GHCR/self-hosted-runner scaffolding (docker-compose.prod.yml, scripts/cd/*.sh, .github/workflows/cd-deploy.yml) was implemented, briefly tested (self-hosted runner installed and verified online via API), then fully reverted on dev (2026-11-04) once an existing, already-in-use manual deployment on main (Docker Compose + Tailscale, deploy/README.md) was discovered. Self-hosted runner decommissioned on the mentor's server.",
+    "notes": "Phase 05 of plans/ci-cd-team-standard/plan.md. Superseded; production deploys remain manual from main per deploy/README.md."
   },
   {
     "id": "internal-use-rendering",

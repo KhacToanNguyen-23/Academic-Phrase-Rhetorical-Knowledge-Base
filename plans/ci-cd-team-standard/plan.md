@@ -5,6 +5,14 @@ Risk: high-risk — changes to CI/CD, production images, secrets, migrations, an
 Status: Draft for team validation; no CI/CD implementation is authorized by this plan alone.
 Source of truth: `SCAFFOLD_PRD.md` and repository `AGENTS.md` override older product documents.
 
+**Phase 04/05 superseded (2026-11-04):** this plan's scope challenge did not account for
+an existing, already-in-use manual deployment on `main` (Docker Compose over Tailscale,
+documented in `deploy/README.md` on `main`). ADR-0010's GHCR/self-hosted-runner CD track
+was implemented on `dev`, then reverted the same day once that existing deployment was
+discovered. Phases 01–03 (governance, enforced CI, container contract) remain valid and
+in place; Phase 04/05 as written do not apply unless the existing Tailscale deployment is
+deliberately replaced in a future, separately-scoped decision.
+
 ## Outcome
 
 Create an enforceable delivery standard that every contributor follows:

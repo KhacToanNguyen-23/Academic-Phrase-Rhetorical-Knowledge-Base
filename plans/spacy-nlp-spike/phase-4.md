@@ -1,6 +1,6 @@
 # spaCy NLP — phase 4: parse-quirk fix, imperative branch, construction registry, real-article trial
 
-Status: proposed 2026-11-04 from owner decisions; implement in the order A → B → C.
+Status: implemented 2026-11-04; manual article review and coordination-threshold decisions remain open. Changes are uncommitted for owner review.
 Requirement: `FR-06.2`, `FR-07`.
 Branch/worktree: `feat/spacy-nlp-spike`, `D:\6_OJT\aprkb-spacy-spike` (phase 3 is commit `28ac884`).
 Read first: `phase-3.md`, `doc/adr/0010-spacy-ingest-token-features.md`, the phase-3 report.
@@ -184,6 +184,10 @@ imperatives and the three construction groups can be judged by frequency.
   sentences, filter rejections by reason (including `imperative_accepted`), extraction reasons,
   matches per construction, rejection reasons per construction, `coordinated_reporting_verbs` count,
   syntax-invalid-token fallbacks, and engine/model/registry versions.
+- Reuse the same parser → section detector → per-section analyzer preparation as worker `_ingest`;
+  pass the detected `section_code` into each trial `MiningItem`.
+- Optional `--dump <path>` writes accepted imperatives and coordinated reporting sentences for owner
+  review only to a new Git-ignored local file on Windows. The report remains counts-only.
 - Optional second output (stored in the untracked directory): the most frequent masked frames per
   construction, truncated to a maximum literal length, for the owner to inspect. Do not paste it into
   committed files.

@@ -15,8 +15,8 @@ from aprkb.modules.gold.labels import GoldLabels
 from aprkb.modules.mining.pipeline import MiningPipeline
 from aprkb.modules.mining.stages import build_stages
 from aprkb.modules.mining.stages.base import MiningItem
+from aprkb.modules.mining.stages.construction_matcher import ReportingWithConstruction
 from aprkb.modules.mining.stages.sentence_filter import SentenceFilter
-from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
 from aprkb.nlp.features import SentenceAnalysis
 from aprkb.nlp.syntax import usable_tokens
 from aprkb.policies.loader import PolicyBundle
@@ -115,7 +115,7 @@ def evaluate_approved_items(
     """Run the deterministic mining stages against approved items already rights-checked."""
     stages = build_stages(policy_bundle=policy)
     sentence_filter = next(stage for stage in stages if isinstance(stage, SentenceFilter))
-    abstractor = next(stage for stage in stages if isinstance(stage, SlotAbstractor))
+    extractor = next(stage for stage in stages if isinstance(stage, ReportingWithConstruction))
     downstream = MiningPipeline(stages=[s for s in stages if s is not sentence_filter])
     rows: list[dict[str, Any]] = []
     for gold_item, sentence, previous_text, current_section in items:
@@ -152,7 +152,7 @@ def evaluate_approved_items(
             row["extraction_reason"] = (
                 None
                 if prediction
-                else abstractor.extractability_reason(sentence.text, mining_item.tokens)
+                else extractor.extractability_reason(sentence.text, mining_item.tokens)
             )
             row.update(_expected_fields(labels))
             row.update(_predicted_fields(prediction, sentence.char_start, current_section))
@@ -163,6 +163,7 @@ def evaluate_approved_items(
             policy.reporting_verbs.version,
             policy.slot_abstraction.version,
             policy.epistemic_markers.version,
+            policy.constructions.version,
         )
     )
     return evaluate_rows(rows, split=split, policy_version=policy_version)

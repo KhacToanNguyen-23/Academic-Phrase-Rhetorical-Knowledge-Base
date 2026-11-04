@@ -111,10 +111,6 @@ def test_syntax_locator_handles_phase3_constructions(text: str, frame: str, tens
             "These findings suggest a model that indicates that noise matters.",
             "no_that",
         ),
-        (
-            "These findings may indicate that the baseline was undertrained.",
-            "no_that",
-        ),
     ],
 )
 def test_syntax_locator_rejects_ambiguous_or_relative_constructions(text: str, reason: str) -> None:
@@ -192,6 +188,17 @@ def test_that_clause_can_follow_a_complex_root_subject() -> None:
     assert pipeline.process([_syntax_item(nested_relative)]) == []
 
 
+def test_aux_attached_that_and_subject_are_normalized_to_clause_head() -> None:
+    text = "These findings may indicate that the baseline was undertrained."
+    stages = build_stages(policy_bundle=load_policy_bundle())
+    [result] = MiningPipeline(stages=stages).process([_syntax_item(text)])
+    [occurrence] = result.occurrences
+    start, end = occurrence.slot_spans["Z"]
+
+    assert result.text == "[X] [Y] may indicate that [Z]."
+    assert text[start:end] == "the baseline was undertrained"
+
+
 def test_regex_cluster_key_is_unchanged_and_syntax_key_is_scoped() -> None:
     text = "These results suggest that the method is robust to noise."
     pipeline = MiningPipeline(stages=build_stages(policy_bundle=load_policy_bundle()))
@@ -256,7 +263,7 @@ def test_slot_case_parity_has_a_reviewed_allow_list() -> None:
         4: "both_differ",
         5: "both_differ",
         6: "both_differ",
-        7: "only_regex",
+        7: "both_differ",
         8: "neither",
         9: "both_differ",
         10: "neither",
@@ -269,7 +276,7 @@ def test_slot_case_parity_has_a_reviewed_allow_list() -> None:
         4: "syntax subtree slot span excludes trailing sentence punctuation",
         5: "syntax subtree slot span excludes trailing sentence punctuation",
         6: "syntax uses finite passive auxiliary tense and narrows subject to It",
-        7: "strict direct marker check rejects the model's non-direct that attachment",
+        7: "syntax subtree slot span excludes trailing sentence punctuation",
         9: "syntax subtree slot span excludes trailing sentence punctuation",
         11: "syntax subtree slot span excludes trailing sentence punctuation",
     }

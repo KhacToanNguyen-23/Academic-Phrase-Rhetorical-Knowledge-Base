@@ -57,4 +57,7 @@ class Clusterer(MiningStage):
         if item.locator is not None:
             material_parts.insert(2, item.locator)
         material = "|".join(material_parts)
-        return hashlib.sha256(material.encode("utf-8")).hexdigest()
+        digest = hashlib.sha256(material.encode("utf-8")).hexdigest()
+        if item.construction_id is not None:
+            return f"construction={item.construction_id}:{item.construction_version}:{digest}"
+        return digest

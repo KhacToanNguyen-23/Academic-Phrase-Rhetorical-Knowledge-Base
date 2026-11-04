@@ -1,7 +1,6 @@
 # Phase 5 — per-batch frame statistics and journal contrast
 
-Status: proposed 2026-11-04. Can start right after phase 4 part A; it works with today's reporting-verb
-frames and gets better when phase 4 part B adds the construction groups.
+Status: implemented 2026-11-04; a selector-backed real-data CLI smoke run remains open because current article records lack batch/journal IDs. Changes are uncommitted for owner review.
 Requirement: `FR-06.2`. Product goal: find phrases characteristic of one journal (internal tool).
 Branch/worktree: `feat/spacy-nlp-spike`, `D:\6_OJT\aprkb-spacy-spike`.
 

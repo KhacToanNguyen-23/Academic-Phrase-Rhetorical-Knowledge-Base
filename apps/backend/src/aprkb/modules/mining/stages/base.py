@@ -35,6 +35,8 @@ class MiningItem:
     cluster_key: str | None = None
     confidence: float | None = None
     slot_binding_fingerprint: str | None = None
+    construction_id: str | None = None
+    construction_version: str | None = None
 
 
 class MiningStage(ABC):

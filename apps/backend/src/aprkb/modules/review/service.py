@@ -22,8 +22,10 @@ from aprkb.modules.patterns.models import (
 from aprkb.modules.review import repository
 from aprkb.modules.review.schemas import ReviewDecisionCreate
 from aprkb.policies.loader import load_policy_bundle
+from aprkb.policies.schemas import is_safe_construction_frame
 
-_REPORTING_FORMS = load_policy_bundle().reporting_verbs.all_forms
+_POLICIES = load_policy_bundle()
+_REPORTING_FORMS = _POLICIES.reporting_verbs.all_forms
 
 
 async def list_review_queue(session: AsyncSession) -> list[Candidate]:
@@ -177,7 +179,10 @@ async def _promote_candidate(
 
 
 def _candidate_is_safe_to_promote(candidate: Candidate) -> bool:
-    if not is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS):
+    if not (
+        is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS)
+        or is_safe_construction_frame(candidate.canonical_frame, _POLICIES.constructions)
+    ):
         return False
     if not isinstance(candidate.slots, dict):
         return False

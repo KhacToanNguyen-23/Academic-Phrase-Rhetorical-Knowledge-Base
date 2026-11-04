@@ -433,6 +433,8 @@ Chạy mọi rule trong `build_rules()` rồi trả danh sách `RuleResult`. Sev
 
 **Mở rộng M2 được chủ sở hữu duyệt ngày 2026-10-31:** triển khai slot abstraction regex, protected spans, lexicon reporting/subject và keying bảo thủ, bật trong worker; candidate vẫn pending và qua hai vòng review. Kiểm thử bằng dữ liệu giả tự viết. Chưa đánh giá chất lượng trên dữ liệu thật; gold và evaluator chờ API bài báo. Từ phase 2, spaCy được dùng ở ingest sau lớp boundary rule-first qua `NLP_ENGINE` (mặc định `regex`); phase 3 cho phép `SentenceFilter` và `SlotAbstractor` đọc token feature hợp lệ với regex fallback. NER vẫn hoãn. Xem [ADR-0007](doc/adr/0007-rule-based-slot-abstraction.md) và [ADR-0010](doc/adr/0010-spacy-ingest-token-features.md).
 
+**Mở rộng có giới hạn phase 4–5:** mining nhận token feature đã lưu để khớp ba nhóm construction tự viết trong YAML có version, với closed-world matching; reporting-verb path luôn được ưu tiên. Nhánh imperative có policy flag và chỉ được tính aggregate. CLI `phrase-stats` so sánh document frequency của masked frame giữa hai nhóm bài; đây là số mô tả, không phải kiểm định ý nghĩa thống kê. Không có parser PDF/JATS, NER, classifier tổng quát, endpoint thống kê hay lưu văn bản bài báo trong report. Giá trị policy còn provisional với `TODO(owner)`.
+
 ```
 job "ingest_article": corpus.ingest → license_check → parser → section_detector → sentence_boundary_resolver → sentence_features?
 job "mine_article"  : Sentence[] → sentence_filter → move_classifier → epistemic_tagger

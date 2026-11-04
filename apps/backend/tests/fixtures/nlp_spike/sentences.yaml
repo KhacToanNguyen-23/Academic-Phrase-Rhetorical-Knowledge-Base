@@ -123,3 +123,11 @@ phase3_cases:
 filter_cases:
   - "1. Introduction"
   - "A short fragment."
+
+construction_cases:
+  - "In this study, we propose a compact method."
+  - "Our method plays a key role in reliable retrieval."
+  - "The new method significantly improves classification accuracy."
+  - "We carefully propose a useful method today."
+  - "We discuss a compact method."
+  - "Our method does not improve classification accuracy."

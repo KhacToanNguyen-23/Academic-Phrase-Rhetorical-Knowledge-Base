@@ -6,6 +6,8 @@ Enable regex-based sentence slot extraction in the existing worker. Keep pending
 
 spaCy runs at ingest behind `NLP_ENGINE` to provide rule-first sentence boundaries and stored token features (ADR-0010). Phase 3 lets `SentenceFilter` and `SlotAbstractor` consume valid stored features with a regex fallback for missing/invalid data; NER, production classifiers, embeddings and LLM remain deferred. Tests use self-authored mock data. There has been no quality evaluation on real data. Gold, evaluator and tuning await the external article API; future gold is sampled from real articles, with two editors, reported disagreement and adjudication under FR-06.6. The prior held-out proposal is superseded. No extra human role or gate is required for this runtime increment.
 
+Phase 4 adds a versioned, closed-world registry for three self-authored dependency constructions (author action, relation/role, performance/evaluation), plus a policy-gated imperative filter branch. Matching uses stored token features only; the existing reporting-verb path keeps precedence and remains unchanged. Phase 5 adds read-only document-frequency frame contrast. Neither increment adds a classifier, endpoint, schema migration, or manuscript text to logs/reports. Registry and threshold values are provisional and marked `TODO(owner, FR-06.2/FR-07)`; real-article counts are descriptive only.
+
 Candidate private JSONB occurrence metadata is an intentional deviation from the separate occurrence entity in System Design. Existing legacy rows remain nullable and are not backfilled.
 
 ## Deferred decision: AI suggests, humans decide (2026-10-31)

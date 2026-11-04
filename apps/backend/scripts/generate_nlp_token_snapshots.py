@@ -17,7 +17,12 @@ OUTPUT = ROOT / "tests" / "fixtures" / "nlp_spike" / "token_snapshots.json"
 def main() -> None:
     with FIXTURE.open(encoding="utf-8") as fixture:
         payload = yaml.safe_load(fixture)
-    texts = payload["slot_cases"] + payload["phase3_cases"] + payload["filter_cases"]
+    texts = (
+        payload["slot_cases"]
+        + payload["phase3_cases"]
+        + payload["filter_cases"]
+        + payload["construction_cases"]
+    )
     engine = SpacyEngine("en_core_web_sm")
     cases = []
     for text in texts:

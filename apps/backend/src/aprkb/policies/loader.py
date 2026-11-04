@@ -8,6 +8,7 @@ from pydantic import BaseModel, ValidationError
 
 from aprkb.policies.schemas import (
     AbbreviationsPolicy,
+    ConstructionsPolicy,
     EpistemicMarkersPolicy,
     EvidenceMatrixPolicy,
     FallbackTiersPolicy,
@@ -16,6 +17,7 @@ from aprkb.policies.schemas import (
     LicensePolicy,
     LicensesPolicy,
     MiningFilterPolicy,
+    PhraseStatsPolicy,
     RankingWeightsPolicy,
     ReportingVerbsPolicy,
     SectionHeadingsPolicy,
@@ -42,6 +44,8 @@ class PolicyBundle:
     reporting_verbs: ReportingVerbsPolicy
     slot_abstraction: SlotAbstractionPolicy
     sentence_rules: SentenceRulesPolicy
+    constructions: ConstructionsPolicy
+    phrase_stats: PhraseStatsPolicy
 
 
 def _load[PolicyModel: BaseModel](path: Path, model: type[PolicyModel]) -> PolicyModel:
@@ -74,4 +78,6 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
         reporting_verbs=_load(root / "lexicon" / "reporting_verbs.yaml", ReportingVerbsPolicy),
         slot_abstraction=_load(root / "slot_abstraction.yaml", SlotAbstractionPolicy),
         sentence_rules=_load(root / "sentence_rules.yaml", SentenceRulesPolicy),
+        constructions=_load(root / "constructions.yaml", ConstructionsPolicy),
+        phrase_stats=_load(root / "phrase_stats.yaml", PhraseStatsPolicy),
     )

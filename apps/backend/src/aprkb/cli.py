@@ -5,6 +5,7 @@ import asyncio
 import json
 import sys
 from contextlib import suppress
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
@@ -335,6 +336,57 @@ async def _mining_stats(*, sample: int, seed: int) -> None:
         await engine.dispose()
 
 
+async def _phrase_stats(
+    *,
+    focal_batch: UUID | None,
+    focal_journal: UUID | None,
+    background_batches: list[UUID],
+    background_journals: list[UUID],
+    all_other: bool,
+    top: int | None,
+    output_format: str,
+) -> None:
+    from aprkb.modules.extraction.phrase_stats import PhraseStatsRequest, compute_phrase_stats
+    from aprkb.modules.extraction.phrase_stats_repository import candidate_articles
+    from aprkb.policies.loader import load_policy_bundle
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            rows = await candidate_articles(session)
+        result = compute_phrase_stats(
+            rows,
+            PhraseStatsRequest(
+                focal_batch_id=focal_batch,
+                focal_journal_id=focal_journal,
+                background_batch_ids=tuple(background_batches),
+                background_journal_ids=tuple(background_journals),
+                all_other=all_other,
+                top_n=top,
+            ),
+            load_policy_bundle().phrase_stats,
+        )
+        if output_format == "json":
+            print(json.dumps(asdict(result), ensure_ascii=False, indent=2, default=str))
+            return
+        print("candidate statuses: pending, accepted (rejected excluded)")
+        print(f"focal articles: {result.n_focal}; background articles: {result.n_bg}")
+        for notice in result.notices:
+            print(f"notice: {notice}")
+        ranking = result.recurrence_ranking if result.notices else result.score_ranking
+        print("ranking: recurrence" if result.notices else "ranking: smoothed contrast")
+        print("frame | df_focal/n_focal | df_bg/n_bg | occurrences | score | sample_sentence_ids")
+        for row in ranking:
+            print(
+                f"{row.frame} | {row.df_focal}/{row.n_focal} | {row.df_bg}/{row.n_bg} | "
+                f"{row.occurrences} | {row.score:.4f} | "
+                f"{','.join(str(value) for value in row.sample_sentence_ids)}"
+            )
+    finally:
+        await engine.dispose()
+
+
 def _print_mining_stats(stats: object) -> None:
     from aprkb.modules.mining.stats import MiningStats
 
@@ -349,6 +401,9 @@ def _print_mining_stats(stats: object) -> None:
     print(f"filter kept: {stats.filter_kept}")
     if stats.filter_rejected:
         print(f"filter rejected: {stats.filter_rejected}")
+    print(f"imperative accepted: {stats.imperative_accepted}")
+    print(f"construction matches: {stats.construction_matches}")
+    print(f"construction rejections: {stats.construction_rejections}")
     denominator = stats.filter_kept or 1
     print("extraction reasons (percent of filter-kept sentences):")
     for reason, count in stats.extraction_reasons.items():
@@ -409,6 +464,17 @@ def main() -> None:
     )
     mining_stats.add_argument("--sample", type=int, default=0)
     mining_stats.add_argument("--seed", type=int, default=0)
+    phrase_stats = commands.add_parser(
+        "phrase-stats", help="Contrast masked-frame document frequency across article sets"
+    )
+    focal = phrase_stats.add_mutually_exclusive_group(required=True)
+    focal.add_argument("--focal-batch", type=UUID)
+    focal.add_argument("--focal-journal", type=UUID)
+    phrase_stats.add_argument("--background-batch", type=UUID, action="append", default=[])
+    phrase_stats.add_argument("--background-journal", type=UUID, action="append", default=[])
+    phrase_stats.add_argument("--background", choices=("all-other",))
+    phrase_stats.add_argument("--top", type=int)
+    phrase_stats.add_argument("--format", choices=("table", "json"), default="table")
     reference_import = commands.add_parser(
         "import-reference-library", help="Import quarantined internal reference data"
     )
@@ -437,6 +503,26 @@ def main() -> None:
         if args.sample < 0:
             parser.error("--sample must be non-negative")
         asyncio.run(_mining_stats(sample=args.sample, seed=args.seed))
+    elif args.command == "phrase-stats":
+        if args.top is not None and args.top < 1:
+            parser.error("--top must be positive")
+        if args.background == "all-other" and (args.background_batch or args.background_journal):
+            parser.error("--background all-other cannot be combined with explicit background IDs")
+        if args.background != "all-other" and not (
+            args.background_batch or args.background_journal
+        ):
+            parser.error("provide background IDs or --background all-other")
+        asyncio.run(
+            _phrase_stats(
+                focal_batch=args.focal_batch,
+                focal_journal=args.focal_journal,
+                background_batches=args.background_batch,
+                background_journals=args.background_journal,
+                all_other=args.background == "all-other",
+                top=args.top,
+                output_format=args.format,
+            )
+        )
     elif args.command == "import-reference-library":
         asyncio.run(_import_reference_library(file_path=args.file))
     elif args.command == "purge-reference-library":

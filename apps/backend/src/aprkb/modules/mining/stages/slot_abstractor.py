@@ -9,7 +9,7 @@ from aprkb.modules.mining.schemas import Ownership, ProtectedSignal, SlotDefinit
 from aprkb.modules.mining.stages.base import ExtractionOccurrence, MiningItem, MiningStage
 from aprkb.nlp.features import TokenFeature
 from aprkb.nlp.syntax import (
-    children_by_head,
+    normalized_children_by_head,
     select_syntax_root,
     subtree_span,
     validate_token_features,
@@ -135,7 +135,7 @@ class SlotAbstractor(MiningStage):
     def _locate_syntax(self, text: str, tokens: tuple[TokenFeature, ...]) -> str | _Located:
         if not validate_token_features(text, tokens):
             return "syntax_invalid_tokens"
-        children = children_by_head(tokens)
+        children = normalized_children_by_head(tokens)
         selection = select_syntax_root(tokens)
         if selection is None:
             return "syntax_invalid_tokens"

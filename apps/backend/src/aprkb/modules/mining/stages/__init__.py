@@ -2,6 +2,10 @@
 
 from aprkb.modules.mining.stages.base import MiningItem, MiningStage
 from aprkb.modules.mining.stages.clusterer import Clusterer
+from aprkb.modules.mining.stages.construction_matcher import (
+    ConstructionMatcher,
+    ReportingWithConstruction,
+)
 from aprkb.modules.mining.stages.epistemic_tagger import EpistemicTagger
 from aprkb.modules.mining.stages.frame_normalizer import FrameNormalizer
 from aprkb.modules.mining.stages.sentence_filter import SentenceFilter
@@ -21,7 +25,10 @@ def build_stages(*, policy_bundle: PolicyBundle) -> list[MiningStage]:
         ),
         TodoMiningStage("move_classifier", "FR-06.3"),
         EpistemicTagger(policy_bundle.epistemic_markers),
-        SlotAbstractor(policy_bundle.reporting_verbs, policy_bundle.slot_abstraction),
+        ReportingWithConstruction(
+            SlotAbstractor(policy_bundle.reporting_verbs, policy_bundle.slot_abstraction),
+            ConstructionMatcher(policy_bundle.constructions),
+        ),
         FrameNormalizer(),
         Clusterer(policy_bundle),
         TodoMiningStage("dedup_matcher", "FR-06.2"),

@@ -112,6 +112,7 @@ class SyntaxFilterSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     require_finite_verb: bool = True
+    allow_imperatives: bool = False
 
 
 class NoiseFilterSettings(BaseModel):
@@ -173,6 +174,109 @@ class ReportingVerbsPolicy(VersionedPolicy):
                     raise ValueError("reporting verb forms must be non-empty and unique")
                 seen.add(normalized)
         return classes
+
+
+class ConstructionChild(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    path: list[list[str]] = Field(min_length=1)
+    path_lemmas: list[list[str]] = Field(default_factory=list)
+    mode: Literal["literal", "slot", "literal_optional", "head_literal_modifiers_slot"]
+    slot: str | None = None
+    lemmas: list[str] = Field(default_factory=list)
+    include_descendant_deps: list[str] = Field(default_factory=list)
+    modifier_deps: list[str] = Field(default_factory=list)
+    optional: bool = False
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "ConstructionChild":
+        if any(not hop or any(not dep.strip() for dep in hop) for hop in self.path):
+            raise ValueError("construction paths must contain non-empty dependency labels")
+        if self.path_lemmas and len(self.path_lemmas) != len(self.path):
+            raise ValueError(
+                "construction path lemma constraints must align with its dependency path"
+            )
+        if self.mode in {"slot", "head_literal_modifiers_slot"} and not self.slot:
+            raise ValueError("slot construction children require a slot name")
+        if self.mode == "literal_optional" and not self.optional:
+            raise ValueError("literal_optional children must be marked optional")
+        return self
+
+
+class ConstructionRule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]{1,63}$")
+    function: str = Field(pattern=r"^[a-z][a-z0-9_]{1,63}$")
+    anchor_lemmas: list[str] = Field(min_length=1)
+    children: list[ConstructionChild] = Field(min_length=1)
+    allowed_literal: list[str] = Field(default_factory=list)
+    frame_templates: list[str] = Field(min_length=1)
+
+    @field_validator("frame_templates")
+    @classmethod
+    def validate_frame_templates(cls, templates: list[str]) -> list[str]:
+        for template in templates:
+            compile_construction_template(template)
+        return templates
+
+
+class ConstructionsPolicy(VersionedPolicy):
+    constructions: list[ConstructionRule] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_ids(self) -> "ConstructionsPolicy":
+        identifiers = [rule.id for rule in self.constructions]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("construction ids must be unique")
+        return self
+
+
+class PhraseStatsPolicy(VersionedPolicy):
+    smoothing_alpha: float = Field(gt=0, le=100)
+    min_focal_docs: int = Field(ge=1)
+    warn_below_focal_articles: int = Field(ge=1)
+    top_n: int = Field(ge=1, le=500)
+
+
+def is_safe_construction_frame(
+    frame: str, policy: ConstructionsPolicy, *, construction_id: str | None = None
+) -> bool:
+    """Accept only a complete masked-frame grammar declared by the construction registry."""
+    normalized = re.sub(r"\s+", " ", frame).strip()
+    return any(
+        re.fullmatch(compile_construction_template(template), normalized, flags=re.IGNORECASE)
+        is not None
+        for rule in policy.constructions
+        if construction_id is None or rule.id == construction_id
+        for template in rule.frame_templates
+    )
+
+
+def compile_construction_template(template: str) -> str:
+    """Compile literal text, positional slots, and simple `{a|b}` alternatives safely."""
+    parts: list[str] = []
+    position = 0
+    marker = re.compile(r"\[([XYZ])\]|\{([^{}]*)\}")
+    for match in marker.finditer(template):
+        literal = template[position : match.start()]
+        if any(char in literal for char in "[]{}"):
+            raise ValueError("construction templates may only use positional slot markers")
+        parts.append(re.escape(literal))
+        slot, alternatives = match.groups()
+        if slot is not None:
+            parts.append(re.escape(f"[{slot}]"))
+        else:
+            choices = alternatives.split("|")
+            if any(not re.fullmatch(r"[A-Za-z]+", choice) for choice in choices):
+                raise ValueError("construction template alternatives must be single words")
+            parts.append("(?:" + "|".join(re.escape(choice) for choice in choices) + ")")
+        position = match.end()
+    tail = template[position:]
+    if any(char in tail for char in "[]{}"):
+        raise ValueError("construction templates may only use positional slot markers")
+    parts.append(re.escape(tail))
+    return "".join(parts)
 
 
 class SlotAbstractionPolicy(VersionedPolicy):

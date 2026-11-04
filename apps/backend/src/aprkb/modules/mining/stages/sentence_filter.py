@@ -3,7 +3,7 @@
 import re
 
 from aprkb.modules.mining.stages.base import MiningItem, MiningStage
-from aprkb.nlp.syntax import select_syntax_root
+from aprkb.nlp.syntax import children_by_head, select_syntax_root
 from aprkb.policies.schemas import NoiseFilterSettings, SyntaxFilterSettings
 
 _CITATION = re.compile(
@@ -72,16 +72,67 @@ class SentenceFilter(MiningStage):
             and self._syntax.require_finite_verb
         ):
             content_tokens = [token for token in item.tokens if not token.is_space]
-            if not any(
+            has_finite = any(
                 token.tag == "MD"
                 or (token.pos in {"VERB", "AUX"} and _has_morph(token.morph, "VerbForm=Fin"))
                 for token in content_tokens
-            ):
-                return "no_finite_verb"
+            )
             root = select_syntax_root(item.tokens)
+            if not has_finite and not (self._syntax.allow_imperatives and self.is_imperative(item)):
+                return "no_finite_verb"
             if root is None or root.token.pos not in {"VERB", "AUX"}:
                 return "root_not_verbal"
         return None
+
+    def is_imperative(self, item: MiningItem) -> bool:
+        """Recognize a bare imperative ROOT with a direct complement."""
+        if item.tokens is None:
+            return False
+        selection = select_syntax_root(item.tokens)
+        if selection is None:
+            return False
+        root = selection.token
+        if root.pos != "VERB" or root.tag != "VB":
+            return False
+        children = children_by_head(item.tokens)
+        direct = [item.tokens[index] for index in children[root.i]]
+        if any(token.dep in {"nsubj", "nsubjpass"} for token in direct):
+            return False
+        if not any(token.dep in {"dobj", "ccomp", "xcomp", "attr", "prep"} for token in direct):
+            return False
+
+        content = [token for token in item.tokens if not token.is_space and token.pos != "PUNCT"]
+        if not content:
+            return False
+        if content[0].i == root.i:
+            return True
+        if len(content) < 2 or content[1].i != root.i:
+            return False
+        lead = content[0]
+        comma = next(
+            (token for token in item.tokens if token.pos == "PUNCT" and token.start >= lead.end),
+            None,
+        )
+        return bool(
+            len(item.text[lead.start : lead.end]) <= 12
+            and lead.pos in {"ADV", "INTJ", "PART"}
+            and comma is not None
+            and item.text[lead.end : comma.start].strip() == ""
+            and item.text[comma.end : root.start].strip() == ""
+            and item.text[comma.start : comma.end] == ","
+        )
+
+    def accepted_as_imperative(self, item: MiningItem) -> bool:
+        """Return true only when the imperative branch is what lets the item pass."""
+        if not self._syntax or not self._syntax.allow_imperatives or item.tokens is None:
+            return False
+        has_finite = any(
+            token.tag == "MD"
+            or (token.pos in {"VERB", "AUX"} and _has_morph(token.morph, "VerbForm=Fin"))
+            for token in item.tokens
+            if not token.is_space
+        )
+        return not has_finite and self.is_imperative(item) and self.reject_reason(item) is None
 
     def process(self, batch: list[MiningItem]) -> list[MiningItem]:
         return [item for item in batch if self.reject_reason(item) is None]

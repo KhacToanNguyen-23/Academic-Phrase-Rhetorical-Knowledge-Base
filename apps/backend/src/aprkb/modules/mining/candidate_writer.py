@@ -5,7 +5,11 @@ from typing import Protocol
 from uuid import UUID
 
 from aprkb.modules.mining.schemas import SlotDefinition, is_safe_masked_frame
-from aprkb.policies.schemas import ReportingVerbsPolicy
+from aprkb.policies.schemas import (
+    ConstructionsPolicy,
+    ReportingVerbsPolicy,
+    is_safe_construction_frame,
+)
 
 
 @dataclass(frozen=True)
@@ -17,6 +21,7 @@ class CandidateDraft:
     epistemic_strength: str | None = None
     cluster_key: str | None = None
     occurrences: list[dict[str, object]] = field(default_factory=list)
+    construction_id: str | None = None
 
 
 class CandidateRepository(Protocol):
@@ -29,16 +34,28 @@ class CandidateWriter:
         repository: CandidateRepository | None,
         *,
         reporting_policy: ReportingVerbsPolicy | None = None,
+        constructions_policy: ConstructionsPolicy | None = None,
     ) -> None:
         self._repository = repository
         self._reporting_forms = (
             reporting_policy.all_forms if reporting_policy is not None else set()
         )
+        self._constructions = constructions_policy
 
     def write(self, draft: CandidateDraft) -> object:
         if not draft.source_sentence_ids:
             raise ValueError("source_sentence_ids are required for every mined candidate")
-        if not is_safe_masked_frame(draft.canonical_frame, self._reporting_forms):
+        reporting_safe = is_safe_masked_frame(draft.canonical_frame, self._reporting_forms)
+        construction_safe = (
+            draft.construction_id is not None
+            and self._constructions is not None
+            and is_safe_construction_frame(
+                draft.canonical_frame,
+                self._constructions,
+                construction_id=draft.construction_id,
+            )
+        )
+        if not reporting_safe and not construction_safe:
             raise ValueError("canonical_frame must be a masked positional frame")
         if self._repository is None:
             raise RuntimeError("Candidate repository is not configured")
@@ -58,5 +75,6 @@ class CandidateWriter:
             epistemic_strength=draft.epistemic_strength,
             cluster_key=draft.cluster_key,
             occurrences=draft.occurrences,
+            construction_id=draft.construction_id,
         )
         return self._repository.create_candidate(draft)

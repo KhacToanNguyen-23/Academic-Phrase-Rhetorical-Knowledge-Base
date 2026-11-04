@@ -8,8 +8,8 @@ from uuid import UUID
 from aprkb.modules.mining.pipeline import MiningPipeline
 from aprkb.modules.mining.stages import build_stages
 from aprkb.modules.mining.stages.base import MiningItem
+from aprkb.modules.mining.stages.construction_matcher import ReportingWithConstruction
 from aprkb.modules.mining.stages.sentence_filter import SentenceFilter
-from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
 from aprkb.nlp.features import TokenFeature
 from aprkb.policies.loader import PolicyBundle
 
@@ -54,6 +54,9 @@ class MiningStats:
     total_sentences: int
     filter_kept: int
     filter_rejected: dict[str, int]
+    imperative_accepted: int
+    construction_matches: dict[str, int]
+    construction_rejections: dict[str, int]
     extraction_reasons: dict[str, int]
     distinct_frames: int
     top_frames: list[tuple[str, int]]
@@ -78,7 +81,7 @@ def compute_mining_stats(
 
     stages = build_stages(policy_bundle=policy_bundle)
     sentence_filter = next(stage for stage in stages if isinstance(stage, SentenceFilter))
-    abstractor = next(stage for stage in stages if isinstance(stage, SlotAbstractor))
+    extractor = next(stage for stage in stages if isinstance(stage, ReportingWithConstruction))
     pipeline = MiningPipeline(stages=stages)
     filter_rejected: Counter[str] = Counter()
     extraction_reasons: Counter[str] = Counter({reason: 0 for reason in EXTRACTION_REASONS})
@@ -86,6 +89,7 @@ def compute_mining_stats(
     extracted: list[StatsSample] = []
     missed: list[StatsSample] = []
     filter_kept = 0
+    imperative_accepted = 0
 
     for index, sentence in enumerate(sentences):
         item = MiningItem(
@@ -102,6 +106,8 @@ def compute_mining_stats(
             continue
 
         filter_kept += 1
+        if sentence_filter.accepted_as_imperative(item):
+            imperative_accepted += 1
         prediction = pipeline.process([item])
         if prediction:
             frame = prediction[0].text
@@ -110,7 +116,7 @@ def compute_mining_stats(
             extracted.append(StatsSample(text=sentence.text[:140], frame=frame))
             continue
 
-        reason = abstractor.extractability_reason(sentence.text, sentence.tokens) or "other"
+        reason = extractor.extractability_reason(sentence.text, sentence.tokens) or "other"
         extraction_reasons[reason] += 1
         missed.append(StatsSample(text=sentence.text[:140], reason=reason))
 
@@ -119,6 +125,9 @@ def compute_mining_stats(
         total_sentences=len(sentences),
         filter_kept=filter_kept,
         filter_rejected=dict(sorted(filter_rejected.items())),
+        imperative_accepted=imperative_accepted,
+        construction_matches=extractor.constructions.match_counts,
+        construction_rejections=extractor.constructions.rejection_counts,
         extraction_reasons=dict(extraction_reasons),
         distinct_frames=len(frames),
         top_frames=frames.most_common(15),

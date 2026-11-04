@@ -18,7 +18,7 @@ def test_mining_registry_has_deterministic_order_and_requirement_tags(policy_bun
         "sentence_filter",
         "move_classifier",
         "epistemic_tagger",
-        "slot_abstractor",
+        "reporting_and_construction_matcher",
         "frame_normalizer",
         "clusterer",
         "dedup_matcher",

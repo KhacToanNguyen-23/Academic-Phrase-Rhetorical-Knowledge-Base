@@ -51,6 +51,27 @@ def children_by_head(tokens: Sequence[TokenFeature]) -> dict[int, tuple[int, ...
     return {index: tuple(values) for index, values in children.items()}
 
 
+def normalized_children_by_head(tokens: Sequence[TokenFeature]) -> dict[int, tuple[int, ...]]:
+    """Normalize aux-attached clause markers and subjects one level toward their clause head."""
+    children = children_by_head(tokens)
+    clause_heads = {
+        token.i for token in tokens if token.dep in {"ROOT", "ccomp", "xcomp", "advcl", "acl"}
+    }
+    normalized: dict[int, list[int]] = {index: [] for index in children}
+    for token in tokens:
+        parent = tokens[token.head]
+        if (
+            token.dep in {"mark", "nsubj", "nsubjpass", "csubj", "csubjpass"}
+            and parent.dep in {"aux", "auxpass", "cop"}
+            and parent.head in clause_heads
+            and tokens[parent.head].pos in {"VERB", "AUX"}
+        ):
+            normalized[parent.head].append(token.i)
+        else:
+            normalized[token.head].append(token.i)
+    return {index: tuple(values) for index, values in normalized.items()}
+
+
 def subtree_indices(children: dict[int, tuple[int, ...]], root: int) -> tuple[int, ...]:
     found: list[int] = []
     pending = [root]
@@ -93,7 +114,7 @@ def select_syntax_root(tokens: Sequence[TokenFeature]) -> SyntaxRootSelection | 
         return None
 
     parser_root = roots[0]
-    children = children_by_head(tokens)
+    children = normalized_children_by_head(tokens)
     candidates = [
         tokens[index]
         for index in children[parser_root.i]

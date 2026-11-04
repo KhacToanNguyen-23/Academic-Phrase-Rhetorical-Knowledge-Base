@@ -2,7 +2,6 @@
 
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import delete, select
@@ -12,14 +11,10 @@ from aprkb.core.config import settings
 from aprkb.core.logging import get_logger
 from aprkb.modules.corpus.blobstore import BlobStore, LocalBlobStore
 from aprkb.modules.corpus.importer import IMPORT_JOB_TYPE, MAX_IMPORT_BATCH_LIMIT, import_page
+from aprkb.modules.corpus.ingest import parse_and_analyze
 from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
-from aprkb.modules.corpus.parsers.base import DocumentParser
-from aprkb.modules.corpus.parsers.jats_parser import JatsParserStub
-from aprkb.modules.corpus.parsers.markdown_parser import MarkdownParser
-from aprkb.modules.corpus.parsers.pdf_parser import PdfParserStub
-from aprkb.modules.corpus.parsers.text_parser import TextParser
+from aprkb.modules.corpus.parsers import parser_for_key
 from aprkb.modules.corpus.schemas import DEFAULT_ARTIFACT_KINDS, SlrWorkFilters
-from aprkb.modules.corpus.section_detector import SectionDetector
 from aprkb.modules.corpus.sentence_splitter import split_sentences
 from aprkb.modules.corpus.sources import ArticleSource, build_article_source
 from aprkb.modules.corpus.sources.base import ImportOptions
@@ -32,12 +27,6 @@ from aprkb.nlp import NlpEngineInfo, SentenceAnalysis, SpacyEngine
 from aprkb.nlp.syntax import usable_tokens
 from aprkb.policies.loader import PolicyBundle, load_policy_bundle
 
-_PARSERS: tuple[DocumentParser, ...] = (
-    TextParser(),
-    MarkdownParser(),
-    JatsParserStub(),
-    PdfParserStub(),
-)
 ArticleSourceFactory = Callable[[str], ArticleSource]
 logger = get_logger(__name__)
 _SPACY_ENGINES: dict[str, SpacyEngine] = {}
@@ -192,18 +181,10 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
         return "Article license does not allow mining"
 
     content = blob_store.get(article.blob_key)
-    parser = next(
-        (
-            candidate
-            for candidate in _PARSERS
-            if candidate.supports(_mime_from_key(article.blob_key))
-        ),
-        None,
-    )
+    parser = parser_for_key(article.blob_key)
     if parser is None:
         article.ingest_status = "failed"
         return "Unsupported article format"
-    document = parser.parse(content)
     policies = load_policy_bundle()
     try:
         nlp_info, section_analyser = _build_section_analyser(policies)
@@ -211,34 +192,36 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
         article.ingest_status = "failed"
         return str(error)
     article.nlp_engine = nlp_info.to_json()
-    section_codes = SectionDetector(policies.section_headings).detect(document.sections)
+    prepared = parse_and_analyze(
+        parser,
+        content,
+        section_headings=policies.section_headings,
+        analyse_section=section_analyser,
+    )
     section_rows: dict[int, ArticleSection] = {}
-    for parsed_section, section_code in zip(document.sections, section_codes, strict=True):
+    for section in prepared.sections:
         section_row = ArticleSection(
             article_id=article.id,
-            section_code=section_code,
-            heading=parsed_section.heading,
-            order=parsed_section.order,
+            section_code=section.section_code,
+            heading=section.parsed.heading,
+            order=section.parsed.order,
         )
         session.add(section_row)
-        section_rows[parsed_section.order] = section_row
+        section_rows[section.parsed.order] = section_row
     await session.flush()
-    for parsed_section in document.sections:
-        section_row = section_rows[parsed_section.order]
-        for text, char_start, char_end, features, boundary_source in section_analyser(
-            parsed_section.text
-        ):
-            session.add(
-                Sentence(
-                    article_id=article.id,
-                    article_section_id=section_row.id,
-                    text=text,
-                    char_start=parsed_section.char_start + char_start,
-                    char_end=parsed_section.char_start + char_end,
-                    nlp_features=features,
-                    boundary_source=boundary_source,
-                )
+    for sentence in prepared.sentences:
+        section_row = section_rows[sentence.section_order]
+        session.add(
+            Sentence(
+                article_id=article.id,
+                article_section_id=section_row.id,
+                text=sentence.text,
+                char_start=sentence.char_start,
+                char_end=sentence.char_end,
+                nlp_features=sentence.nlp_features,
+                boundary_source=sentence.boundary_source,
             )
+        )
     article.ingest_status = "ready"
     return None
 
@@ -354,18 +337,6 @@ async def reingest_article(
     )
 
 
-def _mime_from_key(blob_key: str) -> str:
-    suffix = Path(blob_key).suffix.casefold()
-    return {
-        ".txt": "text/plain",
-        ".md": "text/markdown",
-        ".markdown": "text/markdown",
-        ".xml": "application/xml",
-        ".jats": "application/jats+xml",
-        ".pdf": "application/pdf",
-    }.get(suffix, "application/octet-stream")
-
-
 async def _mine(session: AsyncSession, article: Article) -> str | None:
     if article.ingest_status != "ready":
         return "Article ingestion is not ready"
@@ -414,7 +385,9 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
         previous_section = code
     items = pipeline.process(mining_rows)
     writer = CandidateWriter(
-        _SessionCandidateRepository(session), reporting_policy=policies.reporting_verbs
+        _SessionCandidateRepository(session),
+        reporting_policy=policies.reporting_verbs,
+        constructions_policy=policies.constructions,
     )
     for item in items:
         writer.write(
@@ -434,6 +407,7 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
                     }
                     for occurrence in item.occurrences
                 ],
+                construction_id=item.construction_id,
             )
         )
     return None

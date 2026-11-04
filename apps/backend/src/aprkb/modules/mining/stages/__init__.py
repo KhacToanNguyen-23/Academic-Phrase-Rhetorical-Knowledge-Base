@@ -17,6 +17,7 @@ def build_stages(*, policy_bundle: PolicyBundle) -> list[MiningStage]:
             min_words=filter_policy.sentence_filter.min_words,
             max_words=filter_policy.sentence_filter.max_words,
             noise=filter_policy.noise_filter,
+            syntax=filter_policy.syntax_filter,
         ),
         TodoMiningStage("move_classifier", "FR-06.3"),
         EpistemicTagger(policy_bundle.epistemic_markers),

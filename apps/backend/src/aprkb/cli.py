@@ -281,6 +281,8 @@ async def _mining_stats(*, sample: int, seed: int) -> None:
     from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
     from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
     from aprkb.modules.mining.stats import StatsSentence, compute_mining_stats
+    from aprkb.nlp.features import SentenceAnalysis
+    from aprkb.nlp.syntax import usable_tokens
     from aprkb.policies.loader import load_policy_bundle
 
     engine = create_async_engine(settings.database_url, pool_pre_ping=True)
@@ -288,7 +290,7 @@ async def _mining_stats(*, sample: int, seed: int) -> None:
     try:
         async with factory() as session:
             rows = await session.execute(
-                select(Sentence, ArticleSection.section_code)
+                select(Sentence, ArticleSection.section_code, Article.nlp_engine)
                 .join(Article, Article.id == Sentence.article_id)
                 .join(License, License.id == Article.license_id)
                 .outerjoin(ArticleSection, ArticleSection.id == Sentence.article_section_id)
@@ -299,15 +301,34 @@ async def _mining_stats(*, sample: int, seed: int) -> None:
                 )
                 .order_by(Sentence.article_id, Sentence.char_start, Sentence.id)
             )
-            sentences = [
-                StatsSentence(
-                    text=sentence.text,
-                    section_code=section_code,
-                    sentence_id=sentence.id,
-                    char_start=sentence.char_start,
+            sentences = []
+            for sentence, section_code, nlp_engine in rows:
+                analysis = None
+                if sentence.nlp_features is not None:
+                    try:
+                        analysis = SentenceAnalysis.from_json(sentence.nlp_features)
+                    except ValueError:
+                        analysis = None
+                tokens = usable_tokens(analysis)
+                locator = (
+                    f"syntax:{nlp_engine['model_name']}:{nlp_engine['model_version']}"
+                    if tokens is not None
+                    and isinstance(nlp_engine, dict)
+                    and nlp_engine.get("engine") == "spacy"
+                    and isinstance(nlp_engine.get("model_name"), str)
+                    and isinstance(nlp_engine.get("model_version"), str)
+                    else None
                 )
-                for sentence, section_code in rows
-            ]
+                sentences.append(
+                    StatsSentence(
+                        text=sentence.text,
+                        section_code=section_code,
+                        sentence_id=sentence.id,
+                        char_start=sentence.char_start,
+                        tokens=tokens,
+                        locator=locator,
+                    )
+                )
         stats = compute_mining_stats(sentences, load_policy_bundle(), sample=sample, seed=seed)
         _print_mining_stats(stats)
     finally:

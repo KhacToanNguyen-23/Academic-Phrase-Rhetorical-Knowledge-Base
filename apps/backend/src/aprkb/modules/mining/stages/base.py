@@ -26,6 +26,7 @@ class MiningItem:
     char_start: int = 0
     previous_text: str | None = None
     tokens: tuple[TokenFeature, ...] | None = None
+    locator: str | None = None
     slots: dict[str, SlotDefinition] = field(default_factory=dict)
     occurrences: list[ExtractionOccurrence] = field(default_factory=list)
     tense: Tense = Tense.UNKNOWN

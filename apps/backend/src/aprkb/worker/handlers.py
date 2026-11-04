@@ -29,6 +29,7 @@ from aprkb.modules.mining.pipeline import MiningPipeline
 from aprkb.modules.mining.stages import build_stages
 from aprkb.modules.mining.stages.base import MiningItem
 from aprkb.nlp import NlpEngineInfo, SentenceAnalysis, SpacyEngine
+from aprkb.nlp.syntax import usable_tokens
 from aprkb.policies.loader import PolicyBundle, load_policy_bundle
 
 _PARSERS: tuple[DocumentParser, ...] = (
@@ -387,6 +388,7 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
     policies = load_policy_bundle()
     pipeline = MiningPipeline(stages=build_stages(policy_bundle=policies))
     mining_rows: list[MiningItem] = []
+    locator = _syntax_locator(article)
     previous_text: str | None = None
     previous_section: str | None = None
     for sentence, code in rows:
@@ -394,9 +396,9 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
         tokens = None
         if sentence.nlp_features is not None:
             try:
-                tokens = SentenceAnalysis.from_json(sentence.nlp_features).tokens
+                tokens = usable_tokens(SentenceAnalysis.from_json(sentence.nlp_features))
             except ValueError:
-                return "Stored NLP features are invalid"
+                tokens = None
         mining_rows.append(
             MiningItem(
                 text=sentence.text,
@@ -405,6 +407,7 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
                 char_start=sentence.char_start,
                 previous_text=context,
                 tokens=tokens,
+                locator=locator if tokens is not None else None,
             )
         )
         previous_text = sentence.text
@@ -434,6 +437,17 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
             )
         )
     return None
+
+
+def _syntax_locator(article: Article) -> str | None:
+    metadata = article.nlp_engine
+    if not isinstance(metadata, dict) or metadata.get("engine") != "spacy":
+        return None
+    model = metadata.get("model_name")
+    version = metadata.get("model_version")
+    if not isinstance(model, str) or not isinstance(version, str):
+        return None
+    return f"syntax:{model}:{version}"
 
 
 def local_blob_store() -> LocalBlobStore:

@@ -7,6 +7,8 @@ from dataclasses import replace
 from aprkb.modules.mining.stages.base import MiningItem, MiningStage
 from aprkb.policies.loader import PolicyBundle
 
+_REGEX_POLICY_VERSION = "0.2.0:0.2.0:0.2.0:0.1.0"
+
 
 class Clusterer(MiningStage):
     name = "clusterer"
@@ -42,16 +44,17 @@ class Clusterer(MiningStage):
             normalized_frame = pattern.sub(f"{{reporting:{class_name}}}", normalized_frame, count=1)
             if "{reporting:" in normalized_frame:
                 break
-        material = "|".join(
-            (
-                "mining-v1",
-                self._policy_version,
-                normalized_frame,
-                item.tense.value,
-                (item.epistemic_strength or "unknown").casefold(),
-                item.ownership.value,
-                slot_signature,
-                item.slot_binding_fingerprint or "unknown-bindings",
-            )
-        )
+        material_parts = [
+            "mining-v1",
+            _REGEX_POLICY_VERSION if item.locator is None else self._policy_version,
+            normalized_frame,
+            item.tense.value,
+            (item.epistemic_strength or "unknown").casefold(),
+            item.ownership.value,
+            slot_signature,
+            item.slot_binding_fingerprint or "unknown-bindings",
+        ]
+        if item.locator is not None:
+            material_parts.insert(2, item.locator)
+        material = "|".join(material_parts)
         return hashlib.sha256(material.encode("utf-8")).hexdigest()

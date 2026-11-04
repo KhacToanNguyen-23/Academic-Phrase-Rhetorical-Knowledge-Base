@@ -17,6 +17,8 @@ from aprkb.modules.mining.stages import build_stages
 from aprkb.modules.mining.stages.base import MiningItem
 from aprkb.modules.mining.stages.sentence_filter import SentenceFilter
 from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
+from aprkb.nlp.features import SentenceAnalysis
+from aprkb.nlp.syntax import usable_tokens
 from aprkb.policies.loader import PolicyBundle
 
 _FIELDS = ("section", "epistemic_strength", "tense", "ownership", "frame")
@@ -121,12 +123,19 @@ def evaluate_approved_items(
             labels = GoldLabels.model_validate(gold_item.final_labels)
         except ValueError:
             raise ValueError("Approved gold labels do not match the current schema") from None
+        tokens = None
+        if sentence.nlp_features is not None:
+            try:
+                tokens = usable_tokens(SentenceAnalysis.from_json(sentence.nlp_features))
+            except ValueError:
+                tokens = None
         mining_item = MiningItem(
             text=sentence.text,
             source_sentence_ids=[sentence.id],
             section_code=current_section,
             char_start=sentence.char_start,
             previous_text=previous_text,
+            tokens=tokens,
         )
         filter_reason = sentence_filter.reject_reason(mining_item)
         row: dict[str, Any] = {
@@ -141,7 +150,9 @@ def evaluate_approved_items(
             predicted = downstream.process([mining_item])
             prediction = predicted[0] if predicted else None
             row["extraction_reason"] = (
-                None if prediction else abstractor.extractability_reason(sentence.text)
+                None
+                if prediction
+                else abstractor.extractability_reason(sentence.text, mining_item.tokens)
             )
             row.update(_expected_fields(labels))
             row.update(_predicted_fields(prediction, sentence.char_start, current_section))

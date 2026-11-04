@@ -10,6 +10,7 @@ from aprkb.modules.mining.stages import build_stages
 from aprkb.modules.mining.stages.base import MiningItem
 from aprkb.modules.mining.stages.sentence_filter import SentenceFilter
 from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
+from aprkb.nlp.features import TokenFeature
 from aprkb.policies.loader import PolicyBundle
 
 EXTRACTED = "EXTRACTED"
@@ -21,6 +22,9 @@ EXTRACTION_REASONS = (
     "subject_too_long",
     "clause_too_short",
     "empty_noun_phrase",
+    "coordinated_reporting_verbs",
+    "subject_not_nominal",
+    "syntax_invalid_tokens",
 )
 
 
@@ -32,6 +36,8 @@ class StatsSentence:
     section_code: str | None = None
     sentence_id: UUID | None = None
     char_start: int = 0
+    tokens: tuple[TokenFeature, ...] | None = None
+    locator: str | None = None
 
 
 @dataclass(frozen=True)
@@ -87,6 +93,8 @@ def compute_mining_stats(
             source_sentence_ids=[sentence.sentence_id or UUID(int=index + 1)],
             section_code=sentence.section_code,
             char_start=sentence.char_start,
+            tokens=sentence.tokens,
+            locator=sentence.locator,
         )
         filter_reason = sentence_filter.reject_reason(item)
         if filter_reason is not None:
@@ -102,7 +110,7 @@ def compute_mining_stats(
             extracted.append(StatsSample(text=sentence.text[:140], frame=frame))
             continue
 
-        reason = abstractor.extractability_reason(sentence.text) or "other"
+        reason = abstractor.extractability_reason(sentence.text, sentence.tokens) or "other"
         extraction_reasons[reason] += 1
         missed.append(StatsSample(text=sentence.text[:140], reason=reason))
 

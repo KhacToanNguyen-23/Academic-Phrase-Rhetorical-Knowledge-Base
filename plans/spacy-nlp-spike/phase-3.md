@@ -1,6 +1,6 @@
 # spaCy NLP — phase 3: SentenceFilter and SlotAbstractor consume stored token features
 
-Status: proposed 2026-11-04; implement after the owner confirms.
+Status: implemented, pending owner review 2026-11-04; changes intentionally left uncommitted.
 Requirement: `FR-06.2`, `FR-07`.
 Branch/worktree: `feat/spacy-nlp-spike`, `D:\6_OJT\aprkb-spacy-spike` (phase 2 is commit `8548bf5`).
 Read first: `plan.md`, `phase-2.md`, `doc/adr/0010-spacy-ingest-token-features.md`, the phase-1/2/3 reports.

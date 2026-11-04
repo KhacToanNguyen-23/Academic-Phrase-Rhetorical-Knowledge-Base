@@ -108,6 +108,12 @@ class SentenceFilterSettings(BaseModel):
         return self
 
 
+class SyntaxFilterSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    require_finite_verb: bool = True
+
+
 class NoiseFilterSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -119,12 +125,14 @@ class NoiseFilterSettings(BaseModel):
 
 class MiningFilterPolicy(VersionedPolicy):
     sentence_filter: SentenceFilterSettings
+    syntax_filter: SyntaxFilterSettings = Field(default_factory=SyntaxFilterSettings)
     noise_filter: NoiseFilterSettings
 
 
 class ReportingVerbForms(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    lemmas: list[str] = Field(min_length=1)
     present: list[str] = Field(min_length=1)
     past: list[str] = Field(min_length=1)
     present_perfect: list[str] = Field(min_length=1)
@@ -141,6 +149,12 @@ class ReportingVerbsPolicy(VersionedPolicy):
             for form in forms.present + forms.past + forms.present_perfect
         }
 
+    @property
+    def all_lemmas(self) -> set[str]:
+        return {
+            lemma.strip().casefold() for forms in self.classes.values() for lemma in forms.lemmas
+        }
+
     @field_validator("classes")
     @classmethod
     def validate_verb_forms(
@@ -150,6 +164,9 @@ class ReportingVerbsPolicy(VersionedPolicy):
         for class_name, forms in classes.items():
             if not class_name.isidentifier():
                 raise ValueError("reporting verb class names must be identifiers")
+            lemmas = {lemma.strip().casefold() for lemma in forms.lemmas}
+            if not lemmas or any(not lemma for lemma in lemmas):
+                raise ValueError("reporting verb lemmas must be non-empty")
             for form in forms.present + forms.past + forms.present_perfect:
                 normalized = form.strip().casefold()
                 if not normalized or normalized in seen:

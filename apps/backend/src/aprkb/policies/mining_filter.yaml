@@ -1,8 +1,11 @@
 # Provisional values; TODO(owner, PRD-6.3): approve sentence length bounds for production.
-version: 0.2.0
+version: 0.3.0
 sentence_filter:
   min_words: 5
   max_words: 60
+syntax_filter:
+  # Provisional phase-3 gate; TODO(owner, FR-07): calibrate on reviewed gold data.
+  require_finite_verb: true
 # Noise filter (spec 3.1b). Provisional thresholds; TODO(owner, PRD-6.3): calibrate on dev gold.
 noise_filter:
   # Sentences in these section codes are never mined.

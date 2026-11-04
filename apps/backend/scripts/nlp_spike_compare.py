@@ -18,6 +18,7 @@ import yaml
 from aprkb.modules.corpus.sentence_splitter import split_sentences
 from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
 from aprkb.nlp import SpacyEngine
+from aprkb.nlp.syntax import spacy_subtree_text
 from aprkb.policies.loader import load_policy_bundle
 
 FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "nlp_spike" / "sentences.yaml"
@@ -187,9 +188,7 @@ def _syntax_spans(doc: Any, source: str) -> tuple[str, str, str, bool]:
 
 
 def _single_subtree_text(token: Any, source: str) -> str:
-    start = token.left_edge.idx
-    end = token.right_edge.idx + len(token.right_edge.text)
-    return source[start:end].rstrip(".,!?;:").replace("|", "\\|")
+    return spacy_subtree_text(token, source)
 
 
 def _performance(engine: SpacyEngine, cases: list[dict[str, Any]]) -> str:

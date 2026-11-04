@@ -226,6 +226,45 @@ async def test_ingest_persists_selected_nlp_contract(
 
 
 @pytest.mark.asyncio
+async def test_parenthetical_reporting_case_respects_selected_locator(
+    phase05_client: tuple[AsyncClient, str], phase05_sessions: async_sessionmaker
+) -> None:
+    async with phase05_sessions() as session:
+        await run_seed(session)
+        await session.commit()
+    client, key = phase05_client
+    source = "We show that the gain, as Lee demonstrated, is stable across all tested settings."
+    response = await client.post(
+        "/v1/admin/corpus/articles",
+        headers={"X-API-Key": key},
+        data={"title": "Parenthetical locator fixture", "license_code": "CC-BY"},
+        files={"file": ("parenthetical.txt", source.encode(), "text/plain")},
+    )
+    assert response.status_code == 202
+    article_id = UUID(response.json()["article_id"])
+    await run_once(phase05_sessions)
+    mine = await client.post(
+        f"/v1/admin/corpus/articles/{article_id}/mine", headers={"X-API-Key": key}
+    )
+    assert mine.status_code == 202
+    await run_once(phase05_sessions)
+
+    async with phase05_sessions() as session:
+        candidates = list(await session.scalars(select(Candidate)))
+        sentence_ids = set(
+            await session.scalars(select(Sentence.id).where(Sentence.article_id == article_id))
+        )
+        if core_settings.nlp_engine == "spacy":
+            assert any(
+                set(candidate.source_sentence_ids) & sentence_ids for candidate in candidates
+            )
+        else:
+            assert not any(
+                set(candidate.source_sentence_ids) & sentence_ids for candidate in candidates
+            )
+
+
+@pytest.mark.asyncio
 async def test_mining_rechecks_license_before_loading_sentences(
     phase05_client: tuple[AsyncClient, str], phase05_sessions: async_sessionmaker
 ) -> None:

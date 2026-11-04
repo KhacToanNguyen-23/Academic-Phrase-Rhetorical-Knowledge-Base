@@ -106,3 +106,20 @@ slot_cases:
   - "In this paper, we propose a framework that unifies both objectives."
   - "Smith et al. (2020) found that accuracy drops under domain shift."
   - "The proposed approach significantly improves classification accuracy."
+
+phase3_cases:
+  - "We show that the gain, as Lee demonstrated, is stable across all tested settings."
+  - "Our experiments clearly show that the proposed model converges faster."
+  - "The analysis did not reveal that the effect depends on sample size."
+  - "Previous studies have reported that larger batches reduce variance."
+  - "It is widely argued that transfer learning reduces annotation cost."
+  - "These findings may indicate that the baseline was undertrained."
+  - "In this paper, we propose a framework that unifies both objectives."
+  - "Our results show and the authors suggest that the method works reliably."
+  - "Our results surprisingly suggest that the method is robust to noise."
+  - "These findings suggest a model that indicates that noise matters."
+  - "The fact that the model converges suggests that the method is robust to noise."
+
+filter_cases:
+  - "1. Introduction"
+  - "A short fragment."

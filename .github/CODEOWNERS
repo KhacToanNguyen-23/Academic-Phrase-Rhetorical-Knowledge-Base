@@ -2,10 +2,15 @@
 /.github/workflows/ @KhacToanNguyen-23
 /.github/CODEOWNERS @KhacToanNguyen-23
 /apps/backend/Dockerfile @KhacToanNguyen-23
+/apps/backend/.dockerignore @KhacToanNguyen-23
 /apps/backend/migrations/ @KhacToanNguyen-23
 /apps/backend/src/aprkb/policies/ @KhacToanNguyen-23
 /apps/backend/uv.lock @KhacToanNguyen-23
 /apps/web/pnpm-lock.yaml @KhacToanNguyen-23
+/apps/web/package-lock.json @KhacToanNguyen-23
 /docker-compose*.yml @KhacToanNguyen-23
 /infra/ @KhacToanNguyen-23
+/scripts/ci/ @KhacToanNguyen-23
+/Makefile @KhacToanNguyen-23
 /doc/runbooks/ @KhacToanNguyen-23
+/doc/adr/ @KhacToanNguyen-23

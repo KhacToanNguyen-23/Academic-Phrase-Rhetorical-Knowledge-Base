@@ -11,11 +11,11 @@ PostgreSQL is both the database and job queue. Run Alembic exactly once per rele
 3. Verify there is exactly one Alembic head.
 4. Classify the release as N-1 compatible or roll-forward-only using the compatibility matrix in the CI/CD plan.
 5. Confirm the database backup owner, latest successful backup, restore procedure, recovery objective, and maintenance window.
-6. Decide whether worker drain is required. The scaffold has no drain command today. Until Phase 05 implements and tests one, stop/scale the Docker Compose worker before the maintenance window, verify no worker container is running, and inspect job-status counts without payload text. Do not claim a graceful drain merely because the container stopped.
+6. Decide whether worker drain is required. As of 2026-11-04, `apps/backend/src/aprkb/worker/runner.py` handles SIGTERM/SIGINT gracefully: it stops claiming new jobs, lets the in-flight job finish, then exits cleanly (`docker stop` on the production worker container triggers this; verified by `scripts/ci/container-smoke-worker.sh`). This is a real drain primitive, but it does not yet log a reconciled queued/in-flight/completed count at drain time (`TODO(owner)`); inspect `jobs` table status counts manually if that evidence is needed. `scripts/cd/deploy.sh` stops the worker container (triggering this drain) before migrating.
 
 ## Execution
 
-Phase 05 must implement a defined PostgreSQL advisory/release lock before automated production migration. Until then, allow only one named operator in the maintenance window and record that manual serialization. Run `uv run --directory apps/backend alembic -c alembic.ini upgrade head` once, record the result, and end the maintenance lock only after post-migration verification. Do not run seeds or bootstrap-key as an implicit migration step.
+`scripts/cd/deploy.sh` (Phase 05) serializes release-time work through `concurrency: group: production-deploy, cancel-in-progress: false` in `.github/workflows/cd-deploy.yml`, so two deploy workflow runs cannot execute concurrently. An **independent PostgreSQL advisory/release lock** around the migration step itself — required so a manual `alembic upgrade head` run outside the workflow can't race a deploy — is not yet implemented (`TODO(owner)`); until it exists, only the named operator running `scripts/cd/deploy.sh` (or the workflow) may run migrations, and no one should run `alembic upgrade head` by hand against production outside that script. Run the migration once, record the result, and end the maintenance lock only after post-migration verification. Do not run seeds or bootstrap-key as an implicit migration step.
 
 ## Recovery
 

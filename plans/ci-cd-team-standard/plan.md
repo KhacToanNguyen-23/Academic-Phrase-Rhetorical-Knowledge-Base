@@ -170,11 +170,11 @@ Resolved:
 2. Release policy: automatic CI/build/publish with human-approved production deployment.
 3. Existing Docker images are local `latest` builds, not verified registry artifacts.
 
-Still required at the Phase 04 hard stop:
+Resolved at the Phase 04 hard stop on 2026-11-04; recorded in [ADR-0010](../../doc/adr/0010-ci-cd-platform.md):
 
-1. Will the registry be GHCR or Docker Hub, and what retention/immutability policy applies?
-2. Confirm the production Compose storage choice: a named volume such as `aprkb_blobs`, or an explicit homeserver directory such as `/srv/aprkb/blobs`, mounted into both API and worker at the same container path.
-3. What are the acceptable downtime, rollback, backup/restore, and migration compatibility targets?
+1. Registry: GHCR. Retention policy itself is still `TODO(owner)` in the ADR.
+2. Production Compose storage: Docker named volume `aprkb_blobs`, mounted at the same container path in both API and worker. Backup/restore mechanism for that volume is still `TODO(owner)` in the ADR.
+3. Downtime: short downtime (minutes) accepted per deploy; no rolling/zero-downtime requirement, so no N-1/N/target expand-contract matrix is required — rollback-to-previous-digest evidence is still required unchanged.
 
 ## Handoff
 

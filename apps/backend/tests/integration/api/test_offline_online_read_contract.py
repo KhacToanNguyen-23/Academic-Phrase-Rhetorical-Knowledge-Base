@@ -181,14 +181,28 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
     assert recommended.status_code == 200, recommended.text
     recommendation_items = recommended.json()["items"]
     assert recommendation_items
-    bracket_pattern = next((item for item in recommendation_items if item["slots"]), None)
+    listed_patterns = await read_contract_client.get(
+        "/v1/patterns",
+        params={"status": "approved", "limit": 200},
+        headers=auth(client_key),
+    )
+    assert listed_patterns.status_code == 200, listed_patterns.text
+    recommended_version_ids = {item["pattern_version_id"] for item in recommendation_items}
+    bracket_pattern = next(
+        (
+            row
+            for row in listed_patterns.json()
+            if row["current_version_id"] in recommended_version_ids and row["slots"]
+        ),
+        None,
+    )
     assert bracket_pattern is not None
     rendered = await read_contract_client.post(
         "/v1/render",
         headers=auth(client_key),
         json={
             "recommendation_id": recommended.json()["recommendation_id"],
-            "pattern_version_id": bracket_pattern["pattern_version_id"],
+            "pattern_version_id": bracket_pattern["current_version_id"],
             "slots": {name: "invented example" for name in bracket_pattern["slots"]},
         },
     )

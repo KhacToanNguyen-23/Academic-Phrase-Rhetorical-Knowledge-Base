@@ -884,6 +884,7 @@ async def test_proprietary_recommendation_is_flagged_for_internal_use(
             "genre": "RESEARCH_ARTICLE",
             "claim_type": "descriptive",
             "evidence_level": "multiple_consistent",
+            "query": "proprietary fixture",
             "limit": 10,
         },
     )

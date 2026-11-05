@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { STAFF_SESSION_KEY } from "./session";
 
 export interface AuthenticatedClient {
   id: string;
@@ -15,7 +16,7 @@ export interface AuthContextValue {
   logout: () => void;
 }
 
-const STORAGE_KEY = "aprkb-staff-session";
+const STORAGE_KEY = STAFF_SESSION_KEY;
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function fetchIdentity(apiKey: string): Promise<AuthenticatedClient> {

@@ -910,7 +910,7 @@ async def test_proprietary_recommendation_is_flagged_for_internal_use(
     ):
         detail = await api_client.get(path, headers=headers)
         assert detail.status_code == 200, detail.text
-    listed = await api_client.get("/v1/patterns", headers=headers)
+    listed = await api_client.get("/v1/patterns", params={"limit": 200}, headers=headers)
     assert listed.status_code == 200
     metadata = next(row for row in listed.json() if row["id"] == str(pattern.id))
     assert metadata["license_allows_display"] is False

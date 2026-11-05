@@ -1,4 +1,9 @@
-import { Card, Field } from "@/shared/ui";
+import { SelectField } from "@/components/domain";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { Journal, Option, Taxonomy } from "../live/api";
 
 export type WriterContext = {
@@ -12,12 +17,26 @@ export type WriterContext = {
 };
 
 export const blankContext: WriterContext = {
-  section: "", intent: "", genre: "", claimType: "", evidenceLevel: "", query: "", journalId: "",
+  section: "",
+  intent: "",
+  genre: "",
+  claimType: "",
+  evidenceLevel: "",
+  query: "",
+  journalId: "",
 };
 
 export function WriterContextForm({
-  context, taxonomy, options, journals, supportingContext, searching, onChange,
-  onSupportingContextChange, onSearch,
+  context,
+  taxonomy,
+  options,
+  journals,
+  supportingContext,
+  searching,
+  primary,
+  onChange,
+  onSupportingContextChange,
+  onSearch,
 }: {
   context: WriterContext;
   taxonomy: Taxonomy;
@@ -25,6 +44,7 @@ export function WriterContextForm({
   journals: Journal[];
   supportingContext: string;
   searching: boolean;
+  primary: boolean;
   onChange: (next: WriterContext) => void;
   onSupportingContextChange: (value: string) => void;
   onSearch: () => void;
@@ -38,62 +58,108 @@ export function WriterContextForm({
   const intents = intentSections.flatMap((item) =>
     item.moves.flatMap((move) => move.steps.flatMap((step) => step.intents)),
   );
+  const byGroup = (group: string) =>
+    options.filter((item) => item.group === group).map((item) => ({ value: item.code, label: item.label }));
 
-  return <Card title="1. Writing context">
-    <form onSubmit={(event) => { event.preventDefault(); onSearch(); }}>
-      <div className="slot-grid">
-        <Field label="Article genre">
-          <select value={context.genre} onChange={(event) => onChange({ ...context, genre: event.target.value, section: "", intent: "" })}>
-            <option value="">Any genre</option>
-            {taxonomy.article_genres.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Manuscript section">
-          <select value={context.section} onChange={(event) => onChange({ ...context, section: event.target.value, intent: "" })}>
-            <option value="">Any section</option>
-            {sections.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Rhetorical intent">
-          <select value={context.intent} onChange={(event) => onChange({ ...context, intent: event.target.value })}>
-            <option value="">Any intent</option>
-            {intents.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Claim type">
-          <select value={context.claimType} onChange={(event) => onChange({ ...context, claimType: event.target.value })}>
-            <option value="">Any claim type</option>
-            {options.filter((item) => item.group === "claim_type").map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
-          </select>
-        </Field>
-        <Field label="Evidence level">
-          <select value={context.evidenceLevel} onChange={(event) => onChange({ ...context, evidenceLevel: event.target.value })}>
-            <option value="">Any evidence level</option>
-            {options.filter((item) => item.group === "evidence_level").map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
-          </select>
-        </Field>
-        <Field label="Target journal (optional)">
-          <select value={context.journalId} onChange={(event) => onChange({ ...context, journalId: event.target.value })}>
-            <option value="">No journal selected</option>
-            {journals.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Search keywords (optional)">
-          <input maxLength={500} value={context.query} onChange={(event) => onChange({ ...context, query: event.target.value })} />
-        </Field>
-        <Field
-          label="Supporting context (optional)"
-          hint="Facts, numbers, DOI, or citations entered here may support V03 checks. Search keywords do not count as evidence."
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Writing context</CardTitle>
+        <CardDescription>
+          Every field is optional. Selected fields narrow the patterns; an empty context lists every eligible one.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSearch();
+          }}
         >
-          <textarea
-            rows={2}
-            maxLength={2000}
-            value={supportingContext}
-            onChange={(event) => onSupportingContextChange(event.target.value)}
-          />
-        </Field>
-      </div>
-      <button className="btn btn-primary" type="submit" disabled={searching}>Find patterns</button>
-    </form>
-  </Card>;
+          <FieldGroup>
+            <div className="grid grid-cols-3 gap-4">
+              <SelectField
+                id="writer-genre"
+                label="Article genre"
+                value={context.genre}
+                anyLabel="Any genre"
+                options={taxonomy.article_genres.map((item) => ({ value: item.code, label: item.name }))}
+                onChange={(genre) => onChange({ ...context, genre, section: "", intent: "" })}
+              />
+              <SelectField
+                id="writer-section"
+                label="Manuscript section"
+                value={context.section}
+                anyLabel="Any section"
+                options={sections.map((item) => ({ value: item.code, label: item.name }))}
+                onChange={(next) => onChange({ ...context, section: next, intent: "" })}
+              />
+              <SelectField
+                id="writer-intent"
+                label="Rhetorical intent"
+                value={context.intent}
+                anyLabel="Any intent"
+                options={intents.map((item) => ({ value: item.code, label: item.name }))}
+                onChange={(intent) => onChange({ ...context, intent })}
+              />
+              <SelectField
+                id="writer-claim"
+                label="Claim type"
+                value={context.claimType}
+                anyLabel="Any claim type"
+                options={byGroup("claim_type")}
+                onChange={(claimType) => onChange({ ...context, claimType })}
+              />
+              <SelectField
+                id="writer-evidence"
+                label="Evidence level"
+                value={context.evidenceLevel}
+                anyLabel="Any evidence level"
+                options={byGroup("evidence_level")}
+                onChange={(evidenceLevel) => onChange({ ...context, evidenceLevel })}
+              />
+              <SelectField
+                id="writer-journal"
+                label="Target journal"
+                value={context.journalId}
+                anyLabel="No journal selected"
+                options={journals.map((item) => ({ value: item.id, label: item.name }))}
+                onChange={(journalId) => onChange({ ...context, journalId })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel htmlFor="writer-query">Search keywords</FieldLabel>
+                <Input
+                  id="writer-query"
+                  maxLength={500}
+                  value={context.query}
+                  onChange={(event) => onChange({ ...context, query: event.target.value })}
+                />
+                <FieldDescription>Keywords narrow the search. They do not count as evidence.</FieldDescription>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="writer-supporting">Supporting context</FieldLabel>
+                <Textarea
+                  id="writer-supporting"
+                  rows={2}
+                  maxLength={2000}
+                  value={supportingContext}
+                  onChange={(event) => onSupportingContextChange(event.target.value)}
+                />
+                <FieldDescription>
+                  Facts, numbers, DOIs or citations entered here may support the V03 check.
+                </FieldDescription>
+              </Field>
+            </div>
+            <div>
+              <Button type="submit" variant={primary ? "default" : "secondary"} disabled={searching}>
+                {searching ? "Searching…" : "Find patterns"}
+              </Button>
+            </div>
+          </FieldGroup>
+        </form>
+      </CardContent>
+    </Card>
+  );
 }

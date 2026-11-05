@@ -8,7 +8,7 @@ ordering comes from the seeded reference enums, as required by SCAFFOLD_PRD.md
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from aprkb.policies.schemas import EvidenceMatrixPolicy
@@ -21,15 +21,27 @@ if TYPE_CHECKING:
 class EvidencePolicy:
     evidence_matrix: EvidenceMatrixPolicy
     strength_order: dict[str, int]
+    evidence_level_order: dict[str, int] = field(default_factory=dict)
 
     @classmethod
     def from_reference_enums(
         cls, evidence_matrix: EvidenceMatrixPolicy, enums: Iterable[RefEnum]
     ) -> EvidencePolicy:
+        rows = list(enums)
         strength_order = {
-            enum.code: enum.order for enum in enums if enum.group == "epistemic_strength"
+            enum.code: enum.order for enum in rows if enum.group == "epistemic_strength"
         }
-        return cls(evidence_matrix, strength_order)
+        evidence_level_order = {
+            enum.code: enum.order for enum in rows if enum.group == "evidence_level"
+        }
+        return cls(evidence_matrix, strength_order, evidence_level_order)
+
+    def meets_minimum(self, declared: str, minimum: str) -> bool:
+        """Compare evidence levels using seeded reference enum order; unknown fails closed."""
+        try:
+            return self.evidence_level_order[declared] >= self.evidence_level_order[minimum]
+        except KeyError:
+            return False
 
     def __post_init__(self) -> None:
         if not self.strength_order or len(set(self.strength_order.values())) != len(

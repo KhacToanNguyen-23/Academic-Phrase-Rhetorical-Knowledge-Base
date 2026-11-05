@@ -45,9 +45,9 @@ class EvidenceScorer(Scorer):
         if not ctx.evidence_level:
             return None
         return self._evidence_policy.alignment_score(
-            ctx.claim_type or pattern.claim_type,
+            ctx.claim_type or pattern.claim_type or "",
             ctx.evidence_level,
-            pattern.epistemic_strength,
+            pattern.epistemic_strength or "",
         )
 
 
@@ -69,6 +69,9 @@ class LinguisticScorer(Scorer):
 class ProvenanceScorer(Scorer):
     key = "provenance"
 
+    def __init__(self, scores: dict[str, float]) -> None:
+        self._scores = scores
+
     def score(self, pattern: PatternView, ctx: RecommendationContext) -> float:
         del ctx
-        return 1.0 if pattern.source_type == "authored" else 0.7
+        return self._scores[pattern.source_type]

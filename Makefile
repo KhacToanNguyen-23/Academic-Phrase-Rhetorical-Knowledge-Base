@@ -1,8 +1,10 @@
 ﻿.PHONY: up down install migrate seed run worker test lint bootstrap-key
 
 UV ?= uv
+BACKEND_IMAGE ?= aprkb-backend:ci
 
 .PHONY: setup dev check web-install web be fe
+.PHONY: lint-web test-db-required container-build container-smoke-api container-smoke-worker container-audit
 
 up:
 	docker compose up -d --wait postgres
@@ -33,6 +35,32 @@ lint:
 
 bootstrap-key:
 	$(UV) run --directory apps/backend python -m aprkb.cli bootstrap-key
+
+# DB-required PostgreSQL integration tests: fail if the suite collects zero tests or
+# any test in it skips, instead of silently shrinking. Requires TEST_DATABASE_URL.
+test-db-required:
+	bash scripts/ci/require-db-tests.sh
+
+lint-web:
+	pnpm --dir apps/web lint
+
+# Build the one image that must run both the API and worker commands.
+container-build:
+	docker build -f apps/backend/Dockerfile \
+		--build-arg GIT_COMMIT_SHA=$$(git rev-parse HEAD) \
+		-t $(BACKEND_IMAGE) apps/backend
+
+# Requires a running container network alias "pg" reachable as $(CONTAINER_SMOKE_NETWORK)
+# (default aprkb-ci-net); see doc/runbooks/ci.md for the local setup sequence.
+container-smoke-api:
+	bash scripts/ci/container-smoke-api.sh $(BACKEND_IMAGE)
+
+container-smoke-worker:
+	bash scripts/ci/container-smoke-worker.sh $(BACKEND_IMAGE)
+
+# Build-context canary: fails if secrets/caches/blobs/test output leak into the image.
+container-audit:
+	bash scripts/ci/container-canary.sh
 
 # Short workflows for local development.
 setup: up install migrate seed

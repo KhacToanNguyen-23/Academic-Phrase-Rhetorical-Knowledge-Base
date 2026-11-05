@@ -1,0 +1,63 @@
+/* Landing page scope. Tokens follow plans/ui-redesign/plan.md (paper, ink, one teal). Radius 0 on this page.
+   One grid (12 columns, 1280px), one section rhythm (112px), one heading pattern, one display size (hero only). */
+.landing {
+  --paper: #efefef;
+  --paper-2: #e6e6e6;
+  --ink: #0a0a0a;
+  --dark: #151515;
+  --dark-tile: #262626;
+  --muted: #4a4a4a;
+  --muted-dark: #b8b8b8;
+  --accent: #176b8f;
+  --accent-hover: #125672;
+  --accent-on-dark: #5fb4cc;
+  --margin: clamp(24px, 3.4vw, 48px);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  overflow-x: clip;
+}
+
+.landing .display {
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+/* Slot colours: light fields use the plan's slot tint, dark fields use the accent-on-dark pair. */
+.landing [data-chapter="paper"], .landing [data-ui] { --slot-bg: #eaf5f8; --slot: #125672; }
+.landing [data-chapter="ink"] { --slot-bg: #13283a; --slot: var(--accent-on-dark); }
+.landing [data-ui] { color: #111; }
+
+/* Legacy styles.css gives every link the teal colour and an underline on hover; the landing sets its own. */
+.landing a { color: inherit; text-decoration: none; }
+.landing a:hover { color: inherit; text-decoration: none; }
+.landing a[data-slot="button"][data-variant="default"],
+.landing a[data-slot="button"][data-variant="default"]:hover { color: #fff; }
+.landing a[data-slot="button"][data-variant="secondary"] { color: var(--ink); background: #e5e5e5; }
+.landing [data-chapter="ink"] a[data-slot="button"][data-variant="secondary"] { color: var(--ink); background: var(--paper); }
+
+.landing .treat { filter: grayscale(1) contrast(1.08); }
+.landing section[id] { scroll-margin-top: 64px; }
+
+/* Entrance: parts of a section rise and fade in once. Without the observer the content simply shows. */
+.landing .reveal { opacity: 1; transform: none; }
+.landing.js .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; transition-delay: calc(var(--i, 0) * 70ms); }
+.landing.js .reveal[data-in="true"] { opacity: 1; transform: none; }
+
+/* The headline slot swaps its phrase: opacity and transform only, 240ms. */
+@keyframes slot-in { from { opacity: 0; transform: translateY(0.18em); } to { opacity: 1; transform: none; } }
+.landing .slot-in { animation: slot-in 0.24s ease-out both; }
+
+.landing details[open] > summary .chev { transform: rotate(180deg); }
+.landing .chev { transition: transform 0.2s; }
+.landing summary { list-style: none; }
+.landing summary::-webkit-details-marker { display: none; }
+.landing .press:active { transform: scale(0.98); }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing.js .reveal { transition: none; opacity: 1; transform: none; }
+  .landing .slot-in { animation: none; }
+  .landing .chev { transition: none; }
+}

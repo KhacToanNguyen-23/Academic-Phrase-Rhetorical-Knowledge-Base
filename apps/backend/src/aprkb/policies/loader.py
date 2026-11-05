@@ -24,6 +24,7 @@ from aprkb.policies.schemas import (
     SentenceRulesPolicy,
     SlotAbstractionPolicy,
     ValidationRulesPolicy,
+    VocabularyImportPolicy,
 )
 
 
@@ -46,6 +47,7 @@ class PolicyBundle:
     sentence_rules: SentenceRulesPolicy
     constructions: ConstructionsPolicy
     phrase_stats: PhraseStatsPolicy
+    vocabulary_import: VocabularyImportPolicy
 
 
 def _load[PolicyModel: BaseModel](path: Path, model: type[PolicyModel]) -> PolicyModel:
@@ -80,4 +82,5 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
         sentence_rules=_load(root / "sentence_rules.yaml", SentenceRulesPolicy),
         constructions=_load(root / "constructions.yaml", ConstructionsPolicy),
         phrase_stats=_load(root / "phrase_stats.yaml", PhraseStatsPolicy),
+        vocabulary_import=_load(root / "vocabulary_import.yaml", VocabularyImportPolicy),
     )

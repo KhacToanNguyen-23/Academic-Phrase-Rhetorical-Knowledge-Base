@@ -183,7 +183,7 @@ def create_app(policy_dir: Path | str | None = None) -> FastAPI:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Database unavailable",
             ) from error
-        return {"status": "ok", "database": "ok"}
+        return {"status": "ok", "database": "ok", "commit_sha": settings.build_commit_sha}
 
     return app
 

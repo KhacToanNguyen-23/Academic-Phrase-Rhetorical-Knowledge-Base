@@ -1,5 +1,9 @@
-import { Card } from "@/shared/ui";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Recommendation } from "../live/api";
+import { Notice } from "./WriterStatus";
 
 const fallbackLabels: Record<string, string> = {
   journal_genre: "Journal and genre",
@@ -18,61 +22,121 @@ const scoreLabels: Record<string, string> = {
 };
 
 export function WriterResults({
-  recommendation, picked, onSelect,
+  recommendation,
+  picked,
+  searchedWith,
+  onSelect,
 }: {
   recommendation: Recommendation;
   picked: string;
+  searchedWith: string[];
   onSelect: (versionId: string) => void;
 }) {
   const scoreKeys = recommendation.items[0] ? Object.keys(recommendation.items[0].breakdown) : [];
+  const hidden = recommendation.excluded.GATE_EVIDENCE ?? 0;
 
   // CR-01 / FR-07.3/.4: show eligible samples immediately in a filterable table.
-  return <Card title="2. Recommended patterns">
-    {recommendation.fallback_reason && <p className="notice">{recommendation.fallback_reason}</p>}
-    {(recommendation.warnings ?? []).map((warning) => <p className="notice" key={warning}>{warning}</p>)}
-    <p className="caption">Select an evidence level to hide patterns that exceed it. No evidence check is applied until one is selected.</p>
-    {(recommendation.excluded.GATE_EVIDENCE ?? 0) > 0 && <p className="notice">
-      {recommendation.excluded.GATE_EVIDENCE} samples hidden because they exceed the selected evidence level.
-    </p>}
-    {recommendation.items.length === 0 && <p>No patterns meet these criteria. Try changing the context or evidence level.</p>}
-    {recommendation.items.length > 0 && <div className="table-scroll">
-      <table className="table writer-table" aria-label="Recommended patterns">
-        <thead><tr>
-          <th scope="col">Select</th>
-          <th scope="col">Sentence frame</th>
-          <th scope="col">Score</th>
-          <th scope="col">Fallback</th>
-          {scoreKeys.map((key) => <th scope="col" key={key}>{scoreLabels[key] ?? key.replaceAll("_", " ")}</th>)}
-          <th scope="col">Source and license</th>
-        </tr></thead>
-        <tbody>{recommendation.items.map((item) => <tr key={item.pattern_version_id}>
-          <td><input
-            type="radio"
-            name="writer-candidate"
-            aria-label={`Select ${item.canonical_frame}`}
-            checked={picked === item.pattern_version_id}
-            onChange={() => onSelect(item.pattern_version_id)}
-          /></td>
-          <td><strong>{item.canonical_frame}</strong>
-            {item.explanations.map((explanation) => <small className="table-detail" key={explanation}>{explanation}</small>)}
-          </td>
-          <td>{item.score.toFixed(2)}</td>
-          <td>{fallbackLabels[item.fallback_tier] ?? "General"}</td>
-          {scoreKeys.map((key) => {
-            const value = item.breakdown[key];
-            return <td key={key}>{value === null ? "—" : value.toFixed(2)}</td>;
-          })}
-          <td>
-            <span>{item.source_type === "authored" ? "Self-authored" : "Corpus"} · v{item.version_no}</span>
-            {(item.license_name || item.license_code) && <small className="table-detail">
-              {item.license_name ?? item.license_code}
-              {item.license_name && item.license_code ? ` (${item.license_code})` : ""}
-              {item.license_flag ? " · Copyrighted source, internal use only" : ""}
-            </small>}
-            {item.source_reference && <small className="table-detail">{item.source_reference}</small>}
-          </td>
-        </tr>)}</tbody>
-      </table>
-    </div>}
-  </Card>;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Recommended patterns</CardTitle>
+        <CardDescription>
+          Select an evidence level to hide patterns that exceed it. No evidence check is applied until one is selected.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          {searchedWith.length ? "Searched with" : "No filters: every eligible pattern is listed."}
+          {searchedWith.map((item) => (
+            <Badge key={item} variant="secondary">
+              {item}
+            </Badge>
+          ))}
+        </p>
+        {recommendation.fallback_reason && <Notice>{recommendation.fallback_reason}</Notice>}
+        {(recommendation.warnings ?? []).map((warning) => (
+          <Notice key={warning}>{warning}</Notice>
+        ))}
+        {hidden > 0 && <Notice>{hidden} samples hidden because they exceed the selected evidence level.</Notice>}
+        {recommendation.items.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No patterns meet these criteria. Try changing the context or the evidence level.
+          </p>
+        )}
+        {recommendation.items.length > 0 && (
+          <RadioGroup value={picked} onValueChange={onSelect} aria-label="Recommended patterns">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <span className="sr-only">Select</span>
+                  </TableHead>
+                  <TableHead>Sentence frame</TableHead>
+                  <TableHead className="text-right">Score</TableHead>
+                  <TableHead>Fallback</TableHead>
+                  {scoreKeys.map((key) => (
+                    <TableHead key={key} className="text-right">
+                      {scoreLabels[key] ?? key.replaceAll("_", " ")}
+                    </TableHead>
+                  ))}
+                  <TableHead>Source and licence</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recommendation.items.map((item) => (
+                  <TableRow
+                    key={item.pattern_version_id}
+                    data-state={picked === item.pattern_version_id ? "selected" : undefined}
+                  >
+                    <TableCell>
+                      <RadioGroupItem
+                        id={`candidate-${item.pattern_version_id}`}
+                        value={item.pattern_version_id}
+                        aria-label={`Select ${item.canonical_frame}`}
+                      />
+                    </TableCell>
+                    <TableCell className="max-w-md whitespace-normal">
+                      <label htmlFor={`candidate-${item.pattern_version_id}`} className="cursor-pointer font-medium">
+                        {item.canonical_frame}
+                      </label>
+                      {item.explanations.map((explanation) => (
+                        <span key={explanation} className="mt-1 block text-sm text-muted-foreground">
+                          {explanation}
+                        </span>
+                      ))}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{item.score.toFixed(2)}</TableCell>
+                    <TableCell>{fallbackLabels[item.fallback_tier] ?? "General"}</TableCell>
+                    {scoreKeys.map((key) => {
+                      const value = item.breakdown[key];
+                      return (
+                        <TableCell key={key} className="text-right tabular-nums">
+                          {value === null ? "—" : value.toFixed(2)}
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell className="whitespace-normal">
+                      <span>
+                        {item.source_type === "authored" ? "Self-authored" : "Corpus"} · v{item.version_no}
+                      </span>
+                      {(item.license_name || item.license_code) && (
+                        <span className="block text-sm text-muted-foreground">
+                          {item.license_name ?? item.license_code}
+                          {item.license_name && item.license_code ? ` (${item.license_code})` : ""}
+                          {item.license_flag ? " · Copyrighted source, internal use only" : ""}
+                        </span>
+                      )}
+                      {item.source_reference && (
+                        <span className="block text-sm text-muted-foreground">{item.source_reference}</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </RadioGroup>
+        )}
+      </CardContent>
+    </Card>
+  );
 }

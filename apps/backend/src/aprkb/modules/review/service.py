@@ -20,7 +20,8 @@ from aprkb.modules.patterns.models import (
     UsageConstraint,
 )
 from aprkb.modules.review import repository
-from aprkb.modules.review.schemas import ReviewDecisionCreate
+from aprkb.modules.review.schemas import CandidateIntentUpdate, ReviewDecisionCreate
+from aprkb.modules.taxonomy.models import Intent, Move, Section, Step, TaxonomyRelease
 from aprkb.policies.loader import load_policy_bundle
 from aprkb.policies.schemas import is_safe_construction_frame
 
@@ -30,6 +31,67 @@ _REPORTING_FORMS = _POLICIES.reporting_verbs.all_forms
 
 async def list_review_queue(session: AsyncSession) -> list[Candidate]:
     return await repository.pending_candidates(session)
+
+
+async def assign_intent(
+    session: AsyncSession,
+    *,
+    candidate_id: UUID,
+    payload: CandidateIntentUpdate,
+    reviewer: ApiClient,
+    request_id: str,
+) -> Candidate:
+    """Assign intent before review, or let a legacy first reviewer confirm their missing label."""
+    candidate = await repository.lock_candidate(session, candidate_id)
+    if candidate is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    if candidate.status != "pending":
+        raise HTTPException(status_code=409, detail="Candidate is no longer pending review")
+    previous = await repository.decisions_for_candidate(session, candidate_id)
+    recovering_first_approval = (
+        len(previous) == 1
+        and previous[0].round == 1
+        and previous[0].decision == "approve"
+        and candidate.intent_id is None
+        and previous[0].reviewer_id == reviewer.id
+    )
+    if previous and not recovering_first_approval:
+        raise HTTPException(status_code=409, detail="Intent is frozen after review begins")
+    if not _candidate_is_safe_to_promote(candidate):
+        raise HTTPException(status_code=409, detail="Candidate abstraction schema is invalid")
+    intent = await session.scalar(
+        select(Intent)
+        .join(Step, Step.id == Intent.step_id)
+        .join(Move, Move.id == Step.move_id)
+        .join(Section, Section.id == Move.section_id)
+        .join(TaxonomyRelease, TaxonomyRelease.id == Section.release_id)
+        .where(Intent.id == payload.intent_id, TaxonomyRelease.status == "published")
+    )
+    if intent is None:
+        raise HTTPException(status_code=422, detail="Intent must belong to a published taxonomy")
+    before = {
+        "intent_id": str(candidate.intent_id) if candidate.intent_id else None,
+    }
+    try:
+        candidate.intent_id = payload.intent_id
+        await record_event(
+            session,
+            actor_id=reviewer.id,
+            action="candidate.intent.update",
+            entity_type="candidate",
+            entity_id=candidate.id,
+            before=before,
+            after={
+                **payload.model_dump(mode="json"),
+                "first_reviewer_confirmed_intent": recovering_first_approval,
+            },
+            request_id=request_id,
+        )
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    return candidate
 
 
 async def decide(
@@ -47,6 +109,10 @@ async def decide(
         raise HTTPException(status_code=409, detail="Candidate is no longer pending review")
     if payload.decision == "approve" and not _candidate_is_safe_to_promote(candidate):
         raise HTTPException(status_code=409, detail="Candidate abstraction schema is invalid")
+    if payload.decision == "approve" and candidate.intent_id is None:
+        raise HTTPException(
+            status_code=409, detail="Assign an intent before approving the candidate"
+        )
     previous = await repository.decisions_for_candidate(session, candidate_id)
     if len(previous) >= 2:
         raise HTTPException(status_code=409, detail="Candidate has completed both review rounds")
@@ -146,7 +212,7 @@ async def _promote_candidate(
         version_no=1,
         canonical_frame=candidate.canonical_frame,
         slots=candidate.slots,
-        # Candidate has no claim type/strength field in the scaffold schema; unknown fails closed.
+        # Missing human labels remain unknown rather than being inferred for export.
         claim_type="unknown",
         epistemic_strength=candidate.epistemic_strength or "unknown",
         change_note=(
@@ -172,6 +238,8 @@ async def _promote_candidate(
             article_id=next(iter(articles)) if len(articles) == 1 else None,
             sentence_ids=candidate.source_sentence_ids,
             license_id=next(iter(licenses)) if len(licenses) == 1 else None,
+            source_sentence_count=len(source_ids),
+            source_section_code=sections[0] if len(sections) == 1 else None,
         )
     )
     await session.flush()

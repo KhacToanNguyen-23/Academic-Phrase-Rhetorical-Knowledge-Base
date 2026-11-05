@@ -5,6 +5,7 @@ import hashlib
 import re
 from collections import Counter
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -108,6 +109,7 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/journals/{id}", "get"),
         ("/v1/journals/{id}/guidelines", "post"),
         ("/v1/admin/review-queue", "get"),
+        ("/v1/admin/review-queue/{id}/intent", "put"),
         ("/v1/admin/review-queue/{id}/decisions", "post"),
         ("/v1/admin/gold/samples", "post"),
         ("/v1/admin/gold/samples/{id}/label", "post"),
@@ -136,6 +138,12 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/admin/api-keys", "get"),
         ("/v1/admin/api-keys", "delete"),
         ("/v1/admin/releases/{id}/publish", "post"),
+        ("/v1/vocabulary/families", "get"),
+        ("/v1/vocabulary/lemmas", "get"),
+        ("/v1/vocabulary/letters", "get"),
+        ("/v1/vocabulary/lemmas/{id}", "get"),
+        ("/v1/admin/vocabulary/imports", "get"),
+        ("/v1/admin/vocabulary/imports", "post"),
     }
 
     assert actual == expected
@@ -270,6 +278,21 @@ async def test_patterns_list_detail_history_create_and_append_version(api_client
         )
         assert first_version is not None and first_version.version_no == 1
         first_version_id = first_version.id
+        usage = await session.scalar(
+            select(UsageConstraint).where(UsageConstraint.pattern_version_id == first_version_id)
+        )
+        provenance = await session.scalar(
+            select(EvidenceProvenance).where(
+                EvidenceProvenance.pattern_version_id == first_version_id
+            )
+        )
+        assert usage is not None and provenance is not None
+        usage.evidence_min = "multiple_consistent"
+        usage.forbidden_contexts = ["DISCUSSION"]
+        provenance.source_sentence_count = 12
+        provenance.occurrence_hash = "invented-hash"
+        provenance.source_section_code = "INTRO"
+        await session.commit()
         audit_before_append = (
             await session.scalar(select(func.count()).select_from(AuditEvent)) or 0
         )
@@ -303,6 +326,21 @@ async def test_patterns_list_detail_history_create_and_append_version(api_client
         assert versions[0].id == first_version_id
         assert versions[0].canonical_frame == "The project introduces {topic}."
         assert versions[1].canonical_frame == "This project presents {topic}."
+        for version in versions:
+            usage = await session.scalar(
+                select(UsageConstraint).where(UsageConstraint.pattern_version_id == version.id)
+            )
+            provenance = await session.scalar(
+                select(EvidenceProvenance).where(
+                    EvidenceProvenance.pattern_version_id == version.id
+                )
+            )
+            assert usage is not None and provenance is not None
+            assert usage.evidence_min == "multiple_consistent"
+            assert usage.forbidden_contexts == ["DISCUSSION"]
+            assert provenance.source_sentence_count == 12
+            assert provenance.occurrence_hash == "invented-hash"
+            assert provenance.source_section_code == "INTRO"
         audit_count = await session.scalar(select(func.count()).select_from(AuditEvent)) or 0
         assert audit_count >= audit_before_append + 1
 
@@ -327,6 +365,15 @@ async def test_client_pattern_reads_hide_drafts_and_restricted_provenance(
         assert draft is not None and restricted is not None
         draft_id = draft.id
         restricted_id = restricted.id
+        denied_license = await session.scalar(select(License).where(License.code == "CC-BY-NC"))
+        source = await session.scalar(
+            select(EvidenceProvenance).where(
+                EvidenceProvenance.pattern_version_id == restricted.current_version_id
+            )
+        )
+        assert denied_license is not None and source is not None
+        source.license_id = denied_license.id
+        await session.commit()
 
     _, client_key = await create_key(session_factory, "client", "pattern API client")
     _, curator_key = await create_key(session_factory, "curator", "pattern curator")
@@ -708,7 +755,8 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
     body = response.json()
     assert body["items"]
     assert all(
-        item["explanations"] == ["Passed configured intent and section gates"]
+        any(explanation.startswith("Evidence: ") for explanation in item["explanations"])
+        and any("maximum allowed:" in explanation for explanation in item["explanations"])
         for item in body["items"]
     )
     frames = {item["canonical_frame"] for item in body["items"]}
@@ -736,7 +784,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         assert item["breakdown"]["journal_genre"] is None
         assert item["license_flag"] is (item["license_code"] == "PROPRIETARY")
     assert body["policy_versions"] == {
-        "ranking_weights": "0.1.0",
+        "ranking_weights": "0.2.0",
         "license_policy": "0.1.0",
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
@@ -814,6 +862,99 @@ async def test_proprietary_recommendation_is_flagged_for_internal_use(
     )
     assert item["license_code"] == "PROPRIETARY"
     assert item["license_flag"] is True
+
+    headers = {"X-API-Key": key}
+    for path in (
+        f"/v1/patterns/{pattern.id}",
+        f"/v1/patterns/versions/{version.id}",
+        f"/v1/patterns/{pattern.id}/versions",
+    ):
+        detail = await api_client.get(path, headers=headers)
+        assert detail.status_code == 200, detail.text
+    listed = await api_client.get("/v1/patterns", headers=headers)
+    assert listed.status_code == 200
+    metadata = next(row for row in listed.json() if row["id"] == str(pattern.id))
+    assert metadata["license_allows_display"] is False
+    assert metadata["license_flag"] is True
+    render_payload = {
+        "recommendation_id": response.json()["recommendation_id"],
+        "pattern_version_id": str(version.id),
+        "slots": {"topic": "an invented topic"},
+    }
+    rendered = await api_client.post("/v1/render", headers=headers, json=render_payload)
+    assert rendered.status_code == 200, rendered.text
+    assert rendered.json()["text"] == "The proprietary fixture suggests an invented topic."
+
+    # An issued recommendation must not keep access after its source loses permission.
+    async with session_factory() as session:
+        denied_license = await session.scalar(select(License).where(License.code == "CC-BY-NC"))
+        source = await session.scalar(
+            select(EvidenceProvenance).where(EvidenceProvenance.pattern_version_id == version.id)
+        )
+        assert denied_license is not None and source is not None
+        source.license_id = denied_license.id
+        await session.commit()
+    denied = await api_client.post("/v1/render", headers=headers, json=render_payload)
+    assert denied.status_code == 404
+    denied_detail = await api_client.get(f"/v1/patterns/versions/{version.id}", headers=headers)
+    assert denied_detail.status_code == 404
+    recommended_again = await api_client.post(
+        "/v1/recommendations", headers=headers, json={"limit": 100}
+    )
+    assert recommended_again.status_code == 200
+    assert str(version.id) not in {
+        row["pattern_version_id"] for row in recommended_again.json()["items"]
+    }
+
+
+@pytest.mark.asyncio
+async def test_pattern_browsing_filters_keyword_and_taxonomy_before_old_200_cap(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "late pattern reader")
+    async with session_factory() as session:
+        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        assert intent is not None
+        final_pattern_id = None
+        for index in range(201):
+            pattern = PhrasePattern(
+                intent_id=intent.id,
+                status="approved",
+                created_at=datetime(2030, 1, 1, tzinfo=UTC) + timedelta(seconds=index),
+            )
+            session.add(pattern)
+            await session.flush()
+            version = PatternVersion(
+                pattern_id=pattern.id,
+                version_no=1,
+                canonical_frame="Late needle phrase" if index == 200 else "Ordinary phrase",
+                slots={},
+                epistemic_strength="low",
+                claim_type="descriptive",
+            )
+            session.add(version)
+            await session.flush()
+            pattern.current_version_id = version.id
+            session.add_all(
+                [
+                    UsageConstraint(
+                        pattern_version_id=version.id, allowed_sections=["INTRO"], allowed_genres=[]
+                    ),
+                    EvidenceProvenance(
+                        pattern_version_id=version.id, source_type="authored", sentence_ids=[]
+                    ),
+                ]
+            )
+            final_pattern_id = pattern.id
+        await session.commit()
+    response = await api_client.get(
+        "/v1/patterns",
+        headers={"X-API-Key": key},
+        params={"q": "NEEDLE", "section": "INTRO", "intent": "INTRO_GAP_INDICATE", "limit": 1},
+    )
+    assert response.status_code == 200, response.text
+    assert [row["id"] for row in response.json()] == [str(final_pattern_id)]
 
 
 @pytest.mark.asyncio
@@ -908,6 +1049,13 @@ async def test_render_uses_approved_version_and_validates_slots(
             )
         )
         assert approved is not None and restricted is not None
+        denied_license = await session.scalar(select(License).where(License.code == "CC-BY-NC"))
+        source = await session.scalar(
+            select(EvidenceProvenance).where(EvidenceProvenance.pattern_version_id == restricted.id)
+        )
+        assert denied_license is not None and source is not None
+        source.license_id = denied_license.id
+        await session.commit()
 
     endpoint = "/v1/render"
     headers = {"X-API-Key": key}
@@ -1056,6 +1204,50 @@ async def _create_candidate(session_factory: async_sessionmaker, *, unsafe: bool
         session.add(candidate)
         await session.commit()
         return candidate.id
+
+
+@pytest.mark.asyncio
+async def test_original_reviewer_can_complete_legacy_missing_intent(api_client, session_factory):
+    await run_seed_in_session(session_factory)
+    first_reviewer, first_key = await create_key(
+        session_factory, "reviewer", "legacy first reviewer"
+    )
+    _, other_key = await create_key(session_factory, "reviewer", "legacy second reviewer")
+    candidate_id = await _create_candidate(session_factory)
+    async with session_factory() as session:
+        candidate = await session.get(Candidate, candidate_id)
+        assert candidate is not None
+        intent_id = candidate.intent_id
+        candidate.intent_id = None
+        # Older code allowed approving the phrase before an intent had been assigned.
+        session.add(
+            ReviewDecision(
+                candidate_id=candidate_id,
+                round=1,
+                decision="approve",
+                reviewer_id=first_reviewer.id,
+            )
+        )
+        await session.commit()
+    path = f"/v1/admin/review-queue/{candidate_id}/intent"
+    payload = {"intent_id": str(intent_id)}
+    denied = await api_client.put(path, headers={"X-API-Key": other_key}, json=payload)
+    assert denied.status_code == 409
+    confirmed = await api_client.put(path, headers={"X-API-Key": first_key}, json=payload)
+    assert confirmed.status_code == 200, confirmed.text
+    frozen = await api_client.put(path, headers={"X-API-Key": first_key}, json=payload)
+    assert frozen.status_code == 409
+    async with session_factory() as session:
+        event = await session.scalar(
+            select(AuditEvent).where(
+                AuditEvent.action == "candidate.intent.update",
+                AuditEvent.entity_id == candidate_id,
+            )
+        )
+        assert event is not None and event.after["first_reviewer_confirmed_intent"] is True
+    second = await _decision_payload(api_client, other_key, candidate_id, "approve")
+    assert second.status_code == 200, second.text
+    assert second.json()["candidate_status"] == "accepted"
 
 
 async def _version_count(session_factory: async_sessionmaker) -> int:

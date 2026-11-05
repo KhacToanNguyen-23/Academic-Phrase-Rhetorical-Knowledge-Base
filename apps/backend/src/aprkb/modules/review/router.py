@@ -14,6 +14,7 @@ from aprkb.modules.mining.models import Candidate
 from aprkb.modules.mining.schemas import SlotDefinition, is_safe_masked_frame
 from aprkb.modules.review import service
 from aprkb.modules.review.schemas import (
+    CandidateIntentUpdate,
     CandidateSummary,
     ReviewDecisionCreate,
     ReviewDecisionResult,
@@ -59,6 +60,24 @@ def _safe_summary(candidate: Candidate) -> CandidateSummary:
         source_sentence_ids=candidate.source_sentence_ids,
         status=candidate.status,
     )
+
+
+@router.put("/review-queue/{candidate_id}/intent", response_model=CandidateSummary)
+async def assign_intent(
+    candidate_id: UUID,
+    payload: CandidateIntentUpdate,
+    request: Request,
+    reviewer: Reviewer,
+    session: DatabaseSession,
+) -> CandidateSummary:
+    candidate = await service.assign_intent(
+        session,
+        candidate_id=candidate_id,
+        payload=payload,
+        reviewer=reviewer,
+        request_id=request.state.request_id,
+    )
+    return _safe_summary(candidate)
 
 
 @router.post("/review-queue/{candidate_id}/decisions", response_model=ReviewDecisionResult)

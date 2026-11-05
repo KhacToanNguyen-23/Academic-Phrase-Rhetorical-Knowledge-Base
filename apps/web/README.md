@@ -6,10 +6,35 @@ React + TypeScript + Vite (SPA). Gọi backend qua client sinh từ OpenAPI.
 
 ```
 src/
-  app/        App root, router, providers
-  features/   mỗi màn hình PRD-10 một thư mục (components/ + api/)
-  shared/     api (client sinh tự động), ui, lib
-e2e/          Playwright — Gate D: WB-01 → WB-08 với OpenAlex tắt
+  app/          App root, router, providers, app shell (sidebar, command menu), globals.css (tokens)
+  components/
+    ui/         shadcn components (Radix), adjusted once to the design tokens
+    domain/     PhraseFrame, DataState, PageHeader, StatusBadge, SelectField...
+  features/     mỗi màn hình một thư mục (components/ + api/); landing/ is the public page
+  shared/       api (client sinh tự động), lib
+e2e/            Playwright — not updated for the redesign (switched off)
+```
+
+Routes: `/` public landing, `/signin`, `/app` staff workspace; every other screen keeps its path and is
+guarded. Design decisions: [ADR-0011](../../doc/adr/0011-frontend-design-system.md).
+
+### Design system
+
+- Add a component: `pnpm dlx shadcn@latest add <name>` (Radix style, see `components.json`), then keep it to the
+  tokens in `src/app/globals.css`. Use pnpm only; commit `pnpm-lock.yaml`.
+- Tokens live in `globals.css`: `--brand` teal for the one primary action, the active nav item and slots; neutral
+  everything else. Fonts: Be Vietnam Pro (sans) and Newsreader (phrases).
+- Landing copy is in `src/features/landing/copy.en.ts`; add a locale by adding `copy.<lang>.ts` with the same type.
+- `/dev/ui` shows every component in every state. It exists in development and in the inspect build only.
+- Desktop only (1440px, minimum 1024px). One primary (teal) button per screen at most.
+
+### Checks (no Playwright)
+
+```bash
+pnpm typecheck && pnpm lint && pnpm build
+pnpm build:inspect && pnpm preview:inspect       # port 4174, signs in with the local demo session
+node ../../.agents/skills/design-taste-frontend/scripts/lint.mjs --app src
+node ../../.agents/skills/design-taste-frontend/scripts/inspect.mjs --app http://127.0.0.1:4174/library --widths 1440
 ```
 
 | Feature | Màn hình | Role chính |
@@ -45,9 +70,7 @@ The staff shell accepts curator/admin API keys and keeps the key in the current
 tab's session storage. The local-only Quick demo button seeds self-authored sample
 data and issues a curator key; it requires the Vite development server and a
 loopback backend with `APP_ENV=local`.
-The existing `npm run lint` script needs an ESLint 9 flat config before it can run.
-
-The browser check is `npx playwright test e2e/writer.spec.ts`. Run it with
+The Playwright specs under `e2e/` were written for the previous UI and are not run for the redesign. To try one anyway: `pnpm exec playwright test e2e/writer.spec.ts`. Run it with
 API/Vite against a seeded disposable `aprkb_test` database and set
 `WRITER_E2E_API_KEY` to a client key for that database. On Windows,
 `WRITER_E2E_BROWSER=msedge` uses the installed Edge browser.

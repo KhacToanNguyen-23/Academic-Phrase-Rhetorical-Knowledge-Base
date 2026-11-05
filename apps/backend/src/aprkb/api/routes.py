@@ -17,6 +17,8 @@ from aprkb.modules.review.router import router as review
 from aprkb.modules.taxonomy.router import admin_router as taxonomy_admin
 from aprkb.modules.taxonomy.router import router as taxonomy
 from aprkb.modules.validation.router import router as validation
+from aprkb.modules.vocabulary.read_router import router as vocabulary
+from aprkb.modules.vocabulary.router import admin_router as vocabulary_admin
 
 api_router = APIRouter(prefix="/v1")
 api_router.include_router(identity, prefix="/auth")
@@ -34,3 +36,5 @@ api_router.include_router(extraction_admin, prefix="/admin")
 api_router.include_router(gold)
 api_router.include_router(analytics, prefix="/feedback")
 api_router.include_router(reference_library, prefix="/reference-library")
+api_router.include_router(vocabulary)
+api_router.include_router(vocabulary_admin, prefix="/admin")

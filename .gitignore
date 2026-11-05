@@ -6,6 +6,7 @@
 .env.local
 .env.*.local
 !.env.example
+!apps/web/.env.inspect
 *.pem
 *.key
 *.cert
@@ -128,6 +129,8 @@ $RECYCLE.BIN/
 .claude/settings.local.json
 # Con trỏ brainstorm đang làm dở của từng người; spec/report trong plans/ vẫn được commit
 plans/.current-brainstorm.md
+.taste-skill/
+apps/web/dist-inspect/
 # Script thu thập thử từ Manchester Academic Phrasebank: chỉ dùng local, không đưa vào repo (BR-10, seed phải own_authored)
 scripts/collect_manchester_demo.py
 

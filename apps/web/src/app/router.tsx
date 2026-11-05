@@ -1,9 +1,17 @@
-import { createRootRoute, createRoute, createRouter, getRouteApi, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import {
+  createRootRouteWithContext,
+  createRoute,
+  createRouter,
+  getRouteApi,
+  lazyRouteComponent,
+  Outlet,
+  redirect,
+  useRouterState,
+} from "@tanstack/react-router";
 
 import { AdminPage } from "@/features/admin";
-import { LoginPage } from "@/features/auth/LoginPage";
-import { useAuth } from "@/features/auth/AuthProvider";
+import { useAuth, type AuthContextValue } from "@/features/auth/AuthProvider";
+import { SigninPage } from "@/features/auth/SigninPage";
 import { InboxPage } from "@/features/inbox";
 import { GoldPage } from "@/features/gold";
 import { JournalProfilePage } from "@/features/journal-profile";
@@ -11,160 +19,182 @@ import { LibraryPage } from "@/features/library";
 import { OverviewPage } from "@/features/overview";
 import { ExtractPage } from "@/features/phrase-extraction";
 import { PlaygroundPage } from "@/features/playground";
-import { PhrasebankCategory, PhrasebankHome } from "@/features/phrasebank/PhrasebankPage";
+import { PhrasebankCategory, PhrasebankHome, PhrasebankPatternDetail } from "@/features/phrasebank/PhrasebankPage";
 import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
-import { Loading } from "@/shared/ui";
 import { SlrImportPage } from "@/features/slr-import";
-import { useTheme } from "@/shared/lib/theme";
+import { VocabularyLemmaPage, VocabularyPage } from "@/features/vocabulary";
+import { safeNext } from "@/shared/lib/safe-next";
+import { DataState } from "@/components/domain";
 
-// "/" là dashboard giới thiệu (mở qua logo). UI là bảng điều khiển của bank: người viết dùng qua Writing Engine (API), không qua UI này.
-// Data out: Library → Playground (mô phỏng API). Data in: Inbox. Giám sát: Admin.
-const NAV = [
-  { to: "/library", label: "Library" },
-  { to: "/phrasebank", label: "Phrasebank" },
-  { to: "/playground", label: "Playground" },
-  { to: "/writer", label: "Writer" },
-  { to: "/inbox", label: "Inbox" },
-  { to: "/journals", label: "Journals" },
-  { to: "/admin", label: "Admin" },
-  { to: "/import", label: "Import" },
-  { to: "/extract", label: "Extract" },
-  { to: "/gold", label: "Gold review" },
-] as const;
+import { AppShell } from "./AppShell";
 
-function Shell() {
-  // Key theo pathname để animation từng section chạy lại khi chuyển trang.
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { theme, toggle } = useTheme();
-  const auth = useAuth();
-  // Bóng đổ header khi cuộn (giống SLRS: data-scrolled)
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 4);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-  return (
-    <>
-      <a className="skip" href="#main">Skip to content</a>
-      <header className="masthead" data-scrolled={scrolled || undefined}>
-        <div className="masthead-inner">
-          <Link to="/" className="brand" aria-label="Academic Wordbank — home">
-            <span className="brand-mark" aria-hidden>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5z" /><path d="M13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13" /><path d="M7 8.5h1.5M7 12h1.5M16 8.5h1M16 12h1" />
-              </svg>
-            </span>
-            <span className="brand-name">academic <em>wordbank</em></span>
-          </Link>
-          <nav aria-label="Contents">
-            <ul className="toc">
-              {NAV.filter((n) => n.to === "/writer" || auth.client).filter((n) => n.to !== "/admin" || auth.client?.role === "admin").map((n) => (
-                <li key={n.to}>
-                  <Link to={n.to} className="toc-link" activeProps={{ "aria-current": "page" }}>
-                    {n.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          <div className="masthead-right">
-            {auth.client ? (
-              <button type="button" className="btn btn-ghost" onClick={auth.logout} title={`${auth.client.name} · ${auth.client.role}`}>
-                Sign out
-              </button>
-            ) : pathname === "/writer" ? (
-              <Link to="/" className="btn btn-ghost">Staff sign in</Link>
-            ) : <span className="caption">Staff sign-in required</span>}
-            <button type="button" className="theme-toggle" aria-pressed={theme === "dark"} onClick={toggle}
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
-              <span className="knob" aria-hidden />
-              {theme === "dark" ? "Dark" : "Light"}
-            </button>
-          </div>
-        </div>
-      </header>
-      <main id="main" className="main" key={pathname}>
-        {pathname === "/writer" ? <Outlet /> : auth.loading ? <Loading /> : auth.client ? (
-          pathname === "/admin" && auth.client.role !== "admin"
-            ? <p className="notice notice-warn" role="alert">Admin role required for this page.</p>
-            : <Outlet />
-        ) : <LoginPage />}
-      </main>
-      <footer className="colophon">
-        <span>© 2026 Academic Wordbank · Patterns are self-authored or used with permission</span>
-        <span>Writer dùng API thật · Các trang mô phỏng còn dùng mock</span>
-      </footer>
-    </>
-  );
+export interface RouterContext {
+  auth: AuthContextValue;
 }
 
-const root = createRootRoute({ component: Shell });
+// The auth guard lives in `guarded.beforeLoad`; App re-runs it (router.invalidate) whenever the session changes.
+function Guarded() {
+  const auth = useAuth();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (auth.loading) return <DataState state="loading" loadingLabel="Loading" />;
+  if (!auth.client) return null;
+  if (pathname === "/admin" && auth.client.role !== "admin") {
+    return <AdminPage />;
+  }
+  return <Outlet />;
+}
+
+const root = createRootRouteWithContext<RouterContext>()({ component: Outlet });
 
 const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
-// Trang chủ: giới thiệu + tổng quan; chỉ vào được qua logo, không nằm trên nav.
-const overview = createRoute({ getParentRoute: () => root, path: "/", component: OverviewPage });
-
-const library = createRoute({
-  getParentRoute: () => root,
-  path: "/library",
-  validateSearch: (s: Record<string, unknown>): { p?: string } => ({ p: str(s.p) }),
-  component: () => <LibraryPage selectedId={getRouteApi("/library").useSearch().p} />,
+// Public pages, no sidebar.
+const publicLayout = createRoute({ getParentRoute: () => root, id: "public", component: Outlet });
+const home = createRoute({
+  getParentRoute: () => publicLayout,
+  path: "/",
+  component: lazyRouteComponent(() =>
+    import("@/features/landing/LandingPage").then((m) => ({ default: m.LandingPage })),
+  ),
+});
+const signin = createRoute({
+  getParentRoute: () => publicLayout,
+  path: "/signin",
+  validateSearch: (s: Record<string, unknown>): { next?: string } => ({ next: safeNext(s.next) }),
+  beforeLoad: ({ context, search }) => {
+    if (context.auth.client) throw redirect({ href: search.next ?? "/app", replace: true });
+  },
+  component: SigninPage,
 });
 
-const phrasebank = createRoute({ getParentRoute: () => root, path: "/phrasebank", component: PhrasebankHome });
+// App shell. /writer is open to guests; every other route sits under `guarded`.
+const appLayout = createRoute({ getParentRoute: () => root, id: "shell", component: AppShell });
+const guarded = createRoute({
+  getParentRoute: () => appLayout,
+  id: "guarded",
+  beforeLoad: ({ context, location }) => {
+    if (context.auth.loading || context.auth.client) return;
+    throw redirect({
+      to: "/signin",
+      search: { next: safeNext(`${location.pathname}${location.searchStr}`) },
+      replace: true,
+    });
+  },
+  component: Guarded,
+});
+
+const overview = createRoute({ getParentRoute: () => guarded, path: "/app", component: OverviewPage });
+
+const library = createRoute({
+  getParentRoute: () => guarded,
+  path: "/library",
+  validateSearch: (s: Record<string, unknown>): { p?: string } => ({ p: str(s.p) }),
+  component: () => <LibraryPage selectedId={getRouteApi("/shell/guarded/library").useSearch().p} />,
+});
+
+const phrasebank = createRoute({ getParentRoute: () => guarded, path: "/phrasebank", component: PhrasebankHome });
 const phrasebankCategory = createRoute({
-  getParentRoute: () => root,
+  getParentRoute: () => guarded,
   path: "/phrasebank/$slug",
-  component: () => <PhrasebankCategory slug={getRouteApi("/phrasebank/$slug").useParams().slug} />,
+  component: () => <PhrasebankCategory slug={getRouteApi("/shell/guarded/phrasebank/$slug").useParams().slug} />,
+});
+const phrasebankPattern = createRoute({
+  getParentRoute: () => guarded,
+  path: "/phrasebank/pattern/$id",
+  component: () => <PhrasebankPatternDetail id={getRouteApi("/shell/guarded/phrasebank/pattern/$id").useParams().id} />,
 });
 
 const playground = createRoute({
-  getParentRoute: () => root,
+  getParentRoute: () => guarded,
   path: "/playground",
   validateSearch: (s: Record<string, unknown>): { pattern?: string } => ({ pattern: str(s.pattern) }),
-  component: () => <PlaygroundPage patternId={getRouteApi("/playground").useSearch().pattern} />,
+  component: () => <PlaygroundPage patternId={getRouteApi("/shell/guarded/playground").useSearch().pattern} />,
 });
 
-const writer = createRoute({ getParentRoute: () => root, path: "/writer", component: OnlineWriterPage });
+const writer = createRoute({ getParentRoute: () => appLayout, path: "/writer", component: OnlineWriterPage });
 
-const inbox = createRoute({ getParentRoute: () => root, path: "/inbox", component: InboxPage });
-const admin = createRoute({ getParentRoute: () => root, path: "/admin", component: AdminPage });
-const slrImport = createRoute({ getParentRoute: () => root, path: "/import", component: SlrImportPage });
-const gold = createRoute({ getParentRoute: () => root, path: "/gold", component: GoldPage });
+const inbox = createRoute({ getParentRoute: () => guarded, path: "/inbox", component: InboxPage });
+const admin = createRoute({ getParentRoute: () => guarded, path: "/admin", component: AdminPage });
+const slrImport = createRoute({ getParentRoute: () => guarded, path: "/import", component: SlrImportPage });
+const gold = createRoute({ getParentRoute: () => guarded, path: "/gold", component: GoldPage });
+const vocabularySearch = (s: Record<string, unknown>) => ({
+  view: s.view === "families" ? ("families" as const) : s.view === "lemmas" ? ("lemmas" as const) : undefined,
+  letter: str(s.letter),
+  q: str(s.q),
+  coreOnly: typeof s.coreOnly === "boolean" ? s.coreOnly : s.coreOnly === "true" ? true : undefined,
+  sort: s.sort === "rank" ? ("rank" as const) : s.sort === "alpha" ? ("alpha" as const) : undefined,
+  offset: typeof s.offset === "number" ? s.offset : Number.isFinite(Number(s.offset)) ? Number(s.offset) : undefined,
+});
+const vocabulary = createRoute({
+  getParentRoute: () => guarded,
+  path: "/vocabulary",
+  validateSearch: vocabularySearch,
+  component: VocabularyPage,
+});
+const vocabularyLemma = createRoute({
+  getParentRoute: () => guarded,
+  path: "/vocabulary/$lemmaId",
+  validateSearch: vocabularySearch,
+  component: VocabularyLemmaPage,
+});
 // ?batch=<id>[,<id>] preselects batches; the Import page links here when a run finishes.
 const extract = createRoute({
-  getParentRoute: () => root,
+  getParentRoute: () => guarded,
   path: "/extract",
   validateSearch: (s: Record<string, unknown>): { batch?: string } => ({ batch: str(s.batch) }),
-  component: () => <ExtractPage initialBatch={getRouteApi("/extract").useSearch().batch} />,
+  component: () => <ExtractPage initialBatch={getRouteApi("/shell/guarded/extract").useSearch().batch} />,
 });
 
-const journals = createRoute({ getParentRoute: () => root, path: "/journals", component: () => <JournalProfilePage /> });
-const journal = createRoute({
-  getParentRoute: () => root,
-  path: "/journals/$journalId",
-  component: () => <JournalProfilePage journalId={getRouteApi("/journals/$journalId").useParams().journalId} />,
+const journals = createRoute({
+  getParentRoute: () => guarded,
+  path: "/journals",
+  component: () => <JournalProfilePage />,
 });
+const journal = createRoute({
+  getParentRoute: () => guarded,
+  path: "/journals/$journalId",
+  component: () => (
+    <JournalProfilePage journalId={getRouteApi("/shell/guarded/journals/$journalId").useParams().journalId} />
+  ),
+});
+
+const devUiRoute =
+  import.meta.env.DEV || import.meta.env.MODE === "inspect"
+    ? createRoute({
+        getParentRoute: () => root,
+        path: "/dev/ui",
+        component: lazyRouteComponent(() =>
+          import("@/features/dev-ui/DevUIPage").then((module) => ({ default: module.DevUIPage })),
+        ),
+      })
+    : undefined;
 
 export const router = createRouter({
   routeTree: root.addChildren([
-    overview,
-    library,
-    phrasebank,
-    phrasebankCategory,
-    playground,
-    writer,
-    inbox,
-    journals,
-    journal,
-    admin,
-    slrImport,
-    extract,
-    gold,
+    publicLayout.addChildren([home, signin]),
+    appLayout.addChildren([
+      writer,
+      guarded.addChildren([
+        overview,
+        library,
+        phrasebank,
+        phrasebankCategory,
+        phrasebankPattern,
+        playground,
+        inbox,
+        journals,
+        journal,
+        admin,
+        slrImport,
+        extract,
+        gold,
+        vocabulary,
+        vocabularyLemma,
+      ]),
+    ]),
+    ...(devUiRoute ? [devUiRoute] : []),
   ]),
+  context: { auth: undefined! },
 });
 
 declare module "@tanstack/react-router" {

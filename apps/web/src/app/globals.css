@@ -1,0 +1,288 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource/be-vietnam-pro/400.css";
+@import "@fontsource/be-vietnam-pro/500.css";
+@import "@fontsource/be-vietnam-pro/600.css";
+@import "@fontsource-variable/newsreader";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-app-sans);
+  --font-serif: var(--font-app-serif);
+  --font-mono: var(--font-app-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-kbd-bg: var(--kbd-bg);
+  --color-kbd-border: var(--kbd-border);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.25);
+  --radius-xl: calc(var(--radius) * 1.5);
+}
+
+:root {
+  /* Brand: teal SLRS, reserved for primary action, active nav and slot. */
+  --brand: #176b8f;
+  --brand-hover: #125672;
+  --brand-ink: #ffffff;
+  --brand-tint: #eaf5f8;
+
+  /* App: achromatic ledger on a blue-grey ground. */
+  --ground: #f2f4f7;
+  --surface: #ffffff;
+  --raised: #f9f9f9;
+  --active: #eeeeee;
+  --app-border: #e8e8e8;
+  --rule: #f2f2f2;
+  --control: #d1d5db;
+  --text: #111111;
+  --muted: #5f6368;
+  --faint: #6b6b6b;
+  --secondary: #e5e5e5;
+  --nav-active-bg: #ececec;
+  --nav-active-ink: var(--brand);
+  --slot: #125672;
+  --slot-bg: var(--brand-tint);
+  --success: #247b50;
+  --success-bg: #dcfae5;
+  --success-foreground: #04250e;
+  --warning: #92400e;
+  --warning-bg: #fffbeb;
+  --warning-foreground: #92400e;
+  --kbd-bg: #f7f6f3;
+  --kbd-border: #eaeaea;
+
+  /* Semantic shadcn roles. */
+  --background: var(--ground);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-ink);
+  --secondary-foreground: var(--text);
+  --muted: var(--secondary);
+  --muted-foreground: #5f6368;
+  --accent: var(--active);
+  --accent-foreground: var(--text);
+  --destructive: #c4242a;
+  --destructive-foreground: #ffffff;
+  --border: var(--app-border);
+  --input: var(--control);
+  --ring: var(--text);
+  /* Radius scale (owner-approved 2026-11-04): panels 8, controls 6, menu items 4, pills for labels. */
+  --radius-panel: 8px;
+  --radius-control: 6px;
+  --radius-item: 4px;
+  --radius-pill: 9999px;
+  --radius-chip: 2px; /* slots in a phrase frame */
+  --radius: var(--radius-control);
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--nav-active-bg);
+  --sidebar-primary-foreground: var(--nav-active-ink);
+  --sidebar-accent: var(--nav-active-bg);
+  --sidebar-accent-foreground: var(--nav-active-ink);
+  --sidebar-border: var(--app-border);
+  --sidebar-ring: var(--text);
+
+  --chart-1: var(--brand);
+  --chart-2: #247b50;
+  --chart-3: #c4242a;
+  --chart-4: #92400e;
+  --chart-5: #6b6b6b;
+
+  --font-app-sans: "Be Vietnam Pro", "Helvetica Neue", Arial, sans-serif;
+  --font-app-serif: "Newsreader Variable", Georgia, serif;
+  --font-app-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-sans: var(--font-app-sans);
+  --font-serif: var(--font-app-serif);
+  --font-mono: var(--font-app-mono);
+  --fs-title: 24px;
+  --fs-section: 16px;
+  --fs-body: 14px;
+  --fs-small: 12px;
+}
+
+.dark,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --brand: #5fb4cc;
+  --brand-hover: #8bd1e2;
+  --brand-ink: #0a0a0a;
+  --brand-tint: #13283a;
+  --ground: #000000;
+  --surface: #111111;
+  --raised: #222222;
+  --active: #222222;
+  --app-border: #1a1a1a;
+  --rule: #161616;
+  --control: #444444;
+  --text: #ffffff;
+  --muted: #222222;
+  --faint: #949494;
+  --secondary: #222222;
+  --nav-active-bg: #222222;
+  --nav-active-ink: var(--brand);
+  --slot: #5fb4cc;
+  --slot-bg: #13283a;
+  --success: #3fc07a;
+  --success-bg: #172a1d;
+  --success-foreground: #3fc07a;
+  --warning: #f2b866;
+  --warning-bg: #2b2114;
+  --warning-foreground: #f2b866;
+  --kbd-bg: #222222;
+  --kbd-border: #444444;
+  --background: var(--ground);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-ink);
+  --secondary-foreground: var(--text);
+  --muted-foreground: #b4b4b4;
+  --accent: var(--active);
+  --accent-foreground: var(--text);
+  --destructive: #e5566f;
+  --destructive-foreground: #0a0a0a;
+  --border: var(--app-border);
+  --input: var(--control);
+  --ring: var(--text);
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--nav-active-bg);
+  --sidebar-primary-foreground: var(--nav-active-ink);
+  --sidebar-accent: var(--nav-active-bg);
+  --sidebar-accent-foreground: var(--nav-active-ink);
+  --sidebar-border: var(--app-border);
+  --sidebar-ring: var(--text);
+  --chart-1: var(--brand);
+  --chart-2: #3fc07a;
+  --chart-3: #e5566f;
+  --chart-4: #f2b866;
+  --chart-5: #949494;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+
+  html {
+    @apply font-sans;
+  }
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+td.num,
+th.num {
+  text-align: right;
+}
+
+/* App shell basics that used to live in the legacy styles.css. */
+:root {
+  --container: 80rem;
+  --shell-top: 0px; /* height of the sticky top bar (phone only); 0 on desktop */
+}
+
+@media (max-width: 767px) {
+  :root { --shell-top: 48px; }
+}
+
+@layer base {
+  body {
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a:not([data-slot="button"]) {
+    color: var(--primary);
+    text-decoration: none;
+  }
+
+  a:not([data-slot="button"]):hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Navigation links are text, not teal; only the active item takes the brand ink (see the sidebar tokens). */
+  [data-slot="sidebar"] a {
+    color: var(--sidebar-foreground);
+  }
+
+  [data-slot="sidebar"] a:hover {
+    text-decoration: none;
+  }
+}
+
+@layer components {
+  .skip {
+    position: absolute;
+    left: -999px;
+  }
+
+  .skip:focus {
+    left: 16px;
+    top: 16px;
+    z-index: 999;
+    background: var(--background);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+  }
+
+  .main {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: 32px clamp(16px, 3vw, 32px) 96px;
+  }
+}

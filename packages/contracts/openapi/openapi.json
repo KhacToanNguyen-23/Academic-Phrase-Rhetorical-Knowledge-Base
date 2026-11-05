@@ -375,6 +375,20 @@
         "title": "Body_upload_article_v1_admin_corpus_articles_post",
         "type": "object"
       },
+      "Body_vocabulary_import_v1_admin_vocabulary_imports_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_vocabulary_import_v1_admin_vocabulary_imports_post",
+        "type": "object"
+      },
       "BulkDecisionCreate": {
         "properties": {
           "candidate_ids": {
@@ -456,6 +470,22 @@
           "failed"
         ],
         "title": "BulkDecisionResult",
+        "type": "object"
+      },
+      "CandidateIntentUpdate": {
+        "additionalProperties": false,
+        "description": "Human intent assignment, completed before either approval is recorded.",
+        "properties": {
+          "intent_id": {
+            "format": "uuid",
+            "title": "Intent Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_id"
+        ],
+        "title": "CandidateIntentUpdate",
         "type": "object"
       },
       "CandidateSummary": {
@@ -635,6 +665,144 @@
           "api_key"
         ],
         "title": "DemoSession",
+        "type": "object"
+      },
+      "DomainStatRead": {
+        "properties": {
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "domain_label": {
+            "title": "Domain Label",
+            "type": "string"
+          },
+          "freq": {
+            "title": "Freq",
+            "type": "integer"
+          },
+          "relative_ratio": {
+            "title": "Relative Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "domain",
+          "domain_label",
+          "freq",
+          "relative_ratio"
+        ],
+        "title": "DomainStatRead",
+        "type": "object"
+      },
+      "FamilyMemberRead": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "category_label": {
+            "title": "Category Label",
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "freq": {
+            "title": "Freq",
+            "type": "integer"
+          },
+          "lemma_id": {
+            "format": "uuid",
+            "title": "Lemma Id",
+            "type": "string"
+          },
+          "pos": {
+            "title": "Pos",
+            "type": "string"
+          },
+          "pos_label": {
+            "title": "Pos Label",
+            "type": "string"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lemma_id",
+          "word",
+          "pos",
+          "pos_label",
+          "freq",
+          "category",
+          "category_label",
+          "domains"
+        ],
+        "title": "FamilyMemberRead",
+        "type": "object"
+      },
+      "FamilyPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "FamilyPage",
+        "type": "object"
+      },
+      "FamilyRead": {
+        "properties": {
+          "family_freq": {
+            "title": "Family Freq",
+            "type": "integer"
+          },
+          "headword": {
+            "title": "Headword",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyMemberRead"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "headword",
+          "rank",
+          "family_freq",
+          "members"
+        ],
+        "title": "FamilyRead",
         "type": "object"
       },
       "FeedbackCreate": {
@@ -1307,6 +1475,135 @@
         "title": "ImportProfileUpdate",
         "type": "object"
       },
+      "ImportResult": {
+        "properties": {
+          "inserted": {
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "rows_read": {
+            "title": "Rows Read",
+            "type": "integer"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "run_id",
+          "source_kind",
+          "rows_read",
+          "inserted",
+          "updated",
+          "skipped",
+          "warnings"
+        ],
+        "title": "ImportResult",
+        "type": "object"
+      },
+      "ImportRunPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRunRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ImportRunPage",
+        "type": "object"
+      },
+      "ImportRunRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inserted": {
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "rows_read": {
+            "title": "Rows Read",
+            "type": "integer"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "source_kind": {
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {},
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "source_kind",
+          "filename",
+          "sha256",
+          "rows_read",
+          "inserted",
+          "updated",
+          "skipped",
+          "warnings",
+          "created_at"
+        ],
+        "title": "ImportRunRead",
+        "type": "object"
+      },
       "JobRead": {
         "properties": {
           "attempts": {
@@ -1447,6 +1744,279 @@
           "similar_journal_ids"
         ],
         "title": "JournalRead",
+        "type": "object"
+      },
+      "LemmaDetail": {
+        "properties": {
+          "band": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
+          "coca_acad": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coca Acad"
+          },
+          "coca_all": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coca All"
+          },
+          "disp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disp"
+          },
+          "domain_stats": {
+            "items": {
+              "$ref": "#/components/schemas/DomainStatRead"
+            },
+            "title": "Domain Stats",
+            "type": "array"
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "families": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyRead"
+            },
+            "title": "Families",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_core": {
+            "title": "Is Core",
+            "type": "boolean"
+          },
+          "pos": {
+            "title": "Pos",
+            "type": "string"
+          },
+          "pos_label": {
+            "title": "Pos Label",
+            "type": "string"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "word",
+          "pos",
+          "pos_label",
+          "rank",
+          "band",
+          "status",
+          "status_label",
+          "is_core",
+          "coca_all",
+          "coca_acad",
+          "ratio",
+          "disp",
+          "range",
+          "domains",
+          "domain_stats",
+          "families"
+        ],
+        "title": "LemmaDetail",
+        "type": "object"
+      },
+      "LemmaPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LemmaSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "LemmaPage",
+        "type": "object"
+      },
+      "LemmaSummary": {
+        "properties": {
+          "band": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_core": {
+            "title": "Is Core",
+            "type": "boolean"
+          },
+          "pos": {
+            "title": "Pos",
+            "type": "string"
+          },
+          "pos_label": {
+            "title": "Pos Label",
+            "type": "string"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "word",
+          "pos",
+          "pos_label",
+          "rank",
+          "band",
+          "status",
+          "status_label",
+          "is_core"
+        ],
+        "title": "LemmaSummary",
+        "type": "object"
+      },
+      "LetterCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "letter": {
+            "title": "Letter",
+            "type": "string"
+          }
+        },
+        "required": [
+          "letter",
+          "count"
+        ],
+        "title": "LetterCount",
         "type": "object"
       },
       "MineRequest": {
@@ -1609,6 +2179,18 @@
             "title": "Allowed Sections",
             "type": "array"
           },
+          "article_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Id"
+          },
           "canonical_frame": {
             "anyOf": [
               {
@@ -1631,6 +2213,10 @@
             ],
             "title": "Claim Type"
           },
+          "claim_type_labelled": {
+            "title": "Claim Type Labelled",
+            "type": "boolean"
+          },
           "current_version_id": {
             "anyOf": [
               {
@@ -1643,6 +2229,13 @@
             ],
             "title": "Current Version Id"
           },
+          "discipline_affinities": {
+            "items": {
+              "$ref": "#/components/schemas/PatternDisciplineAffinityRead"
+            },
+            "title": "Discipline Affinities",
+            "type": "array"
+          },
           "epistemic_strength": {
             "anyOf": [
               {
@@ -1654,6 +2247,28 @@
             ],
             "title": "Epistemic Strength"
           },
+          "epistemic_strength_labelled": {
+            "title": "Epistemic Strength Labelled",
+            "type": "boolean"
+          },
+          "evidence_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Min"
+          },
+          "forbidden_contexts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Forbidden Contexts",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1662,6 +2277,40 @@
           "intent_code": {
             "title": "Intent Code",
             "type": "string"
+          },
+          "intent_name": {
+            "title": "Intent Name",
+            "type": "string"
+          },
+          "license_allows_display": {
+            "title": "License Allows Display",
+            "type": "boolean"
+          },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "license_flag": {
+            "title": "License Flag",
+            "type": "boolean"
+          },
+          "license_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Name"
           },
           "slots": {
             "anyOf": [
@@ -1684,9 +2333,35 @@
             ],
             "title": "Slots"
           },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_sentence_count": {
+            "title": "Source Sentence Count",
+            "type": "integer"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/PatternVariantRead"
+            },
+            "title": "Variants",
+            "type": "array"
           },
           "version_no": {
             "anyOf": [
@@ -1704,16 +2379,49 @@
           "id",
           "status",
           "intent_code",
+          "intent_name",
           "canonical_frame",
           "version_no",
           "current_version_id",
           "slots",
           "epistemic_strength",
+          "epistemic_strength_labelled",
           "claim_type",
+          "claim_type_labelled",
+          "variants",
+          "evidence_min",
+          "forbidden_contexts",
           "allowed_sections",
-          "allowed_genres"
+          "allowed_genres",
+          "source_type",
+          "license_code",
+          "license_name",
+          "license_allows_display",
+          "license_flag",
+          "article_id",
+          "source_reference",
+          "source_sentence_count",
+          "discipline_affinities"
         ],
         "title": "PatternDetail",
+        "type": "object"
+      },
+      "PatternDisciplineAffinityRead": {
+        "properties": {
+          "discipline_code": {
+            "title": "Discipline Code",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "discipline_code",
+          "score"
+        ],
+        "title": "PatternDisciplineAffinityRead",
         "type": "object"
       },
       "PatternSlotDefinition": {
@@ -1776,6 +2484,32 @@
       },
       "PatternSummary": {
         "properties": {
+          "allowed_genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Genres",
+            "type": "array"
+          },
+          "allowed_sections": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Sections",
+            "type": "array"
+          },
+          "article_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Id"
+          },
           "canonical_frame": {
             "anyOf": [
               {
@@ -1787,6 +2521,73 @@
             ],
             "title": "Canonical Frame"
           },
+          "claim_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Type"
+          },
+          "claim_type_labelled": {
+            "title": "Claim Type Labelled",
+            "type": "boolean"
+          },
+          "current_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Version Id"
+          },
+          "discipline_affinities": {
+            "items": {
+              "$ref": "#/components/schemas/PatternDisciplineAffinityRead"
+            },
+            "title": "Discipline Affinities",
+            "type": "array"
+          },
+          "epistemic_strength": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
+          },
+          "epistemic_strength_labelled": {
+            "title": "Epistemic Strength Labelled",
+            "type": "boolean"
+          },
+          "evidence_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Min"
+          },
+          "forbidden_contexts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Forbidden Contexts",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1796,9 +2597,90 @@
             "title": "Intent Code",
             "type": "string"
           },
+          "intent_name": {
+            "title": "Intent Name",
+            "type": "string"
+          },
+          "license_allows_display": {
+            "title": "License Allows Display",
+            "type": "boolean"
+          },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "license_flag": {
+            "title": "License Flag",
+            "type": "boolean"
+          },
+          "license_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Name"
+          },
+          "slots": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PatternSlotDefinition"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slots"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_sentence_count": {
+            "title": "Source Sentence Count",
+            "type": "integer"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/PatternVariantRead"
+            },
+            "title": "Variants",
+            "type": "array"
           },
           "version_no": {
             "anyOf": [
@@ -1816,10 +2698,56 @@
           "id",
           "status",
           "intent_code",
+          "intent_name",
           "canonical_frame",
-          "version_no"
+          "version_no",
+          "current_version_id",
+          "slots",
+          "epistemic_strength",
+          "epistemic_strength_labelled",
+          "claim_type",
+          "claim_type_labelled",
+          "variants",
+          "evidence_min",
+          "forbidden_contexts",
+          "allowed_sections",
+          "allowed_genres",
+          "source_type",
+          "license_code",
+          "license_name",
+          "license_allows_display",
+          "license_flag",
+          "article_id",
+          "source_reference",
+          "source_sentence_count",
+          "discipline_affinities"
         ],
         "title": "PatternSummary",
+        "type": "object"
+      },
+      "PatternVariantRead": {
+        "properties": {
+          "register": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "register"
+        ],
+        "title": "PatternVariantRead",
         "type": "object"
       },
       "PatternVersionCreate": {
@@ -1901,12 +2829,26 @@
             "title": "Change Note"
           },
           "claim_type": {
-            "title": "Claim Type",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Type"
           },
           "epistemic_strength": {
-            "title": "Epistemic Strength",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
           },
           "id": {
             "format": "uuid",
@@ -2206,6 +3148,18 @@
       },
       "RecommendationItemResponse": {
         "properties": {
+          "article_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Id"
+          },
           "breakdown": {
             "additionalProperties": {
               "anyOf": [
@@ -2302,7 +3256,8 @@
           "license_code",
           "license_name",
           "license_flag",
-          "source_reference"
+          "source_reference",
+          "article_id"
         ],
         "title": "RecommendationItemResponse",
         "type": "object"
@@ -2955,6 +3910,32 @@
       },
       "RenderableVersionRead": {
         "properties": {
+          "allowed_genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Genres",
+            "type": "array"
+          },
+          "allowed_sections": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Sections",
+            "type": "array"
+          },
+          "article_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Id"
+          },
           "canonical_frame": {
             "title": "Canonical Frame",
             "type": "string"
@@ -2971,17 +3952,102 @@
             "title": "Change Note"
           },
           "claim_type": {
-            "title": "Claim Type",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Type"
+          },
+          "claim_type_labelled": {
+            "title": "Claim Type Labelled",
+            "type": "boolean"
+          },
+          "discipline_affinities": {
+            "items": {
+              "$ref": "#/components/schemas/PatternDisciplineAffinityRead"
+            },
+            "title": "Discipline Affinities",
+            "type": "array"
           },
           "epistemic_strength": {
-            "title": "Epistemic Strength",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
+          },
+          "epistemic_strength_labelled": {
+            "title": "Epistemic Strength Labelled",
+            "type": "boolean"
+          },
+          "evidence_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Min"
+          },
+          "forbidden_contexts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Forbidden Contexts",
+            "type": "array"
           },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "intent_code": {
+            "title": "Intent Code",
+            "type": "string"
+          },
+          "intent_name": {
+            "title": "Intent Name",
+            "type": "string"
+          },
+          "license_allows_display": {
+            "title": "License Allows Display",
+            "type": "boolean"
+          },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "license_flag": {
+            "title": "License Flag",
+            "type": "boolean"
+          },
+          "license_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Name"
           },
           "pattern_id": {
             "format": "uuid",
@@ -3002,9 +4068,35 @@
             "title": "Slots",
             "type": "object"
           },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_sentence_count": {
+            "title": "Source Sentence Count",
+            "type": "integer"
+          },
           "source_type": {
             "title": "Source Type",
             "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/PatternVariantRead"
+            },
+            "title": "Variants",
+            "type": "array"
           },
           "version_no": {
             "title": "Version No",
@@ -3020,7 +4112,25 @@
           "epistemic_strength",
           "claim_type",
           "change_note",
-          "source_type"
+          "source_type",
+          "intent_code",
+          "intent_name",
+          "status",
+          "epistemic_strength_labelled",
+          "claim_type_labelled",
+          "variants",
+          "evidence_min",
+          "forbidden_contexts",
+          "allowed_sections",
+          "allowed_genres",
+          "license_code",
+          "license_name",
+          "license_allows_display",
+          "license_flag",
+          "article_id",
+          "source_reference",
+          "source_sentence_count",
+          "discipline_affinities"
         ],
         "title": "RenderableVersionRead",
         "type": "object"
@@ -5842,6 +6952,204 @@
         ]
       }
     },
+    "/v1/admin/review-queue/{candidate_id}/intent": {
+      "put": {
+        "operationId": "assign_intent_v1_admin_review_queue__candidate_id__intent_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateIntentUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assign Intent",
+        "tags": [
+          "candidate review"
+        ]
+      }
+    },
+    "/v1/admin/vocabulary/imports": {
+      "get": {
+        "operationId": "vocabulary_import_list_v1_admin_vocabulary_imports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportRunPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Import List",
+        "tags": [
+          "vocabulary"
+        ]
+      },
+      "post": {
+        "operationId": "vocabulary_import_v1_admin_vocabulary_imports_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_vocabulary_import_v1_admin_vocabulary_imports_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Import",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
     "/v1/auth/demo-session": {
       "post": {
         "description": "Initialize local sample data and issue a local-only curator API key.",
@@ -6213,6 +7521,23 @@
                 }
               ],
               "title": "Section"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
             }
           },
           {
@@ -6878,6 +8203,48 @@
             }
           },
           {
+            "in": "query",
+            "name": "section",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Section"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "phrase_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Phrase Only",
+              "type": "boolean"
+            }
+          },
+          {
             "in": "header",
             "name": "X-API-Key",
             "required": false,
@@ -7194,6 +8561,345 @@
         "summary": "Validate Text",
         "tags": [
           "validation"
+        ]
+      }
+    },
+    "/v1/vocabulary/families": {
+      "get": {
+        "operationId": "vocabulary_families_v1_vocabulary_families_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FamilyPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Families",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
+    "/v1/vocabulary/lemmas": {
+      "get": {
+        "operationId": "vocabulary_lemmas_v1_vocabulary_lemmas_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "letter",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(?:[a-zA-Z]|#)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Letter"
+            }
+          },
+          {
+            "in": "query",
+            "name": "core_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Core Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "alpha",
+              "enum": [
+                "alpha",
+                "rank"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LemmaPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Lemmas",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
+    "/v1/vocabulary/lemmas/{lemma_id}": {
+      "get": {
+        "operationId": "vocabulary_lemma_v1_vocabulary_lemmas__lemma_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lemma_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lemma Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LemmaDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Lemma",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
+    "/v1/vocabulary/letters": {
+      "get": {
+        "operationId": "vocabulary_letters_v1_vocabulary_letters_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "core_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Core Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LetterCount"
+                  },
+                  "title": "Response Vocabulary Letters V1 Vocabulary Letters Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Letters",
+        "tags": [
+          "vocabulary"
         ]
       }
     }

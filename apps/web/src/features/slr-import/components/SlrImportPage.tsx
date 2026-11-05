@@ -2,12 +2,31 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { Badge, Card, Empty, Field, Loading, PageHeader, Stat, StatusBadge } from "@/shared/ui";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DataState } from "@/components/domain/DataState";
+import { PageHeader } from "@/components/domain/PageHeader";
+import { StatusBadge } from "@/components/domain/StatusBadge";
+import { cn } from "@/lib/utils";
 import { ApiError, slrImportClient, unwrap } from "../api/client";
 
 const kinds = ["FULLTEXT_MARKDOWN", "FETCHER_FULLTEXT_MARKDOWN", "SOURCE_PDF"] as const;
-type Kind = typeof kinds[number];
-type Profile = { id: string; name: string; filters: Record<string, unknown>; artifact_kinds: string[]; batch_limit: number; is_active: boolean };
+type Kind = (typeof kinds)[number];
+type Profile = {
+  id: string;
+  name: string;
+  filters: Record<string, unknown>;
+  artifact_kinds: string[];
+  batch_limit: number;
+  is_active: boolean;
+};
 type JobResult = {
   listed?: number;
   imported?: number;
@@ -18,8 +37,18 @@ type JobResult = {
   continuation_job_id?: string | null;
   batch_id?: string | null;
 };
-const taxonFields: Record<string, string> = { domain: "domainId", field: "fieldId", subfield: "subfieldId", topic: "topicId" };
 type TaxonomyPage = { items: { id: string; label: string }[]; nextCursor: string | null };
+
+const taxonFields = { domain: "domainId", field: "fieldId", subfield: "subfieldId", topic: "topicId" } as const;
+const taxonomyLabels = { domain: "Domain", field: "Field", subfield: "Subfield", topic: "Topic" } as const;
+const jobLabels: Record<string, string> = {
+  queued: "Queued: waiting for a worker",
+  running: "Running: articles are being fetched and checked",
+  processing: "Processing: imported articles are being prepared",
+  done: "Complete: the import finished",
+  succeeded: "Complete: the import finished",
+  failed: "Failed: the import stopped with an error",
+};
 
 function taxonomyQuery(api: ReturnType<typeof slrImportClient>, level: string, parentId?: string, enabled = true) {
   return {
@@ -41,8 +70,7 @@ function taxonomyQuery(api: ReturnType<typeof slrImportClient>, level: string, p
 
 export function SlrImportPage() {
   const api = slrImportClient();
-  const qc = useQueryClient();
-
+  const queryClient = useQueryClient();
   const [key, setKey] = useState(sessionStorage.getItem("aprkb-api-key") ?? "");
   const [hasSavedKey, setHasSavedKey] = useState(Boolean(sessionStorage.getItem("aprkb-api-key")));
   const [selected, setSelected] = useState<string>();
@@ -62,36 +90,40 @@ export function SlrImportPage() {
       return (data ?? []) as Profile[];
     },
   });
-
-  const profile = profiles.data?.find((p) => p.id === selected);
-
-  const taxonomyLevels = ["domain", "field", "subfield", "topic"] as const;
+  const profile = profiles.data?.find((item) => item.id === selected);
+  const taxonomyLevels = Object.keys(taxonFields) as (keyof typeof taxonFields)[];
   const taxonomyQueries = [
     useInfiniteQuery(taxonomyQuery(api, "domain")),
-    useInfiniteQuery(taxonomyQuery(api, "field", String(filters.domainId ?? "") || undefined, Boolean(filters.domainId))),
-    useInfiniteQuery(taxonomyQuery(api, "subfield", String(filters.fieldId ?? "") || undefined, Boolean(filters.fieldId))),
-    useInfiniteQuery(taxonomyQuery(api, "topic", String(filters.subfieldId ?? "") || undefined, Boolean(filters.subfieldId))),
+    useInfiniteQuery(
+      taxonomyQuery(api, "field", String(filters.domainId ?? "") || undefined, Boolean(filters.domainId)),
+    ),
+    useInfiniteQuery(
+      taxonomyQuery(api, "subfield", String(filters.fieldId ?? "") || undefined, Boolean(filters.fieldId)),
+    ),
+    useInfiniteQuery(
+      taxonomyQuery(api, "topic", String(filters.subfieldId ?? "") || undefined, Boolean(filters.subfieldId)),
+    ),
   ];
 
   const handleSaveKey = () => {
     sessionStorage.setItem("aprkb-api-key", key);
     setHasSavedKey(Boolean(key));
-    void qc.invalidateQueries();
+    void queryClient.invalidateQueries();
   };
 
   const handleClearKey = () => {
     sessionStorage.removeItem("aprkb-api-key");
     setKey("");
     setHasSavedKey(false);
-    void qc.invalidateQueries();
+    void queryClient.invalidateQueries();
   };
 
-  const handleSelectProfile = (p: Profile) => {
-    setSelected(p.id);
-    setName(p.name);
-    setFilters((p.filters as Record<string, string | boolean>) ?? { hasFullText: true });
-    setArtifactKinds((p.artifact_kinds as Kind[]) ?? [...kinds]);
-    setBatchLimit(p.batch_limit ?? 25);
+  const handleSelectProfile = (item: Profile) => {
+    setSelected(item.id);
+    setName(item.name);
+    setFilters((item.filters as Record<string, string | boolean>) ?? { hasFullText: true });
+    setArtifactKinds((item.artifact_kinds as Kind[]) ?? [...kinds]);
+    setBatchLimit(item.batch_limit ?? 25);
     setFieldErrors({});
     setSaveMessage("");
   };
@@ -109,7 +141,7 @@ export function SlrImportPage() {
   const save = useMutation({
     mutationFn: async () => {
       const filterBody: Record<string, unknown> = Object.fromEntries(
-        Object.entries(filters).filter(([, v]) => v !== ""),
+        Object.entries(filters).filter(([, value]) => value !== ""),
       );
       for (const yearKey of ["yearFrom", "yearTo"]) {
         if (typeof filterBody[yearKey] === "string") filterBody[yearKey] = Number(filterBody[yearKey]);
@@ -123,46 +155,48 @@ export function SlrImportPage() {
         artifact_kinds: artifactKinds,
         batch_limit: batchLimit,
       };
-      const res = selected
+      const response = selected
         ? await api.PATCH("/v1/admin/corpus/import-profiles/{profile_id}", {
             params: { path: { profile_id: selected } },
             body: { name, filters: filterBody, artifact_kinds: artifactKinds, batch_limit: batchLimit } as never,
           })
         : await api.POST("/v1/admin/corpus/import-profiles", { body: body as never });
-      return unwrap(res);
+      return unwrap(response);
     },
     onSuccess: (created) => {
       setFieldErrors({});
-      setSaveMessage("Lưu profile thành công.");
+      setSaveMessage("Import profile saved.");
       if (!selected && created?.id) setSelected(created.id);
-      void qc.invalidateQueries({ queryKey: ["slr-import-profiles"] });
+      void queryClient.invalidateQueries({ queryKey: ["slr-import-profiles"] });
     },
     onError: (error) => {
       const details = error instanceof ApiError ? error.body?.error?.details?.errors : undefined;
       const mapped: Record<string, string> = {};
       for (const item of details ?? []) mapped[String(item.loc.at(-1) ?? "form")] = item.msg;
       setFieldErrors(mapped);
-      setSaveMessage(details ? "Vui lòng kiểm tra các trường được đánh dấu." : error.message);
+      setSaveMessage(details ? "Check the fields marked below." : error.message);
     },
   });
 
   const start = useMutation({
     mutationFn: async () => {
-      return unwrap(await api.POST("/v1/admin/corpus/imports", { body: { profile_id: selected } }))?.job_id;
+      const response = await api.POST("/v1/admin/corpus/imports", { body: { profile_id: selected } });
+      return unwrap(response)?.job_id;
     },
     onSuccess: (id) => {
       setStartError("");
       if (id) setJobId(id);
     },
     onError: (error) => {
-      setStartError(error.message || "Không thể tạo job import. Vui lòng thử lại.");
+      setStartError(error.message || "The import job could not be started. Try again.");
     },
   });
 
   const job = useQuery({
     queryKey: ["slr-job", jobId],
-    enabled: !!jobId,
-    refetchInterval: (q) => (["done", "failed", "succeeded"].includes(q.state.data?.status ?? "") ? false : 2500),
+    enabled: Boolean(jobId),
+    refetchInterval: (query) =>
+      ["done", "failed", "succeeded"].includes(query.state.data?.status ?? "") ? false : 2500,
     queryFn: async () => {
       const data = unwrap(await api.GET("/v1/admin/jobs/{job_id}", { params: { path: { job_id: jobId! } } }));
       return data as { status: string; error?: string; result?: JobResult };
@@ -188,463 +222,610 @@ export function SlrImportPage() {
   const moveKind = (index: number, by: number) =>
     setArtifactKinds((old) => {
       const next = [...old];
-      const to = index + by;
-      if (to < 0 || to >= next.length) return old;
-      [next[index], next[to]] = [next[to], next[index]];
+      const target = index + by;
+      if (target < 0 || target >= next.length) return old;
+      [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
 
-  const pdfFirst = artifactKinds[0] === "SOURCE_PDF" && artifactKinds.some((k) => k.includes("MARKDOWN"));
+  const pdfFirst = artifactKinds[0] === "SOURCE_PDF" && artifactKinds.some((kind) => kind.includes("MARKDOWN"));
   const result = job.data?.result;
+  const jobStatus = job.data?.status ?? "queued";
+  const listed = result?.listed ?? 0;
+  const imported = result?.imported ?? 0;
+  const skipped =
+    (result?.skipped_license ?? 0) +
+    (result?.skipped_duplicate ?? 0) +
+    (result?.skipped_format ?? 0) +
+    (result?.skipped_invalid_content ?? 0);
 
   return (
-    <div className="stack">
+    <div className="flex flex-col gap-8">
       <PageHeader
-        code="CORPUS · SLR IMPORT"
-        title="Import từ SLR"
-        lead="Cấu hình bộ lọc bài báo từ SLR Repository và giám sát tiến trình nhập dữ liệu vào kho."
+        title="SLR import"
+        description="Configure source filters, save a profile, and monitor each import job to completion."
       />
-
-      {/* AP-RKB API Authentication Card */}
-      <Card
-        title="Xác thực AP-RKB API"
-        aside={hasSavedKey ? <Badge tone="ok">Đã lưu trong phiên</Badge> : <Badge tone="warn">Chưa có API key</Badge>}
+      <div
+        className={cn(
+          "mx-auto grid w-full max-w-[1152px]",
+          "grid-cols-[minmax(0,450px)_minmax(0,700px)] items-start gap-x-8 gap-y-8",
+        )}
       >
-        <div className="slr-apikey-bar">
-          <div className="field" style={{ flex: 1, minWidth: "260px", margin: 0 }}>
-            <input
-              type="password"
-              placeholder="Nhập X-API-Key để truy cập /v1/admin/corpus/*"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              autoComplete="off"
-            />
-          </div>
-          <button type="button" className="btn btn-primary" onClick={handleSaveKey}>
-            Lưu key phiên này
-          </button>
-          {hasSavedKey && (
-            <button type="button" className="btn btn-ghost" onClick={handleClearKey}>
-              Xóa key
-            </button>
-          )}
-        </div>
-        <p className="caption">
-          Key được lưu tạm trong <code>sessionStorage</code> và gửi qua header <code>X-API-Key</code> trong các yêu cầu quản trị.
-        </p>
-      </Card>
+        <SettingsLabel
+          title="API access"
+          description={
+            "The corpus endpoints use the key stored for this browser session. " + "It is never rendered back as text."
+          }
+        />
+        <Card className="shadow-none">
+          <CardHeader>
+            <CardTitle>Corpus API key</CardTitle>
+            <CardDescription>Use a curator or admin key for SLR profiles and import jobs.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Field>
+              <FieldLabel htmlFor="slr-api-key">X-API-Key</FieldLabel>
+              <Input
+                id="slr-api-key"
+                type="password"
+                value={key}
+                onChange={(event) => setKey(event.target.value)}
+                autoComplete="off"
+                placeholder="Paste a curator or admin key"
+              />
+              <FieldDescription>
+                {hasSavedKey ? "A key is stored for this session." : "No key is stored for this session."}
+              </FieldDescription>
+            </Field>
+          </CardContent>
+          <CardFooter className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={handleSaveKey} disabled={!key.trim()}>
+              Save session key
+            </Button>
+            {hasSavedKey ? (
+              <Button type="button" variant="ghost" onClick={handleClearKey}>
+                Clear key
+              </Button>
+            ) : null}
+          </CardFooter>
+        </Card>
 
-      <div className="slr-layout">
-        {/* Column 1: Profiles List */}
-        <aside className="slr-sidebar">
-          <Card
-            title="Import Profiles"
-            aside={
-              <button type="button" className="btn btn-ghost btn-sm" onClick={handleCreateNew}>
-                + Mới
-              </button>
-            }
-          >
+        <Separator className="col-span-2" />
+
+        <SettingsLabel
+          title="Import profile"
+          description={
+            "Choose a saved SLR profile or start a new one. " +
+            "The profile name and batch limit stay visible beside the editor."
+          }
+        />
+        <Card className="shadow-none">
+          <CardHeader className="flex-row items-center justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <CardTitle>Saved profiles</CardTitle>
+              <CardDescription>{profiles.data?.length ?? 0} profiles available</CardDescription>
+            </div>
+            <Button type="button" variant="outline" onClick={handleCreateNew}>
+              New profile
+            </Button>
+          </CardHeader>
+          <CardContent>
             {profiles.isPending ? (
-              <Loading />
+              <DataState state="loading" loadingLabel="Loading import profiles" />
             ) : profiles.isError ? (
-              <div className="notice notice-bad" role="alert">
-                Không tải được danh sách profile: {profiles.error.message}
-              </div>
+              <DataState
+                state="error"
+                errorTitle="Profiles unavailable"
+                errorDescription={profiles.error.message}
+                onRetry={() => void profiles.refetch()}
+              />
             ) : profiles.data.length === 0 ? (
-              <Empty>Chưa có profile nào. Bấm nút phía trên để tạo mới.</Empty>
+              <DataState
+                state="empty"
+                emptyTitle="No import profiles yet"
+                emptyDescription="Create a profile to save its source filters and artifact order."
+                emptyAction={
+                  <Button type="button" variant="outline" onClick={handleCreateNew}>
+                    Create profile
+                  </Button>
+                }
+              />
             ) : (
-              <ul className="entry-list">
-                {profiles.data?.map((p) => {
-                  const isSelected = p.id === selected;
-                  return (
-                    <li key={p.id}>
-                      <button
-                        type="button"
-                        className="entry"
-                        aria-current={isSelected}
-                        onClick={() => handleSelectProfile(p)}
-                      >
-                        <span className="entry-head">
-                          <strong>{p.name}</strong>
-                          <Badge tone={p.is_active ? "ok" : "neutral"}>
-                            {p.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                        </span>
-                        <span className="entry-meta">
-                          Batch: {p.batch_limit} bài · {p.artifact_kinds?.length ?? 0} định dạng
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="flex flex-col gap-2">
+                {profiles.data.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={cn(
+                      "flex w-full flex-col gap-1 rounded-[var(--radius)] border p-3 text-left",
+                      "transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-foreground",
+                      selected === item.id ? "border-foreground bg-muted" : "border-border",
+                    )}
+                    aria-pressed={selected === item.id}
+                    onClick={() => handleSelectProfile(item)}
+                  >
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="font-medium">{item.name}</span>
+                      <StatusBadge status={item.is_active ? "active" : "inactive"} />
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {item.batch_limit} articles per run · {item.artifact_kinds?.length ?? 0} formats
+                    </span>
+                  </button>
+                ))}
+              </div>
             )}
-            <button
-              type="button"
-              className="btn btn-ghost"
-              style={{ width: "100%", marginTop: 12 }}
-              onClick={handleCreateNew}
-            >
-              + Tạo profile mới
-            </button>
-          </Card>
-        </aside>
+          </CardContent>
+        </Card>
 
-        {/* Column 2: Profile Editor Form */}
+        <Separator className="col-span-2" />
+
+        <SettingsLabel
+          title={selected ? "Edit profile" : "Create profile"}
+          description={
+            "The profile defines which articles can enter the corpus and " +
+            "in which artifact formats they are stored."
+          }
+        />
         <form
-          className="stack"
-          onSubmit={(e) => {
-            e.preventDefault();
+          className="min-w-0"
+          onSubmit={(event) => {
+            event.preventDefault();
             save.mutate();
           }}
         >
-          <Card
-            title={selected ? `Sửa profile: ${name || "Chưa đặt tên"}` : "Tạo profile mới"}
-            aside={selected && <Badge tone="info">ID: {selected.slice(0, 8)}</Badge>}
-          >
-            <Field label="Tên profile" hint="Tên định danh phân biệt mục đích lấy bài báo" error={fieldErrors.name}>
-              <input
-                required
-                placeholder="VD: Deep Learning in Healthcare 2020-2025"
-                value={name}
-                aria-invalid={!!fieldErrors.name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </Field>
-
-            {/* Taxonomy Hierarchy */}
-            <div className="form-section-title">Phân loại SLR (Taxonomy)</div>
-            <p className="caption" style={{ marginTop: -4, marginBottom: 12 }}>
-              Chọn phân cấp từ Domain đến Topic. Các cấp con tự động lọc theo cấp cha đã chọn.
-            </p>
-
-            {taxonomyQueries.some((query) => query.isError) && (
-              <div className="notice notice-warn">Không tải được danh mục SLR. Hãy kiểm tra API key và thử lại.</div>
-            )}
-
-            <div className="taxonomy-grid">
-              {taxonomyLevels.map((level, index) => {
-                const keyName = taxonFields[level];
-                const query = taxonomyQueries[index];
-                const items = query.data?.pages.flatMap((page) => page.items) ?? [];
-                const parentKey = index > 0 ? taxonFields[taxonomyLevels[index - 1]] : null;
-                const isDisabled = index > 0 && !filters[parentKey!];
-                const levelLabels: Record<string, string> = {
-                  domain: "Domain (Lĩnh vực)",
-                  field: "Field (Ngành)",
-                  subfield: "Subfield (Chuyên ngành)",
-                  topic: "Topic (Chủ đề)",
-                };
-
-                return (
-                  <div key={level} className="taxonomy-level-box">
-                    <Field label={levelLabels[level] ?? level}>
-                      <select
-                        disabled={isDisabled}
-                        value={String(filters[keyName] ?? "")}
-                        onChange={(e) => setFilter(keyName, e.target.value)}
-                      >
-                        <option value="">-- Tất cả {level} --</option>
-                        {items.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.label}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    {query.hasNextPage && (
-                      <button
-                        type="button"
-                        className="btn btn-link small"
-                        style={{ alignSelf: "flex-start", marginTop: 2 }}
-                        disabled={query.isFetchingNextPage}
-                        onClick={() => void query.fetchNextPage()}
-                      >
-                        {query.isFetchingNextPage ? "Đang tải thêm..." : `+ Tải thêm ${level}`}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Filter Criteria */}
-            <div className="form-section-title">Tiêu chí lọc bài báo</div>
-
-            <div className="grid-2">
-              <Field label="Năm xuất bản từ" error={fieldErrors.yearFrom}>
-                <input
-                  type="number"
-                  placeholder="2020"
-                  aria-invalid={!!fieldErrors.yearFrom}
-                  value={String(filters.yearFrom ?? "")}
-                  onChange={(e) => setFilter("yearFrom", e.target.value)}
-                />
-              </Field>
-              <Field label="Năm xuất bản đến" error={fieldErrors.yearTo}>
-                <input
-                  type="number"
-                  placeholder="2026"
-                  aria-invalid={!!fieldErrors.yearTo}
-                  value={String(filters.yearTo ?? "")}
-                  onChange={(e) => setFilter("yearTo", e.target.value)}
-                />
-              </Field>
-            </div>
-
-            <div className="grid-2">
-              <Field label="Ngôn ngữ" hint="Mã ISO (VD: en, vi)" error={fieldErrors.language}>
-                <input
-                  placeholder="en"
-                  aria-invalid={!!fieldErrors.language}
-                  value={String(filters.language ?? "")}
-                  onChange={(e) => setFilter("language", e.target.value)}
-                />
-              </Field>
-              <Field label="Loại bài báo" hint="VD: journal-article" error={fieldErrors.publicationType}>
-                <input
-                  placeholder="journal-article"
-                  aria-invalid={!!fieldErrors.publicationType}
-                  value={String(filters.publicationType ?? "")}
-                  onChange={(e) => setFilter("publicationType", e.target.value)}
-                />
-              </Field>
-            </div>
-
-            <div className="grid-2" style={{ alignItems: "flex-start", marginTop: 8 }}>
-              <Field label="Số bài mỗi lượt (Batch limit)" hint="Giới hạn số bài trong một lần import (1 - 100)">
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={batchLimit}
-                  onChange={(e) => setBatchLimit(Number(e.target.value))}
-                />
-              </Field>
-              <div className="field">
-                <span className="field-label">Điều kiện toàn văn</span>
-                <label className="choice" style={{ margin: 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={filters.hasFullText !== false}
-                    onChange={(e) => setFilter("hasFullText", e.target.checked)}
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle>{selected ? `Edit ${name || "unnamed profile"}` : "New import profile"}</CardTitle>
+              {selected ? <CardDescription>ID {selected.slice(0, 8)}</CardDescription> : null}
+            </CardHeader>
+            <CardContent>
+              <FieldGroup>
+                <Field data-invalid={Boolean(fieldErrors.name)}>
+                  <FieldLabel htmlFor="profile-name">Profile name</FieldLabel>
+                  <Input
+                    id="profile-name"
+                    required
+                    value={name}
+                    placeholder="Methods review 2020–2026"
+                    aria-invalid={Boolean(fieldErrors.name)}
+                    onChange={(event) => setName(event.target.value)}
                   />
-                  <span>
-                    <strong>Chỉ bài có full text</strong>
-                    <span className="field-hint">Bỏ qua các bài chỉ có abstract hoặc metadata</span>
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {/* Artifact Kinds Priority */}
-            <div className="form-section-title">Thứ tự ưu tiên định dạng file (Artifact Kinds)</div>
-            <p className="caption" style={{ marginTop: -4, marginBottom: 12 }}>
-              Hệ thống thử tải theo thứ tự từ trên xuống dưới. Định dạng đứng đầu được ưu tiên nhất.
-            </p>
-
-            <div className="artifact-kinds-list">
-              {artifactKinds.map((kind, index) => (
-                <div key={kind} className="artifact-kind-item">
-                  <label className="artifact-kind-label">
-                    <input
-                      type="checkbox"
-                      checked={true}
-                      onChange={() => setArtifactKinds((old) => old.filter((k) => k !== kind))}
-                    />
-                    <Badge tone="info">#{index + 1}</Badge>
-                    <span>{kind.replaceAll("_", " ")}</span>
-                  </label>
-                  <div className="artifact-kind-actions">
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-icon"
-                      aria-label={`Đưa ${kind} lên`}
-                      disabled={index === 0}
-                      onClick={() => moveKind(index, -1)}
-                      title="Tăng độ ưu tiên"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-icon"
-                      aria-label={`Đưa ${kind} xuống`}
-                      disabled={index === artifactKinds.length - 1}
-                      onClick={() => moveKind(index, 1)}
-                      title="Giảm độ ưu tiên"
-                    >
-                      ↓
-                    </button>
+                  <FieldError>{fieldErrors.name}</FieldError>
+                </Field>
+                <FieldGroup>
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-base font-medium">SLR taxonomy</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Child selectors become available after their parent is chosen.
+                    </p>
                   </div>
-                </div>
-              ))}
-
-              {kinds
-                .filter((k) => !artifactKinds.includes(k))
-                .map((kind) => (
-                  <div key={kind} className="artifact-kind-item" style={{ opacity: 0.65 }}>
-                    <label className="artifact-kind-label">
-                      <input
-                        type="checkbox"
-                        checked={false}
-                        onChange={() => setArtifactKinds((old) => [...old, kind])}
+                  <div className="grid grid-cols-2 gap-4">
+                    {taxonomyLevels.map((level, index) => {
+                      const fieldName = taxonFields[level];
+                      const query = taxonomyQueries[index];
+                      const items = query.data?.pages.flatMap((page) => page.items) ?? [];
+                      const parent = index > 0 ? taxonFields[taxonomyLevels[index - 1]] : undefined;
+                      const disabled = Boolean(parent && !filters[parent]);
+                      return (
+                        <Field key={level} data-disabled={disabled}>
+                          <FieldLabel htmlFor={`taxonomy-${level}`}>{taxonomyLabels[level]}</FieldLabel>
+                          <Select
+                            value={String(filters[fieldName] ?? "") || "all"}
+                            onValueChange={(value) => setFilter(fieldName, value === "all" ? "" : value)}
+                            disabled={disabled}
+                          >
+                            <SelectTrigger id={`taxonomy-${level}`}>
+                              <SelectValue placeholder={`All ${level}s`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                <SelectItem value="all">All {level}s</SelectItem>
+                                {items.map((item) => (
+                                  <SelectItem key={item.id} value={item.id}>
+                                    {item.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                          {query.hasNextPage ? (
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="sm"
+                              className="w-fit px-0"
+                              disabled={query.isFetchingNextPage}
+                              onClick={() => void query.fetchNextPage()}
+                            >
+                              {query.isFetchingNextPage ? "Loading more…" : `Load more ${level}s`}
+                            </Button>
+                          ) : null}
+                        </Field>
+                      );
+                    })}
+                  </div>
+                </FieldGroup>
+                <FieldGroup>
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-base font-medium">Article filters</h2>
+                    <p className="text-sm text-muted-foreground">Keep the source query explicit for auditability.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field data-invalid={Boolean(fieldErrors.yearFrom)}>
+                      <FieldLabel htmlFor="year-from">Published from</FieldLabel>
+                      <Input
+                        id="year-from"
+                        type="number"
+                        placeholder="2020"
+                        value={String(filters.yearFrom ?? "")}
+                        aria-invalid={Boolean(fieldErrors.yearFrom)}
+                        onChange={(event) => setFilter("yearFrom", event.target.value)}
                       />
-                      <Badge tone="neutral">Đã tắt</Badge>
-                      <span>{kind.replaceAll("_", " ")}</span>
-                    </label>
+                      <FieldError>{fieldErrors.yearFrom}</FieldError>
+                    </Field>
+                    <Field data-invalid={Boolean(fieldErrors.yearTo)}>
+                      <FieldLabel htmlFor="year-to">Published to</FieldLabel>
+                      <Input
+                        id="year-to"
+                        type="number"
+                        placeholder="2026"
+                        value={String(filters.yearTo ?? "")}
+                        aria-invalid={Boolean(fieldErrors.yearTo)}
+                        onChange={(event) => setFilter("yearTo", event.target.value)}
+                      />
+                      <FieldError>{fieldErrors.yearTo}</FieldError>
+                    </Field>
+                    <Field data-invalid={Boolean(fieldErrors.language)}>
+                      <FieldLabel htmlFor="language">Language</FieldLabel>
+                      <Input
+                        id="language"
+                        placeholder="en"
+                        value={String(filters.language ?? "")}
+                        aria-invalid={Boolean(fieldErrors.language)}
+                        onChange={(event) => setFilter("language", event.target.value)}
+                      />
+                      <FieldDescription>ISO code, such as en or vi.</FieldDescription>
+                      <FieldError>{fieldErrors.language}</FieldError>
+                    </Field>
+                    <Field data-invalid={Boolean(fieldErrors.publicationType)}>
+                      <FieldLabel htmlFor="publication-type">Publication type</FieldLabel>
+                      <Input
+                        id="publication-type"
+                        placeholder="journal-article"
+                        value={String(filters.publicationType ?? "")}
+                        aria-invalid={Boolean(fieldErrors.publicationType)}
+                        onChange={(event) => setFilter("publicationType", event.target.value)}
+                      />
+                      <FieldError>{fieldErrors.publicationType}</FieldError>
+                    </Field>
                   </div>
-                ))}
-            </div>
-
-            {pdfFirst && (
-              <div className="notice notice-warn">
-                ⚠️ <strong>Lưu ý:</strong> PDF chưa được parse (parser đang là stub). Bài báo sẽ được lưu nhưng chưa thể mining được nội dung cho đến khi có parser. Nên ưu tiên Markdown trước.
-              </div>
-            )}
-
-            {saveMessage && (
-              <div className={`notice ${save.isError ? "notice-bad" : "notice-ok"}`} role="alert">
-                {saveMessage}
-              </div>
-            )}
-
-            <div className="card-actions" style={{ marginTop: 20 }}>
-              <button type="submit" className="btn btn-primary" disabled={save.isPending}>
-                {save.isPending ? "Đang lưu..." : selected ? "Cập nhật profile" : "Lưu profile mới"}
-              </button>
-              {selected && (
-                <button type="button" className="btn btn-ghost" onClick={handleCreateNew}>
-                  Hủy chọn / Tạo mới
-                </button>
-              )}
-            </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field>
+                      <FieldLabel htmlFor="batch-limit">Articles per run</FieldLabel>
+                      <Input
+                        id="batch-limit"
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={batchLimit}
+                        onChange={(event) => setBatchLimit(Number(event.target.value))}
+                      />
+                      <FieldDescription>Between 1 and 100 articles.</FieldDescription>
+                    </Field>
+                    <Field orientation="horizontal" className="items-start pt-7">
+                      <Checkbox
+                        id="has-full-text"
+                        checked={filters.hasFullText !== false}
+                        onCheckedChange={(checked) => setFilter("hasFullText", checked === true)}
+                      />
+                      <div className="flex flex-col gap-1">
+                        <FieldLabel htmlFor="has-full-text">Full text required</FieldLabel>
+                        <FieldDescription>Skip records that contain only abstracts or metadata.</FieldDescription>
+                      </div>
+                    </Field>
+                  </div>
+                </FieldGroup>
+                <FieldGroup>
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-base font-medium">Artifact order</h2>
+                    <p className="text-sm text-muted-foreground">The first enabled format has the highest priority.</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {artifactKinds.map((kind, index) => (
+                      <ArtifactKindRow
+                        key={kind}
+                        kind={kind}
+                        index={index}
+                        total={artifactKinds.length}
+                        enabled
+                        onToggle={() => setArtifactKinds((old) => old.filter((item) => item !== kind))}
+                        onMove={(by) => moveKind(index, by)}
+                      />
+                    ))}
+                    {kinds
+                      .filter((kind) => !artifactKinds.includes(kind))
+                      .map((kind) => (
+                        <ArtifactKindRow
+                          key={kind}
+                          kind={kind}
+                          index={0}
+                          total={1}
+                          enabled={false}
+                          onToggle={() => setArtifactKinds((old) => [...old, kind])}
+                          onMove={() => undefined}
+                        />
+                      ))}
+                  </div>
+                </FieldGroup>
+              </FieldGroup>
+              {pdfFirst ? (
+                <Alert className="mt-6">
+                  <AlertTitle>PDF parser limitation</AlertTitle>
+                  <AlertDescription>
+                    PDF records can be stored, but mining waits until a parser is available. Put Markdown first when
+                    possible.
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {saveMessage ? (
+                <p
+                  className={`mt-4 text-sm ${save.isError ? "text-destructive" : "text-muted-foreground"}`}
+                  role="status"
+                >
+                  {saveMessage}
+                </p>
+              ) : null}
+            </CardContent>
+            <CardFooter className="flex flex-wrap gap-2">
+              <Button type="submit" variant="outline" disabled={save.isPending || !name.trim()}>
+                {save.isPending ? "Saving profile…" : selected ? "Update profile" : "Save profile"}
+              </Button>
+              {selected ? (
+                <Button type="button" variant="ghost" onClick={handleCreateNew}>
+                  Create another
+                </Button>
+              ) : null}
+            </CardFooter>
           </Card>
         </form>
 
-        {/* Column 3: Execution & Job Progress Monitoring */}
-        <aside className="slr-monitor">
-          <Card
-            title="Tiến độ Import"
-            aside={job.data?.status && <StatusBadge status={job.data.status} />}
-          >
+        <Separator className="col-span-2" />
+
+        <SettingsLabel
+          title="Import progress"
+          description={
+            "A job reports its state, counts, and skip reasons in words and numbers. " +
+            "There is no indefinite spinner."
+          }
+        />
+        <Card className="shadow-none">
+          <CardHeader>
+            <CardTitle>Run an import</CardTitle>
+            <CardDescription>{selected ? (profile?.name ?? name) : "Choose a profile to begin."}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-5">
             {!selected ? (
-              <div className="notice notice-warn" style={{ marginTop: 0 }}>
-                Vui lòng chọn một profile từ danh sách hoặc tạo mới để bắt đầu lấy bài báo.
-              </div>
+              <DataState
+                state="empty"
+                emptyTitle="No profile selected"
+                emptyDescription="Choose a saved profile or create one above before starting an import."
+              />
             ) : (
               <>
-                <div className="profile-summary-box">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <strong>{profile?.name || name}</strong>
-                    <StatusBadge status={profile?.is_active ? "active" : "draft"} />
+                <div
+                  className={cn(
+                    "flex flex-wrap items-center justify-between gap-3",
+                    "rounded-[var(--radius)] bg-muted/50 p-4",
+                  )}
+                >
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium">{profile?.name ?? name}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {batchLimit} articles per run · {artifactKinds.length} enabled formats
+                    </span>
                   </div>
-                  <div className="small muted">
-                    Giới hạn: {batchLimit} bài/lượt · {artifactKinds.length} định dạng
-                  </div>
+                  <StatusBadge status={profile?.is_active ? "active" : "inactive"} />
                 </div>
-
-                <button
+                <Button
                   type="button"
-                  className="btn btn-primary"
-                  style={{ width: "100%", minHeight: 44 }}
-                  disabled={!selected || !profile?.is_active || start.isPending}
+                  className="w-fit"
+                  disabled={!profile?.is_active || start.isPending}
                   onClick={() => start.mutate()}
                 >
-                  {start.isPending ? "Đang tạo job..." : "Lấy bài báo"} <span className="arrow">→</span>
-                </button>
-
-                {!profile?.is_active && (
-                  <p className="caption" style={{ color: "var(--color-warning)" }}>
-                    Profile này đang ở trạng thái không kích hoạt (inactive).
-                  </p>
-                )}
-
-                {startError && (
-                  <div className="notice notice-bad" role="alert">
-                    {startError}
-                  </div>
-                )}
+                  {start.isPending ? "Starting import…" : "Start import"}
+                </Button>
+                {!profile?.is_active ? (
+                  <p className="text-sm text-muted-foreground">This profile is inactive and cannot start a job.</p>
+                ) : null}
               </>
             )}
-
-            {jobId && (
-              <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--color-border)" }}>
-                <div className="job-monitor-head">
-                  <span className="small muted">
-                    Job ID: <code>{jobId.slice(0, 8)}...</code>
-                  </span>
-                  <StatusBadge status={job.data?.status ?? "queued"} />
-                </div>
-
-                {job.data?.error && (
-                  <div className="notice notice-bad" role="alert">
-                    {job.data.error}
-                  </div>
-                )}
-
-                <div className="job-metrics-grid">
-                  <Stat label="Tìm thấy" value={result?.listed ?? 0} />
-                  <Stat label="Đã nhập" value={result?.imported ?? 0} tone="ok" />
-                </div>
-
-                <div style={{ marginTop: 12 }}>
-                  <span className="field-label" style={{ display: "block", marginBottom: 6 }}>
-                    Thống kê bỏ qua:
-                  </span>
-                  <table className="table">
-                    <tbody>
-                      <tr>
-                        <td className="small">Bản quyền (License)</td>
-                        <td className="num">{result?.skipped_license ?? 0}</td>
-                      </tr>
-                      <tr>
-                        <td className="small">Trùng lặp (Duplicate)</td>
-                        <td className="num">{result?.skipped_duplicate ?? 0}</td>
-                      </tr>
-                      <tr>
-                        <td className="small">Sai định dạng (Format)</td>
-                        <td className="num">{result?.skipped_format ?? 0}</td>
-                      </tr>
-                      <tr>
-                        <td className="small">Lỗi nội dung (Invalid)</td>
-                        <td className="num">{result?.skipped_invalid_content ?? 0}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {result?.listed !== undefined &&
-                  result.listed > 0 &&
-                  result.skipped_license !== undefined &&
-                  result.skipped_license / result.listed > 0.5 && (
-                    <div className="notice notice-warn">
-                      ⚠️ <strong>Cảnh báo bản quyền:</strong> Hơn 50% số bài bị bỏ qua do thiếu license cho phép mining. Xem chi tiết tại <code>policies/licenses.yaml</code>.
-                    </div>
-                  )}
-
-                {result?.batch_id && (result.imported ?? 0) > 0 && ["done", "succeeded"].includes(job.data?.status ?? "") && (
-                  <Link to="/extract" search={{ batch: result.batch_id }} className="btn btn-primary" style={{ width: "100%", marginTop: 14 }}>
-                    Trích xuất phrase từ batch này <span className="arrow">→</span>
-                  </Link>
-                )}
-
-                {result?.continuation_job_id && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    style={{ width: "100%", marginTop: 14 }}
-                    onClick={() => setJobId(result.continuation_job_id!)}
-                  >
-                    Theo dõi job tiếp theo <span className="arrow">→</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </Card>
-        </aside>
+            {startError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Import could not start</AlertTitle>
+                <AlertDescription>{startError}</AlertDescription>
+              </Alert>
+            ) : null}
+            {jobId ? (
+              <JobProgress
+                job={job}
+                jobStatus={jobStatus}
+                listed={listed}
+                imported={imported}
+                skipped={skipped}
+                result={result}
+                setJobId={setJobId}
+              />
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
+    </div>
+  );
+}
+
+function SettingsLabel({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="flex flex-col gap-2 pt-2">
+      <h2 className="text-base font-medium">{title}</h2>
+      <p className="max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+function ArtifactKindRow({
+  kind,
+  index,
+  total,
+  enabled,
+  onToggle,
+  onMove,
+}: {
+  kind: Kind;
+  index: number;
+  total: number;
+  enabled: boolean;
+  onToggle: () => void;
+  onMove: (by: number) => void;
+}) {
+  const label = kind.replaceAll("_", " ");
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[var(--radius)] border border-border p-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <Checkbox
+          checked={enabled}
+          onCheckedChange={onToggle}
+          aria-label={`${enabled ? "Disable" : "Enable"} ${label}`}
+        />
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="truncate font-medium">{label}</span>
+          <span className="text-sm text-muted-foreground">{enabled ? `Priority ${index + 1}` : "Disabled"}</span>
+        </div>
+      </div>
+      {enabled ? (
+        <div className="flex shrink-0 gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Move ${label} up`}
+            disabled={index === 0}
+            onClick={() => onMove(-1)}
+          >
+            ↑
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Move ${label} down`}
+            disabled={index === total - 1}
+            onClick={() => onMove(1)}
+          >
+            ↓
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function JobProgress({
+  job,
+  jobStatus,
+  listed,
+  imported,
+  skipped,
+  result,
+  setJobId,
+}: {
+  job: ReturnType<typeof useQuery<{ status: string; error?: string; result?: JobResult }>>;
+  jobStatus: string;
+  listed: number;
+  imported: number;
+  skipped: number;
+  result: JobResult | undefined;
+  setJobId: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-5 border-t border-border pt-5" aria-live="polite">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="font-medium">Import job</span>
+          <span className="text-xs text-muted-foreground">
+            {job.data ? "Job status received" : "Waiting for first status update"}
+          </span>
+        </div>
+        <StatusBadge status={jobStatus} />
+      </div>
+      <p className="text-sm text-muted-foreground">{jobLabels[jobStatus] ?? `Status: ${jobStatus}`}</p>
+      {job.isPending ? <DataState state="loading" loadingLabel="Checking import progress" /> : null}
+      {job.isError ? (
+        <DataState
+          state="error"
+          errorTitle="Progress unavailable"
+          errorDescription={job.error.message}
+          onRetry={() => void job.refetch()}
+        />
+      ) : null}
+      {job.data?.error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Import stopped</AlertTitle>
+          <AlertDescription>{job.data.error}</AlertDescription>
+        </Alert>
+      ) : null}
+      <div className="grid grid-cols-3 divide-x divide-border rounded-[var(--radius)] border border-border">
+        <Metric label="Listed" value={listed} />
+        <Metric label="Imported" value={imported} />
+        <Metric label="Skipped" value={skipped} />
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Skip reason</TableHead>
+            <TableHead numeric>Articles</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>Licence</TableCell>
+            <TableCell numeric>{result?.skipped_license ?? 0}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Duplicate</TableCell>
+            <TableCell numeric>{result?.skipped_duplicate ?? 0}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Format</TableCell>
+            <TableCell numeric>{result?.skipped_format ?? 0}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Invalid content</TableCell>
+            <TableCell numeric>{result?.skipped_invalid_content ?? 0}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      {result?.batch_id && imported > 0 && ["done", "succeeded"].includes(jobStatus) ? (
+        <Button asChild variant="outline" className="w-fit">
+          <Link to="/extract" search={{ batch: result.batch_id }}>
+            Review phrases from this batch
+          </Link>
+        </Button>
+      ) : null}
+      {result?.continuation_job_id ? (
+        <Button type="button" variant="outline" className="w-fit" onClick={() => setJobId(result.continuation_job_id!)}>
+          Follow continuation job
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex min-h-20 flex-col justify-center gap-1 px-4 py-3 first:pl-5 last:pr-5">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <strong className="text-2xl font-medium tabular-nums">{value}</strong>
     </div>
   );
 }

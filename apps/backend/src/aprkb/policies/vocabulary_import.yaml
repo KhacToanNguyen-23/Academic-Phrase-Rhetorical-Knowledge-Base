@@ -1,0 +1,99 @@
+version: 0.1.0
+max_upload_bytes: 10485760
+domain_codes: [HIS, EDU, SOC, LAW, HUM, PHIL, SCI, MED, BUS]
+domain_groups: [freq, ratio]
+sources:
+  all_words:
+    sheet: list
+    required_headers: [ID, band, status, word, Pos, COCA-All, COCA-Acad, ratio, disp, range]
+    columns:
+      rank: ID
+      band: band
+      status: status
+      word: word
+      pos: Pos
+      coca_all: COCA-All
+      coca_acad: COCA-Acad
+      ratio: ratio
+      disp: disp
+      range: range
+  acad_core:
+    sheet: list
+    required_headers: [ID, word, PoS, COCA-All, COCA-Acad, ratio, disp, range, HIS, EDU, SOC, LAW, HUM, PHIL, SCI, MED, BUS]
+    columns:
+      rank: ID
+      word: word
+      pos: PoS
+      coca_all: COCA-All
+      coca_acad: COCA-Acad
+      ratio: ratio
+      disp: disp
+      range: range
+      domain_HIS: HIS
+      domain_EDU: EDU
+      domain_SOC: SOC
+      domain_LAW: LAW
+      domain_HUM: HUM
+      domain_PHIL: PHIL
+      domain_SCI: SCI
+      domain_MED: MED
+      domain_BUS: BUS
+  families:
+    sheet: data
+    required_headers: [famRank, family, famFreq, word, PoS, freq, ratio, categ, domain]
+    columns:
+      rank: famRank
+      headword: family
+      family_freq: famFreq
+      word: word
+      pos: PoS
+      freq: freq
+      ratio: ratio
+      category: categ
+      domains: domain
+labels:
+  pos:
+    n: noun
+    v: verb
+    j: adjective
+    r: adverb
+    i: preposition
+    c: conjunction
+    d: determiner
+    p: pronoun
+    m: number
+    a: article
+    u: unknown # TODO(owner): confirm source PoS meaning.
+    x: unknown # TODO(owner): confirm source PoS meaning.
+    t: unknown # TODO(owner): confirm source PoS meaning.
+    e: unknown # TODO(owner): confirm source PoS meaning.
+  status:
+    y: Core academic
+    r: Technical / domain
+    x: General
+    c: Function word # TODO(owner): confirm source status meaning.
+    y1: Core (variant) # TODO(owner): confirm source status meaning.
+  category:
+    y: core
+    r: technical
+    x: family member
+  domains:
+    HIS: History
+    EDU: Education
+    SOC: Social science
+    LAW: Law/Political science
+    HUM: Humanities
+    PHIL: Philosophy/Religion
+    SCI: Science/Technology
+    MED: Medicine/Health
+    BUS: Business/Finance
+family_domain_aliases:
+  Rel: PHIL # TODO(owner): confirm Rel mapping.
+  Fin: BUS # TODO(owner): confirm Fin mapping.
+  Hum: HUM
+  Edu: EDU
+  Med: MED
+  Sci: SCI
+  Law: LAW
+  His: HIS
+  Soc: SOC

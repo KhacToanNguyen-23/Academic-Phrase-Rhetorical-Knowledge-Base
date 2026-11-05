@@ -1,0 +1,16 @@
+{
+    "counts":  {
+                   "patterns":  6,
+                   "versions":  6
+               },
+    "created_at":  "2026-11-03T00:00:00Z",
+    "files":  [
+                  {
+                      "name":  "patterns.json",
+                      "sha256":  "7bcecb3d0978baa7709a6771433d9d6e0cac7c6dc3264550ff6439823940c398"
+                  }
+              ],
+    "pack_version":  "0.1",
+    "producer":  "aprkb-export",
+    "taxonomy_version":  "0.1.0"
+}

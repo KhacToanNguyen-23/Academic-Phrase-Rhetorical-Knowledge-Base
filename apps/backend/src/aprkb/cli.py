@@ -18,6 +18,112 @@ from aprkb.modules.audit.service import record_event
 from aprkb.modules.identity.service import bootstrap_admin
 
 
+def _print_pack_report(report: object, *, output_format: str = "text") -> bool:
+    from aprkb.modules.pack.validator import ValidationReport
+
+    if not isinstance(report, ValidationReport):
+        raise TypeError("Expected a pack validation report")
+    if output_format == "json":
+        print(json.dumps(report.as_dict(), ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        for item in report.findings:
+            print(f"{item.severity.upper()} {item.code} {item.path}: {item.message}")
+        print(f"Pack: {'invalid' if report.has_errors else 'valid'}")
+    return not report.has_errors
+
+
+def _validate_pack(*, path: Path, output_format: str, reference_dir: Path | None) -> None:
+    from aprkb.modules.pack.validator import load_references, validate_pack
+
+    try:
+        refs = load_references(reference_dir) if reference_dir else None
+        report = validate_pack(path, refs)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        print(f"Unreadable pack or references: {error}", file=sys.stderr)
+        raise SystemExit(2) from error
+    if not _print_pack_report(report, output_format=output_format):
+        raise SystemExit(1)
+
+
+async def _import_pack(*, path: Path, dry_run: bool) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - register ORM mappings
+    from aprkb.modules.pack.service import import_pack
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                report, counts = await import_pack(session, path, dry_run=dry_run)
+                if report.has_errors:
+                    await session.rollback()
+                    _print_pack_report(report)
+                    raise SystemExit(1)
+                if dry_run:
+                    await session.rollback()
+                else:
+                    await session.commit()
+            except (OSError, ValueError, json.JSONDecodeError) as error:
+                await session.rollback()
+                print(f"Import failed: {error}", file=sys.stderr)
+                raise SystemExit(2) from error
+        verb = "Would import" if dry_run else "Imported"
+        print(f"{verb} {counts['patterns']} patterns, {counts['versions']} versions.")
+        _print_pack_report(report)
+    finally:
+        await engine.dispose()
+
+
+async def _export_pack(*, out: Path, only_approved: bool) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - register ORM mappings
+    from aprkb.modules.pack.service import export_pack
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            counts = await export_pack(session, out, only_approved=only_approved)
+        print(f"Exported {counts['patterns']} patterns, {counts['versions']} versions to {out}.")
+        for excluded in counts["excluded"]:
+            for finding in excluded["findings"]:
+                print(
+                    f"Excluded {excluded['pattern_id']}: {finding['code']} {finding['path']}",
+                    file=sys.stderr,
+                )
+        if counts["excluded"]:
+            print(f"Excluded {len(counts['excluded'])} approved patterns.", file=sys.stderr)
+    finally:
+        await engine.dispose()
+
+
+async def _init_reference() -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - register ORM mappings
+    from aprkb.seeds.load import init_reference
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            await init_reference(session)
+            await session.commit()
+        print("Initialized reference data without sample patterns or DEV-UNVERIFIED.")
+    finally:
+        await engine.dispose()
+
+
+def _export_pack_schema() -> None:
+    from aprkb.modules.pack.models import PackSchema
+
+    output = Path(__file__).resolve().parents[4] / "packages/contracts/data-pack/pack.schema.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(PackSchema.model_json_schema(), ensure_ascii=False, indent=2, sort_keys=True)
+        + "\n",
+        encoding="utf-8",
+    )
+    print(f"Wrote {output}")
+
+
 async def _bootstrap_key() -> None:
     engine = create_async_engine(settings.database_url, pool_pre_ping=True)
     factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -42,6 +148,34 @@ async def _bootstrap_key() -> None:
         if plaintext is None:
             raise RuntimeError("Admin bootstrap did not produce an API key")
         print(f"Admin API key (shown once): {plaintext}")
+    finally:
+        await engine.dispose()
+
+
+async def _import_vocabulary(*, files: list[Path]) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.vocabulary.service import import_workbook
+    from aprkb.policies.loader import load_policy_bundle
+
+    policy = load_policy_bundle().vocabulary_import
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        for file_path in files:
+            content = file_path.read_bytes()
+            async with factory() as session:
+                result = await import_workbook(
+                    session,
+                    content=content,
+                    filename=file_path.name,
+                    actor=None,
+                    request_id="cli-vocab-import",
+                    policy=policy,
+                )
+            print(
+                f"{file_path.name}: {result.source_kind}, rows={result.rows_read}, "
+                f"inserted={result.inserted}, updated={result.updated}, skipped={result.skipped}"
+            )
     finally:
         await engine.dispose()
 
@@ -444,7 +578,21 @@ def _export_openapi(*, check: bool) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(prog="aprkb")
     commands = parser.add_subparsers(dest="command", required=True)
+    validate = commands.add_parser("validate-pack")
+    validate.add_argument("path", type=Path)
+    validate.add_argument("--format", choices=("text", "json"), default="text")
+    validate.add_argument("--reference-dir", type=Path)
+    importer = commands.add_parser("import-pack")
+    importer.add_argument("path", type=Path)
+    importer.add_argument("--dry-run", action="store_true")
+    exporter = commands.add_parser("export-pack")
+    exporter.add_argument("--out", type=Path, required=True)
+    exporter.add_argument("--only-approved", action="store_true")
+    commands.add_parser("export-pack-schema")
+    commands.add_parser("init-reference")
     commands.add_parser("bootstrap-key")
+    vocabulary_import = commands.add_parser("vocab-import")
+    vocabulary_import.add_argument("--file", type=Path, action="append", required=True)
     openapi = commands.add_parser("export-openapi")
     openapi.add_argument("--check", action="store_true")
     reingest = commands.add_parser(
@@ -489,8 +637,20 @@ def main() -> None:
     )
     mapping_import.add_argument("--file", type=Path, required=True)
     args = parser.parse_args()
-    if args.command == "bootstrap-key":
+    if args.command == "validate-pack":
+        _validate_pack(path=args.path, output_format=args.format, reference_dir=args.reference_dir)
+    elif args.command == "import-pack":
+        asyncio.run(_import_pack(path=args.path, dry_run=args.dry_run))
+    elif args.command == "export-pack":
+        asyncio.run(_export_pack(out=args.out, only_approved=args.only_approved))
+    elif args.command == "export-pack-schema":
+        _export_pack_schema()
+    elif args.command == "init-reference":
+        asyncio.run(_init_reference())
+    elif args.command == "bootstrap-key":
         asyncio.run(_bootstrap_key())
+    elif args.command == "vocab-import":
+        asyncio.run(_import_vocabulary(files=args.file))
     elif args.command == "export-openapi":
         _export_openapi(check=args.check)
     elif args.command == "reingest":

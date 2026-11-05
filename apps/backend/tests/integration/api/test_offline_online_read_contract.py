@@ -15,7 +15,7 @@ from aprkb.core.config import settings
 from aprkb.core.deps import get_db_session
 from aprkb.modules.identity.service import create_api_key
 from aprkb.modules.mining.models import Candidate
-from aprkb.modules.taxonomy.models import Intent
+from aprkb.modules.patterns.repository import get_intent
 from aprkb.seeds.load import run_seed
 from aprkb.worker.runner import run_once
 from tests.seed_data import seed_legacy_pattern_fixtures
@@ -89,7 +89,7 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
 
     async with read_contract_sessions() as session:
         candidates = list(await session.scalars(select(Candidate)))
-        intent = (await session.scalars(select(Intent))).first()
+        intent = await get_intent(session, "METHODS_DESCRIBING_PREVIOUSLY_USED_METHODS")
         assert candidates and intent is not None
 
     label_payload = {

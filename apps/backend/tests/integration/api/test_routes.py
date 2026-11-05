@@ -33,6 +33,7 @@ from aprkb.modules.patterns.models import (
     ReviewDecision,
     UsageConstraint,
 )
+from aprkb.modules.patterns.repository import get_intent
 from aprkb.modules.recommendation.models import Feedback, RecommendationLog
 from aprkb.modules.taxonomy.models import Intent
 from aprkb.policies.loader import load_policy_bundle
@@ -703,7 +704,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
     async with session_factory() as session:
         await run_seed(session)
         await seed_legacy_pattern_fixtures(session)
-        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        intent = await get_intent(session, "INTRO_GAP_INDICATE")
         assert intent is not None
         unprovenanced = PhrasePattern(intent_id=intent.id, status="approved")
         session.add(unprovenanced)
@@ -839,7 +840,7 @@ async def test_proprietary_recommendation_is_flagged_for_internal_use(
     async with session_factory() as session:
         await run_seed(session)
         await seed_legacy_pattern_fixtures(session)
-        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        intent = await get_intent(session, "INTRO_GAP_INDICATE")
         license_row = await session.scalar(select(License).where(License.code == "PROPRIETARY"))
         assert intent is not None and license_row is not None
         pattern = PhrasePattern(intent_id=intent.id, status="approved")

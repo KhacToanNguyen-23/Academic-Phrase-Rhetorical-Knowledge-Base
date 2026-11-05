@@ -208,7 +208,7 @@ async def test_genre_section_relationship_rejects_mismatch_and_keeps_empty_resul
 async def test_recommendations_default_to_approved_patterns_and_count_evidence_hidden(
     api_client: AsyncClient, session_factory: async_sessionmaker
 ) -> None:
-    await run_seed_in_session(session_factory)
+    await run_seed_with_pattern_fixtures_in_session(session_factory)
     _, key = await create_key(session_factory, "client", "writer table client")
     headers = {"X-API-Key": key}
 
@@ -380,7 +380,7 @@ async def test_patterns_list_detail_history_create_and_append_version(api_client
 async def test_client_pattern_reads_hide_drafts_and_restricted_provenance(
     api_client, session_factory
 ):
-    await run_seed_in_session(session_factory)
+    await run_seed_with_pattern_fixtures_in_session(session_factory)
     async with session_factory() as session:
         draft = await session.scalar(select(PhrasePattern).where(PhrasePattern.status == "draft"))
         restricted = await session.scalar(
@@ -1517,6 +1517,14 @@ async def test_concurrent_approvals_create_at_most_one_promotion_after_two_round
 
 
 async def run_seed_in_session(session_factory: async_sessionmaker) -> None:
+    async with session_factory() as session:
+        await run_seed(session)
+        await session.commit()
+
+
+async def run_seed_with_pattern_fixtures_in_session(
+    session_factory: async_sessionmaker,
+) -> None:
     async with session_factory() as session:
         await run_seed(session)
         await seed_legacy_pattern_fixtures(session)

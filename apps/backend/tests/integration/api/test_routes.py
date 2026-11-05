@@ -891,10 +891,14 @@ async def test_proprietary_recommendation_is_flagged_for_internal_use(
 
     assert response.status_code == 200
     item = next(
-        item
-        for item in response.json()["items"]
-        if item["canonical_frame"] == "The proprietary fixture suggests {topic}."
+        (
+            item
+            for item in response.json()["items"]
+            if item["canonical_frame"] == "The proprietary fixture suggests {topic}."
+        ),
+        None,
     )
+    assert item is not None, response.json()
     assert item["license_code"] == "PROPRIETARY"
     assert item["license_flag"] is True
 

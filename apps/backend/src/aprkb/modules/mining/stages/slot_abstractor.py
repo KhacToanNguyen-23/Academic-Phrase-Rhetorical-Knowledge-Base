@@ -42,14 +42,22 @@ class _Located:
     subject: tuple[int, int]
     clause: tuple[int, int]
     modifiers: str = ""
+    lead_in: str = ""
+    modality: str | None = None
 
 
 class SlotAbstractor(MiningStage):
     name = "slot_abstractor"
     requirement_id = "FR-06.2"
 
-    def __init__(self, verbs: ReportingVerbsPolicy, policy: SlotAbstractionPolicy) -> None:
+    def __init__(
+        self,
+        verbs: ReportingVerbsPolicy,
+        policy: SlotAbstractionPolicy,
+        lead_ins: tuple[str, ...] | list[str] = (),
+    ) -> None:
         self._policy = policy
+        self._lead_ins = {value.strip().casefold() for value in lead_ins}
         self._lemma_to_class = {
             lemma.strip().casefold(): class_name
             for class_name, forms in verbs.classes.items()
@@ -122,7 +130,7 @@ class SlotAbstractor(MiningStage):
             return "clause_too_short"
         determiner = _determiner_match(
             text[subject_start:subject_end],
-            self._policy.own_determiners + self._policy.prior_determiners,
+            self._policy.own_determiners + self._policy.prior_determiners + ["this", "these"],
         )
         if determiner is not None:
             noun_start, noun_end = _trim_span(text, subject_start + determiner.end(), subject_end)
@@ -170,7 +178,7 @@ class SlotAbstractor(MiningStage):
             else subtree_span(tokens, children, subject.i)
         )
 
-        that_clause: tuple[int, int, int] | None = None
+        that_clause: tuple[int, int, int, int] | None = None
         for child_index in children[root.i]:
             marker = next(
                 (
@@ -182,13 +190,25 @@ class SlotAbstractor(MiningStage):
             )
             if marker is not None:
                 clause_start, clause_end = subtree_span(tokens, children, child_index)
-                that_clause = (marker.end, clause_end, child_index)
+                that_clause = (marker.end, clause_end, child_index, marker.i)
                 break
         if that_clause is None:
             return "no_that"
-        clause_start, clause_end, _ = that_clause
+        clause_start, clause_end, _, marker_index = that_clause
         subject_start, subject_end = _trim_span(text, subject_start, subject_end)
         clause_start, clause_end = _trim_span(text, clause_start, clause_end)
+
+        lead_in = text[:subject_start].strip()
+        if lead_in and lead_in.removesuffix(",").strip().casefold() not in self._lead_ins:
+            return "unlisted_lead_in"
+        marker = tokens[marker_index]
+        if not re.fullmatch(r"\s*", text[root.end : marker.start]):
+            return "unmatched_content"
+
+        subject_start, subject_end = _extend_following_citation(text, subject_start, subject_end)
+        clause_start, clause_end = _extend_following_citation(text, clause_start, clause_end)
+        if not re.fullmatch(r"\s*[.!?]*\s*", text[clause_end:]):
+            return "unmatched_content"
 
         group_indices = {
             token.i
@@ -196,6 +216,15 @@ class SlotAbstractor(MiningStage):
             if subject_end <= token.start < token.end <= root.start
             and token.dep in {"aux", "auxpass", "neg", "advmod"}
         }
+        for index in group_indices:
+            token = tokens[index]
+            if token.dep == "advmod" and token.lemma.casefold() not in self._modifiers:
+                return "unlisted_modifier"
+        gap_tokens = [
+            token for token in tokens if subject_end <= token.start < token.end <= root.start
+        ]
+        if any(token.dep not in {"aux", "auxpass", "neg", "advmod"} for token in gap_tokens):
+            return "unmatched_content"
         modifiers = " ".join(
             text[tokens[index].start : tokens[index].end] for index in sorted(group_indices)
         )
@@ -210,18 +239,28 @@ class SlotAbstractor(MiningStage):
             return "clause_too_short"
         determiner = _determiner_match(
             text[subject_start:subject_end],
-            self._policy.own_determiners + self._policy.prior_determiners,
+            self._policy.own_determiners + self._policy.prior_determiners + ["this", "these"],
         )
         if determiner is not None:
             noun_start, noun_end = _trim_span(text, subject_start + determiner.end(), subject_end)
             if noun_start == noun_end:
                 return "empty_noun_phrase"
+        modality = next(
+            (
+                text[tokens[index].start : tokens[index].end]
+                for index in sorted(group_indices)
+                if tokens[index].tag == "MD"
+            ),
+            None,
+        )
         return _Located(
             tense,
             text[root.start : root.end],
             (subject_start, subject_end),
             (clause_start, clause_end),
             modifiers,
+            lead_in,
+            modality,
         )
 
     @staticmethod
@@ -230,9 +269,17 @@ class SlotAbstractor(MiningStage):
     ) -> Tense:
         group = [tokens[index] for index in sorted(group_indices)] + [tokens[root_index]]
         lemmas = {token.lemma.casefold() for token in group}
-        if "may" in lemmas or lemmas & {"might", "could", "can", "should", "would", "must"}:
-            return Tense.PRESENT
-        if lemmas & {"has", "have"}:
+        modals = [token for token in group if token.tag == "MD"]
+        if modals:
+            return (
+                Tense.PRESENT_PERFECT
+                if any(token.lemma.casefold() == "have" for token in group)
+                else Tense.PRESENT
+            )
+        have_aux = [token for token in group if token.lemma.casefold() == "have"]
+        if any(token.tag == "VBD" for token in have_aux):
+            return Tense.PAST_PERFECT
+        if any(token.tag in {"VBZ", "VBP"} for token in have_aux):
             return Tense.PRESENT_PERFECT
         finite = [token for token in group if token.tag == "MD" or "VerbForm=Fin" in token.morph]
         if "did" in lemmas or any("Tense=Past" in token.morph for token in finite):
@@ -258,32 +305,24 @@ class SlotAbstractor(MiningStage):
         clause_start, clause_end = located.clause
         subject = item.text[subject_start:subject_end]
 
-        determiner = _determiner_match(
-            item.text[subject_start:subject_end],
-            self._policy.own_determiners + self._policy.prior_determiners,
+        ownership, determiner, determiner_type = _ownership_decision(
+            subject, item.previous_text, self._policy, item.section_code
         )
         has_determiner_slot = determiner is not None
-        determiner_text = ""
         spans: dict[str, tuple[int, int]] = {}
         slot_defs: dict[str, SlotDefinition] = {}
         if has_determiner_slot:
             if determiner is None:
                 return None
             det_span = (subject_start, subject_start + determiner.end())
-            determiner_text = item.text[slice(*det_span)].casefold()
             noun_start, noun_end = _trim_span(item.text, det_span[1], subject_end)
             if noun_start == noun_end:
                 return None
             spans["X"] = det_span
             spans["Y"] = (noun_start, noun_end)
             spans["Z"] = (clause_start, clause_end)
-            det_type = (
-                SlotType.DETERMINER_OWN
-                if determiner_text in self._policy.own_determiners
-                else SlotType.DETERMINER_PRIOR
-            )
             slot_defs = {
-                "X": _definition(det_type, item.text[slice(*det_span)]),
+                "X": _definition(determiner_type, item.text[slice(*det_span)]),
                 "Y": _definition(SlotType.NOUN_PHRASE, item.text[noun_start:noun_end]),
                 "Z": _definition(SlotType.CLAUSE, item.text[clause_start:clause_end]),
             }
@@ -295,18 +334,16 @@ class SlotAbstractor(MiningStage):
                 "Y": _definition(SlotType.CLAUSE, item.text[clause_start:clause_end]),
             }
 
-        ownership = self._ownership(item, determiner_text)
         verb = f"{located.modifiers} {surface}" if located.modifiers else surface
-        frame_location = self._locate_regex(item.text) if item.tokens is not None else located
-        if isinstance(frame_location, _Located):
+        if item.tokens is not None:
             frame_verb = (
-                f"{frame_location.modifiers} {frame_location.surface}"
-                if frame_location.modifiers
-                else frame_location.surface
+                f"{located.modifiers} {located.surface}" if located.modifiers else located.surface
             )
         else:
             frame_verb = verb
         frame = f"[X] [Y] {frame_verb} that [Z]" if "Z" in spans else f"[X] {frame_verb} that [Y]"
+        if item.tokens is not None and located.lead_in:
+            frame = f"{located.lead_in} {frame}"
         trailing = re.search(r"[.!?]+\s*$", item.text)
         if trailing is not None:
             frame += trailing.group(0).strip()
@@ -329,6 +366,7 @@ class SlotAbstractor(MiningStage):
             slots=slot_defs,
             occurrences=[occurrence],
             tense=tense,
+            modality=(located.modality if item.tokens is not None else _modality(verb)),
             ownership=ownership,
             cluster_key=None,
             confidence=None,
@@ -343,22 +381,6 @@ class SlotAbstractor(MiningStage):
                 return match.start(), match.end(), tense, class_name, match.group(0)
         return None
 
-    def _ownership(self, item: MiningItem, determiner: str) -> Ownership:
-        if determiner in self._policy.prior_determiners:
-            return Ownership.PRIOR
-        if determiner in self._policy.own_determiners:
-            if item.previous_text and (
-                _CITATION_PATTERN.search(item.previous_text)
-                or re.search(
-                    r"\b(?:prior|previous|earlier|other)\s+(?:study|studies|research|work|author)s?\b|\b(?:prior|previous|earlier)\s+research\b",
-                    item.previous_text,
-                    re.I,
-                )
-            ):
-                return Ownership.UNCLEAR
-            return Ownership.OWN
-        return Ownership.UNCLEAR
-
 
 def _trim_span(text: str, start: int, end: int) -> tuple[int, int]:
     while start < end and text[start].isspace():
@@ -369,6 +391,79 @@ def _trim_span(text: str, start: int, end: int) -> tuple[int, int]:
 
 
 _CITATION_PATTERN = re.compile(r"\[(?:\d+[\s,;–-]*)+\]|\([^()]*\b(?:18|19|20)\d{2}\b[^()]*\)")
+
+
+def infer_ownership(
+    subject: str,
+    previous_text: str | None,
+    policy: SlotAbstractionPolicy | None,
+    section_code: str | None = None,
+) -> Ownership:
+    """Apply the same conservative ownership rule to reporting and construction frames."""
+    return _ownership_decision(subject, previous_text, policy, section_code)[0]
+
+
+def _ownership_decision(
+    subject: str,
+    previous_text: str | None,
+    policy: SlotAbstractionPolicy | None,
+    section_code: str | None,
+) -> tuple[Ownership, re.Match[str] | None, SlotType]:
+    normalized = subject.strip().casefold()
+    if re.search(r"\bet\s+al\b", normalized) or _CITATION_PATTERN.search(subject):
+        prefix = _determiner_match(
+            normalized,
+            (policy.own_determiners + policy.prior_determiners + ["this", "these"])
+            if policy is not None
+            else [],
+        )
+        return Ownership.PRIOR, prefix, SlotType.DETERMINER_PRIOR
+    if re.match(r"we\b", normalized):
+        return Ownership.OWN, None, SlotType.DETERMINER_OWN
+    if policy is None:
+        return Ownership.UNCLEAR, None, SlotType.NOUN_PHRASE
+    determiner = _determiner_match(
+        normalized, policy.prior_determiners + policy.own_determiners + ["this", "these"]
+    )
+    if determiner is None:
+        return Ownership.UNCLEAR, None, SlotType.NOUN_PHRASE
+    det_text = normalized[: determiner.end()].strip()
+    head = re.match(r"\s*([a-z]+)", normalized[determiner.end() :])
+    head_noun = head.group(1) if head else ""
+    pair = f"{det_text} {head_noun}".strip()
+    if det_text in policy.prior_determiners or pair in policy.prior_head_pairs:
+        return Ownership.PRIOR, determiner, SlotType.DETERMINER_PRIOR
+    if det_text in {"our", "the present", "the current"}:
+        return Ownership.OWN, determiner, SlotType.DETERMINER_OWN
+    if det_text == "this" and head_noun in policy.own_head_nouns:
+        return Ownership.OWN, determiner, SlotType.DETERMINER_OWN
+    if pair not in policy.contextual_own_pairs:
+        return Ownership.UNCLEAR, None, SlotType.NOUN_PHRASE
+    blocked = bool(
+        previous_text
+        and (
+            _CITATION_PATTERN.search(previous_text)
+            or re.search(
+                r"\b(?:prior|previous|earlier|other)\s+(?:study|studies|research|work|author)s?\b|\b(?:prior|previous|earlier)\s+research\b",
+                previous_text,
+                re.I,
+            )
+        )
+    )
+    blocked = blocked or section_code in {"INTRO", "RELATED_WORK"}
+    if not blocked:
+        return Ownership.OWN, determiner, SlotType.DETERMINER_OWN
+    return Ownership.UNCLEAR, None, SlotType.NOUN_PHRASE
+
+
+def _modality(verb_group: str) -> str | None:
+    match = re.search(r"\b(may|might|could|can|should|would|must)\b", verb_group, re.I)
+    return match.group(0) if match is not None else None
+
+
+def _extend_following_citation(text: str, start: int, end: int) -> tuple[int, int]:
+    match = re.match(r"\s*" + _CITATION_PATTERN.pattern, text[end:])
+    return (start, end + match.end()) if match is not None else (start, end)
 
 
 def _determiner_match(subject: str, cues: list[str]) -> re.Match[str] | None:

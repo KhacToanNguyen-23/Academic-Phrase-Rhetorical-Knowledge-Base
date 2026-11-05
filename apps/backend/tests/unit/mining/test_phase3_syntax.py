@@ -48,7 +48,7 @@ def _syntax_item(text: str) -> MiningItem:
 
 def _abstractor() -> SlotAbstractor:
     policy = load_policy_bundle()
-    return SlotAbstractor(policy.reporting_verbs, policy.slot_abstraction)
+    return SlotAbstractor(policy.reporting_verbs, policy.slot_abstraction, policy.lead_ins.lead_ins)
 
 
 @pytest.mark.parametrize(
@@ -73,16 +73,6 @@ def _abstractor() -> SlotAbstractor:
             "Previous studies have reported that larger batches reduce variance.",
             "[X] [Y] have reported that [Z].",
             "present_perfect",
-        ),
-        (
-            "It is widely argued that transfer learning reduces annotation cost.",
-            "[X] argued that [Y].",
-            "present",
-        ),
-        (
-            "Our results surprisingly suggest that the method is robust to noise.",
-            "[X] [Y] suggest that [Z].",
-            "present",
         ),
     ],
 )
@@ -158,6 +148,7 @@ def test_invalid_tokens_fall_back_to_regex_and_are_counted() -> None:
     ):
         result = abstractor._extract(_item(text, tokens=invalid))
         assert result is not None
+        # Tier B ownership now splits the listed determiner and head noun on regex fallback too.
         assert result.text == "[X] [Y] suggest that [Z]."
 
     assert abstractor.syntax_fallback_reasons == {"syntax_invalid_tokens": 3}
@@ -199,6 +190,148 @@ def test_aux_attached_that_and_subject_are_normalized_to_clause_head() -> None:
     assert text[start:end] == "the baseline was undertrained"
 
 
+@pytest.mark.parametrize(
+    ("text", "frame"),
+    [
+        (
+            "In this paper, we show that the baseline improves across repeated runs.",
+            "In this paper, [X] show that [Y].",
+        ),
+        (
+            "However, the results indicate that the baseline improves across repeated runs.",
+            "However, [X] indicate that [Y].",
+        ),
+        (
+            "Moreover, the results show that the baseline improves across repeated runs.",
+            "Moreover, [X] show that [Y].",
+        ),
+        (
+            "Furthermore, the results show that the baseline improves across repeated runs.",
+            "Furthermore, [X] show that [Y].",
+        ),
+        (
+            "In addition, the results show that the baseline improves across repeated runs.",
+            "In addition, [X] show that [Y].",
+        ),
+        (
+            "Overall, the results show that the baseline improves across repeated runs.",
+            "Overall, [X] show that [Y].",
+        ),
+        (
+            "In particular, the results show that the baseline improves across repeated runs.",
+            "In particular, [X] show that [Y].",
+        ),
+    ],
+)
+def test_owner_approved_lead_ins_are_retained_literally(text: str, frame: str) -> None:
+    [result] = MiningPipeline(stages=build_stages(policy_bundle=load_policy_bundle())).process(
+        [_syntax_item(text)]
+    )
+
+    assert result.text == frame
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Recently, the results show that the baseline improves across repeated runs.",
+        "Surprisingly, the results show that the baseline improves across repeated runs.",
+        "As discussed in the previous section, the results show that the baseline improves "
+        "across repeated runs.",
+    ],
+)
+def test_unlisted_lead_ins_are_rejected(text: str) -> None:
+    assert _abstractor().extractability_reason(text, _TOKENS[text]) == "unlisted_lead_in"
+
+
+def test_unlisted_in_sentence_adverb_is_rejected() -> None:
+    text = "Our results surprisingly suggest that the baseline improves across repeated runs."
+    assert _abstractor().extractability_reason(text, _TOKENS[text]) == "unlisted_modifier"
+
+
+def test_it_widely_argued_is_rejected_for_unlisted_modifier() -> None:
+    text = "It is widely argued that transfer learning reduces annotation cost."
+    assert _abstractor().extractability_reason(text, _TOKENS[text]) == "unlisted_modifier"
+
+
+def test_we_note_selects_the_syntax_root_reporting_verb() -> None:
+    text = "We note that prior studies have shown that the baseline improves across repeated runs."
+    [result] = MiningPipeline(stages=build_stages(policy_bundle=load_policy_bundle())).process(
+        [_syntax_item(text)]
+    )
+    assert result.text == "[X] note that [Y]."
+
+
+def test_citation_after_subject_is_retained_and_signalled() -> None:
+    text = "Lee et al. [12] showed that the baseline improves across repeated runs."
+    [result] = MiningPipeline(stages=build_stages(policy_bundle=load_policy_bundle())).process(
+        [_syntax_item(text)]
+    )
+    assert result.ownership == "prior"
+    assert "citation" in result.slots["X"].signals
+    start, end = result.occurrences[0].slot_spans["X"]
+    assert text[start:end] == "Lee et al. [12]"
+
+
+def test_citation_after_clause_is_retained_and_signalled() -> None:
+    text = "The results show that the baseline improves across repeated runs [12]."
+    [result] = MiningPipeline(stages=build_stages(policy_bundle=load_policy_bundle())).process(
+        [_syntax_item(text)]
+    )
+    assert "citation" in result.slots["Y"].signals
+    start, end = result.occurrences[0].slot_spans["Y"]
+    assert text[start:end].endswith("[12]")
+
+
+@pytest.mark.parametrize(
+    ("text", "tense", "modality"),
+    [
+        ("We have shown that the baseline improves across repeated runs.", "present_perfect", None),
+        ("We had shown that the baseline improves across repeated runs.", "past_perfect", None),
+        (
+            "It has been shown that the baseline improves across repeated runs.",
+            "present_perfect",
+            None,
+        ),
+        (
+            "The results might have suggested that the baseline improves across repeated runs.",
+            "present_perfect",
+            "might",
+        ),
+        (
+            "The results could indicate that the baseline improves across repeated runs.",
+            "present",
+            "could",
+        ),
+        (
+            "The results can also indicate that the baseline improves across repeated runs.",
+            "present",
+            "can",
+        ),
+    ],
+)
+def test_syntax_tense_and_modality_are_independent(
+    text: str, tense: str, modality: str | None
+) -> None:
+    [result] = MiningPipeline(stages=build_stages(policy_bundle=load_policy_bundle())).process(
+        [_syntax_item(text)]
+    )
+    assert result.tense == tense
+    assert result.modality == modality
+    if modality == "can":
+        assert result.text == "[X] can also indicate that [Y]."
+
+
+def test_intervening_discourse_marker_before_that_is_rejected() -> None:
+    text = "The results suggest, however, that the baseline improves across repeated runs."
+    assert _abstractor().extractability_reason(text, _TOKENS[text]) == "unmatched_content"
+
+
+def test_this_suggests_remains_empty_noun_phrase_out_of_scope() -> None:
+    text = "This suggests that the baseline improves across repeated runs."
+    assert _abstractor().extractability_reason(text, _TOKENS[text]) == "empty_noun_phrase"
+
+
 def test_regex_cluster_key_is_unchanged_and_syntax_key_is_scoped() -> None:
     text = "These results suggest that the method is robust to noise."
     pipeline = MiningPipeline(stages=build_stages(policy_bundle=load_policy_bundle()))
@@ -226,15 +359,14 @@ def test_slot_case_parity_has_a_reviewed_allow_list() -> None:
             continue
         if regex is None:
             outcomes[index] = "only_syntax"
-            differences[index] = "syntax uses ROOT show instead of a longer reporting form"
+            differences[index] = (
+                "syntax accepts a dependency-located reporting form missed by regex"
+            )
             continue
         if syntax is None:
             outcomes[index] = "only_regex"
-            differences[index] = (
-                "strict direct marker check rejects the model's non-direct that attachment"
-            )
+            differences[index] = "closed modifier list rejects the unapproved adverb widely"
             continue
-        assert regex.text == syntax.text
         same = (
             regex.text,
             regex.slots,
@@ -251,9 +383,7 @@ def test_slot_case_parity_has_a_reviewed_allow_list() -> None:
         outcomes[index] = "both_equal" if same else "both_differ"
         if not same:
             differences[index] = (
-                "syntax uses finite passive auxiliary tense and narrows subject to It"
-                if index == 6
-                else "syntax subtree slot span excludes trailing sentence punctuation"
+                "syntax slot spans follow dependency subtrees and retain citation boundaries"
             )
 
     assert outcomes == {
@@ -262,7 +392,7 @@ def test_slot_case_parity_has_a_reviewed_allow_list() -> None:
         3: "only_syntax",
         4: "both_differ",
         5: "both_differ",
-        6: "both_differ",
+        6: "only_regex",
         7: "both_differ",
         8: "neither",
         9: "both_differ",
@@ -270,13 +400,13 @@ def test_slot_case_parity_has_a_reviewed_allow_list() -> None:
         11: "both_differ",
     }
     assert differences == {
-        1: "syntax subtree slot span excludes trailing sentence punctuation",
-        2: "syntax uses ROOT show instead of a longer reporting form",
-        3: "syntax uses ROOT show instead of a longer reporting form",
-        4: "syntax subtree slot span excludes trailing sentence punctuation",
-        5: "syntax subtree slot span excludes trailing sentence punctuation",
-        6: "syntax uses finite passive auxiliary tense and narrows subject to It",
-        7: "syntax subtree slot span excludes trailing sentence punctuation",
-        9: "syntax subtree slot span excludes trailing sentence punctuation",
-        11: "syntax subtree slot span excludes trailing sentence punctuation",
+        1: "syntax slot spans follow dependency subtrees and retain citation boundaries",
+        2: "syntax accepts a dependency-located reporting form missed by regex",
+        3: "syntax accepts a dependency-located reporting form missed by regex",
+        4: "syntax slot spans follow dependency subtrees and retain citation boundaries",
+        5: "syntax slot spans follow dependency subtrees and retain citation boundaries",
+        6: "closed modifier list rejects the unapproved adverb widely",
+        7: "syntax slot spans follow dependency subtrees and retain citation boundaries",
+        9: "syntax slot spans follow dependency subtrees and retain citation boundaries",
+        11: "syntax slot spans follow dependency subtrees and retain citation boundaries",
     }

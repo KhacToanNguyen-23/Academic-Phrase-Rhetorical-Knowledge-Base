@@ -789,7 +789,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
         "validation_rules": "0.2.0",
-        "epistemic_markers": "0.1.0",
+        "epistemic_markers": "0.3.0",
         "taxonomy_release": "0.1.0",
     }
 

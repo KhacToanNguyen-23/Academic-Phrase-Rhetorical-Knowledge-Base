@@ -61,9 +61,19 @@ The syntax clause slot span excludes its direct `mark=that`; the canonical frame
 
 Syntax-produced cluster keys include `locator=syntax:<model>:<model_version>`. Regex-produced keys
 retain the phase-2 policy material byte-for-byte, so enabling phase 3 does not rewrite regex
-cluster identity. Modal tense remains the regex-compatible `PRESENT` baseline (`TODO(owner,
-FR-06.2)`); collocation spans, coordination recovery and candidate locator persistence remain
-open for a later phase.
+cluster identity. Phase 3 initially kept modal tense at the regex-compatible `PRESENT` baseline;
+phase 6 supersedes that rule with separate tense and modality attributes (see ADR-0012). Collocation
+spans, coordination recovery and candidate locator persistence remain open for a later phase.
+
+## Phase 6 frame rules
+
+Phase 6 builds syntax frames from the syntax `_Located` result only. A frame covers the sentence
+with slot spans replaced and permits only a closed lead-in policy, the ROOT verb group, literal
+`that`, clause slot and final punctuation outside slots. Lead-ins are versioned in
+`policies/lexicon/lead_ins.yaml`; unmatched content and unlisted modifiers are counted rejections.
+Direct citations after subject/clause spans extend the relevant slot. Regex output with absent or
+invalid tokens retains the established rendering, subject to the explicit FR-05 ownership rules.
+The details and ownership rules are recorded in [ADR-0012](0012-slot-abstractor-frames-and-ownership.md).
 
 ## Deferred
 

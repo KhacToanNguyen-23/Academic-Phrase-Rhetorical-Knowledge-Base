@@ -7,7 +7,12 @@ from dataclasses import dataclass, replace
 
 from aprkb.modules.mining.schemas import Ownership, SlotDefinition, SlotType, Tense
 from aprkb.modules.mining.stages.base import ExtractionOccurrence, MiningItem, MiningStage
-from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor, _definition
+from aprkb.modules.mining.stages.slot_abstractor import (
+    SlotAbstractor,
+    _definition,
+    _extend_following_citation,
+    infer_ownership,
+)
 from aprkb.nlp.features import TokenFeature
 from aprkb.nlp.syntax import (
     normalized_children_by_head,
@@ -20,6 +25,7 @@ from aprkb.policies.schemas import (
     ConstructionChild,
     ConstructionRule,
     ConstructionsPolicy,
+    SlotAbstractionPolicy,
     compile_construction_template,
 )
 
@@ -36,7 +42,12 @@ class MatchResult:
 
 
 def match_construction(
-    tokens: tuple[TokenFeature, ...], text: str, registry: ConstructionsPolicy
+    tokens: tuple[TokenFeature, ...],
+    text: str,
+    registry: ConstructionsPolicy,
+    ownership_policy: SlotAbstractionPolicy | None = None,
+    previous_text: str | None = None,
+    section_code: str | None = None,
 ) -> MatchResult | str:
     """Match the first registry construction, returning counts-safe reasons on rejection."""
     if not validate_token_features(text, tokens):
@@ -50,7 +61,16 @@ def match_construction(
             lemma.casefold() for lemma in rule.anchor_lemmas
         }:
             continue
-        result = _match_rule(tokens, text, selection.token, rule, registry.version)
+        result = _match_rule(
+            tokens,
+            text,
+            selection.token,
+            rule,
+            registry.version,
+            ownership_policy,
+            previous_text,
+            section_code,
+        )
         if isinstance(result, MatchResult):
             return result
         last_reason = result
@@ -63,6 +83,9 @@ def _match_rule(
     anchor: TokenFeature,
     rule: ConstructionRule,
     version: str,
+    ownership_policy: SlotAbstractionPolicy | None,
+    previous_text: str | None,
+    section_code: str | None,
 ) -> MatchResult | str:
     children = normalized_children_by_head(tokens)
     if any(
@@ -147,14 +170,26 @@ def _match_rule(
         for token in tokens
         if token.head == anchor.i and token.dep in {"aux", "auxpass", "neg", "advmod"}
     }
+    subject_node = next(
+        (
+            tokens[index]
+            for index in children[anchor.i]
+            if tokens[index].dep in {"nsubj", "nsubjpass"}
+        ),
+        None,
+    )
+    if subject_node is None:
+        subject = ""
+    else:
+        subject_span = subtree_span(tokens, children, subject_node.i)
+        subject_span = _extend_following_citation(text, *subject_span)
+        subject = text[slice(*subject_span)]
     return MatchResult(
         frame=frame,
         slots=slots,
         slot_spans=slot_spans,
         tense=SlotAbstractor._syntax_tense(tokens, anchor.i, group),
-        ownership=Ownership.OWN
-        if any(tokens[index].lemma.casefold() == "we" for index in literal_indices)
-        else Ownership.UNCLEAR,
+        ownership=infer_ownership(subject, previous_text, ownership_policy, section_code),
         construction_id=rule.id,
         construction_version=version,
     )
@@ -219,8 +254,11 @@ class ConstructionMatcher(MiningStage):
     name = "construction_matcher"
     requirement_id = "FR-06.2"
 
-    def __init__(self, policy: ConstructionsPolicy) -> None:
+    def __init__(
+        self, policy: ConstructionsPolicy, ownership_policy: SlotAbstractionPolicy | None = None
+    ) -> None:
         self._policy = policy
+        self._ownership_policy = ownership_policy
         self._matches: Counter[str] = Counter()
         self._rejections: Counter[str] = Counter()
 
@@ -236,7 +274,14 @@ class ConstructionMatcher(MiningStage):
         if item.tokens is None:
             self._rejections["no_tokens"] += 1
             return None
-        result = match_construction(item.tokens, item.text, self._policy)
+        result = match_construction(
+            item.tokens,
+            item.text,
+            self._policy,
+            self._ownership_policy,
+            item.previous_text,
+            item.section_code,
+        )
         if isinstance(result, str):
             self._rejections[result] += 1
             return None

@@ -388,6 +388,7 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
         _SessionCandidateRepository(session),
         reporting_policy=policies.reporting_verbs,
         constructions_policy=policies.constructions,
+        lead_ins_policy=policies.lead_ins,
     )
     for item in items:
         writer.write(

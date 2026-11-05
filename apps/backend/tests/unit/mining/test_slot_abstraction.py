@@ -105,9 +105,136 @@ def test_multiword_own_determiner_is_kept_as_a_single_typed_slot():
 
     [result] = _pipeline().process([item])
 
+    assert result.slots["X"].type == "noun_phrase"
+    assert result.slots["Y"].type == "clause"
+    assert result.ownership == "unclear"
+
+
+def test_ownership_rules_for_subject_types_and_contextual_cues():
+    cases = [
+        ("We show that the baseline improves across repeated runs.", None, "own"),
+        ("Our study shows that the baseline improves across repeated runs.", None, "own"),
+        ("The present study shows that the baseline improves across repeated runs.", None, "own"),
+        ("Their results show that the baseline improves across repeated runs.", None, "prior"),
+        ("Prior studies show that the baseline improves across repeated runs.", None, "prior"),
+        ("Earlier studies show that the baseline improves across repeated runs.", None, "prior"),
+        ("These results suggest that the baseline improves across repeated runs.", None, "own"),
+        (
+            "These results suggest that the baseline improves across repeated runs.",
+            "We propose a new method.",
+            "own",
+        ),
+        (
+            "These results suggest that the baseline improves across repeated runs.",
+            "We propose a new method [12].",
+            "unclear",
+        ),
+        ("Lee et al. [12] showed that the baseline improves across repeated runs.", None, "prior"),
+    ]
+    for text, previous_text, expected in cases:
+        [result] = _pipeline().process(
+            [MiningItem(text=text, source_sentence_ids=[uuid4()], previous_text=previous_text)]
+        )
+        assert result.ownership == expected
+
+
+def test_tier_b_determiner_is_a_slot_when_no_blocker_applies():
+    item = MiningItem(
+        text="These results suggest that the baseline improves across repeated runs.",
+        source_sentence_ids=[uuid4()],
+        section_code="RESULTS",
+    )
+    [result] = _pipeline().process([item])
+
     assert result.slots["X"].type == "determiner_own"
-    assert result.slots["Y"].type == "noun_phrase"
     assert result.ownership == "own"
+
+
+def test_versioned_ownership_policy_contains_the_reviewed_tier_lists(policy_bundle):
+    policy = policy_bundle.slot_abstraction
+
+    assert policy.version == "0.4.0"
+    assert policy.own_determiners == ["our", "the present", "the current"]
+    assert policy.own_head_nouns == ["paper", "study", "article"]
+    assert set(policy.contextual_own_pairs) == {
+        "these results",
+        "these findings",
+        "this result",
+        "this finding",
+        "this method",
+        "this approach",
+        "this model",
+        "this work",
+    }
+    assert policy.prior_determiners == ["their", "prior", "previous", "earlier"]
+    assert set(policy.prior_head_pairs) == {"these studies", "these authors"}
+
+
+def test_ownership_tiers_use_determiner_and_head_noun():
+    cases = [
+        ("Our model", None, "RESULTS", "own", "determiner_own"),
+        ("The present model", None, "RESULTS", "own", "determiner_own"),
+        ("The current model", None, "RESULTS", "own", "determiner_own"),
+        ("This paper", None, "RESULTS", "own", "determiner_own"),
+        ("This study", None, "RESULTS", "own", "determiner_own"),
+        ("This article", None, "RESULTS", "own", "determiner_own"),
+        ("These results", None, "RESULTS", "own", "determiner_own"),
+        ("These findings", None, "RESULTS", "own", "determiner_own"),
+        ("This result", None, "RESULTS", "own", "determiner_own"),
+        ("This finding", None, "RESULTS", "own", "determiner_own"),
+        ("This method", None, "RESULTS", "own", "determiner_own"),
+        ("This approach", None, "RESULTS", "own", "determiner_own"),
+        ("This model", None, "RESULTS", "own", "determiner_own"),
+        ("This work", None, "RESULTS", "own", "determiner_own"),
+        ("These methods", None, "RESULTS", "unclear", "noun_phrase"),
+        ("This phenomenon", None, "RESULTS", "unclear", "noun_phrase"),
+        ("These studies", None, "RESULTS", "prior", "determiner_prior"),
+        ("These authors", None, "RESULTS", "prior", "determiner_prior"),
+        ("These results", "The evaluation supports this work.", "RESULTS", "own", "determiner_own"),
+        (
+            "These results",
+            "Earlier studies report similar trends.",
+            "RESULTS",
+            "unclear",
+            "noun_phrase",
+        ),
+        ("These results", None, "INTRO", "unclear", "noun_phrase"),
+        ("These results", None, "RELATED_WORK", "unclear", "noun_phrase"),
+        ("These results", "A result was observed [12].", "RESULTS", "unclear", "noun_phrase"),
+        ("These results", None, None, "own", "determiner_own"),
+        ("These results", None, "RESULTS", "own", "determiner_own"),
+    ]
+    for subject, previous_text, section_code, expected, slot_type in cases:
+        [result] = _pipeline().process(
+            [
+                MiningItem(
+                    text=f"{subject} suggest that the sample changes.",
+                    source_sentence_ids=[uuid4()],
+                    previous_text=previous_text,
+                    section_code=section_code,
+                )
+            ]
+        )
+        assert result.ownership == expected
+        assert result.slots["X"].type == slot_type
+
+
+def test_citation_precedence_and_we_ownership_are_unchanged():
+    cases = [
+        ("Our study [12]", "prior", "determiner_prior"),
+        ("We [12]", "prior", "noun_phrase"),
+        ("We", "own", "noun_phrase"),
+    ]
+    for subject, expected, slot_type in cases:
+        [result] = _pipeline().process(
+            [
+                MiningItem(
+                    text=f"{subject} show that the sample changes.", source_sentence_ids=[uuid4()]
+                )
+            ]
+        )
+        assert result.ownership == expected
+        assert result.slots["X"].type == slot_type
 
 
 def test_reviewed_inflection_forms_share_class_key_but_keep_surface_frame():
@@ -220,3 +347,20 @@ def test_did_not_is_past_tense():
     )
     assert result.tense == "past"
     assert result.text == "[X] [Y] did not show that [Z]."
+
+
+def test_regex_path_records_modality_without_changing_its_frame():
+    sentences = [
+        "Our results could indicate that the baseline improves across repeated runs.",
+        "The results might have suggested that the baseline improves across repeated runs.",
+        "The method may address concerns and show that the baseline improves across repeated runs.",
+    ]
+    results = [
+        _pipeline().process([MiningItem(text=text, source_sentence_ids=[uuid4()])])[0]
+        for text in sentences
+    ]
+
+    assert [result.modality for result in results] == ["could", "might", None]
+    assert results[0].text == "[X] [Y] could indicate that [Z]."
+    assert results[1].text == "[X] might have suggested that [Y]."
+    assert results[2].modality is None

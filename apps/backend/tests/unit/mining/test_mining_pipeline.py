@@ -14,11 +14,12 @@ from aprkb.policies.schemas import EpistemicMarkersPolicy, MiningFilterPolicy
 def test_mining_registry_has_deterministic_order_and_requirement_tags(policy_bundle):
     stages = build_stages(policy_bundle=policy_bundle)
 
+    # Tagging follows extraction so only the masked reporting verb group contributes strength.
     assert [stage.name for stage in stages] == [
         "sentence_filter",
         "move_classifier",
-        "epistemic_tagger",
         "reporting_and_construction_matcher",
+        "epistemic_tagger",
         "frame_normalizer",
         "clusterer",
         "dedup_matcher",

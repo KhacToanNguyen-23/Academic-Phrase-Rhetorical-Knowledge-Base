@@ -25,6 +25,7 @@ from aprkb.policies.schemas import is_safe_construction_frame
 router = APIRouter(tags=["candidate review"])
 _POLICIES = load_policy_bundle()
 _REPORTING_FORMS = _POLICIES.reporting_verbs.all_forms
+_LEAD_INS = _POLICIES.lead_ins.lead_ins
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 Reviewer = Annotated[ApiClient, Depends(require_role("reviewer"))]
 
@@ -46,7 +47,7 @@ def _safe_summary(candidate: Candidate) -> CandidateSummary:
     if set(slots) - {"X", "Y", "Z"}:
         raise HTTPException(status_code=409, detail="Candidate slot names are invalid")
     if not (
-        is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS)
+        is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS, _LEAD_INS)
         or is_safe_construction_frame(candidate.canonical_frame, _POLICIES.constructions)
     ):
         raise HTTPException(status_code=409, detail="Candidate frame is not safely abstracted")

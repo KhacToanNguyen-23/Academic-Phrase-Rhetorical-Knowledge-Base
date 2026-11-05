@@ -45,6 +45,7 @@ from aprkb.policies.schemas import is_safe_construction_frame
 logger = get_logger(__name__)
 _POLICIES = load_policy_bundle()
 _REPORTING_FORMS = _POLICIES.reporting_verbs.all_forms
+_LEAD_INS = _POLICIES.lead_ins.lead_ins
 
 
 async def article_text(session: AsyncSession, article_id: UUID) -> ArticleTextRead:
@@ -142,7 +143,7 @@ def _typed_slots(candidate: Candidate) -> dict[str, SlotDefinition] | None:
 
 def _is_safe(candidate: Candidate) -> bool:
     return _typed_slots(candidate) is not None and (
-        is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS)
+        is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS, _LEAD_INS)
         or is_safe_construction_frame(candidate.canonical_frame, _POLICIES.constructions)
     )
 

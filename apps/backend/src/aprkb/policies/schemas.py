@@ -355,6 +355,9 @@ class SlotAbstractionPolicy(VersionedPolicy):
     min_clause_words: int = Field(ge=1, le=20)
     own_determiners: list[str] = Field(min_length=1)
     prior_determiners: list[str] = Field(min_length=1)
+    own_head_nouns: list[str] = Field(min_length=1)
+    contextual_own_pairs: list[str] = Field(min_length=1)
+    prior_head_pairs: list[str] = Field(min_length=1)
     # Single words between subject and reporting verb that are kept literal in the frame.
     verb_modifiers: list[str] = Field(default_factory=list)
 
@@ -371,7 +374,26 @@ class SlotAbstractionPolicy(VersionedPolicy):
         prior = {value.strip().casefold() for value in self.prior_determiners}
         if not own or not prior or own & prior:
             raise ValueError("own and prior determiners must be non-empty and disjoint")
+        lists = (self.own_head_nouns, self.contextual_own_pairs, self.prior_head_pairs)
+        if any(not value.strip() for values in lists for value in values):
+            raise ValueError("ownership tier entries must be non-empty")
         return self
+
+
+class LeadInsPolicy(VersionedPolicy):
+    """Closed, owner-reviewed discourse lead-ins retained literally in frames."""
+
+    lead_ins: list[str] = Field(min_length=1)
+
+    @field_validator("lead_ins")
+    @classmethod
+    def validate_lead_ins(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().casefold() for value in values]
+        if any(not value or value.endswith(",") for value in normalized):
+            raise ValueError("lead-ins must be non-empty and omit a trailing comma")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("lead-ins must not contain duplicates")
+        return values
 
 
 class GoldSamplingPolicy(VersionedPolicy):
@@ -519,9 +541,14 @@ class ValidationRulesPolicy(VersionedPolicy):
 
 
 class EpistemicMarkersPolicy(VersionedPolicy):
+    # Shared by mining and V02.
     markers: dict[str, list[str]]
+    # Strength markers read by exactly one consumer; see the merged properties below.
+    validator_only_markers: dict[str, list[str]] = Field(default_factory=dict)
+    mining_only_markers: dict[str, list[str]] = Field(default_factory=dict)
     # Base verb -> irregular inflected forms that suffix rules cannot derive.
     irregular_forms: dict[str, list[str]] = Field(default_factory=dict)
+    neutral_verbs: list[str] = Field(default_factory=list)
     # Declared markers that are not verbs and must keep exact matching.
     non_inflecting: list[str] = Field(default_factory=list)
 
@@ -538,6 +565,18 @@ class EpistemicMarkersPolicy(VersionedPolicy):
             raise ValueError("epistemic marker lists must not contain duplicates")
         return markers
 
+    @field_validator("validator_only_markers", "mining_only_markers")
+    @classmethod
+    def validate_scoped_markers(cls, markers: dict[str, list[str]]) -> dict[str, list[str]]:
+        if not set(markers) <= {"low", "moderate", "high", "absolute"} or any(
+            not values
+            or any(not marker.strip() for marker in values)
+            or len(values) != len(set(values))
+            for values in markers.values()
+        ):
+            raise ValueError("scoped markers must be unique, non-empty, known-strength lists")
+        return markers
+
     @field_validator("irregular_forms")
     @classmethod
     def validate_irregular_forms(cls, forms: dict[str, list[str]]) -> dict[str, list[str]]:
@@ -548,6 +587,14 @@ class EpistemicMarkersPolicy(VersionedPolicy):
             raise ValueError("irregular_forms must map each base verb to non-empty forms")
         return forms
 
+    @field_validator("neutral_verbs")
+    @classmethod
+    def validate_neutral_verbs(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().casefold() for value in values]
+        if any(not value for value in normalized) or len(normalized) != len(set(normalized)):
+            raise ValueError("neutral_verbs must contain unique non-empty entries")
+        return values
+
     @model_validator(mode="after")
     def validate_non_inflecting(self) -> "EpistemicMarkersPolicy":
         declared = {marker.casefold() for values in self.markers.values() for marker in values}
@@ -556,4 +603,30 @@ class EpistemicMarkersPolicy(VersionedPolicy):
             raise ValueError("non_inflecting must be unique, non-empty markers")
         if not set(names) <= declared:
             raise ValueError("non_inflecting entries must be declared markers")
+        validator_only = {
+            marker.casefold()
+            for values in self.validator_only_markers.values()
+            for marker in values
+        }
+        mining_only = {
+            marker.casefold() for values in self.mining_only_markers.values() for marker in values
+        }
+        if (validator_only | mining_only) & declared or validator_only & mining_only:
+            raise ValueError("scoped markers must not repeat shared or other-scope markers")
         return self
+
+    @property
+    def validator_markers(self) -> dict[str, list[str]]:
+        """Markers V02 enforces: scoped entries first, then the shared list."""
+        return {
+            strength: [*self.validator_only_markers.get(strength, []), *values]
+            for strength, values in self.markers.items()
+        }
+
+    @property
+    def mining_markers(self) -> dict[str, list[str]]:
+        """Markers EpistemicTagger assigns: the shared list plus mining-only entries."""
+        return {
+            strength: [*values, *self.mining_only_markers.get(strength, [])]
+            for strength, values in self.markers.items()
+        }

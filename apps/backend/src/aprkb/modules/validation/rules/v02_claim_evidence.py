@@ -50,7 +50,7 @@ class V02ClaimEvidenceRule(ValidationRule):
         strength_order = self._evidence_policy.strength_order
         matched = [
             strength
-            for strength, markers in self._lexicon.markers.items()
+            for strength, markers in self._lexicon.validator_markers.items()
             if any(self._contains_marker(folded, marker) for marker in markers)
         ]
         return (
@@ -61,7 +61,7 @@ class V02ClaimEvidenceRule(ValidationRule):
 
     def _marker_span(self, text: str, strength: str) -> tuple[str, tuple[int, int]]:
         folded = text.casefold()
-        for marker in self._lexicon.markers[strength]:
+        for marker in self._lexicon.validator_markers[strength]:
             match = self._marker_pattern(marker).search(folded)
             if match is not None:
                 return text[match.start() : match.end()], match.span()

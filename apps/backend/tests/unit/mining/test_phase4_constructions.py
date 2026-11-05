@@ -177,6 +177,7 @@ def test_reporting_match_precedes_a_registry_pattern_that_also_matches() -> None
     stage = ReportingWithConstruction(reporting, construction)
     [result] = stage.process([_item(text)])
 
+    # The listed Tier B subject now gets a separate determiner slot on the reporting path.
     assert result.text == "[X] [Y] suggest that [Z]."
     assert result.construction_id is None
     assert construction.match_counts == {}

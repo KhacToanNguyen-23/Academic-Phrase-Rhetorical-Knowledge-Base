@@ -27,6 +27,7 @@ from aprkb.policies.schemas import is_safe_construction_frame
 
 _POLICIES = load_policy_bundle()
 _REPORTING_FORMS = _POLICIES.reporting_verbs.all_forms
+_LEAD_INS = _POLICIES.lead_ins.lead_ins
 
 
 async def list_review_queue(session: AsyncSession) -> list[Candidate]:
@@ -248,7 +249,7 @@ async def _promote_candidate(
 
 def _candidate_is_safe_to_promote(candidate: Candidate) -> bool:
     if not (
-        is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS)
+        is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS, _LEAD_INS)
         or is_safe_construction_frame(candidate.canonical_frame, _POLICIES.constructions)
     ):
         return False

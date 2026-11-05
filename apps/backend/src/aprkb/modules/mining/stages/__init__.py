@@ -24,11 +24,15 @@ def build_stages(*, policy_bundle: PolicyBundle) -> list[MiningStage]:
             syntax=filter_policy.syntax_filter,
         ),
         TodoMiningStage("move_classifier", "FR-06.3"),
-        EpistemicTagger(policy_bundle.epistemic_markers),
         ReportingWithConstruction(
-            SlotAbstractor(policy_bundle.reporting_verbs, policy_bundle.slot_abstraction),
-            ConstructionMatcher(policy_bundle.constructions),
+            SlotAbstractor(
+                policy_bundle.reporting_verbs,
+                policy_bundle.slot_abstraction,
+                policy_bundle.lead_ins.lead_ins,
+            ),
+            ConstructionMatcher(policy_bundle.constructions, policy_bundle.slot_abstraction),
         ),
+        EpistemicTagger(policy_bundle.epistemic_markers),
         FrameNormalizer(),
         Clusterer(policy_bundle),
         TodoMiningStage("dedup_matcher", "FR-06.2"),

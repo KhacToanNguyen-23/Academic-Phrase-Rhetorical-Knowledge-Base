@@ -226,6 +226,7 @@ async def label_sample_batch(
     request_id: str,
     labeler: GoldLabeler | None = None,
     limit: int | None = None,
+    commit: bool = True,
 ) -> dict[str, int | str]:
     """Label one batch after a separate rights check, never logging source content."""
     policies = load_policy_bundle()
@@ -339,7 +340,10 @@ async def label_sample_batch(
         },
         request_id=request_id,
     )
-    await session.commit()
+    if commit:
+        await session.commit()
+    else:
+        await session.flush()
     result: dict[str, int | str] = {
         "labeled_count": labeled,
         "stale_count": stale,

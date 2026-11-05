@@ -707,3 +707,11 @@ Và:
 | RBAC / audit | `core/auth.py`, `core/audit.py` | `integration/api`, AT-12 |
 | Mining → Candidate | `mining/*`, `workers/handlers/mine_article.py` | `unit/mining/stages` |
 | Discipline (P2) | `discipline/null_source.py` | — |
+
+## Job operations extension (2026-11-05)
+
+The user approved bounded PostgreSQL retries and the subsequent operational workflow:
+curator/admin manual retry, per-attempt error history, live stage progress and in-app
+repeated-failure alerts. See ADR-0013 and ADR-0014. This adds `/jobs` and the documented
+admin job APIs; it does not introduce Redis/Celery, bypass license checks, change
+Extract/Publication review rules or automatically send external notifications.

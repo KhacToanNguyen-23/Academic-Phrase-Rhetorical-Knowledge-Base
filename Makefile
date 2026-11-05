@@ -48,7 +48,7 @@ lint-web:
 container-build:
 	docker build -f apps/backend/Dockerfile \
 		--build-arg GIT_COMMIT_SHA=$$(git rev-parse HEAD) \
-		-t $(BACKEND_IMAGE) apps/backend
+		-t $(BACKEND_IMAGE) .
 
 # Requires a running container network alias "pg" reachable as $(CONTAINER_SMOKE_NETWORK)
 # (default aprkb-ci-net); see doc/runbooks/ci.md for the local setup sequence.

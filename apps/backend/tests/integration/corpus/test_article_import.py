@@ -279,7 +279,7 @@ async def test_same_title_without_doi_is_a_review_hint_across_work_ids(
 
 
 @pytest.mark.asyncio
-async def test_source_outage_fails_the_import_job_without_touching_the_corpus(
+async def test_source_outage_schedules_retry_without_touching_the_corpus(
     import_client: tuple[AsyncClient, str],
     import_sessions: async_sessionmaker,
     tmp_path: Path,
@@ -298,7 +298,9 @@ async def test_source_outage_fails_the_import_job_without_touching_the_corpus(
 
     async with import_sessions() as session:
         job = await session.get(Job, job_id)
-        assert job is not None and job.status == "failed"
+        assert job is not None and job.status == "queued"
+        assert job.next_attempt_at is not None
+        assert job.error_code == "transport_unavailable"
         assert job.error == "Processing failed (ConnectionError)"
         assert await session.scalar(select(func.count()).select_from(Article)) == 0
     assert not (tmp_path / "articles").exists()

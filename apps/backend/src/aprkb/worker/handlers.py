@@ -23,12 +23,14 @@ from aprkb.modules.corpus.section_detector import SectionDetector
 from aprkb.modules.corpus.sentence_splitter import split_sentences
 from aprkb.modules.corpus.sources import ArticleSource, build_article_source
 from aprkb.modules.corpus.sources.base import ImportOptions
+from aprkb.modules.corpus.sources.slr_source import SlrRepositorySource
 from aprkb.modules.mining.candidate_writer import CandidateDraft, CandidateWriter
 from aprkb.modules.mining.models import Candidate, Job
 from aprkb.modules.mining.pipeline import MiningPipeline
 from aprkb.modules.mining.stages import build_stages
 from aprkb.modules.mining.stages.base import MiningItem
 from aprkb.policies.loader import load_policy_bundle
+from aprkb.worker.progress import report_progress
 
 _PARSERS: tuple[DocumentParser, ...] = (
     TextParser(),
@@ -38,6 +40,14 @@ _PARSERS: tuple[DocumentParser, ...] = (
 )
 ArticleSourceFactory = Callable[[str], ArticleSource]
 logger = get_logger(__name__)
+
+
+def worker_article_source(name: str) -> ArticleSource:
+    if name == "slr":
+        # One retry owner: persist the delay instead of sleeping/retrying both
+        # inside HTTP and again at the job layer. Direct API calls retain theirs.
+        return SlrRepositorySource(worker_managed_retries=True)
+    return build_article_source(name)
 
 
 class _SessionCandidateRepository:
@@ -64,19 +74,30 @@ async def handle_job(
     job: Job,
     blob_store: BlobStore,
     *,
-    article_source_factory: ArticleSourceFactory = build_article_source,
+    article_source_factory: ArticleSourceFactory = worker_article_source,
 ) -> str | None:
+    await report_progress("checking_input")
     if job.type == IMPORT_JOB_TYPE:
         return await _import(session, job, blob_store, article_source_factory)
     if job.type == "label_gold":
         sample_batch = job.payload.get("sample_batch")
         if not isinstance(sample_batch, str):
             return "Job payload is missing sample_batch"
+        from aprkb.modules.gold.labelers import GoldLabelingRequestError
         from aprkb.modules.gold.service import label_sample_batch
 
-        job.result = await label_sample_batch(
-            session, sample_batch=sample_batch, request_id=str(job.id)
-        )
+        try:
+            await report_progress("labeling_gold")
+            job.result = await label_sample_batch(
+                session,
+                sample_batch=sample_batch,
+                request_id=str(job.id),
+                commit=False,
+            )
+        except GoldLabelingRequestError:
+            # Preserve already drafted labels, as before, without committing the
+            # worker's ownership lock early. Gold is not auto-retried.
+            return "Gold labeling request failed"
         return None
     article_value = job.payload.get("article_id")
     if not isinstance(article_value, str):
@@ -86,7 +107,7 @@ async def handle_job(
     except ValueError:
         return "Job payload contains an invalid article_id"
 
-    article = await session.get(Article, article_id)
+    article = await session.get(Article, article_id, with_for_update=True)
     if article is None:
         return "Article not found"
     if job.type == "ingest_article":
@@ -181,6 +202,7 @@ async def _import(
 
 
 async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore) -> str | None:
+    await report_progress("checking_rights")
     license_row = await session.scalar(
         select(License).where(License.id == article.license_id).with_for_update()
     )
@@ -188,6 +210,12 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
         article.ingest_status = "rejected"
         return "Article license does not allow mining"
 
+    if article.ingest_status == "ready":
+        # Ordinary retries must not replace sentence IDs used by reviewed data.
+        # Explicit reingest resets this status after its own provenance checks.
+        return None
+
+    await report_progress("reading_content")
     content = blob_store.get(article.blob_key)
     parser = next(
         (
@@ -200,11 +228,13 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
     if parser is None:
         article.ingest_status = "failed"
         return "Unsupported article format"
+    await report_progress("parsing_document")
     document = parser.parse(content)
     policies = load_policy_bundle()
     section_codes = SectionDetector(policies.section_headings).detect(document.sections)
     abbreviations = policies.abbreviations.abbreviations
     section_rows: dict[int, ArticleSection] = {}
+    await report_progress("saving_sentences")
     for parsed_section, section_code in zip(document.sections, section_codes, strict=True):
         section_row = ArticleSection(
             article_id=article.id,
@@ -268,6 +298,7 @@ async def reingest_article(
     await session.execute(delete(Sentence).where(Sentence.article_id == article.id))
     await session.execute(delete(ArticleSection).where(ArticleSection.article_id == article.id))
     await session.flush()
+    article.ingest_status = "pending"
     error = await _ingest(session, article, blob_store)
     await session.flush()
     after = len(
@@ -298,11 +329,13 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
     if article.ingest_status != "ready":
         return "Article ingestion is not ready"
     # Rights must be rechecked before querying any source sentence text.
+    await report_progress("checking_rights")
     license_row = await session.scalar(
         select(License).where(License.id == article.license_id).with_for_update()
     )
     if license_row is None or not license_row.allows_mining:
         return "Article license does not allow mining"
+    await report_progress("loading_sentences")
     rows = list(
         await session.execute(
             select(Sentence, ArticleSection.section_code)
@@ -331,11 +364,28 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
         )
         previous_text = sentence.text
         previous_section = code
+    await report_progress("extracting_phrases", 0, len(rows))
     items = pipeline.process(mining_rows)
+    await report_progress("saving_candidates", 0, len(items))
     writer = CandidateWriter(
         _SessionCandidateRepository(session), reporting_policy=policies.reporting_verbs
     )
+    existing = list(
+        await session.scalars(
+            select(Candidate).where(
+                Candidate.source_sentence_ids.op("&&")([sentence.id for sentence, _ in rows])
+            )
+        )
+    )
+    seen = {
+        (candidate.canonical_frame, frozenset(candidate.source_sentence_ids))
+        for candidate in existing
+    }
     for item in items:
+        identity = (item.text, frozenset(item.source_sentence_ids))
+        if identity in seen:
+            continue
+        seen.add(identity)
         writer.write(
             CandidateDraft(
                 canonical_frame=item.text,
@@ -355,6 +405,7 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
                 ],
             )
         )
+    await report_progress("saving_candidates", len(items), len(items))
     return None
 
 

@@ -24,9 +24,13 @@ from aprkb.shared.models import RefEnum
 
 
 def _find_seed_dir() -> Path | None:
-    """Locate the monorepo-root data/seed directory; absent in a standalone container checkout."""
+    """Locate reference assets in either the checkout or the packaged runtime."""
     parents = Path(__file__).resolve().parents
-    return parents[5] / "data" / "seed" if len(parents) > 5 else None
+    for parent in parents:
+        candidate = parent / "data" / "seed"
+        if candidate.is_dir():
+            return candidate
+    return None
 
 
 SEED_DIR = _find_seed_dir()

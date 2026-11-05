@@ -658,6 +658,8 @@ export function SlrImportPage() {
               </Alert>
             ) : null}
             {jobId ? (
+              <>
+              <Button variant="outline" asChild><Link to="/jobs" search={{ job: jobId }}>View job history and retry</Link></Button>
               <JobProgress
                 job={job}
                 jobStatus={jobStatus}
@@ -667,6 +669,7 @@ export function SlrImportPage() {
                 result={result}
                 setJobId={setJobId}
               />
+              </>
             ) : null}
           </CardContent>
         </Card>
@@ -781,7 +784,7 @@ function JobProgress({
       ) : null}
       {job.data?.error ? (
         <Alert variant="destructive">
-          <AlertTitle>Import stopped</AlertTitle>
+          <AlertTitle>{jobStatus === "queued" ? "Waiting to retry" : jobStatus === "processing" ? "Previous attempt failed" : "Import stopped"}</AlertTitle>
           <AlertDescription>{job.data.error}</AlertDescription>
         </Alert>
       ) : null}

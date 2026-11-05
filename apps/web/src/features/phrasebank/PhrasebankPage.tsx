@@ -22,7 +22,7 @@ import {
   type TaxonomyTree,
 } from "./source-registry";
 
-const SOURCE_CREDIT = "Source: University of Manchester Academic Phrasebank.";
+const SOURCE_CREDIT = "Source: Lab-authored Phrasebank Basic.";
 
 function isReferenceDisabled(error: unknown) {
   return (
@@ -277,7 +277,7 @@ function PatternGroups({ patterns }: { patterns: PatternDetail[] }) {
   const groups = new Map<string, PatternDetail[]>();
   for (const pattern of patterns)
     for (const section of pattern.allowed_sections) {
-      const key = `${section} · ${pattern.intent_code}`;
+      const key = `${section} · ${pattern.intent_name}`;
       groups.set(key, [...(groups.get(key) ?? []), pattern]);
     }
   return (
@@ -312,7 +312,7 @@ function PatternGroups({ patterns }: { patterns: PatternDetail[] }) {
 }
 
 export function PhrasebankHome() {
-  const [source, setSource] = useState<"all" | SourceId>("all");
+  const source = selectedPhrasebankSource();
   const [search, setSearch] = useState("");
   const [sectionCode, setSectionCode] = useState("");
   const [intentCode, setIntentCode] = useState("");
@@ -321,6 +321,7 @@ export function PhrasebankHome() {
   const manchester = useQuery({
     queryKey: ["phrasebank-categories"],
     queryFn: PHRASEBANK_SOURCES["manchester-reference"].listGroups,
+    enabled: false,
     retry: false,
   });
   const disabled = isReferenceDisabled(manchester.error);
@@ -352,7 +353,7 @@ export function PhrasebankHome() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Phrasebank"
-        description="Browse reference categories and approved AP-RKB patterns by section, intent, and phrase."
+        description="Browse the lab team's Phrasebank Basic patterns by research section, intent, and phrase."
       />
       <Card>
         <CardHeader>
@@ -367,16 +368,7 @@ export function PhrasebankHome() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
-          <Select value={source} onValueChange={(value) => setSource(value as "all" | SourceId)}>
-            <SelectTrigger aria-label="Source filter" className="w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sources</SelectItem>
-              <SelectItem value="manchester-reference">Manchester reference</SelectItem>
-              <SelectItem value="aprkb-patterns">AP-RKB patterns</SelectItem>
-            </SelectContent>
-          </Select>
+          <Badge variant="outline">Lab Phrasebank Basic</Badge>
           <SourceFilters
             taxonomy={taxonomy.data}
             sectionCode={sectionCode}
@@ -554,13 +546,17 @@ export function PhrasebankHome() {
   );
 }
 
+function selectedPhrasebankSource(): "all" | SourceId {
+  return "aprkb-patterns";
+}
+
 export function PhrasebankCategory({ slug }: { slug: string }) {
   const navigate = useNavigate();
   const locationHref = useRouterState({ select: (state) => state.location.href });
   const manchester = useQuery({
     queryKey: ["phrasebank-category", slug],
     queryFn: () => PHRASEBANK_SOURCES["manchester-reference"].getGroup(slug),
-    enabled: slug !== "aprkb-patterns",
+    enabled: false,
     retry: false,
   });
   const patterns = useQuery({
@@ -576,6 +572,16 @@ export function PhrasebankCategory({ slug }: { slug: string }) {
     const targetId = decodeURIComponent(hash.slice(1));
     window.setTimeout(() => scrollToHeading(targetId), 250);
   }, [locationHref, slug, manchester.data, patterns.data, patterns.isPending]);
+
+  if (slug !== "aprkb-patterns") {
+    return (
+      <DataState
+        state="empty"
+        emptyTitle="Phrasebank category not found"
+        emptyDescription="Only lab-authored Phrasebank Basic categories are available in Online."
+      />
+    );
+  }
   if (slug === "aprkb-patterns")
     return (
       <div className="flex flex-col gap-6">
@@ -583,8 +589,8 @@ export function PhrasebankCategory({ slug }: { slug: string }) {
           ← Phrasebank home
         </Link>
         <PageHeader
-          title="Approved AP-RKB patterns"
-          description="Patterns authored for this knowledge base, grouped by permitted section and intent."
+          title="Lab Phrasebank Basic"
+          description="Team-authored patterns grouped by research section and communicative intent."
         />
         {patterns.isPending ? (
           <DataState state="loading" loadingLabel="Loading approved patterns" />
@@ -767,7 +773,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       <PageHeader title={item.intent_name || item.intent_code} description={`Version ${item.version_no}`} />
       <Card>
         <CardHeader>
-          <CardTitle>Frame</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Frame</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-4">
           <p className="font-serif text-lg">{item.canonical_frame}</p>
@@ -778,7 +784,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Slots</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Slots</CardTitle>
         </CardHeader>
         <CardContent>
           {slots.length ? (
@@ -803,7 +809,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Variants</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Variants</CardTitle>
         </CardHeader>
         <CardContent>
           {item.variants.length ? (
@@ -824,7 +830,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Usage</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Usage</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="flex flex-col gap-2">
@@ -837,7 +843,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Evidence</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Evidence</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="flex flex-col gap-2">
@@ -848,7 +854,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Provenance</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Provenance</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="flex flex-col gap-2">

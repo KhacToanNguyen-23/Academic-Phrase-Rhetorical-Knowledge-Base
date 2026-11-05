@@ -115,7 +115,7 @@ jobs:
         run: |
           docker build -f apps/backend/Dockerfile \
             --build-arg GIT_COMMIT_SHA="${{ github.sha }}" \
-            -t "$BACKEND_IMAGE" apps/backend
+            -t "$BACKEND_IMAGE" .
           echo "Built digest: $(docker image inspect --format '{{.Id}}' "$BACKEND_IMAGE")"
       - name: Build-context canary (secrets/caches/blobs/test output must not leak in)
         run: bash scripts/ci/container-canary.sh
@@ -228,6 +228,7 @@ jobs:
           name: playwright-e2e-smoke
           path: |
             apps/web/test-results
+            apps/web/playwright-report
           retention-days: 7
           if-no-files-found: ignore
       - name: Backend/frontend logs on failure

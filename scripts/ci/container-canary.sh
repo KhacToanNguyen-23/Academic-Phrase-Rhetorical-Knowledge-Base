@@ -6,11 +6,11 @@
 # Phase 03 of plans/ci-cd-team-standard/plan.md.
 set -euo pipefail
 
-backend_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../apps/backend" && pwd)"
-cd "$backend_dir"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$repo_dir"
 
 sentinel="CANARY_$$_$(date +%s)"
-canary_env=".env.canary"
+canary_env="apps/backend/.env.canary"
 canary_blob="data/blobs/canary.bin"
 canary_cache="__pycache__/canary.pyc"
 canary_test_output=".pytest_cache/canary.txt"
@@ -28,7 +28,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-docker build -f Dockerfile -t "$canary_image" .
+docker build -f apps/backend/Dockerfile -t "$canary_image" .
 
 # Search /app only: everything this build copies in lands there, and recursing from
 # "/" would walk /proc (e.g. /proc/kcore reads as unbounded) and can hang forever.

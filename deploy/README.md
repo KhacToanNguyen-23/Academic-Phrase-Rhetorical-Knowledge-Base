@@ -19,10 +19,11 @@ Confirm the server's SSH user and Tailscale address. Do not paste credentials in
    IMAGE_TAG=<git-commit-sha> docker compose --env-file runtime.conf -f docker-compose.yml -f docker-compose.prod.yml build
    ```
 
-6. Apply migrations and start the services. These commands do not run the development initializer:
+6. Apply migrations and initialize the Online reference/taxonomy data. Production seeding reads the packaged Phrasebank Basic JSON and does not load development examples:
 
    ```sh
    IMAGE_TAG=<git-commit-sha> docker compose --env-file runtime.conf -f docker-compose.yml -f docker-compose.prod.yml run --rm api alembic -c alembic.ini upgrade head
+   IMAGE_TAG=<git-commit-sha> docker compose --env-file runtime.conf -f docker-compose.yml -f docker-compose.prod.yml run --rm api python -m aprkb.seeds.load
    IMAGE_TAG=<git-commit-sha> docker compose --env-file runtime.conf -f docker-compose.yml -f docker-compose.prod.yml up -d
    ```
 
@@ -36,6 +37,6 @@ Confirm the server's SSH user and Tailscale address. Do not paste credentials in
 
 ## Updates and rollback
 
-Before each update, confirm the current volume and take another verified database backup. Deploy an immutable commit SHA as `IMAGE_TAG`, apply migrations, and check API health and worker status. For an application rollback, redeploy the previous image tag. Do not downgrade the schema or remove the PostgreSQL/blob volumes as part of rollback. Review migration compatibility before rolling back application code.
+Before each update, confirm the current volume and take another verified database backup. Deploy an immutable commit SHA as `IMAGE_TAG`, apply migrations, run the idempotent initializer again so new Phrasebank Basic JSON versions reach the database, and check API health and worker status. For an application rollback, redeploy the previous image tag. Do not downgrade the schema or remove the PostgreSQL/blob volumes as part of rollback. Review migration compatibility before rolling back application code.
 
-Never use `docker compose down -v` on this deployment. Do not run `make init-dev`, `make seed`, `init-reference`, demo data, or sample content on production. The production deployment creates schema only and leaves reference, taxonomy, and phrase content empty. Although the current pack importer exists, it validates against reference rows already present in PostgreSQL; production pack import therefore remains blocked until those references have an approved production provisioning path. Do not copy development seed JSON into the production image as a workaround.
+Never use `docker compose down -v` on this deployment. Do not run `make init-dev` or load local/test fixture patterns on production. The production initializer loads the team-authored Phrasebank Basic, its METHODS taxonomy intents, and reference options from the versioned application assets; it excludes development examples and the development-only license. Offline data packs remain separate and are not imported by this Online initializer.

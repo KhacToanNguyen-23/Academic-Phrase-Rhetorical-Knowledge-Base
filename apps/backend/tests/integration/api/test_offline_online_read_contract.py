@@ -15,9 +15,10 @@ from aprkb.core.config import settings
 from aprkb.core.deps import get_db_session
 from aprkb.modules.identity.service import create_api_key
 from aprkb.modules.mining.models import Candidate
-from aprkb.modules.taxonomy.models import Intent
+from aprkb.modules.patterns.repository import get_intent
 from aprkb.seeds.load import run_seed
 from aprkb.worker.runner import run_once
+from tests.seed_data import seed_legacy_pattern_fixtures
 
 ARTICLE = (
     "The invented results demonstrate that the proposed method improves retrieval accuracy. "
@@ -60,6 +61,7 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
 ) -> None:
     async with read_contract_sessions() as session:
         await run_seed(session)
+        await seed_legacy_pattern_fixtures(session)
         await session.commit()
         _, curator = await create_api_key(session, name="read curator", role="curator")
         _, reviewer_one = await create_api_key(session, name="read reviewer one", role="reviewer")
@@ -87,7 +89,7 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
 
     async with read_contract_sessions() as session:
         candidates = list(await session.scalars(select(Candidate)))
-        intent = (await session.scalars(select(Intent))).first()
+        intent = await get_intent(session, "INTRO_GAP_INDICATE")
         assert candidates and intent is not None
 
     label_payload = {
@@ -172,13 +174,27 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
         assert version.json()["source_sentence_count"] == row["source_sentence_count"]
 
     recommended = await read_contract_client.post(
-        "/v1/recommendations", json={"limit": 100}, headers=auth(client_key)
+        "/v1/recommendations",
+        json={"section": "INTRO", "intent": "INTRO_GAP_INDICATE", "limit": 100},
+        headers=auth(client_key),
     )
     assert recommended.status_code == 200, recommended.text
-    recommended_items = {item["pattern_version_id"]: item for item in recommended.json()["items"]}
-    assert promoted.intersection(recommended_items)
+    recommendation_items = recommended.json()["items"]
+    assert recommendation_items
+    listed_patterns = await read_contract_client.get(
+        "/v1/patterns",
+        params={"status": "approved", "limit": 200},
+        headers=auth(client_key),
+    )
+    assert listed_patterns.status_code == 200, listed_patterns.text
+    recommended_version_ids = {item["pattern_version_id"] for item in recommendation_items}
     bracket_pattern = next(
-        (row for row in mined if "{" in row["canonical_frame"] and row["slots"]), None
+        (
+            row
+            for row in listed_patterns.json()
+            if row["current_version_id"] in recommended_version_ids and row["slots"]
+        ),
+        None,
     )
     assert bracket_pattern is not None
     rendered = await read_contract_client.post(

@@ -1,13 +1,21 @@
 """Read-time compatibility for invented mined-style frames."""
 
+from dataclasses import asdict
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
 import pytest
 
 from aprkb.modules.composition.renderer import render_frame
-from aprkb.modules.corpus.models import License
-from aprkb.modules.patterns.models import EvidenceProvenance, PatternVersion, PhrasePattern
+from aprkb.modules.corpus.models import Article, License
+from aprkb.modules.patterns.models import (
+    DisciplineAffinity,
+    EvidenceProvenance,
+    PatternVersion,
+    PhrasePattern,
+    PhraseVariant,
+    UsageConstraint,
+)
 from aprkb.modules.patterns.read_model import load_current_patterns, normalized_frame
 from aprkb.modules.taxonomy.models import Intent
 
@@ -167,3 +175,158 @@ async def test_browsing_search_filters_beyond_old_cap_before_offset(display_only
     statement = session.execute.await_args_list[0].args[0]
     assert statement._limit_clause is None
     assert statement._offset_clause is None
+
+
+@pytest.mark.parametrize("display_only", [False, True])
+async def test_association_groups_preserve_full_read_mapping_and_child_order(display_only):
+    """Interleaved query rows must retain their per-version order and provenance rules."""
+    version_ids = [uuid4() for _ in range(3)]
+    pattern_ids = [uuid4() for _ in range(3)]
+    article_id = uuid4()
+    slots = {"X": {"type": "topic"}}
+    database_rows = [
+        (
+            PhrasePattern(id=pattern_ids[index], status="approved", current_version_id=version_id),
+            Intent(code="TEST", name="Test intent"),
+            PatternVersion(
+                id=version_id,
+                version_no=index + 1,
+                change_note="Reviewed" if index == 0 else None,
+                canonical_frame="[X] suggests a link" if index == 0 else f"Frame {index}",
+                slots=slots if index == 0 else {},
+                epistemic_strength="moderate" if index == 0 else "unknown",
+                claim_type="descriptive" if index == 0 else "unknown",
+            ),
+            UsageConstraint(
+                pattern_version_id=version_id,
+                evidence_min="single_study",
+                forbidden_contexts=["DISCUSSION"],
+                allowed_sections=["INTRO"],
+                allowed_genres=["RESEARCH_ARTICLE"],
+            )
+            if index == 0
+            else None,
+        )
+        for index, version_id in enumerate(version_ids)
+    ]
+    license_row = License(code="INTERNAL", name="Internal", allows_display=False)
+    article = Article(id=article_id, doi="10.0000/invented")
+
+    def source(version_index, source_type):
+        return EvidenceProvenance(
+            pattern_version_id=version_ids[version_index],
+            source_type=source_type,
+            article_id=article_id,
+            sentence_ids=[uuid4()],
+            source_sentence_count=17,
+        )
+
+    # Version 1 has two sources. Neither may be selected as its authoritative source.
+    sources = [
+        (source(1, "authored"), license_row, article),
+        (source(0, "mined"), license_row, article),
+        (source(1, "mined"), license_row, article),
+    ]
+    variants = [
+        PhraseVariant(pattern_version_id=version_ids[0], text="First A", register="formal"),
+        PhraseVariant(pattern_version_id=version_ids[1], text="First B", register=None),
+        PhraseVariant(pattern_version_id=version_ids[0], text="Second A", register=None),
+    ]
+    affinities = [
+        DisciplineAffinity(pattern_version_id=version_ids[1], discipline_code="A", score=0.1),
+        DisciplineAffinity(pattern_version_id=version_ids[0], discipline_code="B", score=0.2),
+        DisciplineAffinity(pattern_version_id=version_ids[1], discipline_code="C", score=0.3),
+        DisciplineAffinity(pattern_version_id=version_ids[0], discipline_code="D", score=0.4),
+    ]
+    session = AsyncMock()
+    session.execute.side_effect = [
+        Mock(all=Mock(return_value=database_rows)),
+        Mock(all=Mock(return_value=sources)),
+    ]
+    session.scalars.side_effect = [variants, affinities]
+
+    rows = await load_current_patterns(
+        session, display_only=display_only, internal_use_codes=frozenset({"INTERNAL"})
+    )
+
+    # Explicit full snapshots catch accidental field/mapping changes, not just grouping counts.
+    expected = {
+        "id": pattern_ids[0],
+        "status": "approved",
+        "intent_code": "TEST",
+        "intent_name": "Test intent",
+        "current_version_id": version_ids[0],
+        "version_no": 1,
+        "change_note": "Reviewed",
+        "canonical_frame": "{X} suggests a link",
+        "slots": slots,
+        "epistemic_strength": "moderate",
+        "epistemic_strength_labelled": True,
+        "claim_type": "descriptive",
+        "claim_type_labelled": True,
+        "variants": [
+            {"text": "First A", "register": "formal"},
+            {"text": "Second A", "register": None},
+        ],
+        "evidence_min": "single_study",
+        "forbidden_contexts": ["DISCUSSION"],
+        "allowed_sections": ["INTRO"],
+        "allowed_genres": ["RESEARCH_ARTICLE"],
+        "source_type": "mined",
+        "license_code": "INTERNAL",
+        "license_name": "Internal",
+        "license_allows_display": False,
+        "license_flag": True,
+        "article_id": article_id,
+        "source_reference": "10.0000/invented",
+        "source_sentence_count": 17,
+        "provenance_count": 1,
+        "discipline_affinities": [
+            {"discipline_code": "B", "score": 0.2},
+            {"discipline_code": "D", "score": 0.4},
+        ],
+    }
+    snapshots = [expected]
+    if not display_only:
+        empty = {
+            **expected,
+            "id": pattern_ids[2],
+            "current_version_id": version_ids[2],
+            "version_no": 3,
+            "change_note": None,
+            "canonical_frame": "Frame 2",
+            "slots": {},
+            "epistemic_strength": None,
+            "epistemic_strength_labelled": False,
+            "claim_type": None,
+            "claim_type_labelled": False,
+            "variants": [],
+            "evidence_min": None,
+            "forbidden_contexts": [],
+            "allowed_sections": [],
+            "allowed_genres": [],
+            "source_type": "unknown",
+            "license_code": None,
+            "license_name": None,
+            "license_flag": False,
+            "article_id": None,
+            "source_reference": None,
+            "source_sentence_count": 0,
+            "provenance_count": 0,
+            "discipline_affinities": [],
+        }
+        multiple_sources = {
+            **empty,
+            "id": pattern_ids[1],
+            "current_version_id": version_ids[1],
+            "version_no": 2,
+            "canonical_frame": "Frame 1",
+            "variants": [{"text": "First B", "register": None}],
+            "provenance_count": 2,
+            "discipline_affinities": [
+                {"discipline_code": "A", "score": 0.1},
+                {"discipline_code": "C", "score": 0.3},
+            ],
+        }
+        snapshots.extend([multiple_sources, empty])
+    assert [asdict(row) for row in rows] == snapshots

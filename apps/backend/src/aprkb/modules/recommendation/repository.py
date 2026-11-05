@@ -17,6 +17,7 @@ async def load_pattern_rows(
     query: str | None = None,
     move_code: str | None = None,
     claim_type: str | None = None,
+    genre_code: str | None = None,
     internal_use_codes: frozenset[str] = frozenset(),
 ) -> list[PatternRead]:
     """FR-07.1: retrieve DB-backed candidates; query is literal substring matching in this MVP."""
@@ -25,6 +26,8 @@ async def load_pattern_rows(
     return await load_current_patterns(
         session,
         intent_code=intent_code,
+        status="approved",
+        genre_code=genre_code,
         query=query,
         move_code=move_code,
         claim_type=claim_type,

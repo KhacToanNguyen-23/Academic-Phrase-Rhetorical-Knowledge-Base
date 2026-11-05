@@ -94,6 +94,14 @@ async def recommend(
     policy_bundle: PolicyBundle,
 ) -> dict[str, object]:
     """FR-07.1–.4: retrieve, gate, rank and log suggestions with explanation/fallback (BR-08)."""
+    # Blank optional context has the same meaning in SQL, gates and warnings.
+    payload = payload.model_copy(
+        update={
+            field: None
+            for field in ("intent", "move", "section")
+            if (value := getattr(payload, field)) is not None and not value.strip()
+        }
+    )
     if (
         payload.genre is not None
         and payload.section is not None
@@ -131,6 +139,7 @@ async def recommend(
         query=query or None,
         move_code=payload.move,
         claim_type=payload.claim_type,
+        genre_code=payload.genre,
         internal_use_codes=frozenset(policy_bundle.license.internal_use_codes),
     )
     by_tier: dict[str, list[PatternView]] = {
@@ -138,8 +147,6 @@ async def recommend(
     }
     for row in rows:
         allowed_genres = tuple(row.allowed_genres)
-        if payload.genre and allowed_genres and payload.genre not in allowed_genres:
-            continue
         tier = choose_fallback_tier(policy_bundle.fallback_tiers.tiers)
         if tier is None:
             continue
@@ -210,6 +217,10 @@ async def recommend(
     taxonomy_release = await taxonomy_repository.published_release(session)
     versions["taxonomy_release"] = taxonomy_release.version if taxonomy_release else "unpublished"
     warnings = []
+    if not payload.intent and not payload.move and not query:
+        warnings.append("Không có intent/move/query; kết quả là toàn bộ pattern được duyệt")
+    if not payload.section:
+        warnings.append("Section không được lọc")
     if payload.evidence_level is None:
         warnings.append("Evidence level not selected; candidate strength was not filtered")
     if payload.discipline:

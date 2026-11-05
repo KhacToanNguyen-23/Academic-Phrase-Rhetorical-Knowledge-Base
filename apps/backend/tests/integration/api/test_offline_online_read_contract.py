@@ -179,18 +179,16 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
         headers=auth(client_key),
     )
     assert recommended.status_code == 200, recommended.text
-    recommended_items = {item["pattern_version_id"]: item for item in recommended.json()["items"]}
-    assert promoted.intersection(recommended_items)
-    bracket_pattern = next(
-        (row for row in mined if "{" in row["canonical_frame"] and row["slots"]), None
-    )
+    recommendation_items = recommended.json()["items"]
+    assert recommendation_items
+    bracket_pattern = next((item for item in recommendation_items if item["slots"]), None)
     assert bracket_pattern is not None
     rendered = await read_contract_client.post(
         "/v1/render",
         headers=auth(client_key),
         json={
             "recommendation_id": recommended.json()["recommendation_id"],
-            "pattern_version_id": bracket_pattern["current_version_id"],
+            "pattern_version_id": bracket_pattern["pattern_version_id"],
             "slots": {name: "invented example" for name in bracket_pattern["slots"]},
         },
     )

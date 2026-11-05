@@ -12,7 +12,7 @@ src/
     domain/     PhraseFrame, DataState, PageHeader, StatusBadge, SelectField...
   features/     mỗi màn hình một thư mục (components/ + api/); landing/ is the public page
   shared/       api (client sinh tự động), lib
-e2e/            Playwright — not updated for the redesign (switched off)
+e2e/            Playwright — lab Phrasebank and PostgreSQL-backed Writer smoke tests
 ```
 
 Routes: `/` public landing, `/signin`, `/app` staff workspace; every other screen keeps its path and is
@@ -28,7 +28,7 @@ guarded. Design decisions: [ADR-0011](../../doc/adr/0011-frontend-design-system.
 - `/dev/ui` shows every component in every state. It exists in development and in the inspect build only.
 - Desktop only (1440px, minimum 1024px). One primary (teal) button per screen at most.
 
-### Checks (no Playwright)
+### Checks
 
 ```bash
 pnpm typecheck && pnpm lint && pnpm build
@@ -61,8 +61,8 @@ pnpm dev
 ```
 
 Open `http://localhost:5173/writer` after starting the backend and PostgreSQL.
-Enter a client API key; the Writer page keeps it only in memory. `src/features/playground/live/api.ts`
-uses OpenAPI types and the real `/v1` endpoints, with no mock fallback. The form
+`src/features/playground/live/api.ts` uses OpenAPI types and the real `/v1`
+endpoints, with no mock fallback. The form
 loads taxonomy and reference options from the DB. Journal-specific ranking and
 full V01–V08 validation are shown as unavailable until reviewed data/rules exist.
 
@@ -70,7 +70,10 @@ The staff shell accepts curator/admin API keys and keeps the key in the current
 tab's session storage. The local-only Quick demo button seeds self-authored sample
 data and issues a curator key; it requires the Vite development server and a
 loopback backend with `APP_ENV=local`.
-The Playwright specs under `e2e/` were written for the previous UI and are not run for the redesign. To try one anyway: `pnpm exec playwright test e2e/writer.spec.ts`. Run it with
-API/Vite against a seeded disposable `aprkb_test` database and set
-`WRITER_E2E_API_KEY` to a client key for that database. On Windows,
-`WRITER_E2E_BROWSER=msedge` uses the installed Edge browser.
+Run `pnpm test:e2e` with API/Vite against a seeded disposable `aprkb_test`
+database. Phrasebank tests mock their API responses and cover the lab-only
+collection. The Writer test uses the real API and the current Phrasebank Basic
+seed data. CI runs this suite in `frontend-e2e-smoke` for push and pull request
+events. On Windows, `WRITER_E2E_BROWSER=msedge` uses the installed Edge browser.
+Failure traces and screenshots go to `test-results`; CI's HTML report goes to
+the separate `playwright-report` directory.

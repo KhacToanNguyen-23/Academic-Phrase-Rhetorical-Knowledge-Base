@@ -773,7 +773,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       <PageHeader title={item.intent_name || item.intent_code} description={`Version ${item.version_no}`} />
       <Card>
         <CardHeader>
-          <CardTitle>Frame</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Frame</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-4">
           <p className="font-serif text-lg">{item.canonical_frame}</p>
@@ -784,7 +784,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Slots</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Slots</CardTitle>
         </CardHeader>
         <CardContent>
           {slots.length ? (
@@ -809,7 +809,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Variants</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Variants</CardTitle>
         </CardHeader>
         <CardContent>
           {item.variants.length ? (
@@ -830,7 +830,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Usage</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Usage</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="flex flex-col gap-2">
@@ -843,7 +843,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Evidence</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Evidence</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="flex flex-col gap-2">
@@ -854,7 +854,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Provenance</CardTitle>
+          <CardTitle role="heading" aria-level={2}>Provenance</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="flex flex-col gap-2">

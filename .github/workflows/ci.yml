@@ -228,6 +228,7 @@ jobs:
           name: playwright-e2e-smoke
           path: |
             apps/web/test-results
+            apps/web/playwright-report
           retention-days: 7
           if-no-files-found: ignore
       - name: Backend/frontend logs on failure

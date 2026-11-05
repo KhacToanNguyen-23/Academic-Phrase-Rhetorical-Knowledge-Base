@@ -89,7 +89,7 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
 
     async with read_contract_sessions() as session:
         candidates = list(await session.scalars(select(Candidate)))
-        intent = await get_intent(session, "METHODS_DESCRIBING_PREVIOUSLY_USED_METHODS")
+        intent = await get_intent(session, "INTRO_GAP_INDICATE")
         assert candidates and intent is not None
 
     label_payload = {
@@ -174,7 +174,9 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
         assert version.json()["source_sentence_count"] == row["source_sentence_count"]
 
     recommended = await read_contract_client.post(
-        "/v1/recommendations", json={"limit": 100}, headers=auth(client_key)
+        "/v1/recommendations",
+        json={"section": "INTRO", "intent": "INTRO_GAP_INDICATE", "limit": 100},
+        headers=auth(client_key),
     )
     assert recommended.status_code == 200, recommended.text
     recommended_items = {item["pattern_version_id"]: item for item in recommended.json()["items"]}

@@ -37,6 +37,7 @@ from aprkb.modules.recommendation.models import Feedback, RecommendationLog
 from aprkb.modules.taxonomy.models import Intent
 from aprkb.policies.loader import load_policy_bundle
 from aprkb.seeds.load import run_seed
+from tests.seed_data import seed_legacy_pattern_fixtures
 
 
 @pytest_asyncio.fixture
@@ -701,6 +702,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
 ) -> None:
     async with session_factory() as session:
         await run_seed(session)
+        await seed_legacy_pattern_fixtures(session)
         intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
         assert intent is not None
         unprovenanced = PhrasePattern(intent_id=intent.id, status="approved")
@@ -836,6 +838,7 @@ async def test_proprietary_recommendation_is_flagged_for_internal_use(
 ) -> None:
     async with session_factory() as session:
         await run_seed(session)
+        await seed_legacy_pattern_fixtures(session)
         intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
         license_row = await session.scalar(select(License).where(License.code == "PROPRIETARY"))
         assert intent is not None and license_row is not None
@@ -993,6 +996,7 @@ async def test_recommendation_search_keeps_query_private_and_uses_honest_journal
 ) -> None:
     async with session_factory() as session:
         await run_seed(session)
+        await seed_legacy_pattern_fixtures(session)
         journal = JournalProfile(name="Search fallback journal", issn="2049-3631")
         session.add(journal)
         _, key = await create_api_key(session, name="search client", role="client")
@@ -1515,6 +1519,7 @@ async def test_concurrent_approvals_create_at_most_one_promotion_after_two_round
 async def run_seed_in_session(session_factory: async_sessionmaker) -> None:
     async with session_factory() as session:
         await run_seed(session)
+        await seed_legacy_pattern_fixtures(session)
         await session.commit()
 
 

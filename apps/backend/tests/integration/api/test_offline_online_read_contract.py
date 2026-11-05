@@ -18,6 +18,7 @@ from aprkb.modules.mining.models import Candidate
 from aprkb.modules.taxonomy.models import Intent
 from aprkb.seeds.load import run_seed
 from aprkb.worker.runner import run_once
+from tests.seed_data import seed_legacy_pattern_fixtures
 
 ARTICLE = (
     "The invented results demonstrate that the proposed method improves retrieval accuracy. "
@@ -60,6 +61,7 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
 ) -> None:
     async with read_contract_sessions() as session:
         await run_seed(session)
+        await seed_legacy_pattern_fixtures(session)
         await session.commit()
         _, curator = await create_api_key(session, name="read curator", role="curator")
         _, reviewer_one = await create_api_key(session, name="read reviewer one", role="reviewer")

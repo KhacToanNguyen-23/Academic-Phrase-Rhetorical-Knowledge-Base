@@ -509,7 +509,7 @@ async def test_journal_list_detail_and_guideline_write_are_persisted_and_audited
 async def test_feedback_is_persisted_and_override_is_unavailable_in_mvp(
     api_client, session_factory
 ):
-    await run_seed_in_session(session_factory)
+    await run_seed_with_pattern_fixtures_in_session(session_factory)
     client, key = await create_key(session_factory, "client", "feedback client")
     headers = {"X-API-Key": key}
     recommendation = await api_client.post(
@@ -1071,7 +1071,7 @@ async def test_validation_http_runs_v02_and_blocks_prove_with_single_study(
 async def test_render_uses_approved_version_and_validates_slots(
     api_client: AsyncClient, session_factory: async_sessionmaker
 ) -> None:
-    await run_seed_in_session(session_factory)
+    await run_seed_with_pattern_fixtures_in_session(session_factory)
     _, key = await create_key(session_factory, "client", "render client")
     async with session_factory() as session:
         approved = await session.scalar(

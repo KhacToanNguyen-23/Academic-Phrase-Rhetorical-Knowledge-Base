@@ -1,9 +1,10 @@
 # Luồng làm giàu tri thức: từ bài báo đến pattern
 
 Tài liệu này theo dõi trạng thái từng chức năng và thuật toán trong luồng
-bài báo → câu → phrase → pattern đã duyệt. Trạng thái đối chiếu với code trên
-nhánh `feat/scaffold-prd` ngày 2026-11-02. Khi một bước thay đổi trạng thái,
-cập nhật bảng tương ứng trong cùng PR.
+bài báo → câu → phrase → pattern đã duyệt. Trạng thái chức năng đối chiếu với
+code hiện tại từ nền `dev` tại `4149e7f` ngày 2026-11-04. Các số liệu thử nghiệm/gold ở mục 3
+và 6 là snapshot ngày 2026-11-02, không phải số đếm DB hiện tại. Khi một bước
+thay đổi trạng thái, cập nhật bảng tương ứng trong cùng PR.
 
 **Ký hiệu**
 
@@ -18,8 +19,16 @@ Bài báo ─[1. Import]──▶ articles, blob
         ─[2. Ingest]──▶ article_sections, sentences
         ─[3. Mining]──▶ lọc câu → mức độ → SLOT ABSTRACTOR
                         → chuẩn hóa → gom cụm → candidates (pending)
-        ─[4. Review]──▶ 2 vòng duyệt → phrase_patterns, pattern_versions
-        ─[5. Sử dụng]─▶ recommendation, validation
+                        ├─[4A. Review API]─▶ 2 vòng duyệt + intent đã có
+                        │                    → phrase_patterns, pattern_versions
+                        │                    ─[5. Online]─▶ recommendation, render, validation
+                        └─[4B. /extract]───▶ 1 người duyệt → approved_phrases
+                                             → đầu vào fingerprint (chưa làm)
+
+Chuyển tri thức Offline → Online (mục 7):
+  graph pattern đủ điều kiện → export-pack → validate-pack → import-pack
+                            → phrase_patterns, pattern_versions → [5. Online]
+  approved_phrases không nằm trong pack và không đi vào recommendation.
 
 Đo chất lượng (nhánh riêng, không đi vào review queue):
   sentences ─[6. Gold dev]─▶ mẫu 300 câu → Groq gán nhãn nháp → người duyệt
@@ -69,7 +78,8 @@ Mã nguồn: `apps/backend/src/aprkb/worker/handlers.py` (`_ingest`), `modules/c
 ## 3. Mining (job `mine_article`)
 
 Mã nguồn: `apps/backend/src/aprkb/modules/mining/stages/`, `worker/handlers.py` (`_mine`).
-Kích hoạt: `POST /v1/admin/corpus/articles/{id}/mine`. Chưa tự động chạy sau ingest.
+Kích hoạt từng bài: `POST /v1/admin/corpus/articles/{id}/mine`, hoặc theo phạm vi
+bài/batch qua `POST /v1/admin/corpus/mine` từ `/extract`. Chưa tự động chạy sau ingest.
 
 Thứ tự stage (`stages/__init__.py`): `sentence_filter` → `move_classifier` →
 `epistemic_tagger` → `slot_abstractor` → `frame_normalizer` → `clusterer` →
@@ -98,23 +108,51 @@ pilot filter improves retrieval quality [12]."* → khung `[X] [Y] suggest that 
 
 ## 4. Duyệt và lưu thành tri thức
 
-Mã nguồn: `apps/backend/src/aprkb/modules/review/`.
+### 4A. Hai vòng duyệt để tạo pattern
+
+Mã nguồn: `apps/backend/src/aprkb/modules/review/`. Hàng chờ này chưa có UI riêng.
 
 | Trạng thái | Bước | Ghi xuống DB | Ghi chú |
 |---|---|---|---|
+| [x] | 4.0 Reviewer gán intent qua `PUT /v1/admin/review-queue/{id}/intent` với `intent_id` | `candidates`, `audit_events` | Intent phải thuộc taxonomy đã publish; chỉ sửa khi pending, trước vòng duyệt đầu. Candidate cũ đã có vòng 1 approve nhưng chưa có intent: chỉ reviewer vòng 1 được gán và xác nhận intent, có audit riêng |
 | [x] | 4.1 Reviewer xem hàng chờ `GET /v1/admin/review-queue` | — | Candidate cũ có khung chưa che slot bị từ chối khi duyệt (409) |
-| [x] | 4.2 Duyệt vòng 1: `POST /v1/admin/review-queue/{id}/decisions` | `review_decisions`, `audit_events` | Reject ở bất kỳ vòng nào → `rejected` |
-| [x] | 4.3 Duyệt vòng 2. Cả hai vòng approve → `accepted` | `review_decisions` | |
+| [x] | 4.2 Duyệt vòng 1: `POST /v1/admin/review-queue/{id}/decisions` | `review_decisions`, `audit_events` | Approve thiếu intent → 409 trước khi ghi quyết định; reject ở bất kỳ vòng nào → `rejected` |
+| [~] | 4.3 Duyệt vòng 2. Cả hai vòng approve → `accepted` nếu thăng hạng thành công | `review_decisions` | Thiếu intent hoặc provenance hợp lệ → 409, rollback quyết định vòng 2 |
 | [~] | 4.4 Bắt buộc hai reviewer khác nhau | — | Chưa quyết định. Hiện một người có thể duyệt cả hai vòng |
-| [x] | 4.5 Thăng hạng thành pattern | `phrase_patterns`, `pattern_versions` (chỉ thêm, không sửa), `audit_events` | |
+| [x] | 4.5 Thăng hạng thành pattern sau hai approve | `phrase_patterns`, `pattern_versions` (chỉ thêm, không sửa), `audit_events` | Cần intent đã gán ở 4.0 và provenance hợp lệ. Test tích hợp đi từ upload → ingest → mining → gán intent qua API → hai approve → Online read/render; không gán intent trực tiếp trong DB nữa |
 | [ ] | 4.6 AI gợi ý nhãn cho **candidate** để reviewer chỉ xác nhận | — | AI hiện chỉ gán nhãn cho **gold dev** (mục 6), chưa dùng ở review queue |
+
+Pattern được thăng hạng hiện có `claim_type = unknown`; không tự suy ra nhãn chỉ
+để đủ điều kiện xuất pack. Hai vòng duyệt lưu quyết định theo candidate; exporter
+đọc được chúng cho version 1, không tái sử dụng cho version chỉnh sửa (mục 7).
+Chưa có UI riêng cho hàng chờ 4A: dùng API qua `/docs`, lấy ID intent từ taxonomy
+đã publish. API này phục vụ tác vụ Offline; không trỏ session ghi vào DB Online.
+
+### 4B. Một người duyệt trên `/extract`
+
+Mã nguồn: `apps/backend/src/aprkb/modules/extraction/`, web
+`apps/web/src/features/phrase-extraction/`. Quyết định: [ADR-0009](adr/0009-phrase-extraction-page.md).
+
+| Trạng thái | Bước | Ghi xuống DB | Ghi chú |
+|---|---|---|---|
+| [x] | Xem batch import, chọn nhiều batch/bài và xếp job mining | `jobs` | Batch là một lần import; bài cũ không có batch được nhóm riêng |
+| [x] | Xem text bài và phrase cạnh nhau, accept/reject từng phrase hoặc hàng loạt | `candidates`, `approved_phrases`, `audit_events` | Một reviewer; accept kiểm tra lại quyền mining và schema khung/slot |
+| [x] | Accept phrase không cần intent | `approved_phrases` (chỉ thêm), candidate → `accepted` | Không tạo `PhrasePattern`, không vào Library/recommendation hoặc pack. Candidate đã accept rời hàng chờ 4A |
+| [ ] | Dùng approved phrase tạo fingerprint journal | — | Chưa có fingerprint; journal của bài/phrase có thể còn null |
 
 ## 5. Sử dụng tri thức
 
-| Trạng thái | Chức năng | Endpoint |
-|---|---|---|
-| [x] | Gợi ý phrase có giải thích điểm và fallback tier | `POST /v1/recommendations` |
-| [x] | Kiểm tra câu (V01–V08, V02 dùng chung `EvidencePolicy`) | `POST /v1/validate` |
+| Trạng thái | Chức năng | Endpoint | Giới hạn hiện tại |
+|---|---|---|---|
+| [x] | Đọc pattern hiện hành đã approve qua hợp đồng Online chung | `GET /v1/patterns`, detail/version | Nhãn `unknown` trả null và cờ `labelled=false`; không trả source text |
+| [~] | Gợi ý phrase có giải thích điểm và fallback tier | `POST /v1/recommendations` | Hiện dùng `generic_genre`; chưa có dữ liệu xác minh cho journal/genre, fingerprint hoặc discipline ranking. Có gate `evidence_min` và `forbidden_contexts` (so mã literal section/genre/claim type, chờ owner chốt semantics) |
+| [x] | Render phrase với slot của người viết | `POST /v1/render` | Cần recommendation đã cấp cho cùng client; kiểm tra slot bắt buộc/độ dài tối thiểu |
+| [~] | Kiểm tra câu, giữ hợp đồng kết quả V01–V08 | `POST /v1/validate` | V02 kiểm tra claim/evidence bằng `EvidencePolicy`; V03 kiểm tra grounding giới hạn; V06 dò cụm từ style cấu hình, không kiểm tra ngữ pháp. V01/V04/V05/V07/V08 trả `unavailable`, không phải pass |
+
+Hai lỗi metadata đã sửa trên nền `dev`: Online ưu tiên `source_sentence_count`
+được import, fallback sang số sentence ID cục bộ khi count là null; tạo version
+mới giữ `evidence_min`, `forbidden_contexts`, sentence count, source section và
+occurrence hash của version trước. Đây không phải triển khai thêm thuật toán mining.
 
 ## 6. Gold dev và đánh giá chất lượng
 
@@ -139,13 +177,57 @@ không lưu văn bản; chỉ nhãn `approved` mới tính là gold.
 | [x] | 6.8 Evaluator `eval-mining`, tách hai chỉ số | `sentence_filter` (keep, so lý do nhiễu bằng bảng nhầm lẫn thô) và `extraction` (coverage, lý do không trích, accuracy và slot F1 trên câu đã trích) |
 | [ ] | 6.9 Chạy `eval-mining --split dev` / `--split test` và đọc kết quả | Chờ nhãn gold được duyệt. Chưa có kết luận chất lượng nào |
 
+## 7. Chuyển pattern Offline → Online bằng data pack
+
+Mã nguồn: `apps/backend/src/aprkb/modules/pack/`. Hợp đồng:
+[data-pack-spec.md](data-pack-spec.md), schema
+`packages/contracts/data-pack/pack.schema.json`.
+
+| Trạng thái | Bước | Giới hạn hiện tại |
+|---|---|---|
+| [x] | `validate-pack <directory>` kiểm tra manifest/hash, taxonomy, enum, slot, license, provenance và review | Chạy không cần DB; pack dùng natural key, không mang text nguồn hay article/sentence UUID |
+| [x] | `export-pack --out <directory> --only-approved` | Chuẩn hóa bracket/typed slot và count từ sentence IDs; đọc review candidate cho version 1. Kiểm tra toàn bộ graph bằng cùng validator như import. Pattern không hợp lệ bị loại với ID/mã lỗi/path rõ ràng ở stderr; cần kiểm tra số lượng được xuất và bị loại |
+| [x] | `init-reference`, `import-pack <directory> --dry-run`, rồi `import-pack <directory>` trên DB thử nghiệm/staging | Import transactional/idempotent và bảo vệ version đã lưu. Test DB cô lập kiểm tra graph đủ nhãn + review → export → validate → import sạch → reimport không đổi → re-export giữ nội dung; sửa version đã biết bị E15 |
+
+Mined pack cần license cho phép mining (không phải `DEV-UNVERIFIED`), article
+natural key, sentence count dương, hai vòng approve có reviewer/role/time, nhãn
+claim/strength hợp lệ và placeholder `{slot}`. Exporter chuyển `[slot]` thành
+`{slot}` khi schema khớp, bỏ metadata slot `signals` nội bộ, lấy count từ provenance
+hoặc sentence IDs, và chỉ xuất danh tính/vai trò/thời gian của reviewer nội bộ
+(không mang comment có thể chứa text nguồn). Review của pack đã import giữ metadata
+riêng để round-trip không đổi. File xuất ghi đúng byte UTF-8 dùng tính SHA-256, kể
+cả trên Windows.
+
+**Còn thiếu:** promotion thông thường vẫn tạo `claim_type = unknown`; các pattern
+này bị loại với E05. Không tự gán nhãn hoặc tái dùng approve của version 1 cho
+version mới để ép xuất pack. `approved_phrases` vẫn không thuộc graph được xuất.
+Vì vậy tooling chuyển graph hợp lệ đã có test, nhưng mining không tự tạo ra pack
+đủ nhãn cho mọi candidate.
+
+Sau mỗi export, chạy `validate-pack` và kiểm tra số lượng pattern/version trước
+khi import. Không bỏ gate license, nhãn hay review để ép pack hợp lệ.
+
+DB đang phục vụ Online chỉ được query trong workflow này. `export-pack` là thao
+tác đọc; `init-reference`/`import-pack` có ghi nên không chạy trên DB Online đang
+hoạt động. Chỉ kiểm thử các lệnh ghi trên DB Offline/staging/test tách biệt; việc
+cấp dữ liệu cho Online cần quy trình riêng. Các module dùng chung session nên phân
+tách deployment/quyền DB phải được cấu hình bên ngoài, không do tên endpoint bảo đảm.
+
 ## Thứ tự đề xuất
 
 Đã xong: import SLR có profile và bộ lọc, tách câu với chữ viết tắt, nhận diện
 section, lọc nhiễu cơ bản, `epistemic_tagger`, `slot_abstractor`, `frame_normalizer`,
 `clusterer`, hạ tầng gold dev và evaluator.
 
-1. Gán nhãn lại bằng prompt/guideline v1 (thử 10 câu, rồi chia 290 câu còn lại theo hạn mức ngày của Groq).
+Đã nối export với metadata/review version 1 và thêm test round-trip (mục 7);
+reviewer có thể gán intent trước duyệt (4.0). Việc tiếp theo cho pack: quy trình
+người duyệt gán claim type/strength đầy đủ và review riêng cho version mới, không
+tự suy đoán nhãn hay tái dùng approval. Không đổi 4B thành pattern approval nếu
+chưa có quyết định thay thế ADR-0009.
+
+Thứ tự cho nhánh cải thiện chất lượng mining (số lượng gold cần kiểm tra lại trong DB):
+
+1. Gán nhãn lại bằng prompt/guideline v1 (thử 10 câu, rồi chia phần còn lại theo hạn mức ngày của Groq).
 2. Người duyệt nhãn trên `/gold` (6.7), rồi chạy `eval-mining` (6.9).
 3. Dựa trên số liệu: mở rộng danh sách động từ báo cáo hoặc mẫu không có *that* (3.4), chốt danh sách từ đánh dấu (3.3), tinh chỉnh bộ lọc nhiễu (3.1b).
 4. `move_classifier` (3.2), `dedup_matcher` (3.7), độ tin cậy (3.8).

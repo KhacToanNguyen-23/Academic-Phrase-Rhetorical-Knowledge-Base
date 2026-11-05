@@ -21,6 +21,7 @@ from aprkb.policies.schemas import (
     SectionHeadingsPolicy,
     SlotAbstractionPolicy,
     ValidationRulesPolicy,
+    VocabularyImportPolicy,
 )
 
 
@@ -40,6 +41,7 @@ class PolicyBundle:
     gold_labeling: GoldLabelingPolicy
     reporting_verbs: ReportingVerbsPolicy
     slot_abstraction: SlotAbstractionPolicy
+    vocabulary_import: VocabularyImportPolicy
 
 
 def _load[PolicyModel: BaseModel](path: Path, model: type[PolicyModel]) -> PolicyModel:
@@ -71,4 +73,5 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
         gold_labeling=_load(root / "gold_labeling.yaml", GoldLabelingPolicy),
         reporting_verbs=_load(root / "lexicon" / "reporting_verbs.yaml", ReportingVerbsPolicy),
         slot_abstraction=_load(root / "slot_abstraction.yaml", SlotAbstractionPolicy),
+        vocabulary_import=_load(root / "vocabulary_import.yaml", VocabularyImportPolicy),
     )

@@ -22,13 +22,22 @@ from aprkb.modules.taxonomy.models import ArticleGenre, Intent, Move, Section, S
 from aprkb.policies.loader import load_policy_bundle
 from aprkb.shared.models import RefEnum
 
-_MODULE_PARENTS = Path(__file__).resolve().parents
-SEED_DIR = (
-    (_MODULE_PARENTS[5] if len(_MODULE_PARENTS) > 5 else _MODULE_PARENTS[-2]) / "data" / "seed"
-)
+
+def _find_seed_dir() -> Path | None:
+    """Locate the monorepo-root data/seed directory; absent in a standalone container checkout."""
+    parents = Path(__file__).resolve().parents
+    return parents[5] / "data" / "seed" if len(parents) > 5 else None
+
+
+SEED_DIR = _find_seed_dir()
 
 
 def _read_json(name: str) -> Any:
+    if SEED_DIR is None:
+        raise RuntimeError(
+            "Seed data is only available from a monorepo checkout, not a standalone "
+            "backend build; seeding is a local/admin operation, not a runtime dependency."
+        )
     with (SEED_DIR / name).open(encoding="utf-8") as seed_file:
         return json.load(seed_file)
 

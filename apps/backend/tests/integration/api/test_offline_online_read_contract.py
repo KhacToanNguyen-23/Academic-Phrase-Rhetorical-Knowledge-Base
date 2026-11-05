@@ -2,7 +2,7 @@
 
 from collections.abc import AsyncIterator
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
@@ -89,18 +89,48 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
         candidates = list(await session.scalars(select(Candidate)))
         intent = (await session.scalars(select(Intent))).first()
         assert candidates and intent is not None
-        # Simulates the missing intent classifier before two-round review promotion.
-        for candidate in candidates:
-            candidate.intent_id = intent.id
-        await session.commit()
+
+    label_payload = {
+        "intent_id": str(intent.id),
+    }
+    labels_path = f"/v1/admin/review-queue/{candidates[0].id}/intent"
+    forbidden = await read_contract_client.put(
+        labels_path, headers=auth(client_key), json=label_payload
+    )
+    assert forbidden.status_code == 403
+    invalid = await read_contract_client.put(
+        labels_path,
+        headers=auth(reviewer_one),
+        json={**label_payload, "intent_id": str(uuid4())},
+    )
+    assert invalid.status_code == 422
+    missing_intent = await read_contract_client.post(
+        f"/v1/admin/review-queue/{candidates[0].id}/decisions",
+        headers=auth(reviewer_one),
+        json={"decision": "approve"},
+    )
+    assert missing_intent.status_code == 409
 
     promoted: set[str] = set()
     for candidate in candidates:
+        labelled = await read_contract_client.put(
+            f"/v1/admin/review-queue/{candidate.id}/intent",
+            headers=auth(reviewer_one),
+            json=label_payload,
+        )
+        assert labelled.status_code == 200, labelled.text
+        assert labelled.json()["intent_id"] == str(intent.id)
         first = await read_contract_client.post(
             f"/v1/admin/review-queue/{candidate.id}/decisions",
             headers=auth(reviewer_one),
             json={"decision": "approve", "comment": "invented fixture"},
         )
+        frozen = await read_contract_client.put(
+            f"/v1/admin/review-queue/{candidate.id}/intent",
+            headers=auth(reviewer_two),
+            json=label_payload,
+        )
+        assert frozen.status_code == 409
         second = await read_contract_client.post(
             f"/v1/admin/review-queue/{candidate.id}/decisions",
             headers=auth(reviewer_two),
@@ -111,6 +141,12 @@ async def test_approved_mined_patterns_reach_online_reads_and_render(
         if second.json().get("pattern_version_id"):
             promoted.add(second.json()["pattern_version_id"])
     assert promoted
+    completed = await read_contract_client.put(
+        labels_path,
+        headers=auth(reviewer_one),
+        json=label_payload,
+    )
+    assert completed.status_code == 409
 
     listed = await read_contract_client.get(
         "/v1/patterns", params={"status": "approved", "limit": 200}, headers=auth(client_key)

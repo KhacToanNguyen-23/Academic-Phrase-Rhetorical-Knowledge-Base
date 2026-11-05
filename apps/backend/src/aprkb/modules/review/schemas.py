@@ -3,7 +3,7 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from aprkb.modules.mining.schemas import SlotDefinition
 
@@ -22,6 +22,14 @@ class CandidateSummary(BaseModel):
 class ReviewDecisionCreate(BaseModel):
     decision: Literal["approve", "reject"]
     comment: str | None = Field(default=None, max_length=4000)
+
+
+class CandidateIntentUpdate(BaseModel):
+    """Human intent assignment, completed before either approval is recorded."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    intent_id: UUID
 
 
 class ReviewDecisionResult(BaseModel):

@@ -15,8 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aprkb.modules.audit.service import record_event
 from aprkb.modules.corpus.models import Article, License
 from aprkb.modules.identity.models import ApiClient
+from aprkb.modules.mining.models import Candidate
 from aprkb.modules.pack.models import Version
-from aprkb.modules.pack.validator import Finding, References, ValidationReport, validate_pack
+from aprkb.modules.pack.validator import (
+    Finding,
+    References,
+    ValidationReport,
+    validate_pack,
+    validate_pattern,
+)
 from aprkb.modules.patterns.models import (
     EvidenceProvenance,
     PatternVersion,
@@ -25,6 +32,7 @@ from aprkb.modules.patterns.models import (
     ReviewDecision,
     UsageConstraint,
 )
+from aprkb.modules.patterns.read_model import normalized_frame
 from aprkb.modules.taxonomy.models import ArticleGenre, Intent, Move, Section, Step, TaxonomyRelease
 from aprkb.shared.models import RefEnum
 
@@ -108,6 +116,25 @@ async def _stored_version(session: AsyncSession, version: PatternVersion) -> dic
             .order_by(ReviewDecision.round)
         )
     )
+    if not reviews and version.version_no == 1:
+        candidates = list(
+            await session.scalars(
+                select(Candidate.id).where(
+                    Candidate.matched_pattern_id == version.pattern_id,
+                    Candidate.status == "accepted",
+                )
+            )
+        )
+        if len(candidates) > 1:
+            raise ValueError(f"Version {version.id} has ambiguous candidate reviews")
+        if candidates:
+            reviews = list(
+                await session.scalars(
+                    select(ReviewDecision)
+                    .where(ReviewDecision.candidate_id == candidates[0])
+                    .order_by(ReviewDecision.round)
+                )
+            )
     if usage is None or len(sources) != 1:
         raise ValueError(f"Version {version.id} has incomplete pack metadata")
     source = sources[0]
@@ -127,30 +154,45 @@ async def _stored_version(session: AsyncSession, version: PatternVersion) -> dic
         )
     if source.source_section_code:
         provenance["section_code"] = source.source_section_code
-    if source.source_sentence_count is not None:
-        provenance["source_sentence_count"] = source.source_sentence_count
+    if source.source_sentence_count is not None or source.sentence_ids:
+        provenance["source_sentence_count"] = (
+            source.source_sentence_count
+            if source.source_sentence_count is not None
+            else len(source.sentence_ids)
+        )
     if source.occurrence_hash:
         provenance["occurrence_hash"] = source.occurrence_hash
     review_data = []
     for review in reviews:
-        match = REVIEW_RE.fullmatch(review.comment or "")
-        if match is None or review.decided_at is None:
+        reviewer = await session.get(ApiClient, review.reviewer_id)
+        if reviewer is None:
+            raise ValueError(f"Version {version.id} has unexportable review metadata")
+        imported = review.pattern_version_id is not None and reviewer.name == "pack-importer"
+        match = REVIEW_RE.fullmatch(review.comment or "") if imported else None
+        decided_at = review.decided_at if imported else review.decided_at or review.created_at
+        if decided_at is None or (imported and match is None):
             raise ValueError(f"Version {version.id} has unexportable review metadata")
         review_data.append(
             {
                 "round": review.round,
                 "decision": review.decision,
-                "reviewer": match.group(1),
-                "reviewer_role": match.group(2),
-                "decided_at": review.decided_at.isoformat().replace("+00:00", "Z"),
-                **({"comment": match.group(3)} if match.group(3) else {}),
+                "reviewer": match.group(1) if match else reviewer.name,
+                "reviewer_role": match.group(2) if match else reviewer.role,
+                "decided_at": decided_at.isoformat().replace("+00:00", "Z"),
+                # Native review comments may quote corpus text; don't transfer them.
+                **({"comment": match.group(3)} if match and match.group(3) else {}),
             }
         )
     return {
         "version_id": str(version.id),
         "version_no": version.version_no,
-        "canonical_frame": version.canonical_frame,
-        "slots": version.slots,
+        "canonical_frame": normalized_frame(version.canonical_frame, version.slots),
+        "slots": {
+            key: {field: value for field, value in slot.items() if field != "signals"}
+            if isinstance(slot, dict)
+            else {"type": slot}
+            for key, slot in version.slots.items()
+        },
         "claim_type": version.claim_type,
         "epistemic_strength": version.epistemic_strength,
         **({"change_note": change_note} if change_note is not None else {}),
@@ -407,10 +449,13 @@ async def import_pack(
 
 async def export_pack(
     session: AsyncSession, out: Path, *, only_approved: bool = True
-) -> dict[str, int]:
-    """Write a deterministic pack from exportable, approved pattern graphs."""
+) -> dict[str, Any]:
+    """Export valid graphs and report every excluded approved pattern."""
     rows = list(await session.scalars(select(PhrasePattern).order_by(PhrasePattern.id)))
+    refs, _, _, _ = await database_references(session)
     patterns: list[dict[str, Any]] = []
+    exported_rows: list[PhrasePattern] = []
+    excluded: list[dict[str, Any]] = []
     for pattern in rows:
         if pattern.status != "approved":
             continue  # pack v0.1 has no other status, irrespective of CLI flag
@@ -423,7 +468,19 @@ async def export_pack(
                 .join(Intent, Intent.step_id == Step.id)
                 .where(Intent.id == pattern.intent_id)
             )
-        ).one()
+        ).one_or_none()
+        if intent_row is None:
+            excluded.append(
+                {
+                    "pattern_id": str(pattern.id),
+                    "findings": [
+                        Finding(
+                            "E03", "error", "pattern.intent", "Full intent path is unresolved"
+                        ).as_dict()
+                    ],
+                }
+            )
+            continue
         version_rows = list(
             await session.scalars(
                 select(PatternVersion)
@@ -434,37 +491,43 @@ async def export_pack(
         try:
             versions = [await _stored_version(session, row) for row in version_rows]
         except ValueError:
-            continue
-        if any(
-            version["provenance"]["source_type"] == "mined"
-            and (
-                not version["provenance"].get("article")
-                or not version["provenance"].get("source_sentence_count")
-                or len(version["reviews"]) != 2
+            excluded.append(
+                {
+                    "pattern_id": str(pattern.id),
+                    "findings": [
+                        Finding(
+                            "E11",
+                            "error",
+                            "pattern.versions",
+                            "Incomplete or ambiguous export metadata",
+                        ).as_dict()
+                    ],
+                }
             )
-            for version in versions
-        ):
             continue
-        patterns.append(
-            {
-                "pattern_id": str(pattern.id),
-                "status": pattern.status,
-                "intent": dict(
-                    zip(
-                        ("taxonomy_version", "section", "move", "step", "intent"),
-                        intent_row,
-                        strict=True,
-                    )
-                ),
-                "current_version_no": next(
-                    row.version_no for row in version_rows if row.id == pattern.current_version_id
-                ),
-                "versions": versions,
-            }
-        )
-    refs, _, _, _ = await database_references(session)
+        current = next((row for row in version_rows if row.id == pattern.current_version_id), None)
+        graph = {
+            "pattern_id": str(pattern.id),
+            "status": pattern.status,
+            "intent": dict(
+                zip(
+                    ("taxonomy_version", "section", "move", "step", "intent"),
+                    intent_row,
+                    strict=True,
+                )
+            ),
+            "current_version_no": current.version_no if current else 0,
+            "versions": versions,
+        }
+        _, findings = validate_pattern(graph, refs)
+        errors = [finding.as_dict() for finding in findings if finding.severity == "error"]
+        if errors:
+            excluded.append({"pattern_id": str(pattern.id), "findings": errors})
+            continue
+        patterns.append(graph)
+        exported_rows.append(pattern)
     payload = json.dumps(patterns, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    created_at = min((row.created_at for row in rows if row.status == "approved"), default=None)
+    created_at = min((row.created_at for row in exported_rows), default=None)
     counts = {
         "patterns": len(patterns),
         "versions": sum(len(row["versions"]) for row in patterns),
@@ -482,8 +545,9 @@ async def export_pack(
         ],
     }
     out.mkdir(parents=True, exist_ok=True)
-    (out / "patterns.json").write_text(payload, encoding="utf-8")
-    (out / "manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    # Hash exactly the bytes written, including on Windows where text mode changes newlines.
+    (out / "patterns.json").write_bytes(payload.encode("utf-8"))
+    (out / "manifest.json").write_bytes(
+        (json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
     )
-    return counts
+    return {**counts, "excluded": excluded}

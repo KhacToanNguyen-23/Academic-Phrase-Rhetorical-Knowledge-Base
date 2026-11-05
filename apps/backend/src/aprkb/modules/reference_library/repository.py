@@ -118,7 +118,7 @@ async def intent_sections(session: AsyncSession) -> dict[str, str]:
 
 
 async def search(
-    session: AsyncSession, query: str, category_slug: str | None, limit: int
+    session: AsyncSession, query: str, category_slug: str | None, limit: int | None
 ) -> list[tuple[ReferenceCategory, ReferenceEntry]]:
     source = await session.scalar(
         select(ReferenceSource).order_by(ReferenceSource.imported_at.desc()).limit(1)
@@ -142,6 +142,8 @@ async def search(
         )
     return list(
         await session.execute(
-            statement.order_by(ReferenceCategory.position, ReferenceEntry.position).limit(limit)
+            statement.order_by(
+                ReferenceCategory.position, ReferenceEntry.position, ReferenceEntry.id
+            ).limit(limit)
         )
     )

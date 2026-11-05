@@ -1,0 +1,1 @@
+"""Academic Vocabulary List module."""

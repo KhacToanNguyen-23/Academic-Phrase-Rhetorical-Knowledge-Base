@@ -400,6 +400,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/review-queue/{candidate_id}/intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Assign Intent */
+        put: operations["assign_intent_v1_admin_review_queue__candidate_id__intent_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/vocabulary/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vocabulary Import List */
+        get: operations["vocabulary_import_list_v1_admin_vocabulary_imports_get"];
+        put?: never;
+        /** Vocabulary Import */
+        post: operations["vocabulary_import_v1_admin_vocabulary_imports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/demo-session": {
         parameters: {
             query?: never;
@@ -774,6 +809,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/vocabulary/families": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vocabulary Families */
+        get: operations["vocabulary_families_v1_vocabulary_families_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/vocabulary/lemmas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vocabulary Lemmas */
+        get: operations["vocabulary_lemmas_v1_vocabulary_lemmas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/vocabulary/lemmas/{lemma_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vocabulary Lemma */
+        get: operations["vocabulary_lemma_v1_vocabulary_lemmas__lemma_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/vocabulary/letters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vocabulary Letters */
+        get: operations["vocabulary_letters_v1_vocabulary_letters_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -913,6 +1016,11 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** Body_vocabulary_import_v1_admin_vocabulary_imports_post */
+        Body_vocabulary_import_v1_admin_vocabulary_imports_post: {
+            /** File */
+            file: string;
+        };
         /** BulkDecisionCreate */
         BulkDecisionCreate: {
             /** Candidate Ids */
@@ -941,6 +1049,17 @@ export interface components {
             failed: components["schemas"]["BulkDecisionFailure"][];
             /** Results */
             results: components["schemas"]["PhraseDecisionResult"][];
+        };
+        /**
+         * CandidateIntentUpdate
+         * @description Human intent assignment, completed before either approval is recorded.
+         */
+        CandidateIntentUpdate: {
+            /**
+             * Intent Id
+             * Format: uuid
+             */
+            intent_id: string;
         };
         /** CandidateSummary */
         CandidateSummary: {
@@ -1000,6 +1119,62 @@ export interface components {
             name: string;
             /** Role */
             role: string;
+        };
+        /** DomainStatRead */
+        DomainStatRead: {
+            /** Domain */
+            domain: string;
+            /** Domain Label */
+            domain_label: string;
+            /** Freq */
+            freq: number;
+            /** Relative Ratio */
+            relative_ratio: number;
+        };
+        /** FamilyMemberRead */
+        FamilyMemberRead: {
+            /** Category */
+            category: string;
+            /** Category Label */
+            category_label: string;
+            /** Domains */
+            domains: string[];
+            /** Freq */
+            freq: number;
+            /**
+             * Lemma Id
+             * Format: uuid
+             */
+            lemma_id: string;
+            /** Pos */
+            pos: string;
+            /** Pos Label */
+            pos_label: string;
+            /** Word */
+            word: string;
+        };
+        /** FamilyPage */
+        FamilyPage: {
+            /** Items */
+            items: components["schemas"]["FamilyRead"][];
+            /** Total */
+            total: number;
+        };
+        /** FamilyRead */
+        FamilyRead: {
+            /** Family Freq */
+            family_freq: number;
+            /** Headword */
+            headword: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Members */
+            members: components["schemas"]["FamilyMemberRead"][];
+            /** Rank */
+            rank: number;
         };
         /** FeedbackCreate */
         FeedbackCreate: {
@@ -1270,6 +1445,62 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** ImportResult */
+        ImportResult: {
+            /** Inserted */
+            inserted: number;
+            /** Rows Read */
+            rows_read: number;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Skipped */
+            skipped: number;
+            /** Source Kind */
+            source_kind: string;
+            /** Updated */
+            updated: number;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** ImportRunPage */
+        ImportRunPage: {
+            /** Items */
+            items: components["schemas"]["ImportRunRead"][];
+            /** Total */
+            total: number;
+        };
+        /** ImportRunRead */
+        ImportRunRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Filename */
+            filename: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Inserted */
+            inserted: number;
+            /** Rows Read */
+            rows_read: number;
+            /** Sha256 */
+            sha256: string;
+            /** Skipped */
+            skipped: number;
+            /** Source Kind */
+            source_kind: string;
+            /** Updated */
+            updated: number;
+            /** Warnings */
+            warnings: unknown[];
+        };
         /** JobRead */
         JobRead: {
             /** Attempts */
@@ -1319,6 +1550,84 @@ export interface components {
             similar_journal_ids: string[];
             /** Subfield */
             subfield: string | null;
+        };
+        /** LemmaDetail */
+        LemmaDetail: {
+            /** Band */
+            band: number | null;
+            /** Coca Acad */
+            coca_acad: number | null;
+            /** Coca All */
+            coca_all: number | null;
+            /** Disp */
+            disp: number | null;
+            /** Domain Stats */
+            domain_stats: components["schemas"]["DomainStatRead"][];
+            /** Domains */
+            domains: string[];
+            /** Families */
+            families: components["schemas"]["FamilyRead"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Core */
+            is_core: boolean;
+            /** Pos */
+            pos: string;
+            /** Pos Label */
+            pos_label: string;
+            /** Range */
+            range: number | null;
+            /** Rank */
+            rank: number | null;
+            /** Ratio */
+            ratio: number | null;
+            /** Status */
+            status: string | null;
+            /** Status Label */
+            status_label: string;
+            /** Word */
+            word: string;
+        };
+        /** LemmaPage */
+        LemmaPage: {
+            /** Items */
+            items: components["schemas"]["LemmaSummary"][];
+            /** Total */
+            total: number;
+        };
+        /** LemmaSummary */
+        LemmaSummary: {
+            /** Band */
+            band: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Core */
+            is_core: boolean;
+            /** Pos */
+            pos: string;
+            /** Pos Label */
+            pos_label: string;
+            /** Rank */
+            rank: number | null;
+            /** Status */
+            status: string | null;
+            /** Status Label */
+            status_label: string;
+            /** Word */
+            word: string;
+        };
+        /** LetterCount */
+        LetterCount: {
+            /** Count */
+            count: number;
+            /** Letter */
+            letter: string;
         };
         /** MineRequest */
         MineRequest: {
@@ -3264,6 +3573,112 @@ export interface operations {
             };
         };
     };
+    assign_intent_v1_admin_review_queue__candidate_id__intent_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateIntentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vocabulary_import_list_v1_admin_vocabulary_imports_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRunPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vocabulary_import_v1_admin_vocabulary_imports_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_vocabulary_import_v1_admin_vocabulary_imports_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_local_demo_session_v1_auth_demo_session_post: {
         parameters: {
             query?: never;
@@ -3478,6 +3893,7 @@ export interface operations {
             query?: {
                 intent?: string | null;
                 section?: string | null;
+                q?: string | null;
                 status?: string | null;
                 offset?: number;
                 limit?: number;
@@ -3819,6 +4235,9 @@ export interface operations {
                 q: string;
                 category?: string | null;
                 limit?: number;
+                section?: string | null;
+                intent?: string | null;
+                phrase_only?: boolean;
             };
             header?: {
                 "X-API-Key"?: string | null;
@@ -3998,6 +4417,145 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vocabulary_families_v1_vocabulary_families_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilyPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vocabulary_lemmas_v1_vocabulary_lemmas_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                letter?: string | null;
+                core_only?: boolean;
+                sort?: "alpha" | "rank";
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LemmaPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vocabulary_lemma_v1_vocabulary_lemmas__lemma_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                lemma_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LemmaDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vocabulary_letters_v1_vocabulary_letters_get: {
+        parameters: {
+            query?: {
+                core_only?: boolean;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LetterCount"][];
                 };
             };
             /** @description Validation Error */

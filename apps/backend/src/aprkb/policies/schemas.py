@@ -13,6 +13,67 @@ class VersionedPolicy(BaseModel):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
 
 
+class VocabularySourceProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sheet: str = Field(min_length=1)
+    required_headers: list[str] = Field(min_length=1)
+    columns: dict[str, str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_headers(self) -> "VocabularySourceProfile":
+        if any(not header.strip() for header in self.required_headers):
+            raise ValueError("vocabulary required_headers must not contain blank values")
+        if len(self.required_headers) != len(set(self.required_headers)):
+            raise ValueError("vocabulary required_headers must not contain duplicates")
+        if any(not field.strip() or not header.strip() for field, header in self.columns.items()):
+            raise ValueError("vocabulary columns must contain non-empty field and header names")
+        return self
+
+
+class VocabularyLabels(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pos: dict[str, str] = Field(min_length=1)
+    status: dict[str, str] = Field(min_length=1)
+    category: dict[str, str] = Field(min_length=1)
+    domains: dict[str, str] = Field(min_length=1)
+
+
+class VocabularyImportPolicy(VersionedPolicy):
+    max_upload_bytes: int = Field(gt=0)
+    sources: dict[str, VocabularySourceProfile] = Field(min_length=1)
+    domain_codes: list[str] = Field(min_length=1)
+    domain_groups: list[str] = Field(min_length=1)
+    labels: VocabularyLabels
+    family_domain_aliases: dict[str, str]
+
+    @model_validator(mode="after")
+    def validate_references(self) -> "VocabularyImportPolicy":
+        if len(self.domain_codes) != len(set(self.domain_codes)) or any(
+            not code.strip() for code in self.domain_codes
+        ):
+            raise ValueError("vocabulary domain_codes must be unique and non-empty")
+        if self.domain_groups != ["freq", "ratio"]:
+            raise ValueError("vocabulary domain_groups must be [freq, ratio]")
+        expected_sources = {"all_words", "acad_core", "families"}
+        if set(self.sources) != expected_sources:
+            raise ValueError("vocabulary sources must define all_words, acad_core, and families")
+        invalid_aliases = sorted(
+            alias
+            for alias, code in self.family_domain_aliases.items()
+            if code not in self.domain_codes
+        )
+        if invalid_aliases:
+            raise ValueError(
+                "family_domain_aliases reference unknown domain codes: "
+                + ", ".join(invalid_aliases)
+            )
+        if set(self.labels.domains) != set(self.domain_codes):
+            raise ValueError("vocabulary domain labels must define every domain code exactly once")
+        return self
+
+
 class LicenseEntry(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

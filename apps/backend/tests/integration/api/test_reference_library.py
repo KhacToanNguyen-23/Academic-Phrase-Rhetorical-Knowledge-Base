@@ -21,6 +21,7 @@ from aprkb.modules.reference_library.models import (
     ReferenceCategory,
     ReferenceEntry,
     ReferenceSource,
+    ReferenceTaxonomyMap,
 )
 from aprkb.seeds.load import run_seed
 
@@ -113,6 +114,63 @@ async def _client_key(session_factory: async_sessionmaker) -> str:
         client, key = await create_api_key(session, name="reference reader", role="client")
         await session.commit()
     return key
+
+
+@pytest.mark.asyncio
+async def test_reference_search_filters_mapped_hits_after_old_50_cap(api_client, session_factory):
+    async with session_factory() as session:
+        await run_seed(session)
+        await session.commit()
+        await import_library(session, fixture_library(), request_id="late-match-import")
+        category = await session.scalar(
+            select(ReferenceCategory).where(ReferenceCategory.slug == "introducing-work")
+        )
+        assert category is not None
+        session.add(
+            ReferenceTaxonomyMap(
+                reference_category_id=category.id,
+                reference_key="heading:introducing-work:99",
+                reference_title="Late mapped heading",
+                heading_position=99,
+                target_kind="intent",
+                target_code="DISCUSSION_FINDING",
+                review_status="approved",
+            )
+        )
+        for index in range(51):
+            session.add(
+                ReferenceEntry(
+                    category_id=category.id,
+                    heading="Invented boundary heading",
+                    heading_position=99 if index == 50 else 98,
+                    block_index=100 + index,
+                    block_id=f"boundary-{index}",
+                    kind="phrase",
+                    text=None,
+                    cells=[[f"Boundaryneedle phrase {index}"]],
+                    search_text=f"Boundaryneedle phrase {index}",
+                    position=100 + index,
+                )
+            )
+        await session.commit()
+    key = await _client_key(session_factory)
+    response = await api_client.get(
+        "/v1/reference-library/search",
+        headers={"X-API-Key": key},
+        params={
+            "q": "Boundaryneedle",
+            "section": "DISCUSSION",
+            "intent": "DISCUSSION_FINDING",
+            "phrase_only": True,
+            "limit": 1,
+        },
+    )
+    assert response.status_code == 200, response.text
+    results = response.json()["results"]
+    assert len(results) == 1
+    assert results[0]["entry"]["position"] == 150
+    assert results[0]["section_code"] == "DISCUSSION"
+    assert results[0]["intent_code"] == "DISCUSSION_FINDING"
 
 
 @pytest.mark.asyncio

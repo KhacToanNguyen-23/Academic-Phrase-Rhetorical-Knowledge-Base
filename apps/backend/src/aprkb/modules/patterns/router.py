@@ -51,6 +51,7 @@ async def list_patterns(
     request: Request,
     intent: str | None = None,
     section: str | None = None,
+    q: Annotated[str | None, Query(max_length=500)] = None,
     pattern_status: Annotated[str | None, Query(alias="status")] = None,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
@@ -59,6 +60,7 @@ async def list_patterns(
         session,
         intent=intent,
         section=section,
+        query=q,
         status=pattern_status,
         offset=offset,
         limit=limit,
@@ -90,12 +92,16 @@ async def get_pattern(
 
 @router.get("/{pattern_id}/versions", response_model=list[PatternVersionRead])
 async def get_versions(
-    pattern_id: UUID, client: Client, session: DatabaseSession
+    pattern_id: UUID, client: Client, session: DatabaseSession, request: Request
 ) -> list[PatternVersionRead]:
     versions = (
         await service.pattern_versions(session, pattern_id)
         if client.role in {"curator", "admin"}
-        else await service.renderable_pattern_versions(session, pattern_id)
+        else await service.renderable_pattern_versions(
+            session,
+            pattern_id,
+            frozenset(request.app.state.policy_bundle.license.internal_use_codes),
+        )
     )
     return [PatternVersionRead.model_validate(version) for version in versions]
 

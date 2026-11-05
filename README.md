@@ -49,6 +49,8 @@ The Writer loads approved, renderable samples into a table without requiring a f
 
 The Online read contract combines each current pattern version with its intent name, typed slots, variants, usage constraints, evidence labels, provenance, and discipline affinities. `unknown` evidence or claim labels are returned as `null` with `labelled=false`. Provenance includes the license, DOI when present (otherwise `null`), separate `article_id`, and a source sentence count; it does not return sentence text. Mined bracket placeholders are interpreted as slots on read only when every marker matches the declared slot names.
 
+The entire app is for internal use. Licenses explicitly listed in `license_policy.yaml` under `internal_use_codes` permit recommendations, pattern reads, and rendering even when public-display permission is false. Sources with neither display permission nor configured internal-use permission remain excluded. The response preserves the actual public-display permission and marks the internal-use exception with `license_flag`.
+
 `UsageConstraint.evidence_min` excludes a recommendation when the writer declares a lower evidence level, using the seeded `evidence_level` order through `EvidencePolicy`; without a declared level, table-first results are unchanged. `forbidden_contexts` currently matches literal requested section, genre, or claim type codes and reports `GATE_FORBIDDEN_CONTEXT`. **TODO(owner, FR-02.4):** confirm these matching semantics before treating the field as a broader context vocabulary.
 
 The fallback tier chooser requires verified journal/genre, similar-journal fingerprint, subfield/genre, or field/genre data for the corresponding tier. Those signals are not available to Online yet, so every current recommendation uses `generic_genre`. Provenance scores are provisional values in `ranking_weights.yaml`: authored `1.0`, mined `0.7` (**TODO(owner, CR-06):** approve both values). The API retains the `linguistic` key for compatibility; the UI calls it **Keyword match** because it measures keyword overlap only.
@@ -79,8 +81,13 @@ CR-06 changed the current weights; they remain provisional pending owner review.
 | `make run` | Start FastAPI with reload |
 | `make worker` | Poll PostgreSQL jobs and process ingestion/mining |
 | `make test` | Run backend unit, integration, and scaffold acceptance tests |
+| `make test-db-required` | Fail if `tests/integration` collects zero tests or any test in it skips (needs `TEST_DATABASE_URL`) |
 | `make lint` | Run Ruff, format verification, and mypy |
+| `make lint-web` | Run the frontend's zero-warning ESLint check |
 | `make contracts` | Export OpenAPI and regenerate frontend types |
+| `make container-build` | Build the one backend image the API and worker both run from |
+| `make container-smoke-api` / `make container-smoke-worker` | Run the image's API/worker command against a disposable PostgreSQL and verify health/graceful shutdown |
+| `make container-audit` | Build-context canary: fail if secrets/caches/blobs/test output leak into the image |
 | `make web-install` / `make web` / `make fe` | Install frontend dependencies / start the frontend dev server |
 | `.\dev.ps1 be` / `fe` / `worker` / `down` | PowerShell shortcuts for the local development workflow |
 
@@ -90,7 +97,24 @@ Production uses Docker Compose for the API, worker, and web app, with persistent
 
 ## Continuous integration
 
-GitHub Actions runs on pushes to any branch and pull requests. The backend job checks the generated OpenAPI contract, Ruff lint/format, mypy, and pytest against an ephemeral PostgreSQL/pgvector service. The frontend job installs from the pnpm lockfile, checks generated API types, runs TypeScript checks, and builds the app. CI uses a disposable test database and needs no repository secrets.
+GitHub Actions runs on pushes and pull requests, with superseded runs on the same branch cancelled automatically (except `dev`). Third-party actions are pinned to reviewed commit SHAs. Jobs:
+
+- `CI / backend-quality-and-tests` — OpenAPI contract check, Ruff lint/format, mypy, Alembic migration, then PostgreSQL integration tests (which must never silently skip; see `scripts/ci/require-db-tests.sh`), then the full suite.
+- `CI / frontend-quality-and-build` — zero-warning ESLint, generated API types drift check, TypeScript, and build.
+- `CI / backend-image-contract` — builds the one image the API and worker both run from, runs the build-context canary, then smokes both commands against a disposable PostgreSQL. Exists and runs on every push/PR; not yet a required check (see the CI runbook).
+- `CI / frontend-e2e-smoke` — Playwright against a migrated/seeded database and a running API/frontend. Stage A observability only (`continue-on-error: true`); promotes to required only after the stability window in `plans/ci-cd-team-standard/phase-02-enforced-ci.md`.
+
+CI uses a disposable test database and needs no repository secrets.
+
+### Deployment (production)
+
+Production deploys are manual, from `main`, via Docker Compose over Tailscale — see
+`deploy/README.md` on `main`. [ADR-0010](doc/adr/0010-ci-cd-platform.md) is
+superseded: it proposed a GHCR/self-hosted-runner CD track before that existing
+deployment was discovered, and the corresponding scaffolding was removed from
+`dev`. CI (this workflow) does not build or publish anything toward production.
+
+Team delivery changes become PR-only once the ruleset is activated — see "Still pending before branch protection is enabled" in [the CI runbook](doc/runbooks/ci.md); only `backend-quality-and-tests` and `frontend-quality-and-build` are candidates for that first activation. Workflow, Docker, migration, policy, lockfile, infrastructure, and runbook changes require CODEOWNER review. Every PR records verification evidence plus migration, rollback, secret/data-handling, and `BLOB_DIR` impact. Required checks may not be bypassed silently; the time-limited break-glass process and check-rename procedure are defined in the CI runbook. Database releases follow [the migration runbook](doc/runbooks/migrations.md), and application/database recovery follows [the rollback runbook](doc/runbooks/rollback.md).
 
 ### Logs
 
@@ -121,10 +145,16 @@ The original acceptance cases that depend on excluded product behavior remain sk
 
 Each AP-RKB pattern opens a WB-02 detail view for frame, slots, variants, usage, evidence, provenance, and version. The list uses the full read contract without an extra request per pattern.
 
+Phrasebank applies keyword, section, and intent filters on the backend before limiting results to 200 AP-RKB patterns or 50 Manchester phrases. These are capped matching lists, not total counts. Manchester search resolves heading and category taxonomy mappings before filtering and limiting; its ordinary API search retains notes unless `phrase_only=true` is requested.
+
 `/phrasebank` is a source-aware browser for Manchester reference material and AP-RKB's existing approved patterns. The Manchester collection is stored only in the separate `reference_sources`, `reference_categories`, and `reference_entries` tables; it never enters `phrase_patterns`, recommendations, render, or validate. Its API and UI are off by default (`REFERENCE_LIBRARY_ENABLED=false`). Manchester items always show the notice that reuse rights are unverified and the material must not be redistributed. Treat this as an internal, removable reference collection, not approved patterns. The AP-RKB group reads approved client-visible patterns through `/v1/patterns`; taxonomy sections are not mapped to Manchester categories (`TODO(owner)`).
 
 To enable the local reference browser, set `REFERENCE_LIBRARY_ENABLED=true`, apply migrations from `apps/backend` with `uv run alembic -c alembic.ini upgrade head`, then import the external file with `uv run python -m aprkb.cli import-reference-library --file "D:\Project\FptProject\Academic-Phrase-Rhetorical-Knowledge-Base\data\raw\manchester-diverse\collection.json"`. The input file remains outside git. Remove the imported reference data with `uv run python -m aprkb.cli purge-reference-library`; disable API access again by setting the flag to false.
 
 ## Offline-to-Online data packs
 
-The backend modules/pack/ tooling validates and transfers the PhrasePattern graph using natural reference keys and append-only version IDs. It excludes source text and the separate approved phrase store. Offline self-check: uv run --directory apps/backend python -m aprkb.cli validate-pack <pack-dir>. Online import: uv run --directory apps/backend python -m aprkb.cli init-reference, then uv run --directory apps/backend python -m aprkb.cli import-pack <pack-dir>; preview with --dry-run. See [data pack spec](doc/data-pack-spec.md) and [sample pack](data/packs/sample-demo/manifest.json).
+The backend `modules/pack/` tooling validates and transfers the PhrasePattern graph using natural reference keys and append-only version IDs. It excludes source text and the separate approved phrase store. Offline self-check: `uv run --directory apps/backend python -m aprkb.cli validate-pack <pack-dir>`. Read-only export: `uv run --directory apps/backend python -m aprkb.cli export-pack --out <pack-dir> --only-approved`. Export reports excluded approved patterns by ID/code/path and does not invent missing labels or approvals. Check exported and excluded counts before transfer.
+
+Keep the active Online database query-only. Run the write commands `init-reference` and `import-pack` only on a separate Offline/staging/test destination (`import-pack --dry-run` previews the transfer); provisioning Online data is a separate process. Shared modules do not enforce deployment separation, so use the appropriate database credentials. See [data pack spec](doc/data-pack-spec.md) and [sample pack](data/packs/sample-demo/manifest.json).
+
+Offline reviewers can assign a pending candidate's published-taxonomy intent with `PUT /v1/admin/review-queue/{id}/intent`, body `{"intent_id": "<published-intent-uuid>"}`, before the first approval. This uses the existing candidate field and requires no migration. Once review starts, intent is frozen. For a legacy first approval with no intent, only that original reviewer can assign and confirm the missing intent. This workflow is available through the API (`/docs`); `/extract` continues to approve separate phrases under ADR-0009. Claim type remains unlabelled after normal promotion and is reported as an export exclusion until a separate human-labelling workflow exists.

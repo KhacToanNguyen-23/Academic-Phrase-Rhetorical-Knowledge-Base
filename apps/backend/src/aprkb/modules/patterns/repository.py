@@ -11,7 +11,7 @@ from aprkb.modules.patterns.models import (
     PhrasePattern,
     UsageConstraint,
 )
-from aprkb.modules.taxonomy.models import Intent
+from aprkb.modules.taxonomy.models import Intent, Move, Section, Step, TaxonomyRelease
 
 
 async def get_pattern(session: AsyncSession, pattern_id: UUID) -> PhrasePattern | None:
@@ -19,7 +19,16 @@ async def get_pattern(session: AsyncSession, pattern_id: UUID) -> PhrasePattern 
 
 
 async def get_intent(session: AsyncSession, code: str) -> Intent | None:
-    return await session.scalar(select(Intent).where(Intent.code == code))
+    return await session.scalar(
+        select(Intent)
+        .join(Step, Step.id == Intent.step_id)
+        .join(Move, Move.id == Step.move_id)
+        .join(Section, Section.id == Move.section_id)
+        .join(TaxonomyRelease, TaxonomyRelease.id == Section.release_id)
+        .where(Intent.code == code, TaxonomyRelease.status == "published")
+        .order_by(TaxonomyRelease.published_at.desc(), TaxonomyRelease.version.desc())
+        .limit(1)
+    )
 
 
 async def get_current_version(

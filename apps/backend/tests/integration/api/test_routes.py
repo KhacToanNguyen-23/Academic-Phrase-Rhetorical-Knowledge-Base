@@ -236,6 +236,36 @@ async def test_recommendations_default_to_approved_patterns_and_count_evidence_h
 
 
 @pytest.mark.asyncio
+async def test_lab_phrasebank_basic_is_listed_and_recommended_from_seeded_db(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "phrasebank basic client")
+    headers = {"X-API-Key": key}
+    intent = "METHODS_DESCRIBING_PREVIOUSLY_USED_METHODS"
+    expected_frame = "Many researchers have utilised {x} to measure {details}"
+
+    listed = await api_client.get(
+        "/v1/patterns",
+        params={"section": "METHODS", "intent": intent, "status": "approved", "limit": 200},
+        headers=headers,
+    )
+    assert listed.status_code == 200
+    match = next(item for item in listed.json() if item["canonical_frame"] == expected_frame)
+    assert set(match["slots"]) == {"x", "details"}
+    assert match["intent_name"] == "Describing previously used methods"
+    assert match["source_type"] == "authored"
+
+    recommended = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={"section": "METHODS", "intent": intent, "genre": "RESEARCH_ARTICLE", "limit": 10},
+    )
+    assert recommended.status_code == 200
+    assert expected_frame in {item["canonical_frame"] for item in recommended.json()["items"]}
+
+
+@pytest.mark.asyncio
 async def test_patterns_list_detail_history_create_and_append_version(api_client, session_factory):
     await run_seed_in_session(session_factory)
     _, key = await create_key(session_factory, "curator", "pattern curator")
@@ -790,7 +820,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         "evidence_matrix": "0.1.0",
         "validation_rules": "0.2.0",
         "epistemic_markers": "0.1.0",
-        "taxonomy_release": "0.1.0",
+        "taxonomy_release": "0.2.0",
     }
 
     async with session_factory() as session:

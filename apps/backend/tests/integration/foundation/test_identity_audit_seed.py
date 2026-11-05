@@ -18,7 +18,7 @@ from aprkb.modules.taxonomy.models import (
     Step,
     TaxonomyRelease,
 )
-from aprkb.seeds.load import run_seed
+from aprkb.seeds.load import _read_phrasebank_basic, run_seed
 from aprkb.shared.models import RefEnum
 
 
@@ -159,7 +159,10 @@ async def test_seed_is_idempotent_and_contains_required_reference_and_sample_dat
     second = await snapshot()
 
     assert second == first
-    assert len(first["phrase_patterns"]) == 9
+    basic_count = sum(
+        len(category["examples"]) for category in _read_phrasebank_basic()["categories"]
+    )
+    assert len(first["phrase_patterns"]) == basic_count
 
     async with session_factory() as session:
         licenses = await session.scalars(select(License))

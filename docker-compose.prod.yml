@@ -9,7 +9,8 @@ services:
   api:
     image: aprkb-backend:${IMAGE_TAG:-local}
     build:
-      context: ./apps/backend
+      context: .
+      dockerfile: apps/backend/Dockerfile
     env_file:
       - runtime.conf
     command: ["uvicorn", "aprkb.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -35,7 +36,8 @@ services:
   worker:
     image: aprkb-backend:${IMAGE_TAG:-local}
     build:
-      context: ./apps/backend
+      context: .
+      dockerfile: apps/backend/Dockerfile
     env_file:
       - runtime.conf
     command: ["python", "-m", "aprkb.worker.runner"]

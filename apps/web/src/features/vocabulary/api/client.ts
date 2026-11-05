@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { withSessionApiKey } from "@/features/auth/session";
 import { createBackendClient } from "@/shared/api/contract-client";
 import type { components } from "@/shared/api/schema";
 import { unwrap } from "@/features/slr-import/api/client";
@@ -10,16 +11,7 @@ export type LetterCount = components["schemas"]["LetterCount"];
 export type FamilyPage = components["schemas"]["FamilyPage"];
 
 export function vocabularyClient() {
-  const client = createBackendClient(import.meta.env.VITE_API_BASE_URL ?? "");
-  client.use({
-    onRequest({ request }) {
-      const key =
-        sessionStorage.getItem("aprkb-staff-session") ?? sessionStorage.getItem("aprkb-api-key");
-      if (key) request.headers.set("X-API-Key", key);
-      return request;
-    },
-  });
-  return client;
+  return withSessionApiKey(createBackendClient(import.meta.env.VITE_API_BASE_URL ?? ""));
 }
 
 export function useLemmas(params: {

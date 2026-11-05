@@ -1,3 +1,4 @@
+import { withSessionApiKey } from "@/features/auth/session";
 import { createBackendClient } from "@/shared/api/contract-client";
 import type { components } from "@/shared/api/schema";
 import { unwrap } from "@/features/slr-import/api/client";
@@ -29,15 +30,7 @@ export interface PhrasebankSource<TGroup, TSearch, TDetail> {
 }
 
 function client() {
-  const api = createBackendClient(import.meta.env.VITE_API_BASE_URL ?? "");
-  api.use({
-    onRequest({ request }) {
-      const key = sessionStorage.getItem("aprkb-api-key");
-      if (key) request.headers.set("X-API-Key", key);
-      return request;
-    },
-  });
-  return api;
+  return withSessionApiKey(createBackendClient(import.meta.env.VITE_API_BASE_URL ?? ""));
 }
 
 function sectionForIntent(taxonomy: TaxonomyTree, intentCode: string): string | undefined {

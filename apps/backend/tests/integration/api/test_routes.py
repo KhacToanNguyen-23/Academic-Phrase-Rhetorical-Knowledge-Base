@@ -33,6 +33,8 @@ from aprkb.modules.patterns.models import (
     ReviewDecision,
     UsageConstraint,
 )
+from aprkb.modules.patterns.read_model import load_current_patterns
+from aprkb.modules.recommendation import repository as recommendation_repository
 from aprkb.modules.recommendation.models import Feedback, RecommendationLog
 from aprkb.modules.taxonomy.models import Intent
 from aprkb.policies.loader import load_policy_bundle
@@ -219,7 +221,8 @@ async def test_recommendations_default_to_approved_patterns_and_count_evidence_h
         "There is limited evidence about" not in item["canonical_frame"]
         for item in initial.json()["items"]
     )
-    assert initial.json()["excluded"].get("GATE_APPROVAL", 0) > 0
+    # Draft/retired rows are excluded by SQL before the defensive gates run.
+    assert initial.json()["excluded"].get("GATE_APPROVAL", 0) == 0
     assert all(
         "The findings may relate to" not in item["canonical_frame"]
         for item in initial.json()["items"]
@@ -233,6 +236,105 @@ async def test_recommendations_default_to_approved_patterns_and_count_evidence_h
     )
     assert filtered.status_code == 200
     assert filtered.json()["excluded"].get("GATE_EVIDENCE", 0) > 0
+
+
+async def test_recommendation_sql_filters_reduce_reads_without_changing_items(
+    api_client, session_factory, monkeypatch
+):
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "SQL retrieval regression")
+    async with session_factory() as session:
+        baseline = await load_current_patterns(session)
+        eligible = [row for row in baseline if row.status == "approved"]
+        assert len(eligible) < len(baseline)
+        assert {row.status for row in baseline} >= {"draft", "retired"}
+        actual = await recommendation_repository.load_pattern_rows(session, intent_code=None)
+        assert actual == eligible
+        # Exercise JSONB empty, matching, non-matching and absent outer-joined rows.
+        genres = [[], ["RESEARCH_ARTICLE"], ["SYSTEMATIC_REVIEW"]]
+        for index, row in enumerate(eligible):
+            usage = await session.scalar(
+                select(UsageConstraint).where(
+                    UsageConstraint.pattern_version_id == row.current_version_id
+                )
+            )
+            if usage is not None:
+                if index == 0:
+                    await session.delete(usage)
+                else:
+                    usage.allowed_genres = genres[index % len(genres)]
+        await session.commit()
+        baseline = await load_current_patterns(session)
+        for genre in (None, "RESEARCH_ARTICLE", "SYSTEMATIC_REVIEW"):
+            expected = [
+                row
+                for row in baseline
+                if row.status == "approved"
+                and (not genre or not row.allowed_genres or genre in row.allowed_genres)
+            ]
+            actual = await recommendation_repository.load_pattern_rows(
+                session, intent_code=None, genre_code=genre
+            )
+            assert actual == expected
+
+    headers = {"X-API-Key": key}
+    payload = {"genre": "RESEARCH_ARTICLE", "limit": 100}
+    optimized = await api_client.post("/v1/recommendations", headers=headers, json=payload)
+    assert optimized.status_code == 200
+
+    async def legacy_loader(session, *, genre_code=None, **kwargs):
+        rows = await load_current_patterns(session, **kwargs)
+        return [
+            row
+            for row in rows
+            if not genre_code or not row.allowed_genres or genre_code in row.allowed_genres
+        ]
+
+    monkeypatch.setattr(recommendation_repository, "load_pattern_rows", legacy_loader)
+    legacy = await api_client.post("/v1/recommendations", headers=headers, json=payload)
+    assert legacy.status_code == 200
+    assert optimized.json()["items"] == legacy.json()["items"]
+
+
+@pytest.mark.parametrize("query", [None, "", "   "])
+async def test_recommendations_warn_when_intent_move_query_are_absent(
+    api_client, session_factory, query
+):
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "context warning")
+    response = await api_client.post(
+        "/v1/recommendations",
+        headers={"X-API-Key": key},
+        json={"query": query, "intent": "", "move": "   ", "section": "INTRO"},
+    )
+    assert response.status_code == 200
+    assert (
+        "Không có intent/move/query; kết quả là toàn bộ pattern được duyệt"
+        in response.json()["warnings"]
+    )
+    assert "Section không được lọc" not in response.json()["warnings"]
+
+
+async def test_recommendations_warn_when_section_absent_and_not_when_context_complete(
+    api_client, session_factory
+):
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "section warning")
+    payload = {
+        "intent": "INTRO_GAP_INDICATE",
+        "query": "evidence",
+        "genre": "RESEARCH_ARTICLE",
+        "claim_type": "descriptive",
+        "evidence_level": "single_study",
+    }
+    for section in (None, "", "INTRO"):
+        response = await api_client.post(
+            "/v1/recommendations", headers={"X-API-Key": key}, json={**payload, "section": section}
+        )
+        assert response.status_code == 200
+        warnings = response.json()["warnings"]
+        assert ("Section không được lọc" in warnings) is (not section)
+        assert "Không có intent/move/query; kết quả là toàn bộ pattern được duyệt" not in warnings
 
 
 @pytest.mark.asyncio

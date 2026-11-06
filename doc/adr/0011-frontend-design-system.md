@@ -17,7 +17,7 @@ The web app had a hand-written stylesheet (`styles.css`), home-made UI primitive
 - **Routes.** `/` is a public landing page, `/signin` is its own page, `/app` is the staff workspace. All other paths are unchanged and sit under a guarded layout (`beforeLoad`) that redirects to `/signin?next=...`; `next` accepts only same-origin relative paths. `/writer` stays open to guests.
 - **Language.** The landing is English by default. Every landing string lives in `features/landing/copy.en.ts`, typed as `LandingCopy`, so a Vietnamese file can be added later without touching markup.
 - **Devices.** Desktop web only (1440px, minimum 1024px). No mobile or tablet work.
-- **Testing.** Playwright is switched off for this redesign. Screens are checked with the taste skill's `inspect.mjs` and with Browser MCP or CDP scripts. The e2e specs under `apps/web/e2e/` were not updated and are expected to fail until the owner decides to rewrite or remove them.
+- **Testing.** Screens are checked with the taste skill's `inspect.mjs` and with Browser MCP or CDP scripts. On 2026-11-06, in response to CI failures, the Phrasebank and live Writer e2e specs were updated for the redesigned controls and markup while retaining behavioral coverage. Playwright runs as the existing Stage A CI smoke, not a required check; this does not replace visual design inspection.
 - **Package manager.** pnpm only, because CI installs with `pnpm install --frozen-lockfile`. `package-lock.json` was removed.
 - **Build modes.** A separate `inspect` build mode auto-signs in through the loopback-only demo session so staff screens can be measured. The `/dev/ui` inventory page and the demo session exist only in development and in that mode; the production build contains neither.
 

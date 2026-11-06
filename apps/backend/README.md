@@ -65,6 +65,20 @@ System integrations continue to authenticate with `X-API-Key`. `GET /v1/auth/me`
 `claim_type`, `genre`, `journal_id`, and evidence filters. An empty context returns
 approved, renderable examples. Evidence strength is not filtered until an evidence
 level is selected; rejected examples are counted under `excluded.GATE_EVIDENCE`.
+Recommendation retrieval filters status (`approved`) and genre in SQL before
+building read views. Empty genre restrictions or absent usage constraints allow
+all genres. Approval and retired gates remain as defensive checks, but SQL-filtered
+draft/retired rows no longer contribute to `excluded.GATE_APPROVAL` or
+`excluded.GATE_RETIRED`. These counts describe candidates seen by the pipeline,
+not all rows in the database; the writer currently displays only the evidence count.
+
+Blank intent, move and section values are treated as absent. Requests lacking
+intent, move and a nonblank query receive
+`Không có intent/move/query; kết quả là toàn bộ pattern được duyệt`;
+requests lacking section receive `Section không được lọc`.
+The first warning describes the broad candidate scope: other supplied filters,
+hard gates and the result limit still apply. No request fields became mandatory.
+
 `query` is split into
 case-insensitive word terms, searches for any matching term, and ranks by
 matched-term coverage; punctuation-only queries return no results. Recommendation

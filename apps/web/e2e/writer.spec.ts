@@ -81,7 +81,7 @@ test("writer uses PostgreSQL-backed search, render, validate and feedback", asyn
   const style = page.getByRole("alert").filter({ hasText: "V06" });
   await expect(style).toContainText("Warn");
   await expect(style).toContainText("Potentially informal style phrase: 'really'");
-  await expect(page.getByText("V05 is not checked because verified Offline guideline data is unavailable.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Journal guideline compliance is outside this sentence-level check.", { exact: false })).toBeVisible();
   await expect(page.getByRole("button", { name: "Copy draft" })).toBeDisabled();
   const revised = "The role of language models in education remains poorly understood.";
   await page.getByLabel("Draft sentence").fill(revised);

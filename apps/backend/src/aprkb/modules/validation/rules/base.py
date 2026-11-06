@@ -8,6 +8,7 @@ from aprkb.modules.validation.context import ValidationContext
 
 
 class Severity(StrEnum):
+    NOT_APPLICABLE = "not_applicable"
     UNAVAILABLE = "unavailable"
     PASS = "pass"
     WARN = "warn"

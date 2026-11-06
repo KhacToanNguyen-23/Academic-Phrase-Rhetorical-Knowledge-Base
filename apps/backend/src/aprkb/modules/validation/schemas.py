@@ -31,6 +31,7 @@ class ValidationResponse(BaseModel):
     severity: str
     complete: bool
     checks_unavailable: list[str]
+    checks_not_applicable: list[str]
     rules: list[ValidationRuleResponse]
 
 

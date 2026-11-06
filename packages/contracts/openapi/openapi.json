@@ -4942,6 +4942,13 @@
       },
       "ValidationResponse": {
         "properties": {
+          "checks_not_applicable": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Checks Not Applicable",
+            "type": "array"
+          },
           "checks_unavailable": {
             "items": {
               "type": "string"
@@ -4993,6 +5000,7 @@
           "severity",
           "complete",
           "checks_unavailable",
+          "checks_not_applicable",
           "rules"
         ],
         "title": "ValidationResponse",

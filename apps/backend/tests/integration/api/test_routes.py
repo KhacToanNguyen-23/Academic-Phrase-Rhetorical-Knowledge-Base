@@ -1060,14 +1060,62 @@ async def test_pattern_browsing_filters_keyword_and_taxonomy_before_old_200_cap(
 
 
 @pytest.mark.asyncio
-async def test_recommendation_search_keeps_query_private_and_uses_honest_journal_fallback(
+async def test_recommendation_search_uses_only_the_selected_journal_phrasebank(
     api_client: AsyncClient, session_factory: async_sessionmaker
 ) -> None:
     async with session_factory() as session:
         await run_seed(session)
-        journal = JournalProfile(name="Search fallback journal", issn="2049-3631")
-        session.add(journal)
+        journal = JournalProfile(name="Search phrasebank journal", issn="2049-3631")
+        other_journal = JournalProfile(name="Other phrasebank journal", issn="2049-3632")
+        empty_journal = JournalProfile(name="Empty phrasebank journal", issn="2049-3633")
+        session.add_all([journal, other_journal, empty_journal])
         _, key = await create_api_key(session, name="search client", role="client")
+        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        license_row = await session.scalar(select(License).where(License.code == "CC-BY"))
+        assert intent is not None and license_row is not None and license_row.allows_display
+        await session.flush()
+
+        for selected_journal, phrase in (
+            (journal, "This fictional journal leaves the question underexplored."),
+            (other_journal, "The other fictional journal leaves this underexplored."),
+        ):
+            article = Article(
+                license_id=license_row.id,
+                journal_id=selected_journal.id,
+                blob_key=f"test/{selected_journal.issn}.txt",
+                title="Self-authored test article",
+                ingest_status="ready",
+            )
+            pattern = PhrasePattern(intent_id=intent.id, status="approved")
+            session.add_all([article, pattern])
+            await session.flush()
+            version = PatternVersion(
+                pattern_id=pattern.id,
+                version_no=1,
+                canonical_frame=phrase,
+                slots={},
+                epistemic_strength="moderate",
+                claim_type="descriptive",
+            )
+            session.add(version)
+            await session.flush()
+            pattern.current_version_id = version.id
+            session.add_all(
+                [
+                    UsageConstraint(
+                        pattern_version_id=version.id,
+                        allowed_sections=["INTRO"],
+                        allowed_genres=["RESEARCH_ARTICLE"],
+                    ),
+                    EvidenceProvenance(
+                        pattern_version_id=version.id,
+                        source_type="mined",
+                        article_id=article.id,
+                        license_id=license_row.id,
+                        sentence_ids=[],
+                    ),
+                ]
+            )
         await session.commit()
 
     payload = {
@@ -1085,16 +1133,31 @@ async def test_recommendation_search_keeps_query_private_and_uses_honest_journal
 
     assert response.status_code == 200
     body = response.json()
-    assert body["items"]
-    assert all(item["fallback_tier"] == "generic_genre" for item in body["items"])
-    assert all("underexplored" in item["canonical_frame"] for item in body["items"])
-    assert body["fallback_reason"]
+    assert len(body["items"]) == 1
+    assert body["items"][0]["canonical_frame"] == (
+        "This fictional journal leaves the question underexplored."
+    )
+    assert body["items"][0]["fallback_tier"] == "selected_journal_phrasebank"
+    assert body["fallback_reason"] is None
     async with session_factory() as session:
         log = await session.get(RecommendationLog, UUID(body["recommendation_id"]))
         assert log is not None
         assert "query" not in log.request
         assert log.request["query_hash"]
         assert "underexplored" not in str(log.request)
+
+    empty_bank_response = await api_client.post(
+        "/v1/recommendations",
+        headers={"X-API-Key": key},
+        json={**payload, "journal_id": str(empty_journal.id)},
+    )
+    assert empty_bank_response.status_code == 200
+    assert empty_bank_response.json()["items"] == []
+    assert empty_bank_response.json()["fallback_reason"] is None
+    assert (
+        "No approved journal-linked phrases match these search criteria"
+        in (empty_bank_response.json()["warnings"])
+    )
 
     wildcard_response = await api_client.post(
         "/v1/recommendations",
@@ -1234,7 +1297,7 @@ async def test_feedback_rejects_raw_writer_text(
 
 
 @pytest.mark.asyncio
-async def test_validation_checks_writer_provided_grounding_and_keeps_v05_unavailable(
+async def test_validation_checks_writer_provided_grounding_and_marks_v05_out_of_scope(
     api_client: AsyncClient, session_factory: async_sessionmaker
 ) -> None:
     await run_seed_in_session(session_factory)
@@ -1257,7 +1320,11 @@ async def test_validation_checks_writer_provided_grounding_and_keeps_v05_unavail
     assert v03["severity"] == "block"
     assert v03["applied"] is True
     assert v03["span"] is not None
-    assert "V05" in body["checks_unavailable"]
+    assert "V05" not in body["checks_unavailable"]
+    assert "V05" in body["checks_not_applicable"]
+    v05 = next(rule for rule in body["rules"] if rule["code"] == "V05")
+    assert v05["severity"] == "not_applicable"
+    assert v05["applied"] is False
 
 
 async def _create_candidate(session_factory: async_sessionmaker, *, unsafe: bool = False) -> UUID:

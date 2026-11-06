@@ -21,18 +21,24 @@ class ValidationPipeline:
         return [rule.evaluate(text, context) for rule in self._rules]
 
     def run(self, text: str, context: ValidationContext) -> ValidationResult:
-        # FR-08.6: an unavailable rule makes the result incomplete even when
-        # all applied rules pass.
+        # Unavailable in-scope rules make the result incomplete. Rules outside
+        # sentence-validation scope do not count as missing checks.
         results = tuple(self.validate(text, context))
         priority = {
+            Severity.NOT_APPLICABLE: -2,
             Severity.UNAVAILABLE: -1,
             Severity.PASS: 0,
             Severity.WARN: 1,
             Severity.BLOCK: 2,
         }
-        severity = max((result.severity for result in results), key=priority.__getitem__)
+        evaluated = [
+            result.severity for result in results if result.severity is not Severity.NOT_APPLICABLE
+        ]
+        severity = max(evaluated, key=priority.__getitem__, default=Severity.PASS)
         return ValidationResult(
             rules=results,
             severity=severity,
-            complete=all(result.applied for result in results),
+            complete=all(
+                result.applied or result.severity is Severity.NOT_APPLICABLE for result in results
+            ),
         )

@@ -80,8 +80,11 @@ export function WriterValidation({
               <Notice>
                 Some checks are unavailable ({validation.checks_unavailable.join(", ")}). This sentence has not been
                 fully validated.
-                {validation.checks_unavailable.includes("V05") &&
-                  " V05 is not checked because verified Offline guideline data is unavailable."}
+              </Notice>
+            )}
+            {validation.checks_not_applicable.length > 0 && (
+              <Notice>
+                Journal guideline compliance is outside this sentence-level check.
               </Notice>
             )}
             {issues.map((rule) => (

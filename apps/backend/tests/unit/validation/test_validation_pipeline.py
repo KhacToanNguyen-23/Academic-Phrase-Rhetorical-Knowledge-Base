@@ -6,7 +6,8 @@ from aprkb.modules.recommendation.gates import build_gates
 from aprkb.modules.recommendation.pattern_view import PatternView
 from aprkb.modules.validation.context import ValidationContext
 from aprkb.modules.validation.pipeline import ValidationPipeline
-from aprkb.modules.validation.rules import build_rules
+from aprkb.modules.validation.rules import Severity, build_rules
+from aprkb.modules.validation.rules.not_applicable import NotApplicableValidationRule
 from aprkb.policies.evidence import EvidencePolicy
 from aprkb.shared.models import RefEnum
 
@@ -97,15 +98,32 @@ def test_validation_pipeline_reports_unavailable_checks(evidence_policy, policy_
     results = pipeline.validate("The study suggests a possible relationship.", context)
 
     assert [result.code for result in results] == [f"V{i:02}" for i in range(1, 9)]
-    assert all(not result.applied for result in results if result.code not in {"V02", "V03", "V06"})
+    assert all(
+        not result.applied for result in results if result.code not in {"V02", "V03", "V05", "V06"}
+    )
     assert next(result for result in results if result.code == "V03").applied
     assert next(result for result in results if result.code == "V06").applied
     assert all(
         result.severity.value == "unavailable"
         for result in results
-        if result.code not in {"V02", "V03", "V06"}
+        if result.code not in {"V02", "V03", "V05", "V06"}
     )
+    v05 = next(result for result in results if result.code == "V05")
+    assert not v05.applied
+    assert v05.severity is Severity.NOT_APPLICABLE
     assert not pipeline.run("The study suggests a possible relationship.", context).complete
+
+
+def test_not_applicable_rule_does_not_make_sentence_validation_incomplete():
+    rule = NotApplicableValidationRule(
+        "V05", "FR-08.4", "Journal guideline compliance is outside sentence validation."
+    )
+    result = ValidationPipeline(rules=[rule]).run(
+        "A sentence.", ValidationContext(claim_type="descriptive", evidence_level="single_study")
+    )
+
+    assert result.complete
+    assert result.severity is Severity.PASS
 
 
 def test_v03_blocks_unsupported_numbers_doi_and_citations(evidence_policy, policy_bundle):

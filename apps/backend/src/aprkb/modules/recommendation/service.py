@@ -35,6 +35,7 @@ CRITERION_LABELS = {
     "linguistic": "Keyword match",
     "provenance": "Provenance",
 }
+JOURNAL_PHRASEBANK_TIER = "selected_journal_phrasebank"
 
 
 def score_explanations(
@@ -140,14 +141,22 @@ async def recommend(
         move_code=payload.move,
         claim_type=payload.claim_type,
         genre_code=payload.genre,
+        journal_id=payload.journal_id,
         internal_use_codes=frozenset(policy_bundle.license.internal_use_codes),
     )
-    by_tier: dict[str, list[PatternView]] = {
-        tier: [] for tier in policy_bundle.fallback_tiers.tiers
-    }
+    tiers = (
+        (JOURNAL_PHRASEBANK_TIER,)
+        if payload.journal_id is not None
+        else tuple(policy_bundle.fallback_tiers.tiers)
+    )
+    by_tier: dict[str, list[PatternView]] = {tier: [] for tier in tiers}
     for row in rows:
         allowed_genres = tuple(row.allowed_genres)
-        tier = choose_fallback_tier(policy_bundle.fallback_tiers.tiers)
+        tier = (
+            JOURNAL_PHRASEBANK_TIER
+            if payload.journal_id is not None
+            else choose_fallback_tier(policy_bundle.fallback_tiers.tiers)
+        )
         if tier is None:
             continue
         by_tier[tier].append(
@@ -198,14 +207,10 @@ async def recommend(
             ranking_policy=policy_bundle.ranking_weights,
         ),
         weights=policy_bundle.ranking_weights.weights,
-        tier_loader=FallbackTierLoader(tiers=policy_bundle.fallback_tiers.tiers, by_tier=by_tier),
+        tier_loader=FallbackTierLoader(tiers=tiers, by_tier=by_tier),
     )
     result = pipeline.recommend(context)
-    fallback_reason = (
-        "No verified journal-specific recommendation data; using generic patterns"
-        if payload.journal_id is not None
-        else None
-    )
+    fallback_reason = None
     versions = {
         "ranking_weights": policy_bundle.ranking_weights.version,
         "license_policy": policy_bundle.license.version,
@@ -223,6 +228,8 @@ async def recommend(
         warnings.append("Section không được lọc")
     if payload.evidence_level is None:
         warnings.append("Evidence level not selected; candidate strength was not filtered")
+    if payload.journal_id is not None and not rows:
+        warnings.append("No approved journal-linked phrases match these search criteria")
     if payload.discipline:
         warnings.append("Discipline affinity is unavailable and was not used for ranking")
     if payload.journal_id is not None and guideline_policy.has_mandatory_rules(payload.journal_id):

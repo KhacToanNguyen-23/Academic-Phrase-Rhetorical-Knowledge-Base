@@ -2560,6 +2560,8 @@ export interface components {
         };
         /** ValidationResponse */
         ValidationResponse: {
+            /** Checks Not Applicable */
+            checks_not_applicable: string[];
             /** Checks Unavailable */
             checks_unavailable: string[];
             /** Complete */

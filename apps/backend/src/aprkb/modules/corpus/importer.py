@@ -4,15 +4,22 @@ Mining rights are checked from listed metadata before any content is downloaded 
 stored. Articles with a missing, unknown, or non-mining license are skipped (fail closed).
 """
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from uuid import UUID, uuid4
 
-from sqlalchemy import ColumnElement, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.core.logging import get_logger
 from aprkb.modules.audit.service import record_event
 from aprkb.modules.corpus.blobstore import BlobStore
+from aprkb.modules.corpus.dedup import (
+    find_content_duplicate,
+    find_metadata_duplicate,
+    find_title_candidates,
+    lock_corpus_writes,
+)
+from aprkb.modules.corpus.identity import content_hash
 from aprkb.modules.corpus.models import Article, License
 from aprkb.modules.corpus.sources import (
     ArticleSource,
@@ -35,6 +42,8 @@ class ImportSummary:
     skipped_duplicate: int = 0
     skipped_format: int = 0
     skipped_invalid_content: int = 0
+    duplicates: list[dict[str, str | None]] = field(default_factory=list)
+    suspected_duplicates: list[dict[str, str | None]] = field(default_factory=list)
     next_cursor: str | None = None
     continuation_job_id: str | None = None
 
@@ -54,11 +63,9 @@ async def import_page(
     options = options or ImportOptions(filters={}, artifact_kinds=())
     batch_id = batch_id or job_id
     page = await source.list_articles(cursor=cursor, limit=limit, options=options)
+    await lock_corpus_writes(session)
     summary = ImportSummary(listed=len(page.articles), next_cursor=page.next_cursor)
     licenses = {row.code: row for row in await session.scalars(select(License))}
-    seen_ids: set[str] = set()
-    seen_dois: set[str] = set()
-    seen_titles: set[str] = set()
     written_keys: list[str] = []
     try:
         for ref in page.articles:
@@ -76,22 +83,16 @@ async def import_page(
                     "Skip %s: unsupported content type %r", ref.external_id, ref.content_type
                 )
                 continue
-            if (
-                ref.external_id in seen_ids
-                or (ref.doi is not None and ref.doi in seen_dois)
-                or (ref.doi is None and ref.title is not None and ref.title in seen_titles)
-                or await _already_imported(
-                    session, source.name, ref.external_id, ref.doi, ref.title
-                )
-            ):
+            match = await find_metadata_duplicate(
+                session, source=source.name, external_id=ref.external_id, doi=ref.doi
+            )
+            if match is not None:
                 summary.skipped_duplicate += 1
-                logger.info("Skip %s: already imported", ref.external_id)
+                summary.duplicates.append(
+                    match.detail(external_id=ref.external_id, title=ref.title)
+                )
                 continue
-            seen_ids.add(ref.external_id)
-            if ref.doi is not None:
-                seen_dois.add(ref.doi)
-            elif ref.title is not None:
-                seen_titles.add(ref.title)
+            candidates = await find_title_candidates(session, ref.title)
 
             try:
                 content = await source.fetch_content(ref)
@@ -100,6 +101,18 @@ async def import_page(
                 # InvalidContentError messages are fixed strings written by the adapters.
                 logger.info("Skip %s: invalid content (%s)", ref.external_id, error)
                 continue
+            digest = content_hash(content)
+            match = await find_content_duplicate(session, digest, blob_store)
+            if match is not None:
+                summary.skipped_duplicate += 1
+                summary.duplicates.append(
+                    match.detail(external_id=ref.external_id, title=ref.title)
+                )
+                continue
+            for candidate in candidates:
+                summary.suspected_duplicates.append(
+                    candidate.detail(external_id=ref.external_id, title=ref.title)
+                )
             article_id = uuid4()
             blob_key = f"articles/{article_id.hex}{suffix}"
             blob_store.put(blob_key, content)
@@ -110,6 +123,7 @@ async def import_page(
                     source=source.name,
                     external_id=ref.external_id,
                     doi=ref.doi,
+                    content_sha256=digest,
                     title=ref.title,
                     license_id=license_row.id,
                     blob_key=blob_key,
@@ -173,25 +187,3 @@ async def import_page(
             blob_store.delete(key)
         raise
     return summary
-
-
-async def _already_imported(
-    session: AsyncSession,
-    source_name: str,
-    external_id: str,
-    doi: str | None,
-    title: str | None = None,
-) -> bool:
-    condition: ColumnElement[bool] = (Article.source == source_name) & (
-        Article.external_id == external_id
-    )
-    if doi is not None:
-        condition = or_(condition, Article.doi == doi)
-    elif title:
-        # The SLR repository can hold one paper under two work ids; without a DOI the title is
-        # the only shared key. Skipping is visible in ``skipped_duplicate``, a silent copy is not.
-        condition = or_(
-            condition,
-            (Article.source == source_name) & Article.doi.is_(None) & (Article.title == title),
-        )
-    return await session.scalar(select(Article.id).where(condition).limit(1)) is not None

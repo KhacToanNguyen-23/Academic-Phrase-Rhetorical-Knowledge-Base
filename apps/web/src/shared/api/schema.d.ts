@@ -1009,6 +1009,8 @@ export interface components {
         };
         /** Body_upload_article_v1_admin_corpus_articles_post */
         Body_upload_article_v1_admin_corpus_articles_post: {
+            /** Doi */
+            doi?: string | null;
             /** File */
             file: string;
             /** License Code */

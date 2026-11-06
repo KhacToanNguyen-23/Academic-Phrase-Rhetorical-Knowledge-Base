@@ -1,0 +1,6 @@
+{
+  "schema_version": "1",
+  "pattern_pack": "packs/sample-demo",
+  "reference_library": "raw/manchester-diverse/collection.json",
+  "reference_mappings": "raw/manchester-diverse/mappings.yaml"
+}

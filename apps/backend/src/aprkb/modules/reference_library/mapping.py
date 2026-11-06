@@ -142,10 +142,19 @@ async def _taxonomy_codes(session: AsyncSession) -> dict[str, set[str]]:
     return {"section": sections, "intent": intents, "general_function": general_functions}
 
 
-async def import_mapping_file(session: AsyncSession, path: Path) -> int:
+async def import_mapping_file(
+    session: AsyncSession,
+    path: Path,
+    *,
+    commit: bool = True,
+    source_name: str | None = None,
+) -> int:
     mappings = _parse_file(path)
+    source_query = select(ReferenceSource)
+    if source_name is not None:
+        source_query = source_query.where(ReferenceSource.name == source_name)
     source = await session.scalar(
-        select(ReferenceSource).order_by(ReferenceSource.imported_at.desc()).limit(1)
+        source_query.order_by(ReferenceSource.imported_at.desc()).limit(1)
     )
     categories = (
         list(
@@ -207,5 +216,8 @@ async def import_mapping_file(session: AsyncSession, path: Path) -> int:
         row.review_status = item["review_status"]
         row.mapped_by = item["mapped_by"]
         row.note = item["note"]
-    await session.commit()
+    if commit:
+        await session.commit()
+    else:
+        await session.flush()
     return len(mappings)

@@ -4,6 +4,8 @@ AP-RKB is an academic writing assistant scaffold. The backend recommends rhetori
 
 ## Architecture
 
+Phrasebank data initialization uses one [JSON manifest workflow](doc/phrasebank-initialization.md) for AP-RKB patterns, Manchester references, and their filter mappings. It reuses the existing import formats and preserves the current runtime APIs.
+
 ```text
 apps/web (React + TypeScript SPA; Vite runs locally by default)
                │ REST /v1 + OpenAPI

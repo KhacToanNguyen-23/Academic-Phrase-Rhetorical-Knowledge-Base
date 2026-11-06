@@ -293,7 +293,12 @@ def load_document(path: Path) -> ParsedLibrary:
 
 
 async def import_library(
-    session: AsyncSession, library: ParsedLibrary, *, request_id: str
+    session: AsyncSession,
+    library: ParsedLibrary,
+    *,
+    request_id: str,
+    commit: bool = True,
+    seed_mappings: bool = True,
 ) -> dict[str, int]:
     """Replace one named source and write a content-free audit event atomically."""
     existing = await session.scalar(
@@ -316,7 +321,9 @@ async def import_library(
     categories_by_slug = {category.slug: category for category in existing_categories}
     retained_category_ids: set[str] = set()
     entry_count = 0
-    mapping_config = yaml.safe_load(_MAPPING_CONFIG.read_text(encoding="utf-8"))
+    mapping_config = (
+        yaml.safe_load(_MAPPING_CONFIG.read_text(encoding="utf-8")) if seed_mappings else {}
+    )
     for category in library.categories:
         row = categories_by_slug.get(category.slug)
         if row is None:
@@ -418,7 +425,10 @@ async def import_library(
         after={"counts": counts, "content_sha256": library.content_sha256},
         request_id=request_id,
     )
-    await session.commit()
+    if commit:
+        await session.commit()
+    else:
+        await session.flush()
     return counts
 
 

@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 const baseURL = process.env.WRITER_E2E_BASE_URL ?? "http://127.0.0.1:5173";
+const sourceCredit = "Source: University of Manchester Academic Phrasebank.";
 const screenshots = process.env.E2E_SCREENSHOT_DIR ?? "test-results/phrasebank-screens";
 const notice = {
   name: "Example University Phrase Library",
@@ -107,6 +108,17 @@ async function mockLibrary(page: Page) {
   });
 }
 
+// The redesigned filters are Radix comboboxes, not native <select> elements.
+async function selectFilter(page: Page, name: string, option: string) {
+  await page.getByRole("combobox", { name, exact: true }).click();
+  await page.getByRole("option", { name: option, exact: true }).click();
+  await expect(page.getByRole("combobox", { name, exact: true })).toContainText(option);
+}
+
+function cardTitle(page: Page, text: string) {
+  return page.locator('[data-slot="card-title"]').filter({ hasText: new RegExp(`^${text}$`) });
+}
+
 test("home shows section/function counts, source filtering and a screenshot without key warnings", async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
@@ -114,8 +126,8 @@ test("home shows section/function counts, source filtering and a screenshot with
   await authenticate(page);
   await mockLibrary(page);
   await page.goto("/phrasebank");
-  await expect(page.getByRole("heading", { name: "Sections" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "General functions" })).toBeVisible();
+  await expect(cardTitle(page, "Sections")).toBeVisible();
+  await expect(cardTitle(page, "General functions")).toBeVisible();
   await expect(page.getByRole("link", { name: /Section One/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Phrasebank", exact: true })).toBeVisible();
   await expect(page.getByText("Reference library", { exact: true })).toHaveCount(0);
@@ -123,34 +135,34 @@ test("home shows section/function counts, source filtering and a screenshot with
   await expect(page.getByText("4 reference items")).toHaveCount(0);
   await expect(page.getByRole("link", { name: /Function One/ })).toBeVisible();
   await expect(page.getByText("1 reference item")).toHaveCount(0);
-  const cards = page.locator(".phrasebank-category-card");
+  const cards = page.getByRole("link").filter({ has: page.locator('[data-slot="badge"]') });
   await expect(cards).toHaveCount(2);
-  await expect(page.locator(".phrasebank-count")).toHaveText(["4", "1"]);
-  await expect(cards.first().locator(".phrasebank-count")).toHaveAttribute("title", "4 items");
-  await expect(cards.locator(".badge")).toHaveCount(0);
-  expect(await cards.first().evaluate((card) => card.querySelector(".phrasebank-count")!.getBoundingClientRect().right <= card.getBoundingClientRect().right)).toBe(true);
+  await expect(cards.locator('[data-slot="badge"]')).toHaveText(["4", "1"]);
+  await expect(cards.first()).toContainText("Section One");
+  await expect(cards.locator('[data-slot="badge"]')).toHaveCount(2);
+  expect(await cards.first().evaluate((card) => card.querySelector('[data-slot="badge"]')!.getBoundingClientRect().right <= card.getBoundingClientRect().right)).toBe(true);
   await expect(page.getByText("Source: University of Manchester Academic Phrasebank.")).toHaveCount(1);
-  await expect(page.locator(".phrasebank-source-credit")).toHaveCSS("font-weight", "400");
-  await expect(page.locator(".phrasebank-source-credit")).toHaveCSS("color", "rgb(100, 115, 129)");
-  await expect(page.locator(".phrasebank-notice")).toHaveCount(0);
-  await page.setViewportSize({ width: 320, height: 700 });
+  await expect(page.getByText(sourceCredit, { exact: true })).toHaveCSS("font-weight", "400");
+  await expect(page.getByText(sourceCredit, { exact: true })).toBeVisible();
+  await expect(page.getByText(notice.notice, { exact: true })).toHaveCount(0);
+  // ADR-0011 supports desktop widths starting at 1024px.
+  await page.setViewportSize({ width: 1024, height: 768 });
   for (const card of await cards.all()) {
     expect(await card.evaluate((element) => {
-      const pill = element.querySelector(".phrasebank-count")!;
+      const pill = element.querySelector('[data-slot="badge"]')!;
       return pill.getBoundingClientRect().right <= element.getBoundingClientRect().right;
     })).toBe(true);
   }
   await page.setViewportSize({ width: 1280, height: 720 });
-  const functionsCard = page.getByRole("heading", { name: "General functions" }).locator("xpath=ancestor::section[1]");
+  const functionsCard = cardTitle(page, "General functions").locator('xpath=ancestor::div[@data-slot="card"][1]');
   await expect.poll(() => functionsCard.evaluate((element) => getComputedStyle(element).opacity)).toBe("1");
   await page.screenshot({ path: `${screenshots}/phrasebank-home-v2.png`, fullPage: true });
 
-  const filter = page.getByRole("combobox", { name: "Source filter" });
-  await filter.selectOption("manchester-reference");
-  await expect(page.getByRole("heading", { name: "AP-RKB patterns" })).toHaveCount(0);
-  await filter.selectOption("aprkb-patterns");
-  await expect(page.getByRole("heading", { name: "Sections" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Use in Writer" })).toBeVisible();
+  await selectFilter(page, "Source filter", "Manchester reference");
+  await expect(page.getByRole("link", { name: "AP-RKB patterns", exact: true })).toHaveCount(0);
+  await selectFilter(page, "Source filter", "AP-RKB patterns");
+  await expect(cardTitle(page, "Sections")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Use in writer" })).toBeVisible();
   expect(consoleErrors.filter((message) => /unique "key" prop/i.test(message))).toEqual([]);
 });
 
@@ -158,29 +170,38 @@ test("category keeps source order, separate table shapes, index navigation, copy
   const consoleErrors: string[] = [];
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  // Keep a supported desktop width, but make the fixture taller than the viewport
+  // so the anchor check proves navigation scrolls rather than merely changing the URL.
+  await page.setViewportSize({ width: 1280, height: 480 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await authenticate(page);
   await mockLibrary(page);
   await page.goto("/phrasebank/section-one");
-  await expect(page.locator(".badge")).toHaveCount(0);
-  await expect(page.locator(".phrasebank-source-credit")).toHaveText("Source: University of Manchester Academic Phrasebank.");
+  await expect(page.locator('[data-slot="badge"]')).toHaveCount(0);
+  await expect(page.getByText(sourceCredit, { exact: true })).toHaveText("Source: University of Manchester Academic Phrasebank.");
   await expect(page.getByText("Intro note")).toHaveCount(0);
   await expect(page.getByText("Paragraph after the first table.")).toHaveCount(0);
   await expect(page.getByText("Final note")).toHaveCount(0);
-  await expect.poll(() => page.locator(".phrasebank-index").evaluate((element) => getComputedStyle(element).position)).not.toBe("sticky");
+  await expect.poll(() => page.getByRole("navigation", { name: "In-page headings" }).evaluate((element) => getComputedStyle(element).position)).not.toBe("sticky");
   const heading = page.locator("#heading-section-one-1");
-  await expect(heading.locator(".phrasebank-table")).toHaveCount(2);
-  await expect(heading.locator(".phrasebank-table").nth(0).locator("tr")).toHaveCount(2);
-  await expect(heading.locator(".phrasebank-table").nth(0).locator("tr").first().locator("td")).toHaveCount(3);
-  await expect(heading.locator(".phrasebank-table").nth(1).locator("tr").first().locator("td")).toHaveCount(4);
-  const order = await heading.locator(":scope > .phrasebank-entry-list").evaluate((list) =>
-    [...list.children].map((element) => element.matches("p") ? "paragraph" : "table"));
+  await expect(heading.getByRole("table")).toHaveCount(2);
+  await expect(heading.getByRole("table").nth(0).locator("tr")).toHaveCount(2);
+  await expect(heading.getByRole("table").nth(0).locator("tr").first().locator("td")).toHaveCount(3);
+  await expect(heading.getByRole("table").nth(1).locator("tr").first().locator("td")).toHaveCount(4);
+  await expect(heading.getByRole("table").nth(0).locator("td")).toHaveText([
+    "Alpha", "betabeta", "Copy", "gamma", "delta", "Copy",
+  ]);
+  await expect(heading.getByRole("table").nth(1).locator("td")).toHaveText([
+    "epsilon", "zeta", "eta", "Copy",
+  ]);
+  const order = await heading.locator(":scope > div").evaluate((list) =>
+    [...list.children].map((element) => element.querySelector("table") ? "table" : "paragraph"));
   expect(order).toEqual(["table", "table"]);
-  await expect(heading.locator(".badge")).toHaveCount(0);
-  await expect(heading.locator(".phrasebank-table .badge")).toHaveCount(0);
+  await expect(heading.locator('[data-slot="badge"]')).toHaveCount(0);
+  await expect(heading.getByRole("table").locator('[data-slot="badge"]')).toHaveCount(0);
   const copyButtons = heading.getByRole("button", { name: "Copy phrase row" });
   await expect(copyButtons).toHaveCount(3);
-  await expect(copyButtons.first()).toHaveClass(/btn-ghost/);
+  await expect(copyButtons.first()).toBeEnabled();
   await page.screenshot({ path: `${screenshots}/phrasebank-category-v2.png`, fullPage: true });
 
   await page.getByRole("link", { name: "Final heading" }).click();
@@ -191,7 +212,8 @@ test("category keeps source order, separate table shapes, index navigation, copy
   })).toBe(true);
   const jump = await page.locator("#heading-section-one-2").evaluate((element) => ({ top: element.getBoundingClientRect().top, viewport: window.innerHeight, scrollY: window.scrollY }));
   expect(jump.scrollY).toBeGreaterThan(0);
-  expect(jump.top).toBeGreaterThanOrEqual(64);
+  // The desktop shell has no fixed top header to offset.
+  expect(jump.top).toBeGreaterThanOrEqual(0);
   expect(jump.top).toBeLessThan(jump.viewport);
   await page.getByRole("button", { name: "Copy phrase row" }).first().click();
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("Alpha beta / beta");
@@ -199,6 +221,7 @@ test("category keeps source order, separate table shapes, index navigation, copy
 });
 
 test("search groups results by category then heading and opens the category heading", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 480 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await authenticate(page);
   await mockLibrary(page);
@@ -207,10 +230,10 @@ test("search groups results by category then heading and opens the category head
   await expect(searchBox).toBeVisible();
   await searchBox.fill("alpha");
   await expect(page.getByRole("link", { name: "Open heading" }).first()).toBeVisible();
-  const searchPhrase = page.locator(".phrasebank-search-phrase").first();
+  const searchPhrase = page.getByRole("table").first();
   await expect(searchPhrase.locator("td")).toHaveCount(2);
   await expect(searchPhrase.locator("td").nth(1).locator("div")).toHaveText(["beta", "beta"]);
-  await expect(searchPhrase.locator("mark.phrasebank-match")).toHaveText("Alpha");
+  await expect(searchPhrase.locator("mark")).toHaveText("Alpha");
   await expect(page.getByText("Final note")).toHaveCount(0);
   await expect(page.getByText("Intro note")).toHaveCount(0);
   const renderedGroups = await page.locator("h4").evaluateAll((headings) => headings
@@ -224,10 +247,10 @@ test("search groups results by category then heading and opens the category head
     { category: "Function One", headings: ["Function One"] },
   ]);
   await expect(page.getByRole("heading", { name: "Manchester reference" })).toBeVisible();
-  await expect(page.locator(".phrasebank-source-credit")).toHaveText("Source: University of Manchester Academic Phrasebank.");
+  await expect(page.getByText(sourceCredit, { exact: true })).toHaveText("Source: University of Manchester Academic Phrasebank.");
   const aprkbGroupTitle = page.locator("h3").filter({ hasText: "AP-RKB patterns" });
   await expect(aprkbGroupTitle).toHaveCount(1);
-  await expect(page.locator(".badge")).toHaveCount(0);
+  await expect(page.locator('[data-slot="badge"]')).toHaveCount(0);
   await page.screenshot({ path: `${screenshots}/phrasebank-search-all-sources-v2.png`, fullPage: true });
   await page.getByRole("link", { name: "Open heading" }).first().click();
   await expect(page).toHaveURL(/\/phrasebank\/section-one#heading-section-one-1$/);
@@ -245,35 +268,35 @@ test("disabled Manchester collection displays its disabled state", async ({ page
   }));
   await page.route("**/v1/patterns**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await page.goto("/phrasebank");
-  await expect(page.getByText(/Manchester reference is disabled/).first()).toBeVisible();
-  await expect(page.getByRole("combobox", { name: "Source filter" })).toHaveValue("all");
+  await expect(page.getByRole("status").filter({ hasText: "The Manchester reference collection is switched off here" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Source filter" })).toHaveText("All sources");
 });
 
 test("Section and Intent filters cover both sources and report unmapped reference items", async ({ page }) => {
   await authenticate(page);
   await mockLibrary(page);
   await page.goto("/phrasebank");
-  await page.getByRole("combobox", { name: "Section filter" }).selectOption("INTRO");
+  await selectFilter(page, "Section filter", "Introduction");
   await expect(page.getByRole("link", { name: /Section One/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Function One/ })).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("1 items have no mapping");
   await expect(page.getByRole("status")).not.toContainText("reference");
-  await page.getByRole("combobox", { name: "Intent filter" }).selectOption("INTRO_GAP_INDICATE");
+  await selectFilter(page, "Intent filter", "Invented intent");
   await expect(page.getByRole("link", { name: /Section One/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Function One/ })).toHaveCount(0);
 
-  await page.getByRole("combobox", { name: "Intent filter" }).selectOption("");
-  await page.getByRole("combobox", { name: "Section filter" }).selectOption("RESULTS");
+  await selectFilter(page, "Intent filter", "All intents");
+  await selectFilter(page, "Section filter", "Results");
   await page.getByRole("searchbox", { name: "Search phrasebanks" }).fill("alpha");
-  await expect(page.getByText("No Manchester reference results.", { exact: true })).toBeVisible();
+  await expect(page.getByText("No Manchester reference results", { exact: true })).toBeVisible();
   await expect(page.getByRole("status")).toHaveCount(0);
   await page.getByRole("searchbox", { name: "Search phrasebanks" }).fill("");
 
-  await page.getByRole("combobox", { name: "Section filter" }).selectOption("INTRO");
-  await page.getByRole("combobox", { name: "Source filter" }).selectOption("aprkb-patterns");
-  await expect(page.getByRole("link", { name: "Use in Writer" })).toBeVisible();
-  await page.getByRole("combobox", { name: "Section filter" }).selectOption("RESULTS");
-  await expect(page.getByRole("link", { name: "Use in Writer" })).toHaveCount(0);
+  await selectFilter(page, "Section filter", "Introduction");
+  await selectFilter(page, "Source filter", "AP-RKB patterns");
+  await expect(page.getByRole("link", { name: "Use in writer" })).toBeVisible();
+  await selectFilter(page, "Section filter", "Results");
+  await expect(page.getByRole("link", { name: "Use in writer" })).toHaveCount(0);
 });
 
 test("combined filters refetch both sources instead of searching their initial capped cache", async ({ page }) => {
@@ -294,12 +317,12 @@ test("combined filters refetch both sources instead of searching their initial c
   await page.goto("/phrasebank");
   await expect(page.getByRole("link", { name: latePattern.canonical_frame })).toHaveCount(0);
   await page.getByRole("searchbox", { name: "Search phrasebanks" }).fill("needle");
-  await page.getByRole("combobox", { name: "Section filter" }).selectOption("INTRO");
-  await page.getByRole("combobox", { name: "Intent filter" }).selectOption("INTRO_GAP_INDICATE");
+  await selectFilter(page, "Section filter", "Introduction");
+  await selectFilter(page, "Intent filter", "Invented intent");
   await expect(page.getByRole("link", { name: latePattern.canonical_frame })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Needle beyond the original reference cap" })).toBeVisible();
   await expect(page.getByText("Showing up to 50 Manchester and 200 AP-RKB matching results.")).toBeVisible();
-  await page.getByRole("combobox", { name: "Intent filter" }).selectOption("");
+  await selectFilter(page, "Intent filter", "All intents");
   await expect(page.getByRole("link", { name: latePattern.canonical_frame })).toHaveCount(0);
   await expect(page.getByRole("cell", { name: "Needle beyond the original reference cap" })).toHaveCount(0);
 });
@@ -314,10 +337,10 @@ test("an empty reference source after purge leaves the page and AP-RKB source av
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(isDetail ? patterns[0] : patterns) });
   });
   await page.goto("/phrasebank");
-  await expect(page.getByRole("heading", { name: "Sections" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "General functions" })).toBeVisible();
+  await expect(cardTitle(page, "Sections")).toBeVisible();
+  await expect(cardTitle(page, "General functions")).toBeVisible();
   await expect(page.getByRole("link", { name: "AP-RKB patterns" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Use in Writer" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Use in writer" })).toBeVisible();
   await expect(page.getByText(/Manchester reference is disabled/)).toHaveCount(0);
 });
 
@@ -326,9 +349,9 @@ test("AP-RKB category shows the Writer cross link", async ({ page }) => {
   await mockLibrary(page);
   await page.goto("/phrasebank/aprkb-patterns");
   await expect(page.getByText("Alpha invented {topic} frame")).toBeVisible();
-  await expect(page.locator(".badge")).toHaveCount(0);
-  await expect(page.locator(".phrasebank-source-credit")).toHaveText("Source: University of Manchester Academic Phrasebank.");
-  await expect(page.getByRole("link", { name: "Use in Writer" })).toHaveAttribute("href", "/writer");
+  await expect(page.locator('[data-slot="badge"]')).toHaveCount(0);
+  await expect(page.getByText(sourceCredit, { exact: true })).toHaveText("Source: University of Manchester Academic Phrasebank.");
+  await expect(page.getByRole("link", { name: "Use in writer" })).toHaveAttribute("href", "/writer");
 });
 
 test("AP-RKB list opens a complete pattern detail without per-row detail requests", async ({ page }) => {
@@ -343,8 +366,8 @@ test("AP-RKB list opens a complete pattern detail without per-row detail request
   expect(detailRequests).toBe(0);
   await page.getByRole("link", { name: "Alpha invented {topic} frame" }).click();
   await expect(page).toHaveURL(/\/phrasebank\/pattern\/pattern-1$/);
-  await expect(page.getByRole("heading", { name: "Frame" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Slots" })).toBeVisible();
+  await expect(cardTitle(page, "Frame")).toBeVisible();
+  await expect(cardTitle(page, "Slots")).toBeVisible();
   await expect(page.getByText(/Type: topic; Label: Topic/)).toBeVisible();
   await expect(page.getByText("Invented alternative {topic}")).toBeVisible();
   await expect(page.getByText("single_study")).toBeVisible();

@@ -28,7 +28,7 @@ guarded. Design decisions: [ADR-0011](../../doc/adr/0011-frontend-design-system.
 - `/dev/ui` shows every component in every state. It exists in development and in the inspect build only.
 - Desktop only (1440px, minimum 1024px). One primary (teal) button per screen at most.
 
-### Checks (no Playwright)
+### Checks
 
 ```bash
 pnpm typecheck && pnpm lint && pnpm build
@@ -70,7 +70,16 @@ The staff shell accepts curator/admin API keys and keeps the key in the current
 tab's session storage. The local-only Quick demo button seeds self-authored sample
 data and issues a curator key; it requires the Vite development server and a
 loopback backend with `APP_ENV=local`.
-The Playwright specs under `e2e/` were written for the previous UI and are not run for the redesign. To try one anyway: `pnpm exec playwright test e2e/writer.spec.ts`. Run it with
-API/Vite against a seeded disposable `aprkb_test` database and set
-`WRITER_E2E_API_KEY` to a client key for that database. On Windows,
-`WRITER_E2E_BROWSER=msedge` uses the installed Edge browser.
+The Playwright specs under `e2e/` cover the redesigned Phrasebank controls and
+the live Writer search/render/validate/feedback flow. Run `pnpm test:e2e` with
+API/Vite against a migrated, seeded disposable `aprkb_test` database. The Writer
+uses the loopback-only guest demo path, so the API must run with `APP_ENV=local`;
+the Phrasebank tests stub their own staff identity and reference responses.
+Set `WRITER_E2E_BASE_URL` when Vite is not at `http://127.0.0.1:5173`. On Windows,
+`WRITER_E2E_BROWSER=msedge` uses the installed Edge Chromium browser; CI installs
+Playwright Chromium. The supported desktop viewport is 1440px (minimum 1024px).
+
+The CI smoke remains Stage A observability (`continue-on-error`), not a required
+check. CI saves traces/screenshots in `test-results/` and the HTML report in the
+separate `playwright-report/`; both are uploaded together so report generation
+cannot erase test artifacts.

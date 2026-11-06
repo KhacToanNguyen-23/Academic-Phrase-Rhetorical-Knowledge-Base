@@ -9,3 +9,19 @@ Ownership uses four determiner+noun tiers in `slot_abstraction.yaml`: unconditio
 The spaCy shared-token-feature spike is recorded in [the round-1 report](../../../../../../plans/reports/261104-spacy-nlp-spike-report.md), [the round-2 report](../../../../../../plans/reports/261104-spacy-nlp-spike-round2-report.md), [the phase-2 report](../../../../../../plans/reports/261104-spacy-phase2-report.md), [the phase-3 report](../../../../../../plans/reports/261104-spacy-phase3-report.md), [the phase-6 report](../../../../../../plans/reports/261105-spacy-phase6-report.md), and [the phase-7 report](../../../../../../plans/reports/261105-spacy-phase7-report.md).
 
 `make phrase-stats ARGS="--focal-batch <uuid> --background all-other"` reports document frequency for masked candidate frames. It excludes rejected candidates, counts each candidate once per article, and never reads or prints sentence text. Results are descriptive; when the focal set is small or the background is empty, only the recurrence ranking is shown. `python apps/backend/scripts/mining_trial_report.py <directory> --blob-root <blob-root>` runs the local aggregate-only spaCy trial. Before opening file contents, it verifies every relative blob key against an article whose license metadata allows mining. Optional Windows-only `--dump <path>` writes imperative and coordinated sentences for manual review to a new ignored file directly under `tmp/`; stdout and the committed report remain counts-only.
+
+
+Phase 8 adds a closed, versioned adjunct inventory to `author_action`: allowed prepositions
+remain literal and their objects become slots; purpose `advcl`/`xcomp` clauses require a `to`
+marker. Frames replace only the selected source spans, preserve the rest of the sentence, and
+marker. Phase 8.1 corrected object-internal PP handling: those PPs remain inside the direct
+object slot, and only predicate-level PPs are checked against the closed adjunct list. Unsupported
+predicate adjuncts reject as `unsupported_adjunct`; more than two adjunct slots reject as
+`too_many_adjuncts`. Candidate discourse modifiers and auxiliaries are held in the separate
+`construction_verb_groups.yaml` policy and require matching dependency, POS and surface position.
+Phase 9.1 adds only active literal subjects `this paper`, `this study`, and `this article`; other
+subject phrases reject as `unsupported_subject`, and passive subjects reject as
+`unsupported_voice`. Phase 8.1 does not add anchors, adjuncts or subjects. Provisional anchor,
+adjunct, modifier and auxiliary lists carry `TODO(owner, FR-06.2)`; see
+[ADR-0013](../../../../../../doc/adr/0013-author-action-adjuncts.md) and the
+[Phase 8.1 report](../../../../../../plans/reports/261106-spacy-phase8.1-report.md).

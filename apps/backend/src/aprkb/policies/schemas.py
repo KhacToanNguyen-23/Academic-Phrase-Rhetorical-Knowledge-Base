@@ -274,6 +274,31 @@ class ConstructionChild(BaseModel):
         return self
 
 
+class ConstructionAdjuncts(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prepositions: list[str] = Field(min_length=1)
+    purpose_deps: list[str] = Field(min_length=1)
+    max_count: Literal[2] = 2
+    literal_in_objects: list[str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_adjunct_lists(self) -> "ConstructionAdjuncts":
+        allowed = {
+            "prepositions": {"in", "for", "with", "as", "on", "by"},
+            "purpose_deps": {"advcl", "xcomp"},
+            "literal_in_objects": {"paper", "study", "work", "article", "research"},
+        }
+        for field, permitted in allowed.items():
+            values = getattr(self, field)
+            normalized = [value.strip().casefold() for value in values]
+            if any(not value for value in normalized) or len(normalized) != len(set(normalized)):
+                raise ValueError(f"construction adjunct {field} must be non-empty and unique")
+            if set(normalized) - permitted:
+                raise ValueError(f"construction adjunct {field} contains an unknown entry")
+        return self
+
+
 class ConstructionRule(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -282,7 +307,20 @@ class ConstructionRule(BaseModel):
     anchor_lemmas: list[str] = Field(min_length=1)
     children: list[ConstructionChild] = Field(min_length=1)
     allowed_literal: list[str] = Field(default_factory=list)
-    frame_templates: list[str] = Field(min_length=1)
+    frame_templates: list[str] = Field(default_factory=list)
+    adjuncts: ConstructionAdjuncts | None = None
+    subject_phrases: list[str] = Field(default_factory=list)
+
+    @field_validator("subject_phrases")
+    @classmethod
+    def validate_subject_phrases(cls, phrases: list[str]) -> list[str]:
+        allowed = {"we", "this paper", "this study", "this article"}
+        normalized = [phrase.strip().casefold() for phrase in phrases]
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("construction subject phrases must be unique")
+        if any(not phrase for phrase in normalized) or set(normalized) - allowed:
+            raise ValueError("construction subject phrase is not approved")
+        return normalized
 
     @field_validator("frame_templates")
     @classmethod
@@ -290,6 +328,14 @@ class ConstructionRule(BaseModel):
         for template in templates:
             compile_construction_template(template)
         return templates
+
+    @model_validator(mode="after")
+    def validate_frame_validation(self) -> "ConstructionRule":
+        if not self.frame_templates and self.adjuncts is None:
+            raise ValueError("construction rules require frame_templates or adjuncts")
+        if self.subject_phrases and self.function != "author_action":
+            raise ValueError("subject phrases are only valid for author_action constructions")
+        return self
 
 
 class ConstructionsPolicy(VersionedPolicy):
@@ -300,7 +346,51 @@ class ConstructionsPolicy(VersionedPolicy):
         identifiers = [rule.id for rule in self.constructions]
         if len(identifiers) != len(set(identifiers)):
             raise ValueError("construction ids must be unique")
+        if tuple(map(int, self.version.split("."))) >= (0, 3, 0) and any(
+            rule.id == "author_action" and rule.adjuncts is not None and not rule.subject_phrases
+            for rule in self.constructions
+        ):
+            raise ValueError("version 0.3.0+ author_action requires its subject phrase allowlist")
         return self
+
+
+class ConstructionVerbGroupPolicy(VersionedPolicy):
+    """Closed candidate lists for literal modifiers and auxiliaries on author-action frames."""
+
+    modifier_positions: dict[
+        str,
+        list[Literal["before_subject", "between_subject_and_anchor", "after_anchor_before_object"]],
+    ] = Field(min_length=1)
+    auxiliary_lemmas: list[str] = Field(min_length=1)
+
+    @field_validator("modifier_positions")
+    @classmethod
+    def validate_modifier_positions(cls, values: dict[str, list[str]]) -> dict[str, list[str]]:
+        normalized: dict[str, list[str]] = {}
+        for lemma, positions in values.items():
+            key = lemma.strip().casefold()
+            if (
+                not key
+                or " " in key
+                or key in normalized
+                or not positions
+                or len(positions) != len(set(positions))
+            ):
+                raise ValueError(
+                    "modifier positions require unique single-word entries and positions"
+                )
+            normalized[key] = positions
+        return normalized
+
+    @field_validator("auxiliary_lemmas")
+    @classmethod
+    def validate_auxiliary_lemmas(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().casefold() for value in values]
+        if any(not value or " " in value for value in normalized) or len(normalized) != len(
+            set(normalized)
+        ):
+            raise ValueError("auxiliary_lemmas must contain unique single-word entries")
+        return normalized
 
 
 class PhraseStatsPolicy(VersionedPolicy):
@@ -311,17 +401,95 @@ class PhraseStatsPolicy(VersionedPolicy):
 
 
 def is_safe_construction_frame(
-    frame: str, policy: ConstructionsPolicy, *, construction_id: str | None = None
+    frame: str,
+    policy: ConstructionsPolicy,
+    *,
+    construction_id: str | None = None,
+    verb_group_policy: ConstructionVerbGroupPolicy | None = None,
 ) -> bool:
     """Accept only a complete masked-frame grammar declared by the construction registry."""
     normalized = re.sub(r"\s+", " ", frame).strip()
     return any(
-        re.fullmatch(compile_construction_template(template), normalized, flags=re.IGNORECASE)
-        is not None
+        _is_safe_adjunct_frame(normalized, rule, verb_group_policy)
+        if rule.adjuncts is not None
+        else any(
+            re.fullmatch(compile_construction_template(template), normalized, flags=re.IGNORECASE)
+            is not None
+            for template in rule.frame_templates
+        )
         for rule in policy.constructions
         if construction_id is None or rule.id == construction_id
-        for template in rule.frame_templates
     )
+
+
+def _is_safe_adjunct_frame(
+    frame: str,
+    rule: ConstructionRule,
+    verb_group_policy: ConstructionVerbGroupPolicy | None = None,
+) -> bool:
+    if rule.adjuncts is None:
+        return False
+    adjuncts = rule.adjuncts
+    forms: set[str] = set()
+    for lemma in rule.anchor_lemmas:
+        base = lemma.casefold()
+        forms.add(base)
+        if base.endswith("y") and len(base) > 1 and base[-2] not in "aeiou":
+            forms.update((base[:-1] + "ies", base[:-1] + "ied"))
+        else:
+            forms.add(base + ("es" if base.endswith(("s", "x", "z", "ch", "sh", "o")) else "s"))
+            forms.add(base + ("d" if base.endswith("e") else "ed"))
+    verb = (
+        "(?:" + "|".join(re.escape(value) for value in sorted(forms, key=len, reverse=True)) + ")"
+    )
+    preps = "(?:" + "|".join(re.escape(value) for value in adjuncts.prepositions) + "|to)"
+    literal_phrases = "(?:paper|study|work|article|research)"
+    modifiers = verb_group_policy.modifier_positions if verb_group_policy is not None else {}
+    before_subject = [
+        lemma for lemma, positions in modifiers.items() if "before_subject" in positions
+    ]
+    between_subject_and_anchor = [
+        lemma for lemma, positions in modifiers.items() if "between_subject_and_anchor" in positions
+    ]
+    after_anchor_before_object = [
+        lemma for lemma, positions in modifiers.items() if "after_anchor_before_object" in positions
+    ]
+
+    def alternatives(values: list[str]) -> str:
+        return (
+            "(?:"
+            + "|".join(re.escape(value) for value in sorted(values, key=len, reverse=True))
+            + ")"
+        )
+
+    prefix_values = [rf"in this {literal_phrases},"]
+    if before_subject:
+        prefix_values.append(rf"{alternatives(before_subject)},?")
+    prefix = rf"(?:(?:{'|'.join(prefix_values)}) )?"
+    literal_phrase = rf"(?: in this {literal_phrases})?"
+    subject_phrases = rule.subject_phrases or ["we"]
+    subject = (
+        "(?:"
+        + "|".join(re.escape(value) for value in sorted(subject_phrases, key=len, reverse=True))
+        + ")"
+    )
+    subject_modifier = (
+        rf"(?: {alternatives(between_subject_and_anchor)})?" if between_subject_and_anchor else ""
+    )
+    auxiliary = (
+        rf"(?: {alternatives(verb_group_policy.auxiliary_lemmas)})?"
+        if verb_group_policy is not None and verb_group_policy.auxiliary_lemmas
+        else ""
+    )
+    anchor_modifier = (
+        rf"(?: {alternatives(after_anchor_before_object)})?" if after_anchor_before_object else ""
+    )
+    after_x = rf"{subject}{subject_modifier}{auxiliary} {verb}{anchor_modifier} \[X\]"
+    adjunct_y = rf"(?: {preps} \[Y\]"
+    adjunct_z = rf"(?: {preps} \[Z\])?"
+    body = after_x + literal_phrase + adjunct_y + literal_phrase + adjunct_z + literal_phrase + ")?"
+    suffix = r"[.!?]*"
+    return re.fullmatch(prefix + body + suffix, frame, flags=re.IGNORECASE) is not None
 
 
 def compile_construction_template(template: str) -> str:

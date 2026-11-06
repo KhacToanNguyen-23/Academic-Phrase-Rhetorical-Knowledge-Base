@@ -33,3 +33,20 @@ level. The neutral verb list is provisional and carries `TODO(owner, FR-06.2)`.
 the application and must not be treated as a second runtime policy. If the
 group approves it later, migrate the approved decisions into the versioned
 runtime files and update their consumers together.
+
+
+`constructions.yaml` v0.3.0 declares generic `author_action` adjuncts and the exact literal
+subject allowlist: `we`, `this paper`, `this study`, and `this article`. Only the last three
+subjects were added in Phase 9.1; the Phase 8 anchor and adjunct lists are unchanged. The
+preposition, purpose-dependency and literal `in this ...` object lists remain provisional
+(`TODO(owner, FR-06.2)`). Dynamic frame validation derives regular anchor forms from registered
+lemmas and accepts only the resulting masked-frame grammar; other constructions keep their
+declared templates. See [ADR-0013](../../../../../doc/adr/0013-author-action-adjuncts.md).
+
+`construction_verb_groups.yaml` v0.1.0 is a separate provisional list for candidate discourse
+modifiers and auxiliaries on `author_action`. The matcher requires the listed dependency role,
+part of speech and surface position before preserving a token literally. Main-verb `have` is not
+accepted as an auxiliary. These lists carry `TODO(owner, FR-06.2)` and do not add anchors or
+predicate adjunct prepositions. Object-internal prepositional phrases remain inside the direct
+object slot; only predicate-level prepositions are checked against the construction adjunct list.
+See [ADR-0013](../../../../../doc/adr/0013-author-action-adjuncts.md).

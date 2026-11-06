@@ -250,7 +250,11 @@ async def _promote_candidate(
 def _candidate_is_safe_to_promote(candidate: Candidate) -> bool:
     if not (
         is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS, _LEAD_INS)
-        or is_safe_construction_frame(candidate.canonical_frame, _POLICIES.constructions)
+        or is_safe_construction_frame(
+            candidate.canonical_frame,
+            _POLICIES.constructions,
+            verb_group_policy=_POLICIES.construction_verb_groups,
+        )
     ):
         return False
     if not isinstance(candidate.slots, dict):

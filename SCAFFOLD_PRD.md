@@ -711,3 +711,13 @@ Và:
 | RBAC / audit | `core/auth.py`, `core/audit.py` | `integration/api`, AT-12 |
 | Mining → Candidate | `mining/*`, `workers/handlers/mine_article.py` | `unit/mining/stages` |
 | Discipline (P2) | `discipline/null_source.py` | — |
+
+
+**Cập nhật phase 8–9.1:** `author_action` dùng danh sách adjunct đóng, có phiên bản: preposition
+được giữ literal và object thành slot; purpose `advcl`/`xcomp` chỉ được chấp nhận khi có marker
+`to`. Frame thay đúng span slot trên câu nguồn, giữ nguyên phần còn lại; adjunct không được
+đăng ký bị đếm là `unlisted_adjunct`, quá hai adjunct là `too_many_adjuncts`. Phase 9.1 chỉ thêm
+chủ ngữ chủ động literal `this paper`, `this study`, `this article`; chủ ngữ khác bị từ chối với
+reason riêng. Không thêm anchor hoặc adjunct. Passive, chủ ngữ `it`, copula `be` và dạng adjunct
+chưa đăng ký vẫn ngoài phạm vi. Anchor và adjunct lists còn provisional
+(`TODO(owner, FR-06.2)`). Xem ADR-0013.

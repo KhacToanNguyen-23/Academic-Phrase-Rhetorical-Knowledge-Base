@@ -48,7 +48,11 @@ def _safe_summary(candidate: Candidate) -> CandidateSummary:
         raise HTTPException(status_code=409, detail="Candidate slot names are invalid")
     if not (
         is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS, _LEAD_INS)
-        or is_safe_construction_frame(candidate.canonical_frame, _POLICIES.constructions)
+        or is_safe_construction_frame(
+            candidate.canonical_frame,
+            _POLICIES.constructions,
+            verb_group_policy=_POLICIES.construction_verb_groups,
+        )
     ):
         raise HTTPException(status_code=409, detail="Candidate frame is not safely abstracted")
     return CandidateSummary(

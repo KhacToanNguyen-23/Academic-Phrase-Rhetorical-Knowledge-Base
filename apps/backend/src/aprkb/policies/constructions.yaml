@@ -1,19 +1,26 @@
 # First self-authored construction families; TODO(owner, FR-06.2): expand only after review.
-version: 0.1.0
+version: 0.3.0
 constructions:
   - id: author_action
     function: author_action
-    anchor_lemmas: [propose, present, introduce, develop]
+    # TODO(owner, FR-06.2): provisional anchors; expand only after owner review.
+    anchor_lemmas: [propose, present, introduce, develop, use, compare, conduct, evaluate, provide, consider, implement]
+    # Owner-approved Phase 9.1 literal subjects; no other "this ..." subject is accepted.
+    subject_phrases: [we, "this paper", "this study", "this article"]
     children:
-      - path: [[nsubj, nsubjpass]]
+      - path: [[nsubj]]
         mode: literal
-        lemmas: [we]
+        include_descendant_deps: [det]
       - path: [[dobj, obj]]
         mode: slot
         slot: X
     allowed_literal: [in, this, paper, study, work, article, research]
-    frame_templates:
-      - 'we {propose|proposes|proposed|present|presents|presented|introduce|introduces|introduced|develop|develops|developed} [X].'
+    # TODO(owner, FR-06.2): closed adjunct inventory; expand only after owner review.
+    adjuncts:
+      prepositions: [in, for, with, as, "on", by]
+      purpose_deps: [advcl, xcomp]
+      max_count: 2
+      literal_in_objects: [paper, study, work, article, research]
   - id: relation_role
     function: relation
     anchor_lemmas: [play]

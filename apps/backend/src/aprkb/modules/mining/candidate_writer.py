@@ -7,6 +7,7 @@ from uuid import UUID
 from aprkb.modules.mining.schemas import SlotDefinition, is_safe_masked_frame
 from aprkb.policies.schemas import (
     ConstructionsPolicy,
+    ConstructionVerbGroupPolicy,
     LeadInsPolicy,
     ReportingVerbsPolicy,
     is_safe_construction_frame,
@@ -36,6 +37,7 @@ class CandidateWriter:
         *,
         reporting_policy: ReportingVerbsPolicy | None = None,
         constructions_policy: ConstructionsPolicy | None = None,
+        verb_group_policy: ConstructionVerbGroupPolicy | None = None,
         lead_ins_policy: LeadInsPolicy | None = None,
     ) -> None:
         self._repository = repository
@@ -43,6 +45,7 @@ class CandidateWriter:
             reporting_policy.all_forms if reporting_policy is not None else set()
         )
         self._constructions = constructions_policy
+        self._verb_group_policy = verb_group_policy
         self._lead_ins = lead_ins_policy.lead_ins if lead_ins_policy is not None else []
 
     def write(self, draft: CandidateDraft) -> object:
@@ -58,6 +61,7 @@ class CandidateWriter:
                 draft.canonical_frame,
                 self._constructions,
                 construction_id=draft.construction_id,
+                verb_group_policy=self._verb_group_policy,
             )
         )
         if not reporting_safe and not construction_safe:

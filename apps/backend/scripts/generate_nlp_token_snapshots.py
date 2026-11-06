@@ -24,6 +24,8 @@ def main() -> None:
         + payload["construction_cases"]
         + payload.get("phase6_cases", [])
         + payload.get("phase7_cases", [])
+        + payload.get("phase8_cases", [])
+        + payload.get("phase9_cases", [])
     )
     engine = SpacyEngine("en_core_web_sm")
     cases = []

@@ -30,7 +30,11 @@ def build_stages(*, policy_bundle: PolicyBundle) -> list[MiningStage]:
                 policy_bundle.slot_abstraction,
                 policy_bundle.lead_ins.lead_ins,
             ),
-            ConstructionMatcher(policy_bundle.constructions, policy_bundle.slot_abstraction),
+            ConstructionMatcher(
+                policy_bundle.constructions,
+                policy_bundle.slot_abstraction,
+                policy_bundle.construction_verb_groups,
+            ),
         ),
         EpistemicTagger(policy_bundle.epistemic_markers),
         FrameNormalizer(),

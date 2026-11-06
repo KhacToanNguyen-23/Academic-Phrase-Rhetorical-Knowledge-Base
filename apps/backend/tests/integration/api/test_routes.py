@@ -886,7 +886,8 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         assert item["breakdown"]["journal_genre"] is None
         assert item["license_flag"] is (item["license_code"] == "PROPRIETARY")
     assert body["policy_versions"] == {
-        "ranking_weights": "0.2.0",
+        "ranking_weights": "0.3.0",
+        "diversity": "0.1.0",
         "license_policy": "0.1.0",
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
@@ -1843,3 +1844,151 @@ async def test_gold_labeling_keeps_finished_labels_before_raising_other_request_
     async with session_factory() as session:
         statuses = Counter(await session.scalars(select(GoldItem.status)))
     assert statuses == {"draft": 2, "pending_ai": 2}
+
+
+async def test_online_move_intent_normalization_details_and_trace_with_packaged_policy(
+    session_factory,
+):
+    from dataclasses import replace
+
+    from aprkb.modules.taxonomy.models import Move, Step
+    from aprkb.policies.schemas import RankingWeightsPolicy
+
+    async with session_factory() as session:
+        await run_seed(session)
+        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        move = await session.scalar(
+            select(Move).join(Step, Step.move_id == Move.id).where(Step.id == intent.step_id)
+        )
+        pattern = PhrasePattern(intent_id=intent.id, status="approved")
+        session.add(pattern)
+        await session.flush()
+        version = PatternVersion(
+            pattern_id=pattern.id,
+            version_no=1,
+            canonical_frame="We suggest {topic}.",
+            slots={"topic": "noun_phrase"},
+            epistemic_strength="low",
+            claim_type="descriptive",
+        )
+        session.add(version)
+        await session.flush()
+        pattern.current_version_id = version.id
+        session.add(
+            EvidenceProvenance(
+                pattern_version_id=version.id, source_type="authored", sentence_ids=[]
+            )
+        )
+        actor, key = await create_api_key(session, name="online-ranking", role="client")
+        await session.commit()
+        move_code = move.code
+        version_id = version.id
+
+    app = create_app()
+
+    async def override_db_session():
+        async with session_factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = override_db_session
+    async with app.router.lifespan_context(app):
+        # Acceptance uses the packaged policy, without enabling a scorer in the test.
+        policy = app.state.policy_bundle
+        assert policy.ranking_weights == load_policy_bundle().ranking_weights
+        assert policy.ranking_weights.weights["intent"] > 0
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            cases = [
+                ({"move": move_code}, policy.ranking_weights.intent_scores.same_move),
+                ({"intent": "INTRO_GAP_INDICATE"}, 1.0),
+                (
+                    {
+                        "move": move_code,
+                        "intent": "INTRO_GAP_INDICATE",
+                        "query": "suggests",
+                        "limit": 3,
+                    },
+                    1.0,
+                ),
+            ]
+            for request_body, expected in cases:
+                response = await client.post(
+                    "/v1/recommendations",
+                    headers={"X-API-Key": key},
+                    json=request_body,
+                )
+                assert response.status_code == 200, response.text
+                body = response.json()
+                candidate = next(
+                    item for item in body["items"] if item["pattern_version_id"] == str(version_id)
+                )
+                assert candidate["breakdown"]["intent"] == expected
+                assert all(item["breakdown"]["intent"] == expected for item in body["items"])
+                for issued in body["items"]:
+                    issued_details = issued["explanation_details"]
+                    assert sum(
+                        detail["weight"] for detail in issued_details if detail["available"]
+                    ) == pytest.approx(1.0)
+                    assert sum(
+                        (detail["value"] or 0) * detail["weight"] for detail in issued_details
+                    ) == pytest.approx(issued["score"])
+                if request_body.get("query"):
+                    assert candidate["breakdown"]["linguistic"] == 1.0
+                details = candidate["explanation_details"]
+                assert {item["criterion"] for item in details} == set(candidate["breakdown"])
+                intent_detail = next(item for item in details if item["criterion"] == "intent")
+                assert intent_detail["value"] == expected
+                assert intent_detail["weight"] > 0
+                assert intent_detail["available"] is True
+                assert f"Intent: {expected:.3f}" in candidate["explanations"]
+                for item in details:
+                    if not item["available"]:
+                        assert item["weight"] == 0
+                        assert item["value"] is None
+                assert sum(
+                    item["weight"] for item in details if item["available"]
+                ) == pytest.approx(1)
+                assert sum(
+                    (item["value"] or 0) * item["weight"] for item in details
+                ) == pytest.approx(candidate["score"])
+                assert body["fallback_trace"][-1]["tier"] == "generic_genre"
+                assert body["fallback_trace"][-1]["accepted_count"] >= 1
+                async with session_factory() as session:
+                    log = await session.get(RecommendationLog, UUID(body["recommendation_id"]))
+                    assert log.created_by == actor.id
+                    assert log.results["fallback_trace"] == body["fallback_trace"]
+                    assert log.results["items"] == body["items"]
+                    assert "query" not in log.request
+                    assert ("query_hash" in log.request) is bool(request_body.get("query"))
+
+            # Separate ablation: explicitly disable intent, keeping policy weights valid.
+            disabled = policy.ranking_weights.model_dump()
+            intent_weight = disabled["weights"]["intent"]
+            disabled["weights"]["intent"] = 0
+            disabled["weights"]["discipline"] += intent_weight
+            app.state.policy_bundle = replace(
+                policy, ranking_weights=RankingWeightsPolicy.model_validate(disabled)
+            )
+            for request_body in ({"move": move_code}, {"intent": "INTRO_GAP_INDICATE"}):
+                response = await client.post(
+                    "/v1/recommendations",
+                    headers={"X-API-Key": key},
+                    json=request_body,
+                )
+                assert response.status_code == 200
+                assert response.json()["items"]
+                for item in response.json()["items"]:
+                    assert item["breakdown"]["intent"] is None
+                    details = item["explanation_details"]
+                    intent_detail = next(
+                        detail for detail in details if detail["criterion"] == "intent"
+                    )
+                    assert intent_detail == {
+                        "criterion": "intent",
+                        "value": None,
+                        "weight": 0.0,
+                        "available": False,
+                    }
+                    assert sum(
+                        detail["weight"] for detail in details if detail["available"]
+                    ) == pytest.approx(1)
+            app.state.policy_bundle = policy

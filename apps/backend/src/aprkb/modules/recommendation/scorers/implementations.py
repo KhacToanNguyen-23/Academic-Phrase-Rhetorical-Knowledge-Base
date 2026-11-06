@@ -2,16 +2,30 @@
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 from aprkb.modules.recommendation.context import RecommendationContext
 from aprkb.modules.recommendation.pattern_view import PatternView
 from aprkb.modules.recommendation.scorers.base import Scorer
 from aprkb.policies.evidence import EvidencePolicy
+from aprkb.shared.keywords import keyword_tokens
 
 if TYPE_CHECKING:
     from aprkb.modules.discipline.base import DisciplineSource
+
+
+class IntentScorer(Scorer):
+    key = "intent"
+
+    def __init__(self, *, same_move: float) -> None:
+        self._same_move = same_move
+
+    def score(self, pattern: PatternView, ctx: RecommendationContext) -> float | None:
+        if ctx.intent_code:
+            return 1.0 if ctx.intent_code == pattern.intent_code else None
+        if ctx.move_code and ctx.move_code == pattern.move_code:
+            return self._same_move
+        return None
 
 
 class DisciplineScorer(Scorer):
@@ -57,12 +71,10 @@ class LinguisticScorer(Scorer):
     def score(self, pattern: PatternView, ctx: RecommendationContext) -> float | None:
         if not ctx.query:
             return None
-        keywords = set(re.findall(r"[^\W_]+", ctx.query.casefold(), flags=re.UNICODE))
+        keywords = keyword_tokens(ctx.query)
         if not keywords:
             return None
-        frame_words = set(
-            re.findall(r"[^\W_]+", pattern.canonical_frame.casefold(), flags=re.UNICODE)
-        )
+        frame_words = keyword_tokens(pattern.canonical_frame)
         return len(keywords & frame_words) / len(keywords)
 
 

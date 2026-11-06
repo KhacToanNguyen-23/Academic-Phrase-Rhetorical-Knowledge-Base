@@ -14,7 +14,10 @@ from aprkb.shared.models import RefEnum
 def test_policy_bundle_loads_versioned_sample_policies() -> None:
     bundle = load_policy_bundle()
 
-    assert bundle.ranking_weights.version == "0.2.0"
+    assert bundle.ranking_weights.version == "0.3.0"
+    assert bundle.ranking_weights.weights["intent"] > 0
+    assert sum(bundle.ranking_weights.weights.values()) == pytest.approx(1.0)
+    assert bundle.diversity.version == "0.1.0"
     assert bundle.ranking_weights.provenance_scores == {"authored": 1.0, "mined": 0.7}
     assert bundle.ranking_weights.evidence_alignment_formula.startswith("1 - abs")
     assert bundle.ranking_weights.keyword_formula == "matched_keywords / query_keywords"
@@ -116,3 +119,33 @@ def test_guideline_policy_caches_rules_by_journal() -> None:
     assert policy.get(journal_id) == ()
     policy.set(journal_id, rules)
     assert policy.get(journal_id) == rules
+
+
+@pytest.mark.parametrize("field", ["lambda_", "max_similarity"])
+@pytest.mark.parametrize("value", [-0.1, 1.1, float("nan"), float("inf")])
+def test_diversity_policy_rejects_invalid_ranges(field, value):
+    from aprkb.policies.schemas import DiversityPolicy
+
+    payload = {"version": "0.1.0", "lambda_": 0.7, "max_similarity": 0.85, field: value}
+    with pytest.raises(ValueError):
+        DiversityPolicy.model_validate(payload)
+
+
+def test_ranking_policy_requires_intent_key_and_normalized_weights():
+    payload = load_policy_bundle().ranking_weights.model_dump()
+    payload["weights"].pop("intent")
+    with pytest.raises(ValueError, match="every active scorer"):
+        RankingWeightsPolicy.model_validate(payload)
+    payload = load_policy_bundle().ranking_weights.model_dump()
+    payload["weights"]["intent"] += 0.1
+    with pytest.raises(ValueError, match="sum to 1"):
+        RankingWeightsPolicy.model_validate(payload)
+
+
+def test_missing_diversity_policy_fails_startup(tmp_path):
+    source = Path(__file__).parents[3] / "src" / "aprkb" / "policies"
+    target = tmp_path / "policies"
+    copytree(source, target)
+    (target / "diversity.yaml").unlink()
+    with pytest.raises(ValueError, match="diversity.yaml"):
+        load_policy_bundle(target)

@@ -28,7 +28,7 @@ export function JournalProfilePage({ journalId }: { journalId?: string }) {
           "Corpus statistics are never presented as journal requirements."
         }
       />
-      <div className="grid grid-cols-[20rem_1fr] gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[20rem_minmax(0,1fr)] [&>*]:min-w-0">
         <Card>
           <CardHeader>
             <CardTitle>Journals</CardTitle>

@@ -15,6 +15,7 @@ const fallbackLabels: Record<string, string> = {
 };
 
 const scoreLabels: Record<string, string> = {
+  intent: "Intent",
   discipline: "Discipline",
   journal_genre: "Journal / genre",
   evidence: "Evidence alignment",
@@ -58,6 +59,16 @@ export function WriterResults({
         {(recommendation.warnings ?? []).map((warning) => (
           <Notice key={warning}>{warning}</Notice>
         ))}
+        {!!recommendation.fallback_trace?.length && (
+          <details className="text-sm text-muted-foreground">
+            <summary className="cursor-pointer">Search coverage</summary>
+            <ul className="mt-2 list-disc pl-5">
+              {recommendation.fallback_trace.map((entry) => (
+                <li key={entry.tier}>{fallbackLabels[entry.tier] ?? entry.tier}: {entry.accepted_count} eligible patterns before diversity</li>
+              ))}
+            </ul>
+          </details>
+        )}
         {hidden > 0 && <Notice>{hidden} samples hidden because they exceed the selected evidence level.</Notice>}
         {recommendation.items.length === 0 && (
           <p className="text-sm text-muted-foreground">
@@ -105,6 +116,20 @@ export function WriterResults({
                           {explanation}
                         </span>
                       ))}
+                      {!!item.explanation_details?.length && (
+                        <details className="mt-2 text-sm text-muted-foreground">
+                          <summary className="cursor-pointer">Why this suggestion</summary>
+                          <ul className="mt-1 list-disc pl-5">
+                            {item.explanation_details.map((detail) => (
+                              <li key={detail.criterion}>
+                                {scoreLabels[detail.criterion] ?? detail.criterion}: {detail.available && detail.value !== null
+                                  ? `${detail.value.toFixed(3)} · ${(detail.weight * 100).toFixed(1)}% weight`
+                                  : "Not used"}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{item.score.toFixed(2)}</TableCell>
                     <TableCell>{fallbackLabels[item.fallback_tier] ?? "General"}</TableCell>

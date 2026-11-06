@@ -16,6 +16,8 @@ from aprkb.modules.journals import service as journal_service
 from aprkb.modules.journals.guideline_policy import GuidelinePolicy
 from aprkb.modules.recommendation import repository
 from aprkb.modules.recommendation.context import RecommendationContext
+from aprkb.modules.recommendation.diversifier import MmrDiversifier
+from aprkb.modules.recommendation.explanations import explanation_details, score_explanations
 from aprkb.modules.recommendation.fallback import FallbackTierLoader, choose_fallback_tier
 from aprkb.modules.recommendation.gates import build_gates
 from aprkb.modules.recommendation.models import RecommendationLog
@@ -28,40 +30,7 @@ from aprkb.modules.taxonomy import service as taxonomy_service
 from aprkb.policies.evidence import EvidencePolicy
 from aprkb.policies.loader import PolicyBundle
 
-CRITERION_LABELS = {
-    "discipline": "Discipline",
-    "journal_genre": "Journal and genre",
-    "evidence": "Evidence",
-    "linguistic": "Keyword match",
-    "provenance": "Provenance",
-}
 JOURNAL_PHRASEBANK_TIER = "selected_journal_phrasebank"
-
-
-def score_explanations(
-    breakdown: dict[str, float | None],
-    *,
-    claim_type: str | None,
-    strength: str | None,
-    evidence_level: str | None,
-    evidence_policy: EvidencePolicy,
-) -> list[str]:
-    """Describe each measured score using its actual value and evidence ceiling."""
-    explanations = [
-        f"{CRITERION_LABELS[key]}: {value:.3f}"
-        if value is not None
-        else f"{CRITERION_LABELS[key]}: not available"
-        for key, value in breakdown.items()
-    ]
-    if evidence_level is not None:
-        try:
-            maximum = evidence_policy.max_strength(claim_type or "", evidence_level)
-        except ValueError:
-            maximum = "not available"
-        explanations.append(
-            f"Evidence strength: {strength or 'Not labelled'}; maximum allowed: {maximum}"
-        )
-    return explanations
 
 
 async def require_issued_candidate(
@@ -164,6 +133,7 @@ async def recommend(
                 pattern_version_id=row.current_version_id,
                 status=row.status,
                 intent_code=row.intent_code,
+                move_code=row.move_code,
                 canonical_frame=row.canonical_frame,
                 claim_type=row.claim_type,
                 epistemic_strength=row.epistemic_strength,
@@ -189,6 +159,7 @@ async def recommend(
         )
     context = RecommendationContext(
         intent_code=payload.intent,
+        move_code=payload.move,
         section_code=payload.section,
         genre_code=payload.genre,
         journal_id=payload.journal_id,
@@ -208,10 +179,15 @@ async def recommend(
         ),
         weights=policy_bundle.ranking_weights.weights,
         tier_loader=FallbackTierLoader(tiers=tiers, by_tier=by_tier),
+        diversifier=MmrDiversifier(
+            lambda_=policy_bundle.diversity.lambda_,
+            max_similarity=policy_bundle.diversity.max_similarity,
+        ),
     )
     result = pipeline.recommend(context)
     fallback_reason = None
     versions = {
+        "diversity": policy_bundle.diversity.version,
         "ranking_weights": policy_bundle.ranking_weights.version,
         "license_policy": policy_bundle.license.version,
         "fallback_tiers": policy_bundle.fallback_tiers.version,
@@ -226,6 +202,9 @@ async def recommend(
         warnings.append("Không có intent/move/query; kết quả là toàn bộ pattern được duyệt")
     if not payload.section:
         warnings.append("Section không được lọc")
+    if (payload.intent or payload.move) and policy_bundle.ranking_weights.weights["intent"] == 0:
+        warnings.append("Intent matching is currently not used for ranking")
+
     if payload.evidence_level is None:
         warnings.append("Evidence level not selected; candidate strength was not filtered")
     if payload.journal_id is not None and not rows:
@@ -248,6 +227,9 @@ async def recommend(
             "canonical_frame": item.pattern.canonical_frame,
             "score": item.score,
             "breakdown": item.breakdown,
+            "explanation_details": explanation_details(
+                item.breakdown, weights=policy_bundle.ranking_weights.weights
+            ),
             "fallback_tier": item.fallback_tier,
             "source_type": item.pattern.source_type,
             "version_no": item.pattern.version_no,
@@ -267,11 +249,13 @@ async def recommend(
         for item in result.items
     ]
     log_items = [{**item, "pattern_version_id": str(item["pattern_version_id"])} for item in items]
+    fallback_trace = [{"tier": tier, "accepted_count": count} for tier, count in result.tiers_tried]
     results: dict[str, object] = {
         "items": log_items,
         "excluded": result.excluded,
         "fallback_reason": fallback_reason,
         "warnings": warnings,
+        "fallback_trace": fallback_trace,
     }
     try:
         # BR-08 / FR-09.6: keep explanation, fallback and policy versions;
@@ -309,6 +293,7 @@ async def recommend(
         "policy_versions": versions,
         "recommendation_id": log.id,
         "context_hash": context_hash,
+        "fallback_trace": fallback_trace,
         "fallback_reason": fallback_reason,
         "warnings": warnings,
     }

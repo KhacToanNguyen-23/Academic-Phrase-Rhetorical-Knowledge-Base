@@ -111,7 +111,22 @@ const playground = createRoute({
   component: () => <PlaygroundPage patternId={getRouteApi("/shell/guarded/playground").useSearch().pattern} />,
 });
 
-const writer = createRoute({ getParentRoute: () => appLayout, path: "/writer", component: OnlineWriterPage });
+function WriterRoute() {
+  const search = getRouteApi("/shell/writer").useSearch();
+  const initialContext = {
+    section: search.section ?? "", move: search.move ?? "", intent: search.intent ?? "",
+    genre: search.genre ?? "", query: search.query ?? "",
+  };
+  return <OnlineWriterPage key={JSON.stringify(initialContext)} initialContext={initialContext} />;
+}
+const writer = createRoute({
+  getParentRoute: () => appLayout,
+  path: "/writer",
+  validateSearch: (s: Record<string, unknown>): { section?: string; move?: string; intent?: string; genre?: string; query?: string } => ({
+    section: str(s.section), move: str(s.move), intent: str(s.intent), genre: str(s.genre), query: str(s.query),
+  }),
+  component: WriterRoute,
+});
 
 const inbox = createRoute({ getParentRoute: () => guarded, path: "/inbox", component: InboxPage });
 const admin = createRoute({ getParentRoute: () => guarded, path: "/admin", component: AdminPage });

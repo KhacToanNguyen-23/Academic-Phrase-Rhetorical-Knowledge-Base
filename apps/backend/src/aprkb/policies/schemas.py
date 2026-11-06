@@ -548,6 +548,197 @@ class SlotAbstractionPolicy(VersionedPolicy):
         return self
 
 
+class HybridFamilyPolicy(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(pattern=r"^hybrid_[a-z][a-z0-9_]{1,55}$")
+    # A disabled family is neither mined nor accepted by the review safety check.
+    enabled: bool = True
+    min_content_tokens: int = Field(default=3, ge=1, le=20)
+    patterns: list[str] = Field(default_factory=list)
+    allowed_deps: list[str] = Field(default_factory=lambda: ["ROOT", "nsubj", "nsubjpass"])
+    allowed_pos: list[str] = Field(default_factory=lambda: ["NOUN", "VERB", "AUX", "ADJ"])
+    slot_strategy: Literal["dependency_subtrees"] = "dependency_subtrees"
+
+    @field_validator("patterns")
+    @classmethod
+    def compile_patterns(cls, patterns: list[str]) -> list[str]:
+        for pattern in patterns:
+            re.compile(pattern)
+        return patterns
+
+    @model_validator(mode="after")
+    def validate_labels(self) -> "HybridFamilyPolicy":
+        known_deps = {
+            "ROOT",
+            "acl",
+            "acomp",
+            "advcl",
+            "advmod",
+            "agent",
+            "amod",
+            "appos",
+            "attr",
+            "aux",
+            "auxpass",
+            "case",
+            "cc",
+            "ccomp",
+            "compound",
+            "conj",
+            "csubj",
+            "csubjpass",
+            "dative",
+            "dep",
+            "det",
+            "dobj",
+            "expl",
+            "intj",
+            "mark",
+            "meta",
+            "neg",
+            "nmod",
+            "npadvmod",
+            "nsubj",
+            "nsubjpass",
+            "nummod",
+            "obj",
+            "obl",
+            "oprd",
+            "parataxis",
+            "pcomp",
+            "pobj",
+            "poss",
+            "preconj",
+            "prep",
+            "prt",
+            "punct",
+            "quantmod",
+            "relcl",
+            "xcomp",
+        }
+        known_pos = {
+            "ADJ",
+            "ADP",
+            "ADV",
+            "AUX",
+            "CCONJ",
+            "DET",
+            "INTJ",
+            "NOUN",
+            "NUM",
+            "PART",
+            "PRON",
+            "PROPN",
+            "PUNCT",
+            "SCONJ",
+            "SPACE",
+            "SYM",
+            "VERB",
+            "X",
+        }
+        if (
+            len(self.allowed_deps) != len(set(self.allowed_deps))
+            or any(not value.strip() for value in self.allowed_deps)
+            or set(self.allowed_deps) - known_deps
+        ):
+            raise ValueError("hybrid dependency labels must be known, unique, and non-empty")
+        if (
+            len(self.allowed_pos) != len(set(self.allowed_pos))
+            or any(not value.strip() for value in self.allowed_pos)
+            or set(self.allowed_pos) - known_pos
+        ):
+            raise ValueError("hybrid POS labels must be known, unique, and non-empty")
+        return self
+
+
+# A placeholder glued to punctuation or a word, or punctuation set off by a space, marks a span
+# cut inside a token or text damaged by extraction.
+HYBRID_SLOT_BOUNDARY = re.compile(r"[,;:.!?/-]\[[XYZ]\]|\[[XYZ]\][A-Za-z0-9/-]|\s[,;:!?]|\s\.$")
+
+
+class HybridConstructionsPolicy(VersionedPolicy):
+    meta_np: dict[str, list[str]]
+    boundary: dict[str, bool]
+    # Literal words allowed around the slots; a longer frame is a sentence, not a reusable phrase.
+    max_literal_words: int = Field(default=12, ge=4, le=40)
+    # A frame ending in one of these has lost the object of its preposition.
+    dangling_tail_words: list[str] = Field(default_factory=list)
+    # Inline abbreviations that introduce a side remark rather than part of a reusable pattern.
+    abbreviation_markers: list[str] = Field(default_factory=list)
+    families: list[HybridFamilyPolicy] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_policy(self) -> "HybridConstructionsPolicy":
+        identifiers = [family.id for family in self.families]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("hybrid family ids must be unique")
+        if set(self.meta_np) != {"heads", "connectors"} or any(
+            not values or any(not value.strip() for value in values)
+            for values in self.meta_np.values()
+        ):
+            raise ValueError("hybrid meta_np must define non-empty heads and connectors")
+        if set(self.boundary) != {"pre_comma_frontier"}:
+            raise ValueError("hybrid boundary settings contain unknown keys")
+        return self
+
+
+def hybrid_frame_has_dangling_tail(frame: str, policy: HybridConstructionsPolicy) -> bool:
+    """True when the last literal word of a frame still expects an object."""
+    words = frame.rstrip(" .").split()
+    return bool(words) and words[-1].casefold() in {
+        word.casefold() for word in policy.dangling_tail_words
+    }
+
+
+def hybrid_frame_has_abbreviation(frame: str, policy: HybridConstructionsPolicy) -> bool:
+    """True when literal frame text contains a side-remark abbreviation."""
+    literal = re.sub(r"\[[XYZ]\]", " ", frame).casefold()
+    return any(
+        re.search(rf"(?<!\w){re.escape(marker.casefold())}", literal)
+        for marker in policy.abbreviation_markers
+    )
+
+
+def is_safe_hybrid_frame(
+    frame: str, policy: HybridConstructionsPolicy, cluster_key: str | None
+) -> bool:
+    """Fail closed on hybrid candidate frames and unknown construction identities."""
+    if not cluster_key:
+        return False
+    match = re.fullmatch(r"construction=([^:]+):([^:]+):([0-9a-f]{64})", cluster_key)
+    if match is None or match.group(2) != policy.version:
+        return False
+    identity = match.group(1)
+    if identity not in {family.id for family in policy.families if family.enabled}:
+        return False
+    placeholders = list(re.finditer(r"\[([XYZ])\]", frame))
+    if not placeholders or len(placeholders) > 3:
+        return False
+    names = [match.group(1) for match in placeholders]
+    if names != list("XYZ"[: len(names)]):
+        return False
+    for left, right in zip(placeholders, placeholders[1:], strict=False):
+        if not frame[left.end() : right.start()].strip():
+            return False
+    if re.search(r"\[[^XYZ\]]+\]", frame):
+        return False
+    literal = re.sub(r"\[[XYZ]\]", " ", frame)
+    if len(literal.split()) > policy.max_literal_words or re.search(r"[;:\[\]]", literal):
+        return False
+    if (
+        HYBRID_SLOT_BOUNDARY.search(frame)
+        or hybrid_frame_has_dangling_tail(frame, policy)
+        or hybrid_frame_has_abbreviation(frame, policy)
+    ):
+        return False
+    return not (
+        re.search(r"\d", literal)
+        or re.search(r"\[(?:\s*\d+\s*(?:[,;–-]\s*\d+\s*)*)\]", literal)
+        or re.search(r"\b[A-Z]{2,}\b", literal)
+    )
+
+
 class LeadInsPolicy(VersionedPolicy):
     """Closed, owner-reviewed discourse lead-ins retained literally in frames."""
 

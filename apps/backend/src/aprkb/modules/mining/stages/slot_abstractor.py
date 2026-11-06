@@ -1,6 +1,5 @@
 """Conservative regex extraction for reviewed reporting verb constructions."""
 
-import hashlib
 import re
 from collections import Counter
 from dataclasses import dataclass, replace
@@ -356,10 +355,6 @@ class SlotAbstractor(MiningStage):
                 for name, (start, end) in spans.items()
             },
         )
-        binding = "\x1f".join(
-            f"{name}:{re.sub(r'\s+', ' ', item.text[start:end]).strip().casefold()}"
-            for name, (start, end) in sorted(spans.items())
-        )
         return replace(
             item,
             text=frame,
@@ -370,7 +365,6 @@ class SlotAbstractor(MiningStage):
             ownership=ownership,
             cluster_key=None,
             confidence=None,
-            slot_binding_fingerprint=hashlib.sha256(binding.encode("utf-8")).hexdigest(),
         )
 
     def _reporting_match(self, text: str) -> tuple[int, int, Tense, str, str] | None:

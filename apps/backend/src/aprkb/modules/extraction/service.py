@@ -40,7 +40,7 @@ from aprkb.modules.mining.models import Candidate
 from aprkb.modules.mining.schemas import SlotDefinition, is_safe_masked_frame
 from aprkb.modules.review.repository import lock_candidate
 from aprkb.policies.loader import load_policy_bundle
-from aprkb.policies.schemas import is_safe_construction_frame
+from aprkb.policies.schemas import is_safe_construction_frame, is_safe_hybrid_frame
 
 logger = get_logger(__name__)
 _POLICIES = load_policy_bundle()
@@ -148,6 +148,9 @@ def _is_safe(candidate: Candidate) -> bool:
             candidate.canonical_frame,
             _POLICIES.constructions,
             verb_group_policy=_POLICIES.construction_verb_groups,
+        )
+        or is_safe_hybrid_frame(
+            candidate.canonical_frame, _POLICIES.hybrid_constructions, candidate.cluster_key
         )
     )
 

@@ -4,7 +4,8 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import case, cast, delete, func, select
+from sqlalchemy.dialects.postgresql import JSONB, Insert, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.core.config import settings
@@ -33,22 +34,58 @@ _SPACY_ENGINES: dict[str, SpacyEngine] = {}
 
 
 class _SessionCandidateRepository:
+    """Collect validated drafts, then upsert them per cluster in one sorted pass."""
+
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+        self._drafts: list[CandidateDraft] = []
 
-    def create_candidate(self, draft: CandidateDraft) -> Candidate:
-        candidate = Candidate(
-            canonical_frame=draft.canonical_frame,
-            source_sentence_ids=draft.source_sentence_ids,
-            slots={name: slot.model_dump(mode="json") for name, slot in draft.slots.items()},
-            confidence=draft.confidence,
-            epistemic_strength=draft.epistemic_strength,
-            cluster_key=draft.cluster_key,
-            occurrences=draft.occurrences,
-            status="pending",
-        )
-        self._session.add(candidate)
-        return candidate
+    def create_candidate(self, draft: CandidateDraft) -> CandidateDraft:
+        self._drafts.append(draft)
+        return draft
+
+    async def flush(self) -> None:
+        # A shared lock order stops two mining jobs from deadlocking on the same clusters.
+        for draft in sorted(self._drafts, key=lambda item: item.cluster_key or ""):
+            await self._session.execute(_upsert_candidate(draft))
+        self._drafts.clear()
+
+
+def _upsert_candidate(draft: CandidateDraft) -> Insert:
+    """Add one source to its cluster; the review status is left as it is.
+
+    A sentence already listed is skipped, so mining an article twice adds nothing. Rights are not
+    copied here: every reader joins sentences to the current license.
+    """
+    statement = insert(Candidate).values(
+        canonical_frame=draft.canonical_frame,
+        source_sentence_ids=draft.source_sentence_ids,
+        slots={name: slot.model_dump(mode="json") for name, slot in draft.slots.items()},
+        confidence=draft.confidence,
+        epistemic_strength=draft.epistemic_strength,
+        cluster_key=draft.cluster_key,
+        occurrences=draft.occurrences,
+        status="pending",
+    )
+    new = statement.excluded
+    listed = Candidate.source_sentence_ids.op("&&")(new.source_sentence_ids)
+    empty = cast("[]", JSONB)
+    return statement.on_conflict_do_update(
+        constraint="uq_candidates_cluster_key",
+        set_={
+            "source_sentence_ids": case(
+                (listed, Candidate.source_sentence_ids),
+                else_=func.array_cat(Candidate.source_sentence_ids, new.source_sentence_ids),
+            ),
+            "occurrences": case(
+                (listed, Candidate.occurrences),
+                else_=func.coalesce(Candidate.occurrences, empty).op("||")(
+                    func.coalesce(new.occurrences, empty)
+                ),
+            ),
+            "updated_at": func.now(),
+        },
+    )
 
 
 async def handle_job(
@@ -300,9 +337,9 @@ async def reingest_article(
 ) -> ReingestResult:
     """Replace an article's sections and sentences after splitter or detector changes.
 
-    Pending candidates that point at the old sentences are removed with them. Articles
-    with reviewed candidates are left untouched so review history keeps valid sources.
-    The caller owns the transaction.
+    Pending candidates lose the old sentences and are removed once no source is left, so a
+    cluster keeps the evidence of other articles. Articles with reviewed candidates are left
+    untouched so review history keeps valid sources. The caller owns the transaction.
     """
     old_ids = list(
         await session.scalars(select(Sentence.id).where(Sentence.article_id == article.id))
@@ -318,8 +355,25 @@ async def reingest_article(
     )
     if any(candidate.status != "pending" for candidate in linked):
         return ReingestResult(status="skipped_reviewed_candidates", sentences_before=len(old_ids))
+    old_sentences = set(old_ids)
+    old_keys = {str(sentence_id) for sentence_id in old_ids}
+    removed = 0
     for candidate in linked:
-        await session.delete(candidate)
+        remaining = [
+            sentence_id
+            for sentence_id in candidate.source_sentence_ids
+            if sentence_id not in old_sentences
+        ]
+        if remaining:
+            candidate.source_sentence_ids = remaining
+            candidate.occurrences = [
+                occurrence
+                for occurrence in candidate.occurrences or []
+                if occurrence.get("sentence_id") not in old_keys
+            ]
+        else:
+            await session.delete(candidate)
+            removed += 1
     await session.execute(delete(Sentence).where(Sentence.article_id == article.id))
     await session.execute(delete(ArticleSection).where(ArticleSection.article_id == article.id))
     await session.flush()
@@ -332,7 +386,7 @@ async def reingest_article(
         status="failed" if error else "ready",
         sentences_before=len(old_ids),
         sentences_after=after,
-        pending_candidates_removed=len(linked),
+        pending_candidates_removed=removed,
         error=error,
     )
 
@@ -357,7 +411,9 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
     if not rows:
         return "Article has no parsed sentences"
     policies = load_policy_bundle()
-    pipeline = MiningPipeline(stages=build_stages(policy_bundle=policies))
+    pipeline = MiningPipeline(
+        stages=build_stages(policy_bundle=policies, hybrid_enabled=settings.mining_hybrid_enabled)
+    )
     mining_rows: list[MiningItem] = []
     locator = _syntax_locator(article)
     previous_text: str | None = None
@@ -384,12 +440,14 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
         previous_text = sentence.text
         previous_section = code
     items = pipeline.process(mining_rows)
+    candidates = _SessionCandidateRepository(session)
     writer = CandidateWriter(
-        _SessionCandidateRepository(session),
+        candidates,
         reporting_policy=policies.reporting_verbs,
         constructions_policy=policies.constructions,
         verb_group_policy=policies.construction_verb_groups,
         lead_ins_policy=policies.lead_ins,
+        hybrid_policy=policies.hybrid_constructions,
     )
     for item in items:
         writer.write(
@@ -412,6 +470,7 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
                 construction_id=item.construction_id,
             )
         )
+    await candidates.flush()
     return None
 
 

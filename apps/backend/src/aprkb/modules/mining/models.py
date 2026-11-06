@@ -4,7 +4,17 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ARRAY, DateTime, Float, ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy import (
+    ARRAY,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,6 +23,8 @@ from aprkb.core.db import Base, MutableEntityMixin
 
 class Candidate(MutableEntityMixin, Base):
     __tablename__ = "candidates"
+    # One candidate per cluster: new sources are appended to it (see the worker repository).
+    __table_args__ = (UniqueConstraint("cluster_key", name="uq_candidates_cluster_key"),)
     canonical_frame: Mapped[str] = mapped_column(Text)
     slots: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     intent_id: Mapped[UUID | None] = mapped_column(ForeignKey("intents.id"))

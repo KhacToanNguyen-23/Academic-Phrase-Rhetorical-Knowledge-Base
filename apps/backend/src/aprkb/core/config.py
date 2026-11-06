@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     reference_library_enabled: bool = False
     nlp_engine: Literal["regex", "spacy"] = "regex"
     nlp_model: str = "en_core_web_sm"
+    mining_hybrid_enabled: bool = False
     # Set by the production image build (BUILD_COMMIT_SHA); never a self-asserted image digest.
     build_commit_sha: str = "unknown"
 

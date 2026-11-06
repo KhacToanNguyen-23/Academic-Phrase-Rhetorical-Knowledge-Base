@@ -8,13 +8,14 @@ from aprkb.modules.mining.stages.construction_matcher import (
 )
 from aprkb.modules.mining.stages.epistemic_tagger import EpistemicTagger
 from aprkb.modules.mining.stages.frame_normalizer import FrameNormalizer
+from aprkb.modules.mining.stages.hybrid_slot_engine import HybridSlotEngine
 from aprkb.modules.mining.stages.sentence_filter import SentenceFilter
 from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
 from aprkb.modules.mining.stages.todo import TodoMiningStage
 from aprkb.policies.loader import PolicyBundle
 
 
-def build_stages(*, policy_bundle: PolicyBundle) -> list[MiningStage]:
+def build_stages(*, policy_bundle: PolicyBundle, hybrid_enabled: bool = False) -> list[MiningStage]:
     filter_policy = policy_bundle.mining_filter
     return [
         SentenceFilter(
@@ -35,6 +36,13 @@ def build_stages(*, policy_bundle: PolicyBundle) -> list[MiningStage]:
                 policy_bundle.slot_abstraction,
                 policy_bundle.construction_verb_groups,
             ),
+            HybridSlotEngine(
+                policy_bundle.hybrid_constructions,
+                policy_bundle.reporting_verbs,
+                policy_bundle.slot_abstraction,
+            )
+            if hybrid_enabled
+            else None,
         ),
         EpistemicTagger(policy_bundle.epistemic_markers),
         FrameNormalizer(),

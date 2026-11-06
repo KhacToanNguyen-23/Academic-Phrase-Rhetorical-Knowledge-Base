@@ -25,3 +25,20 @@ subject phrases reject as `unsupported_subject`, and passive subjects reject as
 adjunct, modifier and auxiliary lists carry `TODO(owner, FR-06.2)`; see
 [ADR-0013](../../../../../../doc/adr/0013-author-action-adjuncts.md) and the
 [Phase 8.1 report](../../../../../../plans/reports/261106-spacy-phase8.1-report.md).
+
+ADR-0014 adds an open-world, eight-family Tier 2 fallback in `hybrid_constructions.yaml`. Tier 1
+remains authoritative; fallback runs only after reporting and construction misses, when
+`MINING_HYBRID_ENABLED=true` and stored usable spaCy tokens exist. Mining does not load spaCy.
+The switch defaults off, and regex-ingested articles remain Tier 1-only. Hybrid frames use the
+same pending-candidate review flow and must pass family identity, Frame Invariant, Purity Gate,
+and existing review checks.
+
+## One candidate per cluster
+
+`candidates.cluster_key` is unique. The worker upserts each draft and appends its source sentence
+and occurrence to the existing candidate, in sorted key order, without changing the review status.
+Run migration `0012_candidate_cluster_unique` before starting the worker. Sources and rights are
+read through `sentences`, so a promotion checks the current licence of every source.
+
+Slot text is not part of `cluster_key`, so one frame with the same tense, strength, ownership and
+slot types is one candidate. Tier 1 reporting keys use the reporting verb class from the lexicon.

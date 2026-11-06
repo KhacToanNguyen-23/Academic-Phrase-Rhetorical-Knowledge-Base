@@ -23,7 +23,7 @@ from aprkb.modules.review import repository
 from aprkb.modules.review.schemas import CandidateIntentUpdate, ReviewDecisionCreate
 from aprkb.modules.taxonomy.models import Intent, Move, Section, Step, TaxonomyRelease
 from aprkb.policies.loader import load_policy_bundle
-from aprkb.policies.schemas import is_safe_construction_frame
+from aprkb.policies.schemas import is_safe_construction_frame, is_safe_hybrid_frame
 
 _POLICIES = load_policy_bundle()
 _REPORTING_FORMS = _POLICIES.reporting_verbs.all_forms
@@ -254,6 +254,9 @@ def _candidate_is_safe_to_promote(candidate: Candidate) -> bool:
             candidate.canonical_frame,
             _POLICIES.constructions,
             verb_group_policy=_POLICIES.construction_verb_groups,
+        )
+        or is_safe_hybrid_frame(
+            candidate.canonical_frame, _POLICIES.hybrid_constructions, candidate.cluster_key
         )
     ):
         return False

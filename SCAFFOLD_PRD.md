@@ -721,3 +721,9 @@ chủ ngữ chủ động literal `this paper`, `this study`, `this article`; ch
 reason riêng. Không thêm anchor hoặc adjunct. Passive, chủ ngữ `it`, copula `be` và dạng adjunct
 chưa đăng ký vẫn ngoài phạm vi. Anchor và adjunct lists còn provisional
 (`TODO(owner, FR-06.2)`). Xem ADR-0013.
+
+**Cập nhật hybrid slot engine (Phase 0–6, 2026-11-06):** bổ sung Tier 2 mở giới hạn trong
+ADR-0014 với tám family dependency (`discourse_gap` đang tắt), Purity Gate và `MINING_HYBRID_ENABLED` (mặc định tắt). Tier 1
+giữ nguyên quyền quyết định; Tier 2 chỉ chạy sau hai lần không khớp và khi token spaCy đã lưu tồn
+tại. Candidate tiếp tục qua hàng đợi pending hiện tại. Chưa bật switch trước khi đo coverage trên
+blob có quyền mining và review volume; xem ADR-0014.

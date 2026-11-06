@@ -20,7 +20,7 @@ from aprkb.modules.review.schemas import (
     ReviewDecisionResult,
 )
 from aprkb.policies.loader import load_policy_bundle
-from aprkb.policies.schemas import is_safe_construction_frame
+from aprkb.policies.schemas import is_safe_construction_frame, is_safe_hybrid_frame
 
 router = APIRouter(tags=["candidate review"])
 _POLICIES = load_policy_bundle()
@@ -53,6 +53,9 @@ def _safe_summary(candidate: Candidate) -> CandidateSummary:
             _POLICIES.constructions,
             verb_group_policy=_POLICIES.construction_verb_groups,
         )
+        or is_safe_hybrid_frame(
+            candidate.canonical_frame, _POLICIES.hybrid_constructions, candidate.cluster_key
+        )
     ):
         raise HTTPException(status_code=409, detail="Candidate frame is not safely abstracted")
     return CandidateSummary(
@@ -63,6 +66,7 @@ def _safe_summary(candidate: Candidate) -> CandidateSummary:
         confidence=candidate.confidence,
         epistemic_strength=candidate.epistemic_strength,
         source_sentence_ids=candidate.source_sentence_ids,
+        occurrence_count=len(candidate.source_sentence_ids),
         status=candidate.status,
     )
 

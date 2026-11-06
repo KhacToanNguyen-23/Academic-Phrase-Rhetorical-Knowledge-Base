@@ -15,6 +15,7 @@ from aprkb.policies.schemas import (
     FallbackTiersPolicy,
     GoldLabelingPolicy,
     GoldSamplingPolicy,
+    HybridConstructionsPolicy,
     LeadInsPolicy,
     LicensePolicy,
     LicensesPolicy,
@@ -50,6 +51,7 @@ class PolicyBundle:
     sentence_rules: SentenceRulesPolicy
     constructions: ConstructionsPolicy
     construction_verb_groups: ConstructionVerbGroupPolicy
+    hybrid_constructions: HybridConstructionsPolicy
     phrase_stats: PhraseStatsPolicy
     vocabulary_import: VocabularyImportPolicy
 
@@ -89,6 +91,7 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
         construction_verb_groups=_load(
             root / "construction_verb_groups.yaml", ConstructionVerbGroupPolicy
         ),
+        hybrid_constructions=_load(root / "hybrid_constructions.yaml", HybridConstructionsPolicy),
         phrase_stats=_load(root / "phrase_stats.yaml", PhraseStatsPolicy),
         vocabulary_import=_load(root / "vocabulary_import.yaml", VocabularyImportPolicy),
     )

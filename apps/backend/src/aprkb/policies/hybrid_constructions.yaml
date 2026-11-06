@@ -1,0 +1,35 @@
+# Provisional lists (families, Meta-NP): TODO(owner, FR-06.2): approve.
+# max_literal_words and min_content_tokens below are owner-confirmed (2026-11-07).
+version: 0.6.0
+max_literal_words: 12
+# Closed grammar classes, not academic vocabulary. TODO(owner, FR-06.2): approve.
+dangling_tail_words: [about, across, after, against, among, as, at, because, before, between, by,
+  due, during, for, from, in, into, of, "on", over, per, than, through, to, toward, towards, under,
+  upon, via, with, within, without]
+abbreviation_markers: ["e.g", "i.e", "w.r.t", "cf.", "et al", "viz."]
+meta_np:
+  heads: [accuracy, performance, role, effect, limitation, reduction, relationship]
+  connectors: [of, in, "on", between, for]
+boundary:
+  pre_comma_frontier: true
+families:
+  - id: hybrid_reporting_spine
+    min_content_tokens: 1
+  # Disabled 2026-11-07: AI-labelled sample had 1 GOOD of 12 (topic subject stays literal).
+  # TODO(owner, FR-06.2): re-enable only after the subject becomes a slot and a re-check passes.
+  - id: hybrid_discourse_gap
+    enabled: false
+    min_content_tokens: 1
+  - id: hybrid_extraposed_it
+    min_content_tokens: 1
+  - id: hybrid_participial_lead_in
+    min_content_tokens: 1
+  - id: hybrid_comparative_correlation
+    min_content_tokens: 1
+  - id: hybrid_copular_definitional
+    min_content_tokens: 1
+  - id: hybrid_passive_academic
+    min_content_tokens: 1
+  # Active clause that must carry an adverb or a prepositional phrase; syntax only, no verb list.
+  - id: hybrid_active_modified
+    min_content_tokens: 1

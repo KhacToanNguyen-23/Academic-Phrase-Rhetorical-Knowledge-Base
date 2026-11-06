@@ -251,7 +251,7 @@ def test_reviewed_inflection_forms_share_class_key_but_keep_surface_frame():
     assert results[0].text != results[1].text
 
 
-def test_different_complements_and_protected_citations_do_not_share_key():
+def test_slot_text_does_not_split_a_cluster():
     sentences = [
         "Our results suggest that the mock system improves retrieval quality.",
         "Our results suggest that the mock system reduces retrieval errors.",
@@ -262,7 +262,7 @@ def test_different_complements_and_protected_citations_do_not_share_key():
         for text in sentences
     ]
 
-    assert len({result.cluster_key for result in results}) == len(sentences)
+    assert len({result.cluster_key for result in results}) == 1
 
 
 def test_unrecognized_reporting_word_does_not_create_a_raw_candidate():

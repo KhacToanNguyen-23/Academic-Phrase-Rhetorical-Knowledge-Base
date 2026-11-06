@@ -8,9 +8,11 @@ from aprkb.modules.mining.schemas import SlotDefinition, is_safe_masked_frame
 from aprkb.policies.schemas import (
     ConstructionsPolicy,
     ConstructionVerbGroupPolicy,
+    HybridConstructionsPolicy,
     LeadInsPolicy,
     ReportingVerbsPolicy,
     is_safe_construction_frame,
+    is_safe_hybrid_frame,
 )
 
 
@@ -39,6 +41,7 @@ class CandidateWriter:
         constructions_policy: ConstructionsPolicy | None = None,
         verb_group_policy: ConstructionVerbGroupPolicy | None = None,
         lead_ins_policy: LeadInsPolicy | None = None,
+        hybrid_policy: HybridConstructionsPolicy | None = None,
     ) -> None:
         self._repository = repository
         self._reporting_forms = (
@@ -47,6 +50,7 @@ class CandidateWriter:
         self._constructions = constructions_policy
         self._verb_group_policy = verb_group_policy
         self._lead_ins = lead_ins_policy.lead_ins if lead_ins_policy is not None else []
+        self._hybrid = hybrid_policy
 
     def write(self, draft: CandidateDraft) -> object:
         if not draft.source_sentence_ids:
@@ -64,7 +68,10 @@ class CandidateWriter:
                 verb_group_policy=self._verb_group_policy,
             )
         )
-        if not reporting_safe and not construction_safe:
+        hybrid_safe = self._hybrid is not None and is_safe_hybrid_frame(
+            draft.canonical_frame, self._hybrid, draft.cluster_key
+        )
+        if not reporting_safe and not construction_safe and not hybrid_safe:
             raise ValueError("canonical_frame must be a masked positional frame")
         if self._repository is None:
             raise RuntimeError("Candidate repository is not configured")

@@ -50,3 +50,15 @@ accepted as an auxiliary. These lists carry `TODO(owner, FR-06.2)` and do not ad
 predicate adjunct prepositions. Object-internal prepositional phrases remain inside the direct
 object slot; only predicate-level prepositions are checked against the construction adjunct list.
 See [ADR-0013](../../../../../doc/adr/0013-author-action-adjuncts.md).
+
+`hybrid_constructions.yaml` v0.6.0 is a separate provisional policy for the eight Tier 2 families,
+Meta-NP heads/connectors, boundary setting, `min_content_tokens`, and `max_literal_words`. A hybrid
+frame is the pattern core of the main clause, not the whole sentence: trailing clauses and slot-free
+lead adjuncts are cut, and a family's trigger word must stay inside the core. It does not alter Tier 1 policy versions or cluster
+keys. The engine is open-world but limited to configured family IDs, dependency shapes, three
+positional slots, and a token-feature Purity Gate; see
+[ADR-0014](../../../../../doc/adr/0014-hybrid-slot-engine.md).
+
+Since v0.5.0, `hybrid_constructions.yaml` also lists `dangling_tail_words` and
+`abbreviation_markers`. Both are closed grammar lists and stay provisional under `TODO(owner)`.
+`is_safe_hybrid_frame` uses them, so a version bump leaves older pending hybrid candidates unsafe.

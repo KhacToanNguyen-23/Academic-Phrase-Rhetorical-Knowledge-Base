@@ -18,11 +18,14 @@ from aprkb.core.deps import get_db_session
 from aprkb.modules.corpus import router as corpus_router
 from aprkb.modules.corpus.models import Article, License, Sentence
 from aprkb.modules.identity.service import create_api_key
+from aprkb.modules.mining.candidate_writer import CandidateDraft
 from aprkb.modules.mining.models import Candidate, Job
 from aprkb.modules.mining.queue import claim_next
+from aprkb.modules.mining.schemas import SlotDefinition
 from aprkb.modules.patterns.models import PatternVersion, PhrasePattern
 from aprkb.nlp.features import SentenceAnalysis
 from aprkb.seeds.load import run_seed
+from aprkb.worker.handlers import _upsert_candidate, local_blob_store, reingest_article
 from aprkb.worker.runner import run_once
 
 
@@ -443,3 +446,140 @@ async def test_parser_failure_finishes_job_and_marks_article_failed(
         assert article is not None and article.ingest_status == "failed"
         assert job is not None and job.status == "failed"
         assert job.error == "Processing failed (UnicodeDecodeError)"
+
+
+_SHARED_SENTENCE = "The results demonstrate that the proposed method improves retrieval accuracy."
+
+
+async def _upload_and_mine(
+    client: AsyncClient, headers: dict[str, str], sessions: async_sessionmaker, title: str
+) -> UUID:
+    response = await client.post(
+        "/v1/admin/corpus/articles",
+        headers=headers,
+        data={"title": title, "license_code": "CC-BY"},
+        files={"file": (f"{title}.txt", f"{_SHARED_SENTENCE} {title}.".encode(), "text/plain")},
+    )
+    assert response.status_code == 202
+    article_id = UUID(response.json()["article_id"])
+    await run_once(sessions)
+    mine = await client.post(f"/v1/admin/corpus/articles/{article_id}/mine", headers=headers)
+    assert mine.status_code == 202
+    await run_once(sessions)
+    return article_id
+
+
+def _draft_from(candidate: Candidate, sentence_id: UUID) -> CandidateDraft:
+    return CandidateDraft(
+        canonical_frame=candidate.canonical_frame,
+        source_sentence_ids=[sentence_id],
+        slots={name: SlotDefinition.model_validate(s) for name, s in candidate.slots.items()},
+        confidence=None,
+        epistemic_strength=candidate.epistemic_strength,
+        cluster_key=candidate.cluster_key,
+        occurrences=[{"sentence_id": str(sentence_id)}],
+    )
+
+
+@pytest.mark.asyncio
+async def test_same_cluster_from_two_articles_is_one_queue_item_with_both_sources(
+    phase05_client: tuple[AsyncClient, str], phase05_sessions: async_sessionmaker
+) -> None:
+    async with phase05_sessions() as session:
+        await run_seed(session)
+        await session.commit()
+    client, key = phase05_client
+    headers = {"X-API-Key": key}
+    first = await _upload_and_mine(client, headers, phase05_sessions, "First shared source")
+    second = await _upload_and_mine(client, headers, phase05_sessions, "Second shared source")
+
+    queue = (await client.get("/v1/admin/review-queue", headers=headers)).json()
+    matching = [item for item in queue if item["occurrence_count"] == 2]
+    assert len(matching) == 1
+    candidate_id = UUID(matching[0]["id"])
+
+    async with phase05_sessions() as session:
+        candidate = await session.get(Candidate, candidate_id)
+        assert candidate is not None
+        articles = set(
+            await session.scalars(
+                select(Sentence.article_id).where(Sentence.id.in_(candidate.source_sentence_ids))
+            )
+        )
+        assert articles == {first, second}
+        assert candidate.occurrences is not None and len(candidate.occurrences) == 2
+
+        # Mining the same sentence again adds nothing.
+        source = candidate.source_sentence_ids[0]
+        await session.execute(_upsert_candidate(_draft_from(candidate, source)))
+        await session.commit()
+    async with phase05_sessions() as session:
+        candidate = await session.get(Candidate, candidate_id)
+        assert candidate is not None
+        assert len(candidate.source_sentence_ids) == 2
+        assert candidate.occurrences is not None and len(candidate.occurrences) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["accepted", "rejected"])
+async def test_new_source_on_a_reviewed_cluster_keeps_its_review_status(
+    phase05_client: tuple[AsyncClient, str], phase05_sessions: async_sessionmaker, status: str
+) -> None:
+    async with phase05_sessions() as session:
+        await run_seed(session)
+        await session.commit()
+    client, key = phase05_client
+    headers = {"X-API-Key": key}
+    await _upload_and_mine(client, headers, phase05_sessions, f"Reviewed {status} source")
+    async with phase05_sessions() as session:
+        candidate = await session.scalar(select(Candidate))
+        assert candidate is not None
+        candidate.status = status
+        await session.commit()
+        candidate_id = candidate.id
+        spare = await session.scalar(
+            select(Sentence.id).where(Sentence.id.not_in(candidate.source_sentence_ids))
+        )
+        assert spare is not None
+        await session.execute(_upsert_candidate(_draft_from(candidate, spare)))
+        await session.commit()
+    async with phase05_sessions() as session:
+        candidate = await session.get(Candidate, candidate_id)
+        assert candidate is not None
+        assert candidate.status == status
+        assert len(candidate.source_sentence_ids) == 2
+
+
+@pytest.mark.asyncio
+async def test_reingest_removes_only_its_own_sources_from_a_shared_cluster(
+    phase05_client: tuple[AsyncClient, str], phase05_sessions: async_sessionmaker
+) -> None:
+    async with phase05_sessions() as session:
+        await run_seed(session)
+        await session.commit()
+    client, key = phase05_client
+    headers = {"X-API-Key": key}
+    first = await _upload_and_mine(client, headers, phase05_sessions, "Reingested shared source")
+    second = await _upload_and_mine(client, headers, phase05_sessions, "Remaining shared source")
+    async with phase05_sessions() as session:
+        shared = [
+            candidate
+            for candidate in await session.scalars(select(Candidate))
+            if len(candidate.source_sentence_ids) == 2
+        ]
+        assert len(shared) == 1
+        candidate_id = shared[0].id
+        article = await session.get(Article, first)
+        assert article is not None
+        result = await reingest_article(session, article, local_blob_store())
+        assert result.status == "ready"
+        await session.commit()
+    async with phase05_sessions() as session:
+        candidate = await session.get(Candidate, candidate_id)
+        assert candidate is not None
+        assert len(candidate.source_sentence_ids) == 1
+        assert candidate.occurrences is not None and len(candidate.occurrences) == 1
+        owner = await session.scalar(
+            select(Sentence.article_id).where(Sentence.id == candidate.source_sentence_ids[0])
+        )
+        assert owner == second

@@ -7,6 +7,7 @@ from dataclasses import dataclass, replace
 
 from aprkb.modules.mining.schemas import Ownership, SlotDefinition, SlotType, Tense
 from aprkb.modules.mining.stages.base import ExtractionOccurrence, MiningItem, MiningStage
+from aprkb.modules.mining.stages.hybrid_slot_engine import HybridSlotEngine
 from aprkb.modules.mining.stages.slot_abstractor import (
     SlotAbstractor,
     _definition,
@@ -582,7 +583,6 @@ class ConstructionMatcher(MiningStage):
             occurrences=[occurrence],
             tense=result.tense,
             ownership=result.ownership,
-            slot_binding_fingerprint=None,
             construction_id=result.construction_id,
             construction_version=result.construction_version,
         )
@@ -602,9 +602,15 @@ class ReportingWithConstruction(MiningStage):
     name = "reporting_and_construction_matcher"
     requirement_id = "FR-06.2"
 
-    def __init__(self, reporting: SlotAbstractor, constructions: ConstructionMatcher) -> None:
+    def __init__(
+        self,
+        reporting: SlotAbstractor,
+        constructions: ConstructionMatcher,
+        hybrid: HybridSlotEngine | None = None,
+    ) -> None:
         self.reporting = reporting
         self.constructions = constructions
+        self.hybrid = hybrid
 
     def extractability_reason(
         self, text: str, tokens: tuple[TokenFeature, ...] | None
@@ -625,6 +631,8 @@ class ReportingWithConstruction(MiningStage):
             if key in output:
                 continue
             matched = self.constructions.match_item(item)
+            if matched is None and self.hybrid is not None and item.tokens is not None:
+                matched = self.hybrid.match_item(item)
             if matched is not None:
                 output[key] = matched
         return [

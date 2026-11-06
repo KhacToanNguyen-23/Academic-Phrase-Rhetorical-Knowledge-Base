@@ -39,7 +39,9 @@ class Clusterer(MiningStage):
         slot_signature = ",".join(
             f"{name}:{definition.type.value}" for name, definition in sorted(item.slots.items())
         )
-        normalized_frame = re.sub(r"\s+", " ", item.text).strip().casefold()
+        normalized_frame = (
+            re.sub(r"\s+", " ", item.canonical_skeleton or item.text).strip().casefold()
+        )
         for pattern, class_name in self._class_patterns:
             normalized_frame = pattern.sub(f"{{reporting:{class_name}}}", normalized_frame, count=1)
             if "{reporting:" in normalized_frame:
@@ -52,7 +54,8 @@ class Clusterer(MiningStage):
             (item.epistemic_strength or "unknown").casefold(),
             item.ownership.value,
             slot_signature,
-            item.slot_binding_fingerprint or "unknown-bindings",
+            # Fixed value: slot text stays out of the key, keeping construction keys stable.
+            "unknown-bindings",
         ]
         if item.locator is not None:
             material_parts.insert(2, item.locator)

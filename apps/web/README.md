@@ -83,3 +83,15 @@ The CI smoke remains Stage A observability (`continue-on-error`), not a required
 check. CI saves traces/screenshots in `test-results/` and the HTML report in the
 separate `playwright-report/`; both are uploaded together so report generation
 cannot erase test artifacts.
+
+### Extraction feedback
+
+`/extract` requests only ready articles whose extraction has not started or failed.
+The request notice allows for existing jobs being reused; the refreshed article summary
+shows queued, running, completed, failed and not-ready counts. Completed extraction with
+no matches is distinguished from an empty review status. Accepting saves to the approved
+phrase collection, without promoting a writing suggestion. Decisions cannot be changed here.
+
+Database-free regression checks (with Vite running):
+`pnpm exec playwright test e2e/extraction.spec.ts`. These tests mock the API; they do not
+verify database persistence or worker execution.

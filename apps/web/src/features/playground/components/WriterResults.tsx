@@ -6,6 +6,7 @@ import type { Recommendation } from "../live/api";
 import { Notice } from "./WriterStatus";
 
 const fallbackLabels: Record<string, string> = {
+  selected_journal_phrasebank: "Selected journal phrasebank",
   journal_genre: "Journal and genre",
   similar_journal_genre: "Similar journal",
   subfield_genre: "Subfield",

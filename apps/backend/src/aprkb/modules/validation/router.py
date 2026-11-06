@@ -71,7 +71,12 @@ async def validate_text(
         },
         severity=result.severity.value,
         complete=result.complete,
-        checks_unavailable=[rule.code for rule in result.rules if not rule.applied],
+        checks_unavailable=[
+            rule.code for rule in result.rules if rule.severity.value == "unavailable"
+        ],
+        checks_not_applicable=[
+            rule.code for rule in result.rules if rule.severity.value == "not_applicable"
+        ],
         rules=[
             ValidationRuleResponse(
                 code=rule.code,

@@ -5,7 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.corpus.models import Article, License
@@ -107,6 +107,7 @@ async def load_current_patterns(
     browse_query: str | None = None,
     move_code: str | None = None,
     claim_type: str | None = None,
+    journal_id: UUID | None = None,
     offset: int = 0,
     limit: int | None = None,
     display_only: bool = False,
@@ -138,6 +139,18 @@ async def load_current_patterns(
         )
     if claim_type:
         statement = statement.where(PatternVersion.claim_type == claim_type)
+    if journal_id is not None:
+        statement = statement.where(
+            exists(
+                select(EvidenceProvenance.id)
+                .join(Article, Article.id == EvidenceProvenance.article_id)
+                .where(
+                    EvidenceProvenance.pattern_version_id == PatternVersion.id,
+                    EvidenceProvenance.source_type == "mined",
+                    Article.journal_id == journal_id,
+                )
+            )
+        )
     if move_code:
         statement = (
             statement.join(Step, Step.id == Intent.step_id)

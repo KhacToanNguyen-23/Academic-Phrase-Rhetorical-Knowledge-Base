@@ -88,16 +88,18 @@ The published taxonomy returns section `compatible_genres`. `/v1/recommendations
 rejects genre/section pairs absent from that relation. The seed relation is a
 self-authored draft pending taxonomy-owner review (`TODO(owner)`).
 
-Until reviewed journal guidelines and fingerprint data have a usable runtime
-contract, matches are reported as `generic_genre`. A selected journal receives
-an explicit `fallback_reason`; matching genre alone does not establish journal
-suitability. The response includes versioned score breakdowns and gate exclusion
-counts. Intent and evidence eligibility remain hard gates; only eligible candidates
-receive an evidence proximity score. Keyword match uses query term coverage, and
-criteria without data remain null (`—` in the writer). The writer shows each
-criterion once in a horizontal cell. Provisional formulas and
-weights are recorded in `ranking_weights.yaml` with `TODO(owner)`. This is the
-current API behavior, not a claim of journal style support.
+When a journal is selected, recommendations are restricted to approved mined
+patterns whose evidence provenance points to an article assigned to that journal.
+The response labels these results `selected_journal_phrasebank`; an empty mapping
+returns no candidates and does not use a generic fallback. Without a selected
+journal, the configured generic fallback tiers still apply. This source association
+does not claim journal style support or fingerprint-based ranking. The response
+includes versioned score breakdowns and gate exclusion counts. Intent and evidence
+eligibility remain hard gates; only eligible candidates receive an evidence
+proximity score. Keyword match uses query term coverage, and criteria without data
+remain null (`—` in the writer). The writer shows each criterion once in a
+horizontal cell. Provisional formulas and weights are recorded in
+`ranking_weights.yaml` with `TODO(owner)`.
 
 `GET /v1/taxonomy/reference-options` returns DB-backed claim/evidence/strength choices.
 `GET /v1/patterns/versions/{version_id}` returns slots only for the current approved
@@ -110,8 +112,9 @@ and one-character defaults; optional empty slots remain placeholders.
 `POST /v1/validate` runs V02, a deterministic V03 check for numbers, DOI, and
 parenthetical citations absent from the supplied supporting context/slots, and a limited V06
 phrase screen that warns on configured informal wording. V06 is not a grammar checker.
-V05 remains unavailable pending verified Offline guideline data; other unfinished checks
-are also listed as unavailable, so `complete` remains false.
+V05 is marked `not_applicable` because journal-guideline compliance is outside the
+current sentence-validation flow. Other unfinished in-scope checks remain listed as
+unavailable, so `complete` remains false.
 Validation returns text/context hashes and policy versions; it does not store the raw
 sentence. Feedback accepts only a SHA-256 context hash in its optional metadata and
 requires a version actually issued in that client's recommendation. The MVP does not

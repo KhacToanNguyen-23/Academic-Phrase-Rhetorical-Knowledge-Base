@@ -347,6 +347,17 @@
       },
       "Body_upload_article_v1_admin_corpus_articles_post": {
         "properties": {
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
           "file": {
             "contentMediaType": "application/octet-stream",
             "title": "File",

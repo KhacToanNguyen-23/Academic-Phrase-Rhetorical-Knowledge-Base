@@ -103,7 +103,7 @@ async def _upsert_lemmas(
                 "updated_at": func.now(),
             }
         )
-        result: Result[Any] = await session.execute(
+        result: Result[*tuple[Any, ...]] = await session.execute(
             statement.on_conflict_do_update(
                 constraint="uq_vocab_lemmas_word_pos", set_=updates
             ).returning(VocabLemma.id, VocabLemma.word, VocabLemma.pos, literal_column("xmax = 0"))
@@ -145,7 +145,7 @@ async def _upsert_domain_stats(
     for start in range(0, len(values), CHUNK_SIZE):
         statement = insert(VocabLemmaDomainStat).values(values[start : start + CHUNK_SIZE])
         excluded = statement.excluded
-        result: Result[Any] = await session.execute(
+        result: Result[*tuple[Any, ...]] = await session.execute(
             statement.on_conflict_do_update(
                 constraint="uq_vocab_domain_stats_lemma_domain",
                 set_={"freq": excluded.freq, "relative_ratio": excluded.relative_ratio},
@@ -168,7 +168,7 @@ async def _upsert_families(
             ]
         )
         excluded = statement.excluded
-        result: Result[Any] = await session.execute(
+        result: Result[*tuple[Any, ...]] = await session.execute(
             statement.on_conflict_do_update(
                 index_elements=[VocabFamily.headword],
                 set_={
@@ -211,7 +211,7 @@ async def _upsert_family_members(
     for start in range(0, len(values), CHUNK_SIZE):
         statement = insert(VocabFamilyMember).values(values[start : start + CHUNK_SIZE])
         excluded = statement.excluded
-        result: Result[Any] = await session.execute(
+        result: Result[*tuple[Any, ...]] = await session.execute(
             statement.on_conflict_do_update(
                 constraint="uq_vocab_family_members_family_lemma",
                 set_={"freq": excluded.freq, "category": excluded.category},
@@ -250,7 +250,7 @@ async def upsert_families(
     for start in range(0, len(lemma_values), CHUNK_SIZE):
         statement = insert(VocabLemma).values(lemma_values[start : start + CHUNK_SIZE])
         excluded = statement.excluded
-        result: Result[Any] = await session.execute(
+        result: Result[*tuple[Any, ...]] = await session.execute(
             statement.on_conflict_do_update(
                 constraint="uq_vocab_lemmas_word_pos", set_={"domains": excluded.domains}
             ).returning(VocabLemma.id, literal_column("xmax = 0"))

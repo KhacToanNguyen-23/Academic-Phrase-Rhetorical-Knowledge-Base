@@ -21,6 +21,12 @@ from aprkb.core.config import settings
 from aprkb.core.deps import get_db_session
 from aprkb.core.security import require_role
 from aprkb.modules.corpus.blobstore import LocalBlobStore
+from aprkb.modules.corpus.dedup import (
+    find_content_duplicate,
+    find_metadata_duplicate,
+    lock_corpus_writes,
+)
+from aprkb.modules.corpus.identity import content_hash
 from aprkb.modules.corpus.schemas import (
     ArticleImportCreate,
     ImportProfileCreate,
@@ -93,6 +99,7 @@ async def upload_article(
     file: Annotated[UploadFile, File()],
     license_code: Annotated[str, Form()],
     title: Annotated[str | None, Form()] = None,
+    doi: Annotated[str | None, Form()] = None,
 ) -> dict[str, str]:
     suffix = Path(file.filename or "").suffix.casefold()
     if suffix not in _ALLOWED_SUFFIXES:
@@ -101,9 +108,22 @@ async def upload_article(
         )
     license_row = await get_license(session, license_code)
     content = await file.read()
+    blob_store = LocalBlobStore(settings.blob_dir)
+    await lock_corpus_writes(session)
+    match = await find_metadata_duplicate(session, source="upload", external_id=None, doi=doi)
+    digest = content_hash(content)
+    if match is None:
+        match = await find_content_duplicate(session, digest, blob_store)
+    if match is not None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "duplicate_article",
+                **match.detail(external_id=None, title=title),
+            },
+        )
     article_id = uuid4()
     blob_key = f"articles/{article_id.hex}{suffix}"
-    blob_store = LocalBlobStore(settings.blob_dir)
     blob_store.put(blob_key, content)
     try:
         article, job = await create_upload(
@@ -114,6 +134,8 @@ async def upload_article(
             blob_key=blob_key,
             actor=actor,
             request_id=request.state.request_id,
+            doi=doi,
+            content_sha256=digest,
         )
     except BaseException:
         blob_store.delete(blob_key)

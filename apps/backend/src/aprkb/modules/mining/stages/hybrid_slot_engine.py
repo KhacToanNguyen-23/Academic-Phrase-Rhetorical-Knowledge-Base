@@ -70,6 +70,11 @@ class HybridSlotEngine(MiningStage):
         self._reporting_verbs = reporting_verbs
         self._ownership_policy = ownership_policy
         self._fixed_lead_ins = fixed_lead_ins or []
+        self._infinitive_verbs = {verb.casefold() for verb in policy.infinitive_verbs}
+        self._preposition_verbs = {
+            verb.casefold(): preposition.casefold()
+            for verb, preposition in policy.preposition_verbs.items()
+        }
         self._reporting = SlotAbstractor(reporting_verbs, ownership_policy)
         self._families = {family.id: family for family in policy.families}
         self._matches: Counter[str] = Counter()
@@ -149,8 +154,13 @@ class HybridSlotEngine(MiningStage):
         if family == "hybrid_active_modified":
             if root.pos != "VERB" or any(token.tag == "MD" for token in direct):
                 return None
+            if subject is None or subject.dep != "nsubj":
+                return None
+            closed = self._closed_verb_spans(text, tokens, children, root, direct, subject)
+            if closed is not None:
+                return closed
             direct_object = next((token for token in direct if token.dep in {"dobj", "obj"}), None)
-            if subject is None or subject.dep != "nsubj" or direct_object is None:
+            if direct_object is None:
                 return None
             adverb = any(
                 token.dep == "advmod" and token.pos == "ADV" and token.start > subject.start
@@ -202,6 +212,16 @@ class HybridSlotEngine(MiningStage):
                 return None
             predicate = next((token for token in direct if token.dep in {"acomp", "attr"}), None)
             clause = next((token for token in direct if token.dep in {"xcomp", "ccomp"}), None)
+            if clause is None and predicate is not None:
+                # spaCy often attaches the clause to the adjective: "It is unclear whether ...".
+                clause = next(
+                    (
+                        tokens[index]
+                        for index in children[predicate.i]
+                        if tokens[index].dep in {"xcomp", "ccomp"}
+                    ),
+                    None,
+                )
             if predicate is None or clause is None:
                 return None
             objects = [
@@ -212,14 +232,14 @@ class HybridSlotEngine(MiningStage):
             if objects:
                 target = objects[-1]
                 return {"X": _span(tokens, children, target.i)}
-            return {"X": _span(tokens, children, clause.i)}
+            return {"X": _without_marker(text, tokens, _span(tokens, children, clause.i))}
 
         if family == "hybrid_copular_definitional":
             if root.lemma.casefold() not in {"be", "remain", "become"} or subject is None:
                 return None
             predicate = next((token for token in direct if token.dep in {"attr", "acomp"}), None)
             if predicate is None:
-                return None
+                return self._meta_clause_spans(text, tokens, children, direct, subject)
             meta = _meta_complement(tokens, children, subject.i, self._policy)
             left = meta or _span(tokens, children, subject.i)
             return {"X": left, "Y": _span(tokens, children, predicate.i)}
@@ -305,6 +325,78 @@ class HybridSlotEngine(MiningStage):
             return spans
         return None
 
+    def _closed_verb_spans(
+        self,
+        text: str,
+        tokens: tuple[TokenFeature, ...],
+        children: dict[int, tuple[int, ...]],
+        root: TokenFeature,
+        direct: list[TokenFeature],
+        subject: TokenFeature,
+    ) -> dict[str, tuple[int, int]] | None:
+        """Raising verbs with `to` + verb, and intransitive verbs with one fixed preposition."""
+        lemma = root.lemma.casefold()
+        subject_span = _span(tokens, children, subject.i)
+        if lemma in self._infinitive_verbs:
+            clause = next((token for token in direct if token.dep == "xcomp"), None)
+            if clause is None:
+                return None
+            marker = next(
+                (
+                    tokens[index]
+                    for index in children[clause.i]
+                    if tokens[index].dep == "aux" and tokens[index].lemma.casefold() == "to"
+                ),
+                None,
+            )
+            if marker is None or marker.start < root.start:
+                return None
+            _, end = _span(tokens, children, clause.i)
+            clause_object = next(
+                (
+                    tokens[index]
+                    for index in children[clause.i]
+                    if tokens[index].dep in {"dobj", "obj"}
+                ),
+                None,
+            )
+            if clause_object is not None:
+                return {"X": subject_span, "Y": _span(tokens, children, clause_object.i)}
+            return {"X": subject_span, "Y": (_trim_left(text, marker.end, end), end)}
+        preposition = self._preposition_verbs.get(lemma)
+        if preposition is None or any(token.dep in {"dobj", "obj"} for token in direct):
+            return None
+        phrase = next(
+            (
+                tokens[child]
+                for token in direct
+                if token.dep == "prep" and token.lemma.casefold() == preposition
+                for child in children[token.i]
+                if tokens[child].dep == "pobj"
+            ),
+            None,
+        )
+        if phrase is None:
+            return None
+        return {"X": subject_span, "Y": _span(tokens, children, phrase.i)}
+
+    def _meta_clause_spans(
+        self,
+        text: str,
+        tokens: tuple[TokenFeature, ...],
+        children: dict[int, tuple[int, ...]],
+        direct: list[TokenFeature],
+        subject: TokenFeature,
+    ) -> dict[str, tuple[int, int]] | None:
+        """`Another limitation is that ...`: a Meta-NP subject whose complement is a clause."""
+        heads = {head.casefold() for head in self._policy.meta_np["heads"]}
+        clause = next((token for token in direct if token.dep == "ccomp"), None)
+        if clause is None or subject.pos != "NOUN" or subject.lemma.casefold() not in heads:
+            return None
+        if any(tokens[index].dep == "prep" for index in children[subject.i]):
+            return None
+        return {"X": _without_marker(text, tokens, _span(tokens, children, clause.i))}
+
     def _build(
         self,
         item: MiningItem,
@@ -360,6 +452,9 @@ class HybridSlotEngine(MiningStage):
             return None
         if any(_symbolic_slot(item.text[start:end]) for _, (start, end) in ordered):
             self._rejections["purity_symbolic_slot"] += 1
+            return None
+        if any(_unbalanced_slot(item.text[start:end]) for _, (start, end) in ordered):
+            self._rejections["purity_unbalanced_slot"] += 1
             return None
         if _slot_cuts_modifier(tokens, ordered):
             self._rejections["purity_slot_cuts_modifier"] += 1
@@ -516,6 +611,17 @@ def _span(
     while edges and edges[-1].pos == "PUNCT":
         end = edges.pop().start
     return start, end
+
+
+def _without_marker(
+    text: str, tokens: tuple[TokenFeature, ...], span: tuple[int, int]
+) -> tuple[int, int]:
+    """Keep `that` / `whether` outside a clause slot so the frame stays grammatical."""
+    start, end = span
+    first = next((token for token in tokens if token.start == start), None)
+    if first is not None and first.dep == "mark":
+        return _trim_left(text, first.end, end), end
+    return span
 
 
 def _trim_left(text: str, start: int, end: int) -> int:
@@ -729,6 +835,11 @@ def _trigger_in_core(
             inside & _COMPARATIVE_MARKERS
         )
     return True
+
+
+def _unbalanced_slot(text: str) -> bool:
+    """A slot that opens or closes a parenthesis alone was cut inside a citation or formula."""
+    return text.count("(") != text.count(")")
 
 
 def _empty_slot(tokens: tuple[TokenFeature, ...], start: int, end: int, text: str) -> bool:

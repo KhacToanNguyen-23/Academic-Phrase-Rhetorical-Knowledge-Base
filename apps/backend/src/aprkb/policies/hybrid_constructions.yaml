@@ -1,6 +1,6 @@
 # Provisional lists (families, Meta-NP): TODO(owner, FR-06.2): approve.
 # max_literal_words and min_content_tokens below are owner-confirmed (2026-11-07).
-version: 0.8.1
+version: 0.9.0
 max_literal_words: 12
 # Owner-confirmed 2026-11-07 after reviewing 30 frames: 13 BAD and 2 WEAK removed, no GOOD lost.
 max_literal_nouns: 0
@@ -10,9 +10,15 @@ min_fixed_content_tokens: 1
 dangling_tail_words: [about, across, after, against, among, as, at, because, before, between, by,
   due, during, for, from, in, into, of, "on", over, per, than, through, to, toward, towards, under,
   upon, via, with, within, without]
+# Verb frames for hybrid_active_modified (hedging and limitation phrasing).
+# Raising verbs that take `to` + verb, and intransitive verbs with one fixed preposition.
+# TODO(owner, FR-06.2): approve both lists.
+infinitive_verbs: [fail, struggle, tend, appear, seem]
+preposition_verbs: {suffer: from, stem: from, arise: from, result: from, account: for}
 abbreviation_markers: ["e.g", "i.e", "w.r.t", "cf.", "et al", "viz."]
 meta_np:
-  heads: [accuracy, performance, role, effect, limitation, reduction, relationship]
+  heads: [accuracy, performance, role, effect, limitation, reduction, relationship,
+    drawback, shortcoming, weakness, obstacle, downside]
   connectors: [of, in, "on", between, for]
 boundary:
   pre_comma_frontier: true

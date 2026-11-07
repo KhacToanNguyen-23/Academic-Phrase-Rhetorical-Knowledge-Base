@@ -34,6 +34,10 @@ capitalized function word glued after a slot is rejected; `min_fixed_content_tok
 was tried and reverted: it kept 21 instead of 102 recurring frames and removed 7 of 11 GOOD frames
 in the owner sample. Every frame must pass `is_safe_hybrid_frame` before the engine returns it.
 
+Policy v0.9.0 adds closed verb frames inside `hybrid_active_modified` (`infinitive_verbs`,
+`preposition_verbs`, both `TODO(owner)`), clause handling for `It is ADJ ...`, and more Meta-NP heads;
+it adds no family. Slots with a lone parenthesis are rejected.
+
 Candidates are upserted by `cluster_key` (`uq_candidates_cluster_key`): later sentences with the same
 cluster append their sources to the pending candidate instead of adding a review row.
 

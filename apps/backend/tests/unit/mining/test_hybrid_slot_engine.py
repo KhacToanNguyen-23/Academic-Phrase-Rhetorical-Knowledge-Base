@@ -20,6 +20,7 @@ from aprkb.modules.mining.stages.hybrid_slot_engine import (
     _drop_dangling_tail,
     _slot_cuts_modifier,
     _symbolic_slot,
+    _unbalanced_slot,
 )
 from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
 from aprkb.nlp.features import SentenceAnalysis, TokenFeature
@@ -174,17 +175,17 @@ def test_tier1_output_is_final_and_hybrid_only_runs_after_double_miss() -> None:
 def test_hybrid_safety_rejects_unknown_ids_adjacent_slots_and_sensitive_literals() -> None:
     policy = load_policy_bundle().hybrid_constructions
     assert not is_safe_hybrid_frame(
-        "[X] reveals [Y].", policy, "construction=unknown_family:0.8.1:key"
+        "[X] reveals [Y].", policy, "construction=unknown_family:0.9.0:key"
     )
     assert not is_safe_hybrid_frame(
-        "[X][Y] reveals. ", policy, "construction=hybrid_passive_academic:0.8.1:key"
+        "[X][Y] reveals. ", policy, "construction=hybrid_passive_academic:0.9.0:key"
     )
     assert not is_safe_hybrid_frame(
         "Samples from 2020 were processed using [X].",
         policy,
-        "construction=hybrid_passive_academic:0.8.1:key",
+        "construction=hybrid_passive_academic:0.9.0:key",
     )
-    valid_prefix = "construction=hybrid_passive_academic:0.8.1:"
+    valid_prefix = "construction=hybrid_passive_academic:0.9.0:"
     digest = "a" * 64
     assert is_safe_hybrid_frame("[X] reveals [Y].", policy, valid_prefix + digest)
     assert not is_safe_hybrid_frame("[X] reveals [Y].", policy, valid_prefix + "old:" + digest)
@@ -264,7 +265,7 @@ def test_candidate_writer_and_review_rechecks_accept_known_hybrid_frames() -> No
     )
     assert _candidate_is_safe_to_promote(candidate)
     assert extraction_is_safe(candidate)
-    candidate.cluster_key = "construction=unregistered_hybrid:0.8.1:fixture"
+    candidate.cluster_key = "construction=unregistered_hybrid:0.9.0:fixture"
     assert not _candidate_is_safe_to_promote(candidate)
     assert not extraction_is_safe(candidate)
 
@@ -453,7 +454,7 @@ def test_ordinary_slots_are_not_symbolic(text: str) -> None:
 )
 def test_safety_rejects_dangling_spaced_and_abbreviated_frames(frame: str) -> None:
     policy = load_policy_bundle().hybrid_constructions
-    key = "construction=hybrid_passive_academic:0.8.1:" + "a" * 64
+    key = "construction=hybrid_passive_academic:0.9.0:" + "a" * 64
     assert not is_safe_hybrid_frame(frame, policy, key)
 
 
@@ -556,3 +557,52 @@ def test_slot_boundary_cannot_separate_modifier_from_its_head() -> None:
         TokenFeature(1, 5, 11, "NOUN", "NN", "ROOT", 1, "privacy", "", False),
     )
     assert _slot_cuts_modifier(tokens, [("X", (5, 11))])
+
+
+# Hedging and limitation phrasing handled inside the existing families (policy v0.9.0).
+_CLOSED_VERB_FRAMES = {
+    "The proposed method fails to handle missing labels.": "[X] fails to handle [Y].",
+    "The baseline tends to overfit.": "[X] tends to [Y].",
+    "This approach suffers from high latency.": "[X] suffers from [Y].",
+    "The gap stems from limited supervision.": "[X] stems from [Y].",
+    "It is unclear whether the effect generalizes.": "It is unclear whether [X].",
+    "It is impractical to scale the pipeline.": "It is impractical to scale [X].",
+    "Another drawback is that training is slow.": "Another drawback is that [X].",
+}
+
+
+@pytest.mark.parametrize(("text", "frame"), list(_CLOSED_VERB_FRAMES.items()))
+def test_closed_verb_and_limitation_frames(text: str, frame: str) -> None:
+    policy = load_policy_bundle()
+    engine = HybridSlotEngine(
+        policy.hybrid_constructions,
+        policy.reporting_verbs,
+        policy.slot_abstraction,
+        policy.lead_ins.lead_ins,
+    )
+    result = engine.match_item(_item(_PAYLOAD["hybrid_cases"].index(text)))
+    assert result is not None
+    assert result.text == frame
+    key = f"construction={result.construction_id}:{policy.hybrid_constructions.version}:" + "a" * 64
+    assert is_safe_hybrid_frame(result.text, policy.hybrid_constructions, key)
+
+
+@pytest.mark.parametrize(
+    "text", ["The method suffers.", "The learner succeeds in reducing latency."]
+)
+def test_closed_verb_frames_need_their_structure(text: str) -> None:
+    policy = load_policy_bundle()
+    engine = HybridSlotEngine(
+        policy.hybrid_constructions,
+        policy.reporting_verbs,
+        policy.slot_abstraction,
+        policy.lead_ins.lead_ins,
+    )
+    assert engine.match_item(_item(_PAYLOAD["hybrid_cases"].index(text))) is None
+
+
+def test_slot_with_a_lone_parenthesis_is_unbalanced() -> None:
+    assert _unbalanced_slot("the condition (20")
+    assert _unbalanced_slot("Table 2)")
+    assert not _unbalanced_slot("the condition (see Eq. 2)")
+    assert not _unbalanced_slot("a plain noun phrase")

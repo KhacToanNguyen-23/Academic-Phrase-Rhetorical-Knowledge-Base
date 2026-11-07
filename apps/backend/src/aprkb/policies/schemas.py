@@ -670,6 +670,9 @@ class HybridConstructionsPolicy(VersionedPolicy):
     dangling_tail_words: list[str] = Field(default_factory=list)
     # Inline abbreviations that introduce a side remark rather than part of a reusable pattern.
     abbreviation_markers: list[str] = Field(default_factory=list)
+    # Closed verb frames for hybrid_active_modified. TODO(owner, FR-06.2): approve the lists.
+    infinitive_verbs: list[str] = Field(default_factory=list)
+    preposition_verbs: dict[str, str] = Field(default_factory=dict)
     families: list[HybridFamilyPolicy] = Field(min_length=1)
 
     @model_validator(mode="after")

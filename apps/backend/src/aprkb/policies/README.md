@@ -52,7 +52,7 @@ predicate adjunct prepositions. Object-internal prepositional phrases remain ins
 object slot; only predicate-level prepositions are checked against the construction adjunct list.
 See [ADR-0013](../../../../../doc/adr/0013-author-action-adjuncts.md).
 
-`hybrid_constructions.yaml` v0.8.1 is a separate provisional policy for the eight Tier 2 families,
+`hybrid_constructions.yaml` v0.9.0 is a separate provisional policy for the eight Tier 2 families,
 Meta-NP heads/connectors, boundary setting, content thresholds, and literal-word limits. A hybrid
 frame is the pattern core of the main clause, not the whole sentence: trailing clauses and slot-free
 lead adjuncts are cut, and a family's trigger word must stay inside the core. The engine retains

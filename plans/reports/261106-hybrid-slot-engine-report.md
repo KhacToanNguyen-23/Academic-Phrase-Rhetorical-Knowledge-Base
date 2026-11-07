@@ -509,3 +509,26 @@ passed, 1 skipped (regex) and 726 passed (spaCy); integration 85 passed in each 
 - Hedging and limitation survey (50 articles, read-only): no new branch met the volume gate, so no
   new family or branch was added. Open: 21 of 32 extracted modal sentences have the modal outside the
   frame, so `epistemic_tagger` cannot see it; not investigated yet.
+
+## Hedging and limitation branches, policy v0.9.0 (2026-11-07)
+
+Added inside existing families (no new family), after a 50-article survey and an owner decision:
+
+- `hybrid_active_modified`: raising verbs with `to` + verb (`infinitive_verbs`: fail, struggle, tend,
+  appear, seem) keep `to` outside the slot; intransitive verbs with one fixed preposition
+  (`preposition_verbs`: suffer/stem/arise/result from, account for). Both lists carry `TODO(owner)`.
+- `hybrid_extraposed_it`: the clause is also searched under the adjective, since spaCy attaches it
+  there; `that` / `whether` stay in the literal text.
+- `hybrid_copular_definitional`: a Meta-NP subject with a clause complement (`Another drawback is
+  that [X]`). New Meta-NP heads: drawback, shortcoming, weakness, obstacle, downside.
+  `bottleneck`, `constraint`, `challenge` stay out because they are mostly technical terms.
+- Slots with a lone parenthesis (cut inside a citation or formula) are rejected
+  (`purity_unbalanced_slot`, found in the owner read).
+
+Measured on 50 articles (v0.8.1 to v0.9.0 before the parenthesis gate): extractions 1,863 to 1,920,
+frames 1,255 to 1,296, recurring 102 to 105; 48 new frames, 5 replaced. The parenthesis gate then
+removed 59 frames (0 of them recurring, all single-article) and dropped recurring frames to 99 because
+some recurrence came from cut-slot rows. Unsafe frames 0, runs byte-identical, Tier 1 unchanged
+(0 differences on 363 rows). Owner read of 30 new frames: 25 GOOD, 4 WEAK, 1 BAD (96.7% usable); the
+two boundary cases it found motivated the parenthesis gate. spaCy mis-tags some adjectives as verbs
+(`challenging`), so those sentences are not recovered.

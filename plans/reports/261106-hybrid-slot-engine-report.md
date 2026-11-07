@@ -532,3 +532,26 @@ some recurrence came from cut-slot rows. Unsafe frames 0, runs byte-identical, T
 (0 differences on 363 rows). Owner read of 30 new frames: 25 GOOD, 4 WEAK, 1 BAD (96.7% usable); the
 two boundary cases it found motivated the parenthesis gate. spaCy mis-tags some adjectives as verbs
 (`challenging`), so those sentences are not recovered.
+
+## Edge fixes, idioms and goal clauses, policy v0.9.1 (2026-11-07)
+
+Scope chosen by the owner after a 50-article survey (future-work, gap, and `To + V` lead-in groups
+were dropped for low volume or too many separate leads):
+
+- `It is worth noting that [X].`: the `worth + V-ing + that` words stay literal. A referential `It`
+  with a gerund (`It was busy modelling ...`) is no longer an extraposed pattern.
+- A slot keeps its closing parenthesis (and the dot before it), so citations and formulas are not cut.
+  The v0.9.0 reject gate stays as the fallback and now fires 31 times instead of 314.
+- `idiom_frames` (`TODO(owner)`): shed light on, pave the way for, provide insights into, play a role
+  in, take advantage of, leave room for. The noun stays in the frame and is exempt from R1 at that
+  position only, so `[X] sheds light on [Y].` replaces `[X] shed [Y] on [Z].`
+- `serve as` joins `preposition_verbs`; `goal, aim, objective, purpose, motivation` join the Meta-NP
+  heads, and a Meta-NP subject may take a `to + V` clause (`The goal of [X] is to [Y].`).
+- A sentence that opens with a subordinating word and has no main clause is rejected
+  (`subordinate_fragment`, 22 sentences).
+
+Measured on 50 articles (v0.9.0 to v0.9.1): extractions 1,850 to 2,017, Tier 2 frames 1,238 to 1,368,
+recurring in two or more articles 99 to 113, unsafe frames 0, runs byte-identical, Tier 1 unchanged
+(0 differences on 363 rows). 142 new frames (166 rows, 6 recurring), 8 replaced.
+- Owner read of 30 new frames at v0.9.1: 26 GOOD, 1 WEAK, 3 BAD (90.0% usable). Backlog from the 3 BAD:
+  a narrow lead-in leak, the idiom `give rise to` not yet locked, and a cut at `with short`.

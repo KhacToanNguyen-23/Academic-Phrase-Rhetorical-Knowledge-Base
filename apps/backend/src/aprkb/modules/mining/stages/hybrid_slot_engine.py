@@ -75,6 +75,10 @@ class HybridSlotEngine(MiningStage):
             verb.casefold(): preposition.casefold()
             for verb, preposition in policy.preposition_verbs.items()
         }
+        self._idioms = [
+            (idiom.verb.casefold(), idiom.noun.casefold(), idiom.preposition.casefold())
+            for idiom in policy.idiom_frames
+        ]
         self._reporting = SlotAbstractor(reporting_verbs, ownership_policy)
         self._families = {family.id: family for family in policy.families}
         self._matches: Counter[str] = Counter()
@@ -105,6 +109,11 @@ class HybridSlotEngine(MiningStage):
             self._rejections["invalid_root"] += 1
             return None
         root = root_selection.token
+        first = next((token for token in tokens if not token.is_space), None)
+        if first is not None and first.dep == "mark" and first.head == root.i:
+            # "Although ...": a subordinate clause with no main clause is not a pattern.
+            self._rejections["subordinate_fragment"] += 1
+            return None
         for family in (f for f in self._policy.families if f.enabled):
             spans = self._match_family(family.id, item.text, tokens, children, root.i)
             if spans is None:
@@ -224,6 +233,17 @@ class HybridSlotEngine(MiningStage):
                 )
             if predicate is None or clause is None:
                 return None
+            if clause.tag == "VBG":
+                # Only the fixed "worth + V-ing" is a pattern; "It was busy modelling" is not.
+                if predicate.lemma.casefold() != "worth":
+                    return None
+                content_clause = next(
+                    (tokens[index] for index in children[clause.i] if tokens[index].dep == "ccomp"),
+                    None,
+                )
+                if content_clause is not None:
+                    span = _span(tokens, children, content_clause.i)
+                    return {"X": _without_marker(text, tokens, span)}
             objects = [
                 tokens[index]
                 for index in children[clause.i]
@@ -337,6 +357,9 @@ class HybridSlotEngine(MiningStage):
         """Raising verbs with `to` + verb, and intransitive verbs with one fixed preposition."""
         lemma = root.lemma.casefold()
         subject_span = _span(tokens, children, subject.i)
+        idiom = self._idiom_match(tokens, children, root, direct)
+        if idiom is not None:
+            return {"X": subject_span, "Y": _span(tokens, children, idiom[1].i)}
         if lemma in self._infinitive_verbs:
             clause = next((token for token in direct if token.dep == "xcomp"), None)
             if clause is None:
@@ -380,6 +403,43 @@ class HybridSlotEngine(MiningStage):
             return None
         return {"X": subject_span, "Y": _span(tokens, children, phrase.i)}
 
+    def _idiom_match(
+        self,
+        tokens: tuple[TokenFeature, ...],
+        children: dict[int, tuple[int, ...]],
+        root: TokenFeature,
+        direct: list[TokenFeature],
+    ) -> tuple[TokenFeature, TokenFeature] | None:
+        """A fixed verb + noun + preposition idiom: the noun stays in the frame, not in a slot."""
+        lemma = root.lemma.casefold()
+        for verb, noun, preposition in self._idioms:
+            if lemma != verb:
+                continue
+            noun_token = next(
+                (
+                    token
+                    for token in direct
+                    if token.dep in {"dobj", "obj"} and token.lemma.casefold() == noun
+                ),
+                None,
+            )
+            if noun_token is None:
+                continue
+            candidates = [*direct, *(tokens[index] for index in children[noun_token.i])]
+            target = next(
+                (
+                    tokens[child]
+                    for token in candidates
+                    if token.dep == "prep" and token.lemma.casefold() == preposition
+                    for child in children[token.i]
+                    if tokens[child].dep == "pobj"
+                ),
+                None,
+            )
+            if target is not None:
+                return noun_token, target
+        return None
+
     def _meta_clause_spans(
         self,
         text: str,
@@ -390,12 +450,30 @@ class HybridSlotEngine(MiningStage):
     ) -> dict[str, tuple[int, int]] | None:
         """`Another limitation is that ...`: a Meta-NP subject whose complement is a clause."""
         heads = {head.casefold() for head in self._policy.meta_np["heads"]}
-        clause = next((token for token in direct if token.dep == "ccomp"), None)
+        clause = next((token for token in direct if token.dep in {"ccomp", "xcomp"}), None)
         if clause is None or subject.pos != "NOUN" or subject.lemma.casefold() not in heads:
             return None
-        if any(tokens[index].dep == "prep" for index in children[subject.i]):
+        clause_span = _span(tokens, children, clause.i)
+        if clause.dep == "xcomp":
+            marker = next(
+                (
+                    tokens[index]
+                    for index in children[clause.i]
+                    if tokens[index].dep == "aux" and tokens[index].lemma.casefold() == "to"
+                ),
+                None,
+            )
+            if marker is None:
+                return None
+            clause_span = (_trim_left(text, marker.end, clause_span[1]), clause_span[1])
+        else:
+            clause_span = _without_marker(text, tokens, clause_span)
+        if not any(tokens[index].dep == "prep" for index in children[subject.i]):
+            return {"X": clause_span}
+        owner = _meta_complement(tokens, children, subject.i, self._policy)
+        if owner is None:
             return None
-        return {"X": _without_marker(text, tokens, _span(tokens, children, clause.i))}
+        return {"X": owner, "Y": clause_span}
 
     def _build(
         self,
@@ -409,7 +487,7 @@ class HybridSlotEngine(MiningStage):
         assert tokens is not None
         family = self._families[family_id]
         spans = {
-            name: _extend_following_citation(item.text, start, end)
+            name: _balance_parentheses(item.text, _extend_following_citation(item.text, start, end))
             for name, (start, end) in spans.items()
         }
         fixed_lead = _fixed_lead_prefix(item.text, self._fixed_lead_ins)
@@ -480,10 +558,20 @@ class HybridSlotEngine(MiningStage):
         head_noun = any(
             token.pos == "NOUN" and token.lemma.casefold() in meta_heads for token in content
         )
+        idiom = (
+            self._idiom_match(
+                tokens, children, tokens[root_index], [tokens[i] for i in children[root_index]]
+            )
+            if family_id == "hybrid_active_modified"
+            else None
+        )
+        idiom_noun = idiom[0].i if idiom is not None else None
         literal_nouns = [
             token
             for token in content
-            if token.pos == "NOUN" and token.lemma.casefold() not in meta_heads
+            if token.pos == "NOUN"
+            and token.lemma.casefold() not in meta_heads
+            and token.i != idiom_noun
         ]
         if len(literal_nouns) > self._policy.max_literal_nouns:
             self._rejections["purity_literal_noun"] += 1
@@ -611,6 +699,21 @@ def _span(
     while edges and edges[-1].pos == "PUNCT":
         end = edges.pop().start
     return start, end
+
+
+def _balance_parentheses(text: str, span: tuple[int, int]) -> tuple[int, int]:
+    """Keep a slot's closing parenthesis (and the dot before it) so a citation is not cut."""
+    start, end = span
+    segment = text[start:end]
+    if segment.count("(") > segment.count(")"):
+        probe = end
+        while probe < len(text) and text[probe] in ".)":
+            probe += 1
+            if text[start:probe].count("(") == text[start:probe].count(")"):
+                return start, probe
+    elif segment.count(")") > segment.count("(") and start > 0 and text[start - 1] == "(":
+        return start - 1, end
+    return span
 
 
 def _without_marker(

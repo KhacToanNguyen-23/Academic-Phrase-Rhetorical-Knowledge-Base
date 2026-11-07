@@ -38,6 +38,10 @@ Policy v0.9.0 adds closed verb frames inside `hybrid_active_modified` (`infiniti
 `preposition_verbs`, both `TODO(owner)`), clause handling for `It is ADJ ...`, and more Meta-NP heads;
 it adds no family. Slots with a lone parenthesis are rejected.
 
+Policy v0.9.1 adds `idiom_frames` (a fixed verb + noun + preposition whose noun stays in the frame),
+`worth + V-ing + that`, `serve as`, goal-noun clauses, closing-parenthesis balance for slots, and a
+reject rule for subordinate fragments. It adds no family.
+
 Candidates are upserted by `cluster_key` (`uq_candidates_cluster_key`): later sentences with the same
 cluster append their sources to the pending candidate instead of adding a review row.
 

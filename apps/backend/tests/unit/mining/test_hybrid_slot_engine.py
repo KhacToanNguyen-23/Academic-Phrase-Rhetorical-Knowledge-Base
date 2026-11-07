@@ -17,6 +17,7 @@ from aprkb.modules.mining.stages.construction_matcher import (
 )
 from aprkb.modules.mining.stages.hybrid_slot_engine import (
     HybridSlotEngine,
+    _balance_parentheses,
     _drop_dangling_tail,
     _slot_cuts_modifier,
     _symbolic_slot,
@@ -175,17 +176,17 @@ def test_tier1_output_is_final_and_hybrid_only_runs_after_double_miss() -> None:
 def test_hybrid_safety_rejects_unknown_ids_adjacent_slots_and_sensitive_literals() -> None:
     policy = load_policy_bundle().hybrid_constructions
     assert not is_safe_hybrid_frame(
-        "[X] reveals [Y].", policy, "construction=unknown_family:0.9.0:key"
+        "[X] reveals [Y].", policy, "construction=unknown_family:0.9.1:key"
     )
     assert not is_safe_hybrid_frame(
-        "[X][Y] reveals. ", policy, "construction=hybrid_passive_academic:0.9.0:key"
+        "[X][Y] reveals. ", policy, "construction=hybrid_passive_academic:0.9.1:key"
     )
     assert not is_safe_hybrid_frame(
         "Samples from 2020 were processed using [X].",
         policy,
-        "construction=hybrid_passive_academic:0.9.0:key",
+        "construction=hybrid_passive_academic:0.9.1:key",
     )
-    valid_prefix = "construction=hybrid_passive_academic:0.9.0:"
+    valid_prefix = "construction=hybrid_passive_academic:0.9.1:"
     digest = "a" * 64
     assert is_safe_hybrid_frame("[X] reveals [Y].", policy, valid_prefix + digest)
     assert not is_safe_hybrid_frame("[X] reveals [Y].", policy, valid_prefix + "old:" + digest)
@@ -265,7 +266,7 @@ def test_candidate_writer_and_review_rechecks_accept_known_hybrid_frames() -> No
     )
     assert _candidate_is_safe_to_promote(candidate)
     assert extraction_is_safe(candidate)
-    candidate.cluster_key = "construction=unregistered_hybrid:0.9.0:fixture"
+    candidate.cluster_key = "construction=unregistered_hybrid:0.9.1:fixture"
     assert not _candidate_is_safe_to_promote(candidate)
     assert not extraction_is_safe(candidate)
 
@@ -454,7 +455,7 @@ def test_ordinary_slots_are_not_symbolic(text: str) -> None:
 )
 def test_safety_rejects_dangling_spaced_and_abbreviated_frames(frame: str) -> None:
     policy = load_policy_bundle().hybrid_constructions
-    key = "construction=hybrid_passive_academic:0.9.0:" + "a" * 64
+    key = "construction=hybrid_passive_academic:0.9.1:" + "a" * 64
     assert not is_safe_hybrid_frame(frame, policy, key)
 
 
@@ -606,3 +607,69 @@ def test_slot_with_a_lone_parenthesis_is_unbalanced() -> None:
     assert _unbalanced_slot("Table 2)")
     assert not _unbalanced_slot("the condition (see Eq. 2)")
     assert not _unbalanced_slot("a plain noun phrase")
+
+
+# Policy v0.9.1: worth + V-ing, idioms, goal clauses, fragments, parenthesis balance.
+_V091_FRAMES = {
+    "It is worth noting that the method generalizes.": "It is worth noting that [X].",
+    "It is worth summarizing the results.": "It is worth summarizing [X].",
+    "The proposed design sheds light on resource limits.": "[X] sheds light on [Y].",
+    "The study provides insights into user behavior.": "[X] provides insights into [Y].",
+    "Careful tuning plays a key role in stable training.": "[X] plays a key role in [Y].",
+    "The scheduler serves as a coordinator.": "[X] serves as [Y].",
+    "The goal of this work is to improve robustness.": "The goal of [X] is to [Y].",
+    "Our goal is to reduce latency.": "Our goal is to [X].",
+}
+
+
+def _shipped_engine() -> tuple[HybridSlotEngine, str]:
+    policy = load_policy_bundle()
+    engine = HybridSlotEngine(
+        policy.hybrid_constructions,
+        policy.reporting_verbs,
+        policy.slot_abstraction,
+        policy.lead_ins.lead_ins,
+    )
+    return engine, policy.hybrid_constructions.version
+
+
+@pytest.mark.parametrize(("text", "frame"), list(_V091_FRAMES.items()))
+def test_v091_frames(text: str, frame: str) -> None:
+    engine, version = _shipped_engine()
+    result = engine.match_item(_item(_PAYLOAD["hybrid_cases"].index(text)))
+    assert result is not None
+    assert result.text == frame
+    policy = load_policy_bundle().hybrid_constructions
+    key = f"construction={result.construction_id}:{version}:" + "a" * 64
+    assert is_safe_hybrid_frame(result.text, policy, key)
+
+
+def test_referential_it_with_a_gerund_is_not_an_extraposed_pattern() -> None:
+    engine, _ = _shipped_engine()
+    text = "It was busy modelling the system."
+    assert engine.match_item(_item(_PAYLOAD["hybrid_cases"].index(text))) is None
+
+
+def test_subordinate_clause_without_a_main_clause_is_rejected() -> None:
+    engine, _ = _shipped_engine()
+    text = "Although the method works."
+    assert engine.match_item(_item(_PAYLOAD["hybrid_cases"].index(text))) is None
+    assert engine.rejection_counts["subordinate_fragment"] == 1
+
+
+def test_idiom_noun_does_not_become_a_slot() -> None:
+    engine, _ = _shipped_engine()
+    text = "The proposed design sheds light on resource limits."
+    result = engine.match_item(_item(_PAYLOAD["hybrid_cases"].index(text)))
+    assert result is not None
+    assert "light" in result.text
+    assert result.text.count("[") == 2
+
+
+def test_closing_parenthesis_stays_with_its_slot() -> None:
+    text = "the condition (20). Next"
+    assert _balance_parentheses(text, (0, 17)) == (0, 18)
+    text = "a term (i.i.d.) here"
+    assert _balance_parentheses(text, (0, 13)) == (0, 15)
+    assert _balance_parentheses("no brackets", (0, 5)) == (0, 5)
+    assert _balance_parentheses("x (y z", (0, 6)) == (0, 6)

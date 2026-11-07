@@ -548,6 +548,16 @@ class SlotAbstractionPolicy(VersionedPolicy):
         return self
 
 
+class HybridIdiomPolicy(BaseModel):
+    """A fixed verb + noun + preposition idiom whose noun stays literal."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    verb: str = Field(min_length=1)
+    noun: str = Field(min_length=1)
+    preposition: str = Field(min_length=1)
+
+
 class HybridFamilyPolicy(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -673,6 +683,7 @@ class HybridConstructionsPolicy(VersionedPolicy):
     # Closed verb frames for hybrid_active_modified. TODO(owner, FR-06.2): approve the lists.
     infinitive_verbs: list[str] = Field(default_factory=list)
     preposition_verbs: dict[str, str] = Field(default_factory=dict)
+    idiom_frames: list[HybridIdiomPolicy] = Field(default_factory=list)
     families: list[HybridFamilyPolicy] = Field(min_length=1)
 
     @model_validator(mode="after")

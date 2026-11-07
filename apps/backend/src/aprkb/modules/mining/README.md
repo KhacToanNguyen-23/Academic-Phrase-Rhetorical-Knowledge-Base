@@ -31,7 +31,10 @@ remains authoritative; fallback runs only after reporting and construction misse
 `MINING_HYBRID_ENABLED=true` and stored usable spaCy tokens exist. Mining does not load spaCy.
 The switch defaults off, and regex-ingested articles remain Tier 1-only. Hybrid frames use the
 same pending-candidate review flow and must pass family identity, Frame Invariant, Purity Gate,
-and existing review checks.
+and existing review checks. Policy v0.8.0 keeps the configured fixed lead-ins literal, rejects
+modifier/head splits and capitalized sentence joins after a slot, and requires two fixed content
+tokens. That threshold is provisional (`TODO(owner, FR-06.2)`) pending review of a fresh corpus
+sample.
 
 ## One candidate per cluster
 

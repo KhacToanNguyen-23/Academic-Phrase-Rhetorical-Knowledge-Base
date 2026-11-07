@@ -30,6 +30,7 @@ from aprkb.policies.schemas import (
     SlotAbstractionPolicy,
     hybrid_frame_has_abbreviation,
     hybrid_frame_has_dangling_tail,
+    is_safe_hybrid_frame,
 )
 
 _PUNCT = re.compile(r"^[,.;:!?]+$")
@@ -63,10 +64,12 @@ class HybridSlotEngine(MiningStage):
         policy: HybridConstructionsPolicy,
         reporting_verbs: ReportingVerbsPolicy,
         ownership_policy: SlotAbstractionPolicy,
+        fixed_lead_ins: list[str] | None = None,
     ) -> None:
         self._policy = policy
         self._reporting_verbs = reporting_verbs
         self._ownership_policy = ownership_policy
+        self._fixed_lead_ins = fixed_lead_ins or []
         self._reporting = SlotAbstractor(reporting_verbs, ownership_policy)
         self._families = {family.id: family for family in policy.families}
         self._matches: Counter[str] = Counter()
@@ -182,7 +185,14 @@ class HybridSlotEngine(MiningStage):
             subject_scope = (
                 frozenset(subtree_indices(children, subject.i)) if subject else frozenset()
             )
-            method = _passive_method(tokens, children, root_index, subject_scope)
+            fixed_lead_span = _fixed_lead_prefix(text, self._fixed_lead_ins)
+            method = _passive_method(
+                tokens,
+                children,
+                root_index,
+                subject_scope,
+                ignore_before=fixed_lead_span[1] if fixed_lead_span is not None else None,
+            )
             if subject is None or method is None:
                 return None
             return {"X": _span(tokens, children, subject.i), "Y": method}
@@ -310,6 +320,15 @@ class HybridSlotEngine(MiningStage):
             name: _extend_following_citation(item.text, start, end)
             for name, (start, end) in spans.items()
         }
+        fixed_lead = _fixed_lead_prefix(item.text, self._fixed_lead_ins)
+        if fixed_lead is not None and spans:
+            first_name = min(spans, key=lambda name: spans[name])
+            start, end = spans[first_name]
+            if fixed_lead[0] <= start and end <= fixed_lead[1]:
+                self._rejections["purity_fixed_lead_slot"] += 1
+                return None
+            if start < fixed_lead[1] and end > fixed_lead[0]:
+                spans[first_name] = (fixed_lead[1], end)
         ordered = sorted(spans.items(), key=lambda pair: pair[1])
         if not _valid_spans(item.text, ordered):
             self._rejections["frame_invariant"] += 1
@@ -317,7 +336,9 @@ class HybridSlotEngine(MiningStage):
         if len(ordered) > 3:
             self._rejections["too_many_slots"] += 1
             return None
-        core = _core_range(item.text, tokens, ordered, root_index, children)
+        # Frames name slots by reading order; a fronted phrase becomes [X], never "In [Y], [X]".
+        ordered = [(name, span) for name, (_, span) in zip("XYZ", ordered, strict=False)]
+        core = _core_range(item.text, tokens, ordered, root_index, children, self._fixed_lead_ins)
         if core is None:
             self._rejections["lead_too_long"] += 1
             return None
@@ -340,6 +361,9 @@ class HybridSlotEngine(MiningStage):
         if any(_symbolic_slot(item.text[start:end]) for _, (start, end) in ordered):
             self._rejections["purity_symbolic_slot"] += 1
             return None
+        if _slot_cuts_modifier(tokens, ordered):
+            self._rejections["purity_slot_cuts_modifier"] += 1
+            return None
         if any(tokens[index].pos == "PROPN" for index in literal_indices):
             self._rejections["purity_proper_noun"] += 1
             return None
@@ -357,20 +381,29 @@ class HybridSlotEngine(MiningStage):
             if tokens[index].pos in {"NOUN", "VERB", "ADJ", "ADV"}
             and tokens[index].start >= content_from
         ]
+        meta_heads = {head.casefold() for head in self._policy.meta_np["heads"]}
         head_noun = any(
-            token.pos == "NOUN"
-            and token.lemma.casefold()
-            in {head.casefold() for head in self._policy.meta_np["heads"]}
-            for token in content
+            token.pos == "NOUN" and token.lemma.casefold() in meta_heads for token in content
         )
+        literal_nouns = [
+            token
+            for token in content
+            if token.pos == "NOUN" and token.lemma.casefold() not in meta_heads
+        ]
+        if len(literal_nouns) > self._policy.max_literal_nouns:
+            self._rejections["purity_literal_noun"] += 1
+            return None
         if (
-            len(content) < family.min_content_tokens
+            len(content) < max(family.min_content_tokens, self._policy.min_fixed_content_tokens)
             or not any(token.pos in {"VERB", "ADJ"} for token in content)
             and not head_noun
         ):
             self._rejections["purity_content_minimum"] += 1
             return None
         frame = _render(item.text, ordered, low, high)
+        if _joined_heading(tokens, ordered, low, high, item.text):
+            self._rejections["purity_heading_join"] += 1
+            return None
         if frame.count("(") != frame.count(")") or re.search(
             r"[;:\[\]]", re.sub(r"\[[XYZ]\]", " ", frame)
         ):
@@ -387,6 +420,10 @@ class HybridSlotEngine(MiningStage):
             return None
         if len(re.sub(r"\[[XYZ]\]", " ", frame).split()) > self._policy.max_literal_words:
             self._rejections["purity_frame_too_long"] += 1
+            return None
+        safety_key = f"construction={family_id}:{self._policy.version}:" + "0" * 64
+        if not is_safe_hybrid_frame(frame, self._policy, safety_key):
+            self._rejections["purity_writer_safety"] += 1
             return None
         root = tokens[root_index]
         root_children = set(children[root_index])
@@ -525,11 +562,15 @@ def _passive_method(
     children: dict[int, tuple[int, ...]],
     root: int,
     exclude: frozenset[int] = frozenset(),
+    *,
+    ignore_before: int | None = None,
 ) -> tuple[int, int] | None:
     for index in subtree_indices(children, root):
         if index in exclude:
             continue
         token = tokens[index]
+        if ignore_before is not None and token.start < ignore_before:
+            continue
         if token.dep in {"agent", "prep"}:
             target = next(
                 (
@@ -600,6 +641,51 @@ def _valid_spans(text: str, spans: list[tuple[str, tuple[int, int]]]) -> bool:
             return False
         previous = end
     return True
+
+
+def _fixed_lead_prefix(text: str, leads: list[str]) -> tuple[int, int] | None:
+    """Return an approved comma-terminated lead at the start of a sentence."""
+    for lead in leads:
+        words = re.escape(lead.strip()).replace(r"\ ", r"\s+")
+        match = re.match(rf"^\s*{words}\s*,\s*", text, re.IGNORECASE)
+        if match is not None:
+            return match.start(), match.end()
+    return None
+
+
+def _slot_cuts_modifier(
+    tokens: tuple[TokenFeature, ...], ordered: list[tuple[str, tuple[int, int]]]
+) -> bool:
+    """Reject a slot edge that separates a modifier from its syntactic head."""
+    modifier_deps = {"amod", "compound", "det", "nummod", "poss"}
+    for _, (start, end) in ordered:
+        inside = {token.i for token in tokens if start <= token.start and token.end <= end}
+        for token in tokens:
+            if token.dep not in modifier_deps or token.head == token.i:
+                continue
+            if (token.i in inside) != (token.head in inside):
+                return True
+    return False
+
+
+def _joined_heading(
+    tokens: tuple[TokenFeature, ...],
+    ordered: list[tuple[str, tuple[int, int]]],
+    low: int,
+    high: int,
+    text: str,
+) -> bool:
+    """Detect a capitalized sentence-initial function word glued after a slot."""
+    first_slot_end = ordered[0][1][1]
+    return any(
+        first_slot_end <= token.start < high
+        and token.start >= low
+        and token.pos in {"ADP", "SCONJ", "DET", "PRON"}
+        and (surface := text[token.start : token.end])[:1].isupper()
+        and surface[1:].islower()
+        for token in tokens
+        if not token.is_space
+    )
 
 
 def _render(
@@ -724,6 +810,7 @@ def _core_range(
     ordered: list[tuple[str, tuple[int, int]]],
     root_index: int,
     children: dict[int, tuple[int, ...]],
+    fixed_lead_ins: list[str] | None = None,
 ) -> tuple[int, int, int] | None:
     """Return (low, high, content_from): the pattern core of the main clause.
 
@@ -771,6 +858,9 @@ def _core_range(
     first_start = prefix_tokens[0].start
     if first_start >= main_start:
         return main_start, high, main_start
+    fixed_lead = _fixed_lead_prefix(text, fixed_lead_ins or [])
+    if fixed_lead is not None and fixed_lead[1] <= main_start:
+        return first_start, high, fixed_lead[1]
     prefix_has_slot = slot_start < main_start
     if prefix_has_slot:
         if len(text[first_start:main_start].split()) > _SLOT_LEAD_MAX_WORDS:

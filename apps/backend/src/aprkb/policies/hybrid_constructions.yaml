@@ -1,7 +1,11 @@
 # Provisional lists (families, Meta-NP): TODO(owner, FR-06.2): approve.
 # max_literal_words and min_content_tokens below are owner-confirmed (2026-11-07).
-version: 0.6.0
+version: 0.8.1
 max_literal_words: 12
+# Owner-confirmed 2026-11-07 after reviewing 30 frames: 13 BAD and 2 WEAK removed, no GOOD lost.
+max_literal_nouns: 0
+# TODO(owner, FR-06.2): provisional minimum fixed content for reusable frame quality.
+min_fixed_content_tokens: 1
 # Closed grammar classes, not academic vocabulary. TODO(owner, FR-06.2): approve.
 dangling_tail_words: [about, across, after, against, among, as, at, because, before, between, by,
   due, during, for, from, in, into, of, "on", over, per, than, through, to, toward, towards, under,

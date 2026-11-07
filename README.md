@@ -1,6 +1,6 @@
 # AP-RKB — Academic Phrase & Rhetorical Knowledge Base
 
-AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. Phase-6 syntax mining consumes stored spaCy token features when `NLP_ENGINE=spacy` and accepts only closed, reviewed frame content; NER, production classifiers and taxonomy publishing remain out of scope. The `/writer` web route uses the real API and PostgreSQL; other prototype screens still use local mock data.
+AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. Phase-6 syntax mining consumes stored spaCy token features when `NLP_ENGINE=spacy` and accepts only closed, reviewed frame content; the Tier 2 hybrid fallback retains approved fixed leads and rejects split modifiers, heading joins, and frames below its provisional fixed-content threshold. NER, production classifiers and taxonomy publishing remain out of scope. The `/writer` web route uses the real API and PostgreSQL; other prototype screens still use local mock data.
 
 ## Architecture
 

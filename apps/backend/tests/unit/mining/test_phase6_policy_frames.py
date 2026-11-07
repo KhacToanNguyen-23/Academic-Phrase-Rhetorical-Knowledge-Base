@@ -19,6 +19,8 @@ _APPROVED = {
     "in addition",
     "overall",
     "in particular",
+    "for example",
+    "in contrast",
 }
 
 
@@ -28,7 +30,7 @@ def test_lead_ins_yaml_contains_exactly_owner_approved_set():
     )
     payload = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
 
-    assert payload["version"] == "0.1.0"
+    assert payload["version"] == "0.2.0"
     assert {
         value.strip().removesuffix(",").casefold() for value in payload["lead_ins"]
     } == _APPROVED

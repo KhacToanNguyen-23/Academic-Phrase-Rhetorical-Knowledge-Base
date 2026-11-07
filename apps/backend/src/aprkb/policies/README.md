@@ -20,9 +20,10 @@ domain review. The files are therefore runtime configuration, not final
 scientific guidance.
 
 `lexicon/lead_ins.yaml` is a separate closed list for syntax-path reporting
-frames. Its seven phrases were owner-approved on 2026-11-05; matching strips
-surrounding whitespace, drops one trailing comma and case-folds. Keep the list
-versioned and do not add mining-derived values. See [ADR-0012](../../../../../doc/adr/0012-slot-abstractor-frames-and-ownership.md).
+frames and literal hybrid leads. Version 0.2.0 adds `for example` and
+`in contrast` for the frame-quality cases; matching strips surrounding
+whitespace, drops one trailing comma and case-folds. Keep the list versioned
+and do not add mining-derived values. See [ADR-0012](../../../../../doc/adr/0012-slot-abstractor-frames-and-ownership.md).
 
 `slot_abstraction.yaml` contains provisional ownership tiers by determiner and head noun;
 its lists carry `TODO(owner, FR-06.2)`. `lexicon/epistemic_markers.yaml` separates strength
@@ -51,12 +52,15 @@ predicate adjunct prepositions. Object-internal prepositional phrases remain ins
 object slot; only predicate-level prepositions are checked against the construction adjunct list.
 See [ADR-0013](../../../../../doc/adr/0013-author-action-adjuncts.md).
 
-`hybrid_constructions.yaml` v0.6.0 is a separate provisional policy for the eight Tier 2 families,
-Meta-NP heads/connectors, boundary setting, `min_content_tokens`, and `max_literal_words`. A hybrid
+`hybrid_constructions.yaml` v0.8.1 is a separate provisional policy for the eight Tier 2 families,
+Meta-NP heads/connectors, boundary setting, content thresholds, and literal-word limits. A hybrid
 frame is the pattern core of the main clause, not the whole sentence: trailing clauses and slot-free
-lead adjuncts are cut, and a family's trigger word must stay inside the core. It does not alter Tier 1 policy versions or cluster
-keys. The engine is open-world but limited to configured family IDs, dependency shapes, three
-positional slots, and a token-feature Purity Gate; see
+lead adjuncts are cut, and a family's trigger word must stay inside the core. The engine retains
+leads from `lexicon/lead_ins.yaml`, rejects slot edges that split a modifier from its head, rejects
+capitalized sentence joins after a slot, and requires `min_fixed_content_tokens: 1` (provisional,
+`TODO(owner, FR-06.2)`). It does not alter Tier 1 policy versions or cluster keys. The engine is
+open-world but limited to configured family IDs, dependency shapes, three positional slots, and a
+token-feature Purity Gate; see
 [ADR-0014](../../../../../doc/adr/0014-hybrid-slot-engine.md).
 
 Since v0.5.0, `hybrid_constructions.yaml` also lists `dangling_tail_words` and

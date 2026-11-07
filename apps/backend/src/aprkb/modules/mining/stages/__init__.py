@@ -40,6 +40,7 @@ def build_stages(*, policy_bundle: PolicyBundle, hybrid_enabled: bool = False) -
                 policy_bundle.hybrid_constructions,
                 policy_bundle.reporting_verbs,
                 policy_bundle.slot_abstraction,
+                policy_bundle.lead_ins.lead_ins,
             )
             if hybrid_enabled
             else None,

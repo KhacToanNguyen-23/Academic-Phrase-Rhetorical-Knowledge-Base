@@ -39,6 +39,7 @@ from aprkb.modules.mining.stages.sentence_filter import SentenceFilter
 from aprkb.nlp import SentenceAnalysis, SpacyEngine
 from aprkb.nlp.syntax import usable_tokens
 from aprkb.policies.loader import load_policy_bundle
+from aprkb.policies.schemas import is_safe_hybrid_frame
 
 
 def _sha256(value: str) -> str:
@@ -126,7 +127,7 @@ async def _run(
     canonical: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     articles = article_ids or {}
     keys: set[str] = set()
-    scanned = kept = extracted = 0
+    scanned = kept = extracted = unsafe_hybrid = 0
 
     for path in files:
         blob_key = path.resolve().relative_to(blob_root.resolve()).as_posix()
@@ -182,6 +183,11 @@ async def _run(
                         "tier2" if (output.construction_id or "").startswith("hybrid_") else "tier1"
                     )
                     family = output.construction_id or "reporting"
+                    # The candidate writer refuses these, which fails the whole mining job.
+                    if tier == "tier2" and not is_safe_hybrid_frame(
+                        output.text, policies.hybrid_constructions, output.cluster_key
+                    ):
+                        unsafe_hybrid += 1
                     tiers[tier] += 1
                     families[family] += 1
                     frames[output.text].add(blob_key)
@@ -242,6 +248,7 @@ async def _run(
         "distinct_frames": len(frames),
         "distinct_cluster_keys": len(keys),
         "frames_document_frequency_ge_2": sum(len(blobs) >= 2 for blobs in frames.values()),
+        "unsafe_hybrid_frames": unsafe_hybrid,
         "articles": len(
             {articles.get(_key(path, blob_root), _key(path, blob_root)) for path in files}
         ),

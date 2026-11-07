@@ -660,8 +660,12 @@ HYBRID_SLOT_BOUNDARY = re.compile(r"[,;:.!?/-]\[[XYZ]\]|\[[XYZ]\][A-Za-z0-9/-]|\
 class HybridConstructionsPolicy(VersionedPolicy):
     meta_np: dict[str, list[str]]
     boundary: dict[str, bool]
+    # Minimum content words outside slots; provisional until frame review is complete.
+    min_fixed_content_tokens: int = Field(default=2, ge=1, le=20)
     # Literal words allowed around the slots; a longer frame is a sentence, not a reusable phrase.
     max_literal_words: int = Field(default=12, ge=4, le=40)
+    # Nouns left in literal text tie a frame to one article's topic; Meta-NP heads do not count.
+    max_literal_nouns: int = Field(default=0, ge=0)
     # A frame ending in one of these has lost the object of its preposition.
     dangling_tail_words: list[str] = Field(default_factory=list)
     # Inline abbreviations that introduce a side remark rather than part of a reusable pattern.

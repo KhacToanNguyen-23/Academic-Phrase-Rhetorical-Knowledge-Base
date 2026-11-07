@@ -1,5 +1,5 @@
-# TODO(owner, FR-06.2): owner-approved list, versioned and closed.
-version: 0.1.0
+# Owner approved "for example" and "in contrast" on 2026-11-07 (v0.2.0). TODO(owner, FR-06.2): confirm the full list.
+version: 0.2.0
 lead_ins:
   - in this paper
   - however
@@ -8,3 +8,5 @@ lead_ins:
   - in addition
   - overall
   - in particular
+  - for example
+  - in contrast

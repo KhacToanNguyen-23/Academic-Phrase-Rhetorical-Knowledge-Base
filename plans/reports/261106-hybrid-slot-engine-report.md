@@ -464,3 +464,48 @@ Tier 1 content was compared with a clean baseline, leaving the key out of the ha
 recipe changed on purpose. Keyed runs are byte-identical. Existing candidates keep their old keys,
 so mining those articles again adds new rows beside them. Checks: ruff and mypy pass; unit 714
 passed, 1 skipped (regex) and 726 passed (spaCy); integration 85 passed in each mode.
+
+## Literal-noun gate and slot order, policy v0.7.0 (2026-11-07)
+
+- New gate `purity_literal_noun` (`max_literal_nouns: 0`): a frame is rejected when literal text keeps a
+  noun that is not a Meta-NP head. Owner review of 30 frames: it removed 13 BAD and 2 WEAK, no GOOD.
+- Slots are now named in reading order, so a fronted phrase is `[X]`, never `In [Y], [X] ...`. Before
+  this, 175 of 1,841 Tier 2 rows (41 articles) failed `is_safe_hybrid_frame`; with hybrid on, the
+  candidate writer would have failed those articles' mining jobs.
+- The coverage report now counts `unsafe_hybrid_frames`; it must stay 0.
+- 50 articles: Tier 2 canonical frames 1,585 to 1,258, recurring in 2+ articles 110 to 104, unsafe 0.
+  Tier 1 unchanged (164 frames, 52 recurring). Runs are byte-identical.
+- Open: fixed leads mis-slotted (`For example`), heading glued to a sentence, cut compounds. About
+  29 of 31 WEAK frames in the sample stay too generic.
+
+## Frame-quality gates, policy v0.8.0 (2026-11-07)
+
+- Fixed leads from `lexicon/lead_ins.yaml` stay outside slots. Policy v0.2.0 adds `For example` and
+  `In contrast`; the passive-method matcher skips configured leads when searching for a method
+  phrase, and a lead selected as a slot is rejected.
+- Modifier dependencies may not cross a slot edge, so compounds and modifiers stay with their head.
+- Heading joins are rejected at the hybrid frame gate when a capitalized sentence-initial function
+  word appears after the first slot. This leaves shared sentence segmentation unchanged and keeps the
+  rejection local to hybrid candidates.
+- The provisional `min_fixed_content_tokens: 2` gate requires two fixed content words outside slots.
+  It is vocabulary-free and carries `TODO(owner, FR-06.2)` pending owner review.
+- On the 63 self-authored hybrid fixtures, changing only that threshold from 1 to 2 reduced accepted
+  fixtures from 36 to 28 (8 fewer); all 190 pre-existing token snapshot records are unchanged, and
+  the writer-safety check runs before the engine returns a frame.
+- The prior 50-article v0.7.0 run measured 1,258 Tier 2 canonical frames, 104 recurring in at least
+  two articles, and zero unsafe frames. The licensed 51-blob input set and rights map are not present
+  in this workspace, so a comparable v0.8.0 corpus run could not be measured here.
+- Open: assess the threshold against a refreshed labeled sample (including the reported 31 WEAK
+  frames) and rerun the 50-article coverage comparison when its rights-checked inputs are available.
+
+## Threshold back to 1, policy v0.8.1 (2026-11-07)
+
+- Measured on 50 articles: `min_fixed_content_tokens: 2` cut Tier 2 extractions 1,874 to 1,000, frames
+  1,258 to 593, and recurring frames 104 to 21. In the owner's 30-frame sample it lost 7 of 11 GOOD
+  frames; on the 100-frame AI-labelled sample GOOD share moved only 57% to 59% while 19 GOOD were lost.
+- v0.8.1 sets the threshold to 1: extractions 1,863, frames 1,255, recurring 102, unsafe frames 0,
+  two runs byte-identical, Tier 1 unchanged (0 differences on 363 content rows).
+- Owner read of a fresh 30-frame random sample at v0.8.1: 26 GOOD, 2 WEAK, 2 BAD (93.3% usable).
+- Hedging and limitation survey (50 articles, read-only): no new branch met the volume gate, so no
+  new family or branch was added. Open: 21 of 32 extracted modal sentences have the modal outside the
+  frame, so `epistemic_tagger` cannot see it; not investigated yet.

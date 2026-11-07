@@ -27,6 +27,16 @@ The eighth family, `hybrid_active_modified`, accepts an active clause only when 
 adverb or a prepositional phrase. It uses no verb list (owner decision, 2026-11-07): a measured
 allowlist of 17 academic verbs yielded 40 candidates and no recurring frame.
 
+Frame quality gates (policy v0.8.1, all vocabulary-free): slots are named X, Y, Z in reading
+order; literal text may not keep a topic noun (`max_literal_nouns: 0`, Meta-NP heads exempt);
+configured fixed leads stay literal; a slot edge may not split a modifier from its head; a
+capitalized function word glued after a slot is rejected; `min_fixed_content_tokens: 1`. A value of 2
+was tried and reverted: it kept 21 instead of 102 recurring frames and removed 7 of 11 GOOD frames
+in the owner sample. Every frame must pass `is_safe_hybrid_frame` before the engine returns it.
+
+Candidates are upserted by `cluster_key` (`uq_candidates_cluster_key`): later sentences with the same
+cluster append their sources to the pending candidate instead of adding a review row.
+
 Tier 2 candidate identity includes the family ID and hybrid policy version. The canonical skeleton
 is cluster material only; display frame, slot definitions, tense, ownership, and offsets stay with
 the mining item.
@@ -38,6 +48,9 @@ the mining item.
 - The family and Meta-NP lists remain provisional and carry `TODO(owner, FR-06.2)` pending approval.
 - `max_literal_words: 12` and `min_content_tokens: 1` are owner-confirmed (2026-11-07) standard
   parameters of policy v0.3.0, not provisional values.
+- Owner acceptance of v0.8.1 (2026-11-07): a fresh 30-frame read scored 26 GOOD, 2 WEAK, 2 BAD.
+  No separate hedging or limitation family was added; a 50-article survey found no branch that met
+  the volume gate (at least 25 new phrases or 5 frames in two or more articles).
 - Rights-checked corpus coverage and candidate volume must be measured before enabling the switch
   outside a controlled review.
 - Tier 3, auto-approval, move classification, and a frequency-based academic word list remain out

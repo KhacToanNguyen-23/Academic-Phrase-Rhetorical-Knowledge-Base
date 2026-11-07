@@ -18,6 +18,7 @@ from aprkb.modules.mining.stages.construction_matcher import (
 from aprkb.modules.mining.stages.hybrid_slot_engine import (
     HybridSlotEngine,
     _drop_dangling_tail,
+    _slot_cuts_modifier,
     _symbolic_slot,
 )
 from aprkb.modules.mining.stages.slot_abstractor import SlotAbstractor
@@ -54,7 +55,10 @@ _EXPECTED_FRAMES = {
 
 def _hybrid_policy(*, enable_all: bool = True):  # type: ignore[no-untyped-def]
     """Family logic is tested with every family on; the shipped policy may disable some."""
-    hybrid = load_policy_bundle().hybrid_constructions
+    # Authored family fixtures keep literal nouns; the noun gate has its own test.
+    hybrid = load_policy_bundle().hybrid_constructions.model_copy(
+        update={"max_literal_nouns": 99, "min_fixed_content_tokens": 1}
+    )
     if enable_all:
         hybrid = hybrid.model_copy(
             update={"families": [f.model_copy(update={"enabled": True}) for f in hybrid.families]}
@@ -65,7 +69,10 @@ def _hybrid_policy(*, enable_all: bool = True):  # type: ignore[no-untyped-def]
 def _engine(*, enable_all: bool = True) -> HybridSlotEngine:
     policy = load_policy_bundle()
     return HybridSlotEngine(
-        _hybrid_policy(enable_all=enable_all), policy.reporting_verbs, policy.slot_abstraction
+        _hybrid_policy(enable_all=enable_all),
+        policy.reporting_verbs,
+        policy.slot_abstraction,
+        policy.lead_ins.lead_ins,
     )
 
 
@@ -167,17 +174,17 @@ def test_tier1_output_is_final_and_hybrid_only_runs_after_double_miss() -> None:
 def test_hybrid_safety_rejects_unknown_ids_adjacent_slots_and_sensitive_literals() -> None:
     policy = load_policy_bundle().hybrid_constructions
     assert not is_safe_hybrid_frame(
-        "[X] reveals [Y].", policy, "construction=unknown_family:0.6.0:key"
+        "[X] reveals [Y].", policy, "construction=unknown_family:0.8.1:key"
     )
     assert not is_safe_hybrid_frame(
-        "[X][Y] reveals. ", policy, "construction=hybrid_passive_academic:0.6.0:key"
+        "[X][Y] reveals. ", policy, "construction=hybrid_passive_academic:0.8.1:key"
     )
     assert not is_safe_hybrid_frame(
         "Samples from 2020 were processed using [X].",
         policy,
-        "construction=hybrid_passive_academic:0.6.0:key",
+        "construction=hybrid_passive_academic:0.8.1:key",
     )
-    valid_prefix = "construction=hybrid_passive_academic:0.6.0:"
+    valid_prefix = "construction=hybrid_passive_academic:0.8.1:"
     digest = "a" * 64
     assert is_safe_hybrid_frame("[X] reveals [Y].", policy, valid_prefix + digest)
     assert not is_safe_hybrid_frame("[X] reveals [Y].", policy, valid_prefix + "old:" + digest)
@@ -257,7 +264,7 @@ def test_candidate_writer_and_review_rechecks_accept_known_hybrid_frames() -> No
     )
     assert _candidate_is_safe_to_promote(candidate)
     assert extraction_is_safe(candidate)
-    candidate.cluster_key = "construction=unregistered_hybrid:0.6.0:fixture"
+    candidate.cluster_key = "construction=unregistered_hybrid:0.8.1:fixture"
     assert not _candidate_is_safe_to_promote(candidate)
     assert not extraction_is_safe(candidate)
 
@@ -446,5 +453,106 @@ def test_ordinary_slots_are_not_symbolic(text: str) -> None:
 )
 def test_safety_rejects_dangling_spaced_and_abbreviated_frames(frame: str) -> None:
     policy = load_policy_bundle().hybrid_constructions
-    key = "construction=hybrid_passive_academic:0.6.0:" + "a" * 64
+    key = "construction=hybrid_passive_academic:0.8.1:" + "a" * 64
     assert not is_safe_hybrid_frame(frame, policy, key)
+
+
+def test_literal_noun_gate_uses_the_shipped_policy() -> None:
+    policy = load_policy_bundle()
+    engine = HybridSlotEngine(
+        policy.hybrid_constructions,
+        policy.reporting_verbs,
+        policy.slot_abstraction,
+        policy.lead_ins.lead_ins,
+    )
+    # Topic nouns left in literal text block frames; the relaxed test policy keeps them.
+    shipped = sum(
+        engine.match_item(_item(i)) is not None for i in range(len(_PAYLOAD["hybrid_cases"]))
+    )
+    relaxed_engine = _engine()
+    relaxed = sum(
+        relaxed_engine.match_item(_item(i)) is not None
+        for i in range(len(_PAYLOAD["hybrid_cases"]))
+    )
+    assert shipped < relaxed
+    assert engine.rejection_counts["purity_literal_noun"] >= 1
+    # Meta-NP heads stay allowed, so a definitional frame survives.
+    assert engine.match_item(_item(12)) is not None
+
+
+def test_fronted_slot_is_named_by_reading_order_and_passes_the_writer_check() -> None:
+    policy = _hybrid_policy()
+    index = _PAYLOAD["hybrid_cases"].index("In the proposed design, the samples are stored.")
+    result = _engine().match_item(_item(index))
+    assert result is not None
+    assert result.text.startswith("In [X], [Y] ")
+    key = f"construction={result.construction_id}:{policy.version}:" + "a" * 64
+    assert is_safe_hybrid_frame(result.text, policy, key)
+
+
+@pytest.mark.parametrize(
+    ("family", "index"),
+    [(family, index) for family, (positive, _) in _FAMILIES.items() for index in positive],
+)
+def test_every_positive_fixture_passes_the_writer_safety_check(family: str, index: int) -> None:
+    policy = _hybrid_policy()
+    result = _engine().match_item(_item(index))
+    assert result is not None
+    key = f"construction={family}:{policy.version}:" + "a" * 64
+    assert is_safe_hybrid_frame(result.text, policy, key)
+
+
+@pytest.mark.parametrize("lead", ["For example", "In contrast", "In this paper"])
+def test_approved_fixed_lead_remains_literal(lead: str) -> None:
+    text = f"{lead}, the proposed models are evaluated using controlled inputs."
+    index = _PAYLOAD["hybrid_cases"].index(text)
+    result = _engine().match_item(_item(index))
+    assert result is not None
+    assert result.text.startswith(f"{lead}, [X]")
+    assert f"{lead} [X]" not in result.text
+
+
+def test_hybrid_rejects_capitalized_sentence_join_after_a_slot() -> None:
+    text = "The method is useful As discussed in earlier work."
+    item = _item(_PAYLOAD["hybrid_cases"].index(text))
+    assert item.tokens is not None
+    root = select_syntax_root(item.tokens)
+    assert root is not None
+    engine = _engine()
+    result = engine._build(
+        item,
+        "hybrid_copular_definitional",
+        {
+            "X": (0, text.index("method") + len("method")),
+            "Y": (text.index("earlier"), text.index("work") + len("work")),
+        },
+        root.token.i,
+        normalized_children_by_head(item.tokens),
+    )
+    assert result is None
+    assert engine.rejection_counts["purity_heading_join"] == 1
+
+
+def test_hybrid_requires_policy_minimum_fixed_content() -> None:
+    policies = load_policy_bundle()
+    # The shipped value is 1 (owner decision 2026-11-07: 2 removed 7 of 11 GOOD frames).
+    # The mechanism is checked with an explicit stricter value.
+    assert policies.hybrid_constructions.min_fixed_content_tokens == 1
+    strict = policies.hybrid_constructions.model_copy(update={"min_fixed_content_tokens": 2})
+    engine = HybridSlotEngine(
+        strict,
+        policies.reporting_verbs,
+        policies.slot_abstraction,
+        policies.lead_ins.lead_ins,
+    )
+    text = "Samples were measured by teams."
+    assert engine.match_item(_item(_PAYLOAD["hybrid_cases"].index(text))) is None
+    assert engine.rejection_counts["purity_content_minimum"] == 1
+
+
+def test_slot_boundary_cannot_separate_modifier_from_its_head() -> None:
+    tokens = (
+        TokenFeature(0, 0, 4, "ADJ", "JJ", "amod", 1, "near", "", False),
+        TokenFeature(1, 5, 11, "NOUN", "NN", "ROOT", 1, "privacy", "", False),
+    )
+    assert _slot_cuts_modifier(tokens, [("X", (5, 11))])

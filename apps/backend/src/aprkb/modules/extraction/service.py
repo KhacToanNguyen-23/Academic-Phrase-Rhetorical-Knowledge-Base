@@ -54,11 +54,12 @@ async def article_text(session: AsyncSession, article_id: UUID) -> ArticleTextRe
     if not allows_mining:
         raise HTTPException(status_code=403, detail="Article license does not allow mining")
     sections: dict[int | None, SectionText] = {}
-    for sentence_id, text, heading, code, order in await repository.article_sentences(
+    for sentence_id, text, heading, code, order, page_number in await repository.article_sentences(
         session, article_id
     ):
         section = sections.setdefault(
-            order, SectionText(heading=heading, section_code=code, sentences=[])
+            order,
+            SectionText(heading=heading, section_code=code, sentences=[], page_number=page_number),
         )
         section.sentences.append(SentenceText(id=sentence_id, text=text))
     return ArticleTextRead(

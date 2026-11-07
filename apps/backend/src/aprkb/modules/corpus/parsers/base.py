@@ -11,6 +11,7 @@ class ParsedSection:
     order: int
     # Offset of `text` inside ParsedDocument.raw_text, so sentence offsets stay global.
     char_start: int = 0
+    page_number: int | None = None
 
 
 @dataclass(frozen=True)

@@ -6,6 +6,9 @@ The API uses the packaged runtime policies without test-only weight overrides.
 """
 
 import asyncio
+import os
+from contextlib import suppress
+from tempfile import TemporaryDirectory
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -19,6 +22,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from aprkb.api.main import create_app
 from aprkb.core.config import settings
+from aprkb.modules.corpus.blobstore import LocalBlobStore
+from aprkb.worker.runner import run_once
 from aprkb.modules.patterns.models import (
     EvidenceProvenance,
     PatternVersion,
@@ -90,7 +95,32 @@ async def isolated_lifespan(application):
             await session.commit()
         async with original_lifespan(application):
             application.state.session_factory = factory
-            yield
+            if os.getenv("PDF_IMPORT_LIVE") != "1":
+                yield
+            else:
+                # Real worker, isolated schema and disposable blobs for PDF E2E.
+                stop = asyncio.Event()
+                original_blob_dir = settings.blob_dir
+                with TemporaryDirectory(prefix="aprkb-pdf-e2e-") as directory:
+                    settings.blob_dir = directory
+
+                    async def work():
+                        while not stop.is_set():
+                            if not await run_once(factory, blob_store=LocalBlobStore(directory)):
+                                await asyncio.sleep(0.1)
+
+                    worker = asyncio.create_task(work())
+                    try:
+                        yield
+                    finally:
+                        stop.set()
+                        try:
+                            await asyncio.wait_for(worker, timeout=5)
+                        except TimeoutError:
+                            worker.cancel()
+                            with suppress(asyncio.CancelledError):
+                                await worker
+                        settings.blob_dir = original_blob_dir
     finally:
         await scoped_engine.dispose()
         async with engine.begin() as connection:

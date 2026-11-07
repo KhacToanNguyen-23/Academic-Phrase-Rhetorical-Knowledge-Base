@@ -48,6 +48,7 @@ class SectionText(BaseModel):
     heading: str | None
     section_code: str | None
     sentences: list[SentenceText]
+    page_number: int | None = None
 
 
 class ArticleTextRead(BaseModel):

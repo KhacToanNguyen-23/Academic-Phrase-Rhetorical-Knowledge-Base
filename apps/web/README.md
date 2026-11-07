@@ -102,3 +102,7 @@ failure alerts, acknowledgement and one-attempt manual retry with rationale. App
 backend migration `0013_job_operations` before using it. The UI-contract tests in
 `e2e/jobs.spec.ts` use API fixtures; backend operations tests use real isolated
 PostgreSQL schemas. See [ADR-0014](../../doc/adr/0014-job-operations.md).
+
+### PDF import
+
+`/import` includes PDF preview, file/text duplicate evidence, reviewed metadata and live ingest status. Apply migration `0014_pdf_import` and run the worker. See [PDF import](../../doc/pdf-import.md).

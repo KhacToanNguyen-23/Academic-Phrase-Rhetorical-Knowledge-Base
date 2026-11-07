@@ -1,5 +1,6 @@
 """Persistence operations for article upload and mining enqueue requests."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -11,6 +12,8 @@ from aprkb.core.logging import get_logger
 from aprkb.modules.audit.service import record_event
 from aprkb.modules.corpus.importer import IMPORT_JOB_TYPE
 from aprkb.modules.corpus.models import Article, ImportProfile, License
+from aprkb.modules.corpus.parsers.pdf_parser import PARSER_VERSION, PdfInspection
+from aprkb.modules.corpus.pdf_schemas import PdfMetadata
 from aprkb.modules.corpus.schemas import ImportProfileCreate, ImportProfileUpdate
 from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.mining.models import Job
@@ -36,6 +39,8 @@ async def create_upload(
     request_id: str,
     doi: str | None = None,
     content_sha256: str | None = None,
+    pdf: PdfInspection | None = None,
+    metadata: PdfMetadata | None = None,
 ) -> tuple[Article, Job]:
     article = Article(
         id=article_id,
@@ -48,6 +53,27 @@ async def create_upload(
         ingest_status="pending",
         created_by=actor.id,
     )
+    if pdf is not None and metadata is not None:
+        article.pdf_text_sha256 = pdf.text_sha256
+        article.page_count = pdf.page_count
+        article.parser_version = PARSER_VERSION
+        article.authors = metadata.authors
+        article.publication_year = metadata.publication_year
+        article.journal_id = metadata.journal_id
+        article.genre_id = metadata.genre_id
+        article.source_url = str(metadata.source_url) if metadata.source_url else None
+        article.metadata_provenance = {
+            "reviewed_by": str(actor.id),
+            "reviewed_at": datetime.now(UTC).isoformat(),
+            "license_code": license_row.code,
+            "method": "pdf-properties-and-first-page-v1",
+            "suggestions": {
+                "title": pdf.title,
+                "authors": list(pdf.authors),
+                "doi_candidates": list(pdf.doi_candidates),
+            },
+            "confirmed_fields": metadata.model_dump(mode="json"),
+        }
     job = Job(
         type="ingest_article",
         payload={"article_id": str(article_id)},

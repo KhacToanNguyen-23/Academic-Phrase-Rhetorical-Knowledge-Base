@@ -38,8 +38,9 @@ duplicates do not prevent deployment. It does not merge or delete old duplicates
 Old file hashes are populated lazily from the configured blob store on a content
 check. The first successful write can therefore read many old files. Missing blobs
 are logged and skipped; they cannot establish a file match. A rejected upload rolls
-back its lazy backfill too. Byte hashes do not identify equivalent PDF/Markdown
-renderings, edited files or files unavailable in the blob store.
+back its lazy backfill too. Byte hashes alone do not identify equivalent renditions. PDF imports now additionally
+check full extracted-text identity; see [PDF import](pdf-import.md). Edited text,
+PDF/Markdown renditions without a common DOI, or missing blobs still require review.
 
 A PostgreSQL transaction advisory lock serializes corpus import pages and uploads,
 covering check, legacy hash backfill and insertion. This trades parallel import

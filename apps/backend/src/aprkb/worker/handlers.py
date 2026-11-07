@@ -7,6 +7,7 @@ from uuid import UUID
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from aprkb.core.config import settings
 from aprkb.core.logging import get_logger
@@ -16,7 +17,7 @@ from aprkb.modules.corpus.models import Article, ArticleSection, License, Senten
 from aprkb.modules.corpus.parsers.base import DocumentParser
 from aprkb.modules.corpus.parsers.jats_parser import JatsParserStub
 from aprkb.modules.corpus.parsers.markdown_parser import MarkdownParser
-from aprkb.modules.corpus.parsers.pdf_parser import PdfParserStub
+from aprkb.modules.corpus.parsers.pdf_parser import PARSER_VERSION, PdfParser, inspect_pdf
 from aprkb.modules.corpus.parsers.text_parser import TextParser
 from aprkb.modules.corpus.schemas import DEFAULT_ARTIFACT_KINDS, SlrWorkFilters
 from aprkb.modules.corpus.section_detector import SectionDetector
@@ -36,7 +37,7 @@ _PARSERS: tuple[DocumentParser, ...] = (
     TextParser(),
     MarkdownParser(),
     JatsParserStub(),
-    PdfParserStub(),
+    PdfParser(),
 )
 ArticleSourceFactory = Callable[[str], ArticleSource]
 logger = get_logger(__name__)
@@ -229,7 +230,14 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
         article.ingest_status = "failed"
         return "Unsupported article format"
     await report_progress("parsing_document")
-    document = parser.parse(content)
+    if isinstance(parser, PdfParser):
+        pdf = await run_in_threadpool(inspect_pdf, content)
+        document = pdf.document
+        article.pdf_text_sha256 = pdf.text_sha256
+        article.page_count = pdf.page_count
+        article.parser_version = PARSER_VERSION
+    else:
+        document = parser.parse(content)
     policies = load_policy_bundle()
     section_codes = SectionDetector(policies.section_headings).detect(document.sections)
     abbreviations = policies.abbreviations.abbreviations
@@ -241,6 +249,7 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
             section_code=section_code,
             heading=parsed_section.heading,
             order=parsed_section.order,
+            page_number=parsed_section.page_number,
         )
         session.add(section_row)
         section_rows[parsed_section.order] = section_row

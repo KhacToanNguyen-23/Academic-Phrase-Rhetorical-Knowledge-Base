@@ -15,6 +15,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,9 +26,21 @@ from aprkb.modules.corpus.blobstore import LocalBlobStore
 from aprkb.modules.corpus.dedup import (
     find_content_duplicate,
     find_metadata_duplicate,
+    find_pdf_text_duplicate,
+    find_title_candidates,
     lock_corpus_writes,
 )
-from aprkb.modules.corpus.identity import content_hash
+from aprkb.modules.corpus.identity import content_hash, normalize_doi
+from aprkb.modules.corpus.models import Article, License
+from aprkb.modules.corpus.parsers.pdf_parser import PARSER_VERSION
+from aprkb.modules.corpus.pdf_import import (
+    inspect_upload,
+    read_upload,
+    reference_choices,
+    require_pdf_rights,
+    validate_metadata_references,
+)
+from aprkb.modules.corpus.pdf_schemas import ArticleMetadataRead, PdfMetadata, PdfPreview
 from aprkb.modules.corpus.schemas import (
     ArticleImportCreate,
     ImportProfileCreate,
@@ -59,6 +72,53 @@ admin_router = APIRouter(tags=["admin corpus and jobs"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 Curator = Annotated[ApiClient, Depends(require_role("curator"))]
 _ALLOWED_SUFFIXES = {".txt", ".md", ".markdown", ".xml", ".jats", ".pdf"}
+
+
+@admin_router.post("/corpus/pdf/preview", response_model=PdfPreview)
+async def preview_pdf(
+    session: DatabaseSession,
+    _actor: Curator,
+    file: Annotated[UploadFile, File()],
+    license_code: Annotated[str, Form()],
+) -> PdfPreview:
+    if Path(file.filename or "").suffix.casefold() != ".pdf":
+        raise HTTPException(status_code=415, detail="Use a .pdf file for PDF preview")
+    require_pdf_rights(await get_license(session, license_code))
+    content = await read_upload(file)
+    pdf = await inspect_upload(content)
+    store = LocalBlobStore(settings.blob_dir)
+    # Preview never commits, creates blobs or enqueues jobs. Any lazy legacy hash
+    # backfill is rolled back when the request session closes.
+    await lock_corpus_writes(session)
+    match = await find_content_duplicate(session, content_hash(content), store)
+    if match is None:
+        match = await find_pdf_text_duplicate(session, pdf.text_sha256, store)
+    titles = await find_title_candidates(session, pdf.title)
+    journals, genres = await reference_choices(session)
+    return PdfPreview(
+        page_count=pdf.page_count,
+        parser_version=PARSER_VERSION,
+        suggested_title=pdf.title,
+        suggested_authors=list(pdf.authors),
+        doi_candidates=list(pdf.doi_candidates),
+        warnings=list(pdf.warnings),
+        duplicate=match.detail(external_id=None, title=pdf.title) if match else None,
+        suspected_duplicates=[row.detail(external_id=None, title=pdf.title) for row in titles],
+        journals=journals,
+        genres=genres,
+    )
+
+
+@admin_router.get("/corpus/articles/{article_id}/metadata", response_model=ArticleMetadataRead)
+async def article_metadata(
+    article_id: UUID, session: DatabaseSession, _actor: Curator
+) -> ArticleMetadataRead:
+    article = await session.get(Article, article_id)
+    if article is None:
+        raise HTTPException(status_code=404, detail="Article not found")
+    result = ArticleMetadataRead.model_validate(article)
+    license_row = await session.get(License, article.license_id)
+    return result.model_copy(update={"license_code": license_row.code if license_row else None})
 
 
 @admin_router.get("/corpus/import-profiles", response_model=list[ImportProfileRead])
@@ -106,6 +166,16 @@ async def upload_article(
     license_code: Annotated[str, Form()],
     title: Annotated[str | None, Form()] = None,
     doi: Annotated[str | None, Form()] = None,
+    metadata_json: Annotated[
+        str | None,
+        Form(
+            description=(
+                "PDF metadata JSON: title, doi, authors, publication_year, "
+                "journal_id, genre_id, source_url"
+            )
+        ),
+    ] = None,
+    metadata_reviewed: Annotated[bool, Form()] = False,
 ) -> dict[str, str]:
     suffix = Path(file.filename or "").suffix.casefold()
     if suffix not in _ALLOWED_SUFFIXES:
@@ -113,13 +183,50 @@ async def upload_article(
             status_code=415, detail="Supported formats are TXT, Markdown, XML/JATS, and PDF"
         )
     license_row = await get_license(session, license_code)
-    content = await file.read()
+    if suffix == ".pdf":
+        require_pdf_rights(license_row)
+        content = await read_upload(file)
+    else:
+        prefix = await file.read(5)
+        if prefix == b"%PDF-":
+            raise HTTPException(status_code=415, detail="PDF documents must use the .pdf extension")
+        content = prefix + await file.read()
+    pdf = None
+    metadata = None
+    if suffix == ".pdf":
+        if not metadata_reviewed or metadata_json is None:
+            raise HTTPException(status_code=422, detail="Review and confirm PDF metadata first")
+        try:
+            metadata = PdfMetadata.model_validate_json(metadata_json)
+        except ValidationError as error:
+            fields = sorted(
+                {
+                    ".".join(str(part) for part in item["loc"]) or "metadata_json"
+                    for item in error.errors(include_input=False, include_context=False)
+                }
+            )
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "invalid_pdf_metadata",
+                    "message": f"Check PDF metadata fields: {', '.join(fields)}.",
+                },
+            ) from error
+        if title is not None and title.strip() != metadata.title:
+            raise HTTPException(status_code=422, detail="Conflicting title fields")
+        if doi is not None and (normalize_doi(doi) is None or normalize_doi(doi) != metadata.doi):
+            raise HTTPException(status_code=422, detail="Conflicting DOI fields")
+        title, doi = metadata.title, metadata.doi
+        await validate_metadata_references(session, metadata)
+        pdf = await inspect_upload(content)
     blob_store = LocalBlobStore(settings.blob_dir)
     await lock_corpus_writes(session)
     match = await find_metadata_duplicate(session, source="upload", external_id=None, doi=doi)
     digest = content_hash(content)
     if match is None:
         match = await find_content_duplicate(session, digest, blob_store)
+    if match is None and pdf is not None:
+        match = await find_pdf_text_duplicate(session, pdf.text_sha256, blob_store)
     if match is not None:
         raise HTTPException(
             status_code=409,
@@ -142,6 +249,8 @@ async def upload_article(
             request_id=request.state.request_id,
             doi=doi,
             content_sha256=digest,
+            pdf=pdf,
+            metadata=metadata,
         )
     except BaseException:
         blob_store.delete(blob_key)

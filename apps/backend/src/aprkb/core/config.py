@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     # Nguồn bài báo ngoài (ADR-0005): chỉ worker gọi, mặc định "null" (không nhập gì).
     article_source: str = "null"
     article_import_batch_limit: int = 20
+    pdf_max_upload_bytes: int = Field(default=50 * 1024 * 1024, gt=0)
+    pdf_max_pages: int = Field(default=300, gt=0)
+    pdf_max_text_chars: int = Field(default=2_000_000, gt=0)
+    pdf_max_page_stream_bytes: int = Field(default=20 * 1024 * 1024, gt=0)
     slr_api_base_url: str = "https://slr-api.hyperdatalab.org/api"
     slr_api_key: SecretStr | None = None
     slr_timeout_seconds: float = 30

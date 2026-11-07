@@ -157,6 +157,195 @@
         "title": "ArticleImportCreate",
         "type": "object"
       },
+      "ArticleMetadataRead": {
+        "properties": {
+          "authors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Authors",
+            "type": "array"
+          },
+          "content_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Sha256"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "genre_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingest_status": {
+            "title": "Ingest Status",
+            "type": "string"
+          },
+          "journal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal Id"
+          },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "license_id": {
+            "format": "uuid",
+            "title": "License Id",
+            "type": "string"
+          },
+          "metadata_provenance": {
+            "additionalProperties": true,
+            "title": "Metadata Provenance",
+            "type": "object"
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Count"
+          },
+          "parser_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parser Version"
+          },
+          "pdf_text_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf Text Sha256"
+          },
+          "publication_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publication Year"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "external_id",
+          "title",
+          "doi",
+          "authors",
+          "publication_year",
+          "journal_id",
+          "genre_id",
+          "source_url",
+          "page_count",
+          "parser_version",
+          "metadata_provenance",
+          "ingest_status",
+          "license_id",
+          "content_sha256",
+          "pdf_text_sha256"
+        ],
+        "title": "ArticleMetadataRead",
+        "type": "object"
+      },
       "ArticleRowRead": {
         "properties": {
           "batch_id": {
@@ -345,6 +534,25 @@
         "title": "BatchRead",
         "type": "object"
       },
+      "Body_preview_pdf_v1_admin_corpus_pdf_preview_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "license_code": {
+            "title": "License Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "license_code"
+        ],
+        "title": "Body_preview_pdf_v1_admin_corpus_pdf_preview_post",
+        "type": "object"
+      },
       "Body_upload_article_v1_admin_corpus_articles_post": {
         "properties": {
           "doi": {
@@ -366,6 +574,23 @@
           "license_code": {
             "title": "License Code",
             "type": "string"
+          },
+          "metadata_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "PDF metadata JSON: title, doi, authors, publication_year, journal_id, genre_id, source_url",
+            "title": "Metadata Json"
+          },
+          "metadata_reviewed": {
+            "default": false,
+            "title": "Metadata Reviewed",
+            "type": "boolean"
           },
           "title": {
             "anyOf": [
@@ -3297,6 +3522,122 @@
         "title": "PatternVersionRead",
         "type": "object"
       },
+      "PdfPreview": {
+        "properties": {
+          "doi_candidates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Doi Candidates",
+            "type": "array"
+          },
+          "duplicate": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate"
+          },
+          "genres": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Genres",
+            "type": "array"
+          },
+          "journals": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Journals",
+            "type": "array"
+          },
+          "page_count": {
+            "title": "Page Count",
+            "type": "integer"
+          },
+          "parser_version": {
+            "title": "Parser Version",
+            "type": "string"
+          },
+          "suggested_authors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested Authors",
+            "type": "array"
+          },
+          "suggested_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Title"
+          },
+          "suspected_duplicates": {
+            "items": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Suspected Duplicates",
+            "type": "array"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "page_count",
+          "parser_version",
+          "suggested_title",
+          "suggested_authors",
+          "doi_candidates",
+          "warnings",
+          "duplicate",
+          "suspected_duplicates",
+          "journals",
+          "genres"
+        ],
+        "title": "PdfPreview",
+        "type": "object"
+      },
       "PhraseCounts": {
         "properties": {
           "accepted": {
@@ -4730,6 +5071,17 @@
             ],
             "title": "Heading"
           },
+          "page_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Number"
+          },
           "section_code": {
             "anyOf": [
               {
@@ -5806,6 +6158,65 @@
         ]
       }
     },
+    "/v1/admin/corpus/articles/{article_id}/metadata": {
+      "get": {
+        "operationId": "article_metadata_v1_admin_corpus_articles__article_id__metadata_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "article_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Article Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleMetadataRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Article Metadata",
+        "tags": [
+          "admin corpus and jobs"
+        ]
+      }
+    },
     "/v1/admin/corpus/articles/{article_id}/mine": {
       "post": {
         "operationId": "mine_article_v1_admin_corpus_articles__article_id__mine_post",
@@ -6336,6 +6747,65 @@
         "summary": "Mine",
         "tags": [
           "extraction"
+        ]
+      }
+    },
+    "/v1/admin/corpus/pdf/preview": {
+      "post": {
+        "operationId": "preview_pdf_v1_admin_corpus_pdf_preview_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_preview_pdf_v1_admin_corpus_pdf_preview_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Pdf",
+        "tags": [
+          "admin corpus and jobs"
         ]
       }
     },

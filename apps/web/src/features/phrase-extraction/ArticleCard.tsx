@@ -73,6 +73,7 @@ export function ArticleCard({ article, open, filtered, sourceSentenceIds, onTogg
               text.data.sections.map((section, index) => (
                 <section key={`${article.id}-${index}`} className="mb-4 last:mb-0">
                   {section.heading ? <h3 className="mb-1 font-medium">{section.heading}</h3> : null}
+                  {section.page_number ? <p className="mb-1 text-xs text-muted-foreground">PDF page {section.page_number}</p> : null}
                   <p>
                     {section.sentences.map((sentence) => (
                       <span key={sentence.id}>

@@ -176,6 +176,7 @@ jobs:
       WRITER_E2E_BASE_URL: http://127.0.0.1:5173
       VITE_API_PROXY_TARGET: http://127.0.0.1:8016
       ONLINE_RANKING_LIVE: "1"
+      PDF_IMPORT_LIVE: "1"
       PLAYWRIGHT_JUNIT_OUTPUT_FILE: test-results/results.xml
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

@@ -122,6 +122,8 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/admin/corpus/articles", "post"),
         ("/v1/admin/corpus/articles/{id}/mine", "post"),
         ("/v1/admin/corpus/imports", "post"),
+        ("/v1/admin/corpus/pdf/preview", "post"),
+        ("/v1/admin/corpus/articles/{id}/metadata", "get"),
         ("/v1/admin/corpus/import-profiles", "get"),
         ("/v1/admin/corpus/import-profiles", "post"),
         ("/v1/admin/corpus/import-profiles/{id}", "get"),

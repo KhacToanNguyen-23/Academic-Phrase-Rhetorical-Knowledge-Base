@@ -43,6 +43,15 @@ class Article(MutableEntityMixin, Base):
     doi_key: Mapped[str | None] = mapped_column(String(255), index=True)
     title_key: Mapped[str | None] = mapped_column(String(64), index=True)
     content_sha256: Mapped[str | None] = mapped_column(String(64), index=True)
+    pdf_text_sha256: Mapped[str | None] = mapped_column(String(64), index=True)
+    authors: Mapped[list[str]] = mapped_column(JSONB, default=list, server_default="[]")
+    publication_year: Mapped[int | None] = mapped_column(Integer)
+    source_url: Mapped[str | None] = mapped_column(String(2048))
+    page_count: Mapped[int | None] = mapped_column(Integer)
+    parser_version: Mapped[str | None] = mapped_column(String(128))
+    metadata_provenance: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, server_default="{}"
+    )
     journal_id: Mapped[UUID | None] = mapped_column(ForeignKey("journal_profiles.id"))
     genre_id: Mapped[UUID | None] = mapped_column(ForeignKey("article_genres.id"))
     license_id: Mapped[UUID] = mapped_column(ForeignKey("licenses.id"))
@@ -66,6 +75,7 @@ class ArticleSection(EntityMixin, Base):
     section_code: Mapped[str | None] = mapped_column(String(64))
     heading: Mapped[str | None] = mapped_column(Text)
     order: Mapped[int] = mapped_column(Integer)
+    page_number: Mapped[int | None] = mapped_column(Integer)
 
 
 class Sentence(EntityMixin, Base):

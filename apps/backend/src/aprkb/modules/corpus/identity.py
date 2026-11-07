@@ -24,6 +24,12 @@ def content_hash(content: bytes) -> str:
     return sha256(content).hexdigest()
 
 
+def pdf_text_hash(text: str) -> str:
+    """Exact text identity, preserving case, exponents, symbols and punctuation."""
+    normalized = " ".join(unicodedata.normalize("NFC", text).split())
+    return content_hash(normalized.encode("utf-8"))
+
+
 def title_identity(value: str | None) -> str | None:
     normalized = normalize_title(value)
     return content_hash(normalized.encode("utf-8")) if normalized else None

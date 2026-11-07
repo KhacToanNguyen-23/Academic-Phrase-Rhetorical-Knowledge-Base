@@ -171,7 +171,7 @@ async def get_article_with_license(
 
 async def article_sentences(
     session: AsyncSession, article_id: UUID
-) -> list[tuple[UUID, str, str | None, str | None, int | None]]:
+) -> list[tuple[UUID, str, str | None, str | None, int | None, int | None]]:
     rows = (
         await session.execute(
             select(
@@ -180,13 +180,14 @@ async def article_sentences(
                 ArticleSection.heading,
                 ArticleSection.section_code,
                 ArticleSection.order,
+                ArticleSection.page_number,
             )
             .outerjoin(ArticleSection, ArticleSection.id == Sentence.article_section_id)
             .where(Sentence.article_id == article_id)
             .order_by(ArticleSection.order.nulls_last(), Sentence.char_start, Sentence.id)
         )
     ).all()
-    return [(r[0], r[1], r[2], r[3], r[4]) for r in rows]
+    return [(r[0], r[1], r[2], r[3], r[4], r[5]) for r in rows]
 
 
 def phrase_filter(status: str, scope: ColumnElement[bool] | None) -> list[ColumnElement[bool]]:

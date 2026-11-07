@@ -41,6 +41,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/corpus/articles/{article_id}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Article Metadata */
+        get: operations["article_metadata_v1_admin_corpus_articles__article_id__metadata_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/corpus/articles/{article_id}/mine": {
         parameters: {
             query?: never;
@@ -156,6 +173,23 @@ export interface paths {
         put?: never;
         /** Mine */
         post: operations["mine_v1_admin_corpus_mine_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/corpus/pdf/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Pdf */
+        post: operations["preview_pdf_v1_admin_corpus_pdf_preview_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1027,6 +1061,53 @@ export interface components {
             /** Profile Id */
             profile_id?: string | null;
         };
+        /** ArticleMetadataRead */
+        ArticleMetadataRead: {
+            /** Authors */
+            authors: string[];
+            /** Content Sha256 */
+            content_sha256: string | null;
+            /** Doi */
+            doi: string | null;
+            /** External Id */
+            external_id: string | null;
+            /** Genre Id */
+            genre_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ingest Status */
+            ingest_status: string;
+            /** Journal Id */
+            journal_id: string | null;
+            /** License Code */
+            license_code?: string | null;
+            /**
+             * License Id
+             * Format: uuid
+             */
+            license_id: string;
+            /** Metadata Provenance */
+            metadata_provenance: {
+                [key: string]: unknown;
+            };
+            /** Page Count */
+            page_count: number | null;
+            /** Parser Version */
+            parser_version: string | null;
+            /** Pdf Text Sha256 */
+            pdf_text_sha256: string | null;
+            /** Publication Year */
+            publication_year: number | null;
+            /** Source */
+            source: string;
+            /** Source Url */
+            source_url: string | null;
+            /** Title */
+            title: string | null;
+        };
         /** ArticleRowRead */
         ArticleRowRead: {
             /** Batch Id */
@@ -1092,6 +1173,13 @@ export interface components {
             /** Ready */
             ready: number;
         };
+        /** Body_preview_pdf_v1_admin_corpus_pdf_preview_post */
+        Body_preview_pdf_v1_admin_corpus_pdf_preview_post: {
+            /** File */
+            file: string;
+            /** License Code */
+            license_code: string;
+        };
         /** Body_upload_article_v1_admin_corpus_articles_post */
         Body_upload_article_v1_admin_corpus_articles_post: {
             /** Doi */
@@ -1100,6 +1188,16 @@ export interface components {
             file: string;
             /** License Code */
             license_code: string;
+            /**
+             * Metadata Json
+             * @description PDF metadata JSON: title, doi, authors, publication_year, journal_id, genre_id, source_url
+             */
+            metadata_json?: string | null;
+            /**
+             * Metadata Reviewed
+             * @default false
+             */
+            metadata_reviewed: boolean;
             /** Title */
             title?: string | null;
         };
@@ -2093,6 +2191,37 @@ export interface components {
             /** Version No */
             version_no: number;
         };
+        /** PdfPreview */
+        PdfPreview: {
+            /** Doi Candidates */
+            doi_candidates: string[];
+            /** Duplicate */
+            duplicate: {
+                [key: string]: string | null;
+            } | null;
+            /** Genres */
+            genres: {
+                [key: string]: string;
+            }[];
+            /** Journals */
+            journals: {
+                [key: string]: string;
+            }[];
+            /** Page Count */
+            page_count: number;
+            /** Parser Version */
+            parser_version: string;
+            /** Suggested Authors */
+            suggested_authors: string[];
+            /** Suggested Title */
+            suggested_title: string | null;
+            /** Suspected Duplicates */
+            suspected_duplicates: {
+                [key: string]: string | null;
+            }[];
+            /** Warnings */
+            warnings: string[];
+        };
         /** PhraseCounts */
         PhraseCounts: {
             /**
@@ -2565,6 +2694,8 @@ export interface components {
         SectionText: {
             /** Heading */
             heading: string | null;
+            /** Page Number */
+            page_number?: number | null;
             /** Section Code */
             section_code: string | null;
             /** Sentences */
@@ -2989,6 +3120,39 @@ export interface operations {
             };
         };
     };
+    article_metadata_v1_admin_corpus_articles__article_id__metadata_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                article_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleMetadataRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     mine_article_v1_admin_corpus_articles__article_id__mine_post: {
         parameters: {
             query?: never;
@@ -3283,6 +3447,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MineResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_pdf_v1_admin_corpus_pdf_preview_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_preview_pdf_v1_admin_corpus_pdf_preview_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PdfPreview"];
                 };
             };
             /** @description Validation Error */

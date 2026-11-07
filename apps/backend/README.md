@@ -32,7 +32,7 @@ uv run uvicorn aprkb.api.main:app --reload
 uv run python -m aprkb.worker.runner
 ```
 
-The worker command runs continuously and polls for queued jobs. Use a separate terminal from the API. `BLOB_DIR` defaults to `./data/blobs`. Plain UTF-8 `.txt` files use the working parser. PDF and JATS/XML parser adapters deliberately raise `NotImplementedError` with `TODO(owner)` markers.
+The worker command runs continuously and polls for queued jobs. Use a separate terminal from the API. `BLOB_DIR` defaults to `./data/blobs`. Plain UTF-8 `.txt` files use the working parser. Text-layer PDF is parsed locally with pypdf; image-only/encrypted PDFs return actionable errors. JATS/XML remains a stub. See [PDF import and metadata](../../doc/pdf-import.md).
 
 For PostgreSQL integration tests, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`, for example:
 

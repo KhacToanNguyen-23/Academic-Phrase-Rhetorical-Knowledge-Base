@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/domain/PageHeader";
 import { StatusBadge } from "@/components/domain/StatusBadge";
 import { cn } from "@/lib/utils";
 import { ApiError, slrImportClient, unwrap } from "../api/client";
+import { PdfImportCard } from "./PdfImportCard";
 
 const kinds = ["FULLTEXT_MARKDOWN", "FETCHER_FULLTEXT_MARKDOWN", "SOURCE_PDF"] as const;
 type Kind = (typeof kinds)[number];
@@ -253,9 +254,10 @@ export function SlrImportPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        title="SLR import"
-        description="Configure source filters, save a profile, and monitor each import job to completion."
+        title="Corpus import"
+        description="Import a reviewed PDF or fetch articles from SLR, then monitor processing jobs."
       />
+      <PdfImportCard />
       <div
         className={cn(
           "mx-auto grid w-full max-w-[1152px]",

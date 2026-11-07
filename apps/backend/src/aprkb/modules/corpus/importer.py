@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from aprkb.core.logging import get_logger
 from aprkb.modules.audit.service import record_event
@@ -16,11 +17,13 @@ from aprkb.modules.corpus.blobstore import BlobStore
 from aprkb.modules.corpus.dedup import (
     find_content_duplicate,
     find_metadata_duplicate,
+    find_pdf_text_duplicate,
     find_title_candidates,
     lock_corpus_writes,
 )
 from aprkb.modules.corpus.identity import content_hash
 from aprkb.modules.corpus.models import Article, License
+from aprkb.modules.corpus.parsers.pdf_parser import PARSER_VERSION, PdfInputError, inspect_pdf
 from aprkb.modules.corpus.sources import (
     ArticleSource,
     ImportOptions,
@@ -107,7 +110,16 @@ async def import_page(
                 logger.info("Skip %s: invalid content (%s)", ref.external_id, error)
                 continue
             digest = content_hash(content)
+            pdf = None
+            if suffix == ".pdf":
+                try:
+                    pdf = await run_in_threadpool(inspect_pdf, content)
+                except PdfInputError:
+                    summary.skipped_invalid_content += 1
+                    continue
             match = await find_content_duplicate(session, digest, blob_store)
+            if match is None and pdf is not None:
+                match = await find_pdf_text_duplicate(session, pdf.text_sha256, blob_store)
             if match is not None:
                 summary.skipped_duplicate += 1
                 summary.duplicates.append(
@@ -129,6 +141,20 @@ async def import_page(
                     external_id=ref.external_id,
                     doi=ref.doi,
                     content_sha256=digest,
+                    pdf_text_sha256=pdf.text_sha256 if pdf else None,
+                    page_count=pdf.page_count if pdf else None,
+                    parser_version=PARSER_VERSION if pdf else None,
+                    metadata_provenance={
+                        "method": "source-metadata",
+                        "source": source.name,
+                        "pdf_suggestions": {
+                            "title": pdf.title,
+                            "authors": list(pdf.authors),
+                            "doi_candidates": list(pdf.doi_candidates),
+                        }
+                        if pdf
+                        else {},
+                    },
                     title=ref.title,
                     license_id=license_row.id,
                     blob_key=blob_key,

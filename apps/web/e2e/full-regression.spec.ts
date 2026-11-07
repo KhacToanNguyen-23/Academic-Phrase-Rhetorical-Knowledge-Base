@@ -7,7 +7,7 @@ const screens = [
   ["/phrasebank", "Phrasebank"], ["/vocabulary", "Academic vocabulary"],
   ["/journals", "Journal profiles"], ["/inbox", "Inbox"],
   ["/gold", "Gold review"], ["/extract", "Phrase extraction"],
-  ["/import", "SLR import"],
+  ["/import", "SLR import"], ["/jobs", "Jobs"],
   ["/playground", "Playground"],
   ["/admin", "Administration"],
 ] as const;

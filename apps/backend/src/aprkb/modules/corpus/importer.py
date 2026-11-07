@@ -28,6 +28,7 @@ from aprkb.modules.corpus.sources import (
     suffix_for_content_type,
 )
 from aprkb.modules.mining.models import Job
+from aprkb.worker.progress import report_progress
 
 IMPORT_JOB_TYPE = "import_articles"
 MAX_IMPORT_BATCH_LIMIT = 100
@@ -62,13 +63,16 @@ async def import_page(
 ) -> ImportSummary:
     options = options or ImportOptions(filters={}, artifact_kinds=())
     batch_id = batch_id or job_id
+    await report_progress("listing_articles")
     page = await source.list_articles(cursor=cursor, limit=limit, options=options)
+    await report_progress("checking_duplicates", 0, len(page.articles))
     await lock_corpus_writes(session)
     summary = ImportSummary(listed=len(page.articles), next_cursor=page.next_cursor)
     licenses = {row.code: row for row in await session.scalars(select(License))}
     written_keys: list[str] = []
     try:
-        for ref in page.articles:
+        for index, ref in enumerate(page.articles):
+            await report_progress("checking_duplicates", index, len(page.articles))
             license_row = licenses.get(ref.license_code) if ref.license_code else None
             if license_row is None or not license_row.allows_mining:
                 summary.skipped_license += 1
@@ -95,6 +99,7 @@ async def import_page(
             candidates = await find_title_candidates(session, ref.title)
 
             try:
+                await report_progress("fetching_content", index, len(page.articles))
                 content = await source.fetch_content(ref)
             except InvalidContentError as error:
                 summary.skipped_invalid_content += 1
@@ -148,6 +153,7 @@ async def import_page(
                 len(content),
             )
 
+        await report_progress("saving_import_page", len(page.articles), len(page.articles))
         if page.next_cursor is not None:
             continuation = Job(
                 type=IMPORT_JOB_TYPE,

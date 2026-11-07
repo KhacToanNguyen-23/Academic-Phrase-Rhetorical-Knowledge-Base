@@ -1,7 +1,7 @@
 """Admin corpus upload, mining enqueue and worker-job status endpoints."""
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from fastapi import (
@@ -15,6 +15,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.core.config import settings
@@ -32,7 +33,11 @@ from aprkb.modules.corpus.schemas import (
     ImportProfileCreate,
     ImportProfileRead,
     ImportProfileUpdate,
+    JobAlertAcknowledge,
+    JobAlertRead,
+    JobAttemptRead,
     JobRead,
+    JobRetryRequest,
     SlrTaxonomyPage,
 )
 from aprkb.modules.corpus.service import (
@@ -47,7 +52,8 @@ from aprkb.modules.corpus.service import (
 )
 from aprkb.modules.corpus.sources import build_article_source
 from aprkb.modules.identity.models import ApiClient
-from aprkb.modules.mining.models import Job
+from aprkb.modules.mining.models import Job, JobAlert, JobAttempt
+from aprkb.modules.mining.operations import acknowledge_alert, retry_manually
 
 admin_router = APIRouter(tags=["admin corpus and jobs"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -190,15 +196,105 @@ async def get_job(job_id: UUID, _actor: Curator, session: DatabaseSession) -> Jo
     job = await session.get(Job, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    return JobRead(
-        id=job.id,
-        type=job.type,
-        status=job.status,
-        attempts=job.attempts,
-        error=job.error,
-        result=job.result,
-        created_at=job.created_at,
-        updated_at=job.updated_at,
+    return _job_read(job)
+
+
+def _job_read(job: Job) -> JobRead:
+    return JobRead.model_validate(job).model_copy(
+        update={
+            "manual_retry_limit": settings.job_manual_retry_limit,
+        }
+    )
+
+
+@admin_router.get("/jobs", response_model=list[JobRead])
+async def list_jobs(
+    _actor: Curator,
+    session: DatabaseSession,
+    status: Literal["queued", "processing", "succeeded", "failed"] | None = None,
+    job_type: str | None = Query(default=None, max_length=64),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> list[JobRead]:
+    query = select(Job).order_by(Job.created_at.desc(), Job.id.desc()).limit(limit).offset(offset)
+    if status is not None:
+        query = query.where(Job.status == status)
+    if job_type is not None:
+        query = query.where(Job.type == job_type)
+    return [_job_read(job) for job in await session.scalars(query)]
+
+
+@admin_router.get("/jobs/{job_id}/attempts", response_model=list[JobAttemptRead])
+async def job_attempt_history(
+    job_id: UUID,
+    _actor: Curator,
+    session: DatabaseSession,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> list[JobAttemptRead]:
+    if await session.get(Job, job_id) is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    rows = await session.scalars(
+        select(JobAttempt)
+        .where(JobAttempt.job_id == job_id)
+        .order_by(JobAttempt.attempt_no.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return [JobAttemptRead.model_validate(row) for row in rows]
+
+
+@admin_router.post("/jobs/{job_id}/retry", response_model=JobRead)
+async def manual_job_retry(
+    job_id: UUID,
+    payload: JobRetryRequest,
+    request: Request,
+    session: DatabaseSession,
+    actor: Curator,
+) -> JobRead:
+    return _job_read(
+        await retry_manually(
+            session,
+            job_id=job_id,
+            expected_attempts=payload.expected_attempts,
+            rationale=payload.rationale,
+            actor=actor,
+            request_id=request.state.request_id,
+        )
+    )
+
+
+@admin_router.get("/job-alerts", response_model=list[JobAlertRead])
+async def list_job_alerts(
+    _actor: Curator,
+    session: DatabaseSession,
+    active_only: bool = True,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> list[JobAlertRead]:
+    query = select(JobAlert).order_by(JobAlert.last_failed_at.desc(), JobAlert.id.desc())
+    if active_only:
+        query = query.where(JobAlert.active.is_(True))
+    rows = await session.scalars(query.limit(limit).offset(offset))
+    return [JobAlertRead.model_validate(row) for row in rows]
+
+
+@admin_router.post("/job-alerts/{alert_id}/acknowledge", response_model=JobAlertRead)
+async def acknowledge_job_alert(
+    alert_id: UUID,
+    payload: JobAlertAcknowledge,
+    request: Request,
+    session: DatabaseSession,
+    actor: Curator,
+) -> JobAlertRead:
+    return JobAlertRead.model_validate(
+        await acknowledge_alert(
+            session,
+            alert_id=alert_id,
+            expected_last_failed_at=payload.expected_last_failed_at,
+            actor=actor,
+            request_id=request.state.request_id,
+        )
     )
 
 

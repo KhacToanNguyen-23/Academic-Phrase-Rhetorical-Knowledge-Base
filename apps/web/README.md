@@ -95,3 +95,10 @@ phrase collection, without promoting a writing suggestion. Decisions cannot be c
 Database-free regression checks (with Vite running):
 `pnpm exec playwright test e2e/extraction.spec.ts`. These tests mock the API; they do not
 verify database persistence or worker execution.
+
+`/jobs` is the live curator/admin operations page, linked from Import. It shows job
+filters, last stage/counts, heartbeat and scheduled retry, attempt history, in-app
+failure alerts, acknowledgement and one-attempt manual retry with rationale. Apply
+backend migration `0013_job_operations` before using it. The UI-contract tests in
+`e2e/jobs.spec.ts` use API fixtures; backend operations tests use real isolated
+PostgreSQL schemas. See [ADR-0014](../../doc/adr/0014-job-operations.md).

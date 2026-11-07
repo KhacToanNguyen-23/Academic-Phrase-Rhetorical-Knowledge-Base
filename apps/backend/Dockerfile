@@ -12,13 +12,15 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_PROJECT_ENVIRONMENT=/app/.venv
 
 # Install locked, non-dev dependencies before copying source so dependency layers
-# only rebuild when pyproject.toml/uv.lock change.
-COPY pyproject.toml uv.lock ./
+# only rebuild when pyproject.toml/uv.lock change. The root build context includes
+# only the taxonomy/reference seed assets needed by the production initializer.
+COPY apps/backend/pyproject.toml apps/backend/uv.lock ./
 RUN uv sync --locked --no-install-project --no-dev
 
-COPY src ./src
-COPY alembic.ini ./alembic.ini
-COPY migrations ./migrations
+COPY apps/backend/src ./src
+COPY apps/backend/alembic.ini ./alembic.ini
+COPY apps/backend/migrations ./migrations
+COPY data/seed/taxonomy.json data/seed/reference_enums.json ./data/seed/
 RUN uv sync --locked --no-dev
 
 FROM python:3.12-slim@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30 AS runtime
@@ -36,6 +38,10 @@ COPY --from=build --chown=aprkb:aprkb /app /app
 # digest against what each workload is actually running.
 ARG GIT_COMMIT_SHA=unknown
 ENV BUILD_COMMIT_SHA=${GIT_COMMIT_SHA}
+
+# Blob volume mount point: pre-create it owned by the runtime user so the named
+# volume in docker-compose.prod.yml inherits writable ownership.
+RUN mkdir -p /app/data/blobs && chown -R aprkb:aprkb /app/data
 
 USER aprkb
 EXPOSE 8000

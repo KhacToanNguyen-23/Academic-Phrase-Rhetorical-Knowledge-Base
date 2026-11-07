@@ -9,6 +9,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 
+import { JobsPage } from "@/features/jobs/JobsPage";
 import { AdminPage } from "@/features/admin";
 import { useAuth, type AuthContextValue } from "@/features/auth/AuthProvider";
 import { SigninPage } from "@/features/auth/SigninPage";
@@ -111,6 +112,13 @@ const playground = createRoute({
   component: () => <PlaygroundPage patternId={getRouteApi("/shell/guarded/playground").useSearch().pattern} />,
 });
 
+function JobsRoute() {
+  const auth = useAuth();
+  const search = getRouteApi("/shell/guarded/jobs").useSearch();
+  return auth.apiKey && auth.client ? <JobsPage key={`${auth.client.id}:${search.job ?? ""}`} apiKey={auth.apiKey} actorId={auth.client.id} role={auth.client.role} initialJob={search.job} /> : null;
+}
+const jobs = createRoute({ getParentRoute: () => guarded, path: "/jobs", validateSearch: (s: Record<string, unknown>): { job?: string } => ({ job: str(s.job) }), component: JobsRoute });
+
 function WriterRoute() {
   const search = getRouteApi("/shell/writer").useSearch();
   const initialContext = {
@@ -202,6 +210,7 @@ export const router = createRouter({
         admin,
         slrImport,
         extract,
+        jobs,
         gold,
         vocabulary,
         vocabularyLemma,

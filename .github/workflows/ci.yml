@@ -89,7 +89,7 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint frontend (zero warnings)
-        run: pnpm lint
+        run: pnpm lint --max-warnings 0
       - name: Check generated API types
         run: pnpm gen:api
       - name: Ensure generated API types are current
@@ -115,7 +115,7 @@ jobs:
         run: |
           docker build -f apps/backend/Dockerfile \
             --build-arg GIT_COMMIT_SHA="${{ github.sha }}" \
-            -t "$BACKEND_IMAGE" apps/backend
+            -t "$BACKEND_IMAGE" .
           echo "Built digest: $(docker image inspect --format '{{.Id}}' "$BACKEND_IMAGE")"
       - name: Build-context canary (secrets/caches/blobs/test output must not leak in)
         run: bash scripts/ci/container-canary.sh
@@ -129,6 +129,7 @@ jobs:
             docker exec pg pg_isready -U aprkb -d aprkb_ci && break
             sleep 1
           done
+          docker exec pg pg_isready -U aprkb -d aprkb_ci
       - name: API container smoke (same digest as worker smoke below)
         run: |
           echo "Smoking digest: $(docker image inspect --format '{{.Id}}' "$BACKEND_IMAGE")"
@@ -225,6 +226,7 @@ jobs:
           # and WRITER_E2E_BASE_URL below would never be able to reach.
           pnpm exec vite --host 127.0.0.1 --port 5173 > /tmp/web.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:5173 && break; sleep 1; done
+          curl --max-time 10 -fsS http://127.0.0.1:5173 >/dev/null
       - name: Run Playwright e2e specs
         working-directory: apps/web
         run: |

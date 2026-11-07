@@ -131,3 +131,23 @@ For both Phrasebank sources and their filter mappings, use the shared [Phraseban
 `modules/pack/` transfers only the PhrasePattern graph. The `approved_phrases` store from ADR-0009 is intentionally out of scope for pack v0.1; pack tooling does not read it. Offline self-check: `uv run python -m aprkb.cli validate-pack <pack-dir>`. On a separate Offline/staging/test destination, run `uv run python -m aprkb.cli init-reference`, then `uv run python -m aprkb.cli import-pack <pack-dir>` (preview with `--dry-run`). These commands write data; do not run them against the active query-only Online database. Export with `uv run python -m aprkb.cli export-pack --out <pack-dir> --only-approved`; it reads the database and reports excluded approved patterns by ID/code/path. See [data pack spec](../../doc/data-pack-spec.md).
 
 The `/v1/reference-library` GET routes serve a quarantined external reference collection from its own tables. They return 404 unless `REFERENCE_LIBRARY_ENABLED=true`. Import and purge are CLI-only (`uv run python -m aprkb.cli import-reference-library --file <path>` and `uv run python -m aprkb.cli purge-reference-library`). Import replacement and its content-free audit event commit together. Imported entries are disconnected from patterns, recommendations, render, and validation. Keep the source notice in the UI and do not treat these entries as approved or redistributable patterns.
+
+## Bounded worker retry
+
+Import, ingestion and mining jobs now schedule bounded retries for transient failures.
+Defaults: four total attempts, 10s exponential backoff capped at 300s with jitter,
+30s heartbeat, 300s lease and 900s asynchronous attempt timeout. `Retry-After` is
+respected as a minimum. See [ADR-0013](../../doc/adr/0013-bounded-job-retry.md) for
+configuration, transaction guarantees and rollout requirements. Drain all old workers
+before applying migration `0012_job_retry`; do not run mixed worker versions.
+Job inspection exposes `max_attempts`, `next_attempt_at` and `error_code`.
+
+## Job operations
+
+See [ADR-0014](../../doc/adr/0014-job-operations.md). Migration `0013_job_operations`
+adds per-attempt history and repeated-failure alerts. Curator/admin users open
+`/jobs` (also linked from Import) for live progress, errors, acknowledgement and
+manual retry after fixing the cause. Manual retry grants one additional attempt,
+preserves history, and defaults to at most three manual retries per job. In-app
+alerts default to three observed failed/interrupted attempts and resolve on success.
+Configure `JOB_MANUAL_RETRY_LIMIT` and `JOB_FAILURE_ALERT_THRESHOLD` if required.

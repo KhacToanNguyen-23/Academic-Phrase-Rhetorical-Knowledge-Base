@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pydantic import SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +29,24 @@ class Settings(BaseSettings):
     reference_library_enabled: bool = False
     # Set by the production image build (BUILD_COMMIT_SHA); never a self-asserted image digest.
     build_commit_sha: str = "unknown"
+
+    job_lease_seconds: float = Field(default=300, gt=0)
+    job_heartbeat_seconds: float = Field(default=30, gt=0)
+    job_timeout_seconds: float = Field(default=900, gt=0)
+    job_retry_base_seconds: float = Field(default=10, gt=0)
+    job_retry_cap_seconds: float = Field(default=300, gt=0)
+    job_manual_retry_limit: int = Field(default=3, ge=1, le=100)
+    job_failure_alert_threshold: int = Field(default=3, ge=1, le=100)
+
+    @model_validator(mode="after")
+    def valid_job_timing(self) -> "Settings":
+        if self.job_heartbeat_seconds >= self.job_lease_seconds / 2:
+            raise ValueError("JOB_HEARTBEAT_SECONDS must be less than half JOB_LEASE_SECONDS")
+        if self.job_retry_base_seconds > self.job_retry_cap_seconds:
+            raise ValueError("JOB_RETRY_BASE_SECONDS must not exceed JOB_RETRY_CAP_SECONDS")
+        if self.job_timeout_seconds <= self.job_heartbeat_seconds:
+            raise ValueError("JOB_TIMEOUT_SECONDS must exceed JOB_HEARTBEAT_SECONDS")
+        return self
 
     # Nguồn bài báo ngoài (ADR-0005): chỉ worker gọi, mặc định "null" (không nhập gì).
     article_source: str = "null"

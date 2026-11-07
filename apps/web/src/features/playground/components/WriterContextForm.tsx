@@ -8,6 +8,7 @@ import type { Journal, Option, Taxonomy } from "../live/api";
 
 export type WriterContext = {
   section: string;
+  move: string;
   intent: string;
   genre: string;
   claimType: string;
@@ -18,6 +19,7 @@ export type WriterContext = {
 
 export const blankContext: WriterContext = {
   section: "",
+  move: "",
   intent: "",
   genre: "",
   claimType: "",
@@ -55,8 +57,10 @@ export function WriterContextForm({
   );
   const section = sections.find((item) => item.code === context.section);
   const intentSections = section ? [section] : sections;
-  const intents = intentSections.flatMap((item) =>
-    item.moves.flatMap((move) => move.steps.flatMap((step) => step.intents)),
+  const scopedMoves = intentSections.flatMap((item) => item.moves);
+  const moves = [...new Map(scopedMoves.map((move) => [move.code, move])).values()];
+  const intents = scopedMoves.filter((move) => !context.move || move.code === context.move).flatMap((move) =>
+    move.steps.flatMap((step) => step.intents),
   );
   const byGroup = (group: string) =>
     options.filter((item) => item.group === group).map((item) => ({ value: item.code, label: item.label }));
@@ -84,7 +88,7 @@ export function WriterContextForm({
                 value={context.genre}
                 anyLabel="Any genre"
                 options={taxonomy.article_genres.map((item) => ({ value: item.code, label: item.name }))}
-                onChange={(genre) => onChange({ ...context, genre, section: "", intent: "" })}
+                onChange={(genre) => onChange({ ...context, genre, section: "", move: "", intent: "" })}
               />
               <SelectField
                 id="writer-section"
@@ -92,7 +96,15 @@ export function WriterContextForm({
                 value={context.section}
                 anyLabel="Any section"
                 options={sections.map((item) => ({ value: item.code, label: item.name }))}
-                onChange={(next) => onChange({ ...context, section: next, intent: "" })}
+                onChange={(next) => onChange({ ...context, section: next, move: "", intent: "" })}
+              />
+              <SelectField
+                id="writer-move"
+                label="Rhetorical move"
+                value={context.move}
+                anyLabel="Any move"
+                options={moves.map((move) => ({ value: move.code, label: move.name }))}
+                onChange={(move) => onChange({ ...context, move, intent: "" })}
               />
               <SelectField
                 id="writer-intent"

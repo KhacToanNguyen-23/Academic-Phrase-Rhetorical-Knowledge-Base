@@ -128,7 +128,7 @@ export function PlaygroundPage({ patternId }: { patternId?: string }) {
         description="Replay one Writing Engine call: recommend a frame, render it with the author's content, then
           validate. Each step shows the exact request and response."
       />
-      <div className="grid grid-cols-[20rem_1fr] items-start gap-6">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[20rem_minmax(0,1fr)] [&>*]:min-w-0">
         <Card>
           <CardHeader>
             <CardTitle>Context sent by Writing</CardTitle>
@@ -469,7 +469,7 @@ function Step({
   return (
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <CardTitle>{title}</CardTitle>
           <Badge variant={done ? "success" : "secondary"}>{done ? "200 OK" : "Idle"}</Badge>
           <code className="text-sm text-muted-foreground">{endpoint}</code>
@@ -481,7 +481,7 @@ function Step({
         {json && (
           <details>
             <summary className="cursor-pointer text-sm text-muted-foreground">Request and response</summary>
-            <div className="mt-3 grid grid-cols-2 gap-4">{json}</div>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">{json}</div>
           </details>
         )}
       </CardContent>

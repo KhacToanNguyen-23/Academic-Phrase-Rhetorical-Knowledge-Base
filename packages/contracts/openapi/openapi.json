@@ -695,6 +695,64 @@
         "title": "DomainStatRead",
         "type": "object"
       },
+      "ExplanationDetail": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "criterion": {
+            "title": "Criterion",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "weight": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "criterion",
+          "value",
+          "weight",
+          "available"
+        ],
+        "title": "ExplanationDetail",
+        "type": "object"
+      },
+      "FallbackTraceEntry": {
+        "properties": {
+          "accepted_count": {
+            "minimum": 0.0,
+            "title": "Accepted Count",
+            "type": "integer"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier",
+          "accepted_count"
+        ],
+        "title": "FallbackTraceEntry",
+        "type": "object"
+      },
       "FamilyMemberRead": {
         "properties": {
           "category": {
@@ -2312,6 +2370,17 @@
             ],
             "title": "License Name"
           },
+          "move_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move Code"
+          },
           "slots": {
             "anyOf": [
               {
@@ -2630,6 +2699,17 @@
               }
             ],
             "title": "License Name"
+          },
+          "move_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move Code"
           },
           "slots": {
             "anyOf": [
@@ -3178,6 +3258,13 @@
             "title": "Canonical Frame",
             "type": "string"
           },
+          "explanation_details": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationDetail"
+            },
+            "title": "Explanation Details",
+            "type": "array"
+          },
           "explanations": {
             "items": {
               "type": "string"
@@ -3399,6 +3486,13 @@
               }
             ],
             "title": "Fallback Reason"
+          },
+          "fallback_trace": {
+            "items": {
+              "$ref": "#/components/schemas/FallbackTraceEntry"
+            },
+            "title": "Fallback Trace",
+            "type": "array"
           },
           "items": {
             "items": {

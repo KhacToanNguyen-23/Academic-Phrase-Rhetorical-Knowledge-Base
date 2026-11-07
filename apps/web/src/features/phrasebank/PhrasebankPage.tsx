@@ -298,7 +298,12 @@ function PatternGroups({ patterns }: { patterns: PatternDetail[] }) {
                   {pattern.canonical_frame}
                 </Link>
                 <Button asChild variant="outline" size="sm">
-                  <Link to="/writer">Use in writer</Link>
+                  <Link to="/writer" search={{
+                    intent: pattern.intent_code,
+                    move: pattern.move_code ?? undefined,
+                    section: pattern.allowed_sections.length === 1 ? pattern.allowed_sections[0] : undefined,
+                    genre: pattern.allowed_genres.length === 1 ? pattern.allowed_genres[0] : undefined,
+                  }}>Use in writer</Link>
                 </Button>
               </li>
             ))}
@@ -769,7 +774,12 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
         <CardContent className="flex items-center justify-between gap-4">
           <p className="font-serif text-lg">{item.canonical_frame}</p>
           <Button asChild variant="outline" size="sm">
-            <Link to="/writer">Use in writer</Link>
+            <Link to="/writer" search={{
+              intent: item.intent_code,
+              move: item.move_code ?? undefined,
+              section: item.allowed_sections.length === 1 ? item.allowed_sections[0] : undefined,
+              genre: item.allowed_genres.length === 1 ? item.allowed_genres[0] : undefined,
+            }}>Use in writer</Link>
           </Button>
         </CardContent>
       </Card>

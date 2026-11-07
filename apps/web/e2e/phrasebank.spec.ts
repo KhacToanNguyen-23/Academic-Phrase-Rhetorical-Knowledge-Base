@@ -369,7 +369,13 @@ test("AP-RKB category shows the Writer cross link", async ({ page }) => {
   await expect(page.getByText("Alpha invented {topic} frame")).toBeVisible();
   await expect(page.locator('[data-slot="badge"]')).toHaveCount(0);
   await expect(page.getByText(sourceCredit, { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Use in writer" })).toHaveAttribute("href", "/writer");
+  const writerLink = page.getByRole("link", { name: "Use in writer" });
+  await expect(writerLink).toHaveAttribute("href", /\/writer\?/);
+  const writerUrl = new URL((await writerLink.getAttribute("href"))!, baseURL);
+  expect(writerUrl.pathname).toBe("/writer");
+  expect(writerUrl.searchParams.get("intent")).toBe("INTRO_GAP_INDICATE");
+  expect(writerUrl.searchParams.get("section")).toBe("INTRO");
+  expect(writerUrl.searchParams.get("genre")).toBe("RESEARCH_ARTICLE");
 });
 
 test("AP-RKB list opens a complete pattern detail without per-row detail requests", async ({ page }) => {

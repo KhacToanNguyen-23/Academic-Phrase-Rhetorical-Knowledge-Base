@@ -1131,6 +1131,24 @@ export interface components {
             /** Relative Ratio */
             relative_ratio: number;
         };
+        /** ExplanationDetail */
+        ExplanationDetail: {
+            /** Available */
+            available: boolean;
+            /** Criterion */
+            criterion: string;
+            /** Value */
+            value: number | null;
+            /** Weight */
+            weight: number;
+        };
+        /** FallbackTraceEntry */
+        FallbackTraceEntry: {
+            /** Accepted Count */
+            accepted_count: number;
+            /** Tier */
+            tier: string;
+        };
         /** FamilyMemberRead */
         FamilyMemberRead: {
             /** Category */
@@ -1726,6 +1744,8 @@ export interface components {
             license_flag: boolean;
             /** License Name */
             license_name: string | null;
+            /** Move Code */
+            move_code?: string | null;
             /** Slots */
             slots: {
                 [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
@@ -1817,6 +1837,8 @@ export interface components {
             license_flag: boolean;
             /** License Name */
             license_name: string | null;
+            /** Move Code */
+            move_code?: string | null;
             /** Slots */
             slots: {
                 [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
@@ -2001,6 +2023,8 @@ export interface components {
             };
             /** Canonical Frame */
             canonical_frame: string;
+            /** Explanation Details */
+            explanation_details?: components["schemas"]["ExplanationDetail"][];
             /** Explanations */
             explanations: string[];
             /** Fallback Tier */
@@ -2061,6 +2085,8 @@ export interface components {
             };
             /** Fallback Reason */
             fallback_reason?: string | null;
+            /** Fallback Trace */
+            fallback_trace?: components["schemas"]["FallbackTraceEntry"][];
             /** Items */
             items: components["schemas"]["RecommendationItemResponse"][];
             /** Policy Versions */

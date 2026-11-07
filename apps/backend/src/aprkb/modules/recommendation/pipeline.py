@@ -31,6 +31,7 @@ class RecommendationItem:
 class RecommendationResult:
     items: tuple[RecommendationItem, ...]
     excluded: dict[str, int]
+    tiers_tried: tuple[tuple[str, int], ...] = ()
 
 
 class RecommendationPipeline:
@@ -55,7 +56,9 @@ class RecommendationPipeline:
         accepted: list[RecommendationItem] = []
         excluded: Counter[str] = Counter()
         seen: set[object] = set()
+        tiers_tried: list[tuple[str, int]] = []
         for tier in self._tier_loader.tiers:
+            before = len(accepted)
             for pattern in self._tier_loader.load(tier, context):
                 if pattern.pattern_version_id in seen:
                     continue
@@ -78,6 +81,7 @@ class RecommendationPipeline:
                         explanations=(),
                     )
                 )
+            tiers_tried.append((tier, len(accepted) - before))
             if len(accepted) >= context.limit:
                 break
         tier_order = {tier: index for index, tier in enumerate(self._tier_loader.tiers)}
@@ -91,5 +95,7 @@ class RecommendationPipeline:
         )
         diversified = self._diversifier.diversify(accepted)
         return RecommendationResult(
-            items=tuple(diversified[: context.limit]), excluded=dict(excluded)
+            items=tuple(diversified[: context.limit]),
+            excluded=dict(excluded),
+            tiers_tried=tuple(tiers_tried),
         )

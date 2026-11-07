@@ -6,6 +6,7 @@ from aprkb.modules.recommendation.scorers.base import Scorer
 from aprkb.modules.recommendation.scorers.implementations import (
     DisciplineScorer,
     EvidenceScorer,
+    IntentScorer,
     JournalGenreScorer,
     LinguisticScorer,
     ProvenanceScorer,
@@ -23,6 +24,7 @@ def build_scorers(
 ) -> list[Scorer]:
     ranking_policy = ranking_policy or load_policy_bundle().ranking_weights
     return [
+        IntentScorer(same_move=ranking_policy.intent_scores.same_move),
         DisciplineScorer(discipline_source),
         JournalGenreScorer(),
         EvidenceScorer(evidence_policy),

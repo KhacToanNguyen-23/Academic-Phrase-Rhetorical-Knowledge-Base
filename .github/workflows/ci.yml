@@ -55,7 +55,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: apps/backend/uv.lock
       - name: Install backend dependencies
-        run: uv sync --directory apps/backend --locked
+        run: uv sync --directory apps/backend --locked --extra spacy
       - name: Check generated OpenAPI contract
         run: uv run --directory apps/backend python -m aprkb.cli export-openapi --check
       - name: Lint and type-check backend
@@ -190,7 +190,7 @@ jobs:
           # (uv exit code 2) when the GitHub Actions cache backend degrades.
           enable-cache: false
       - name: Install backend dependencies
-        run: uv sync --directory apps/backend --locked
+        run: uv sync --directory apps/backend --locked --extra spacy
       - name: Start isolated live E2E API with migrations and seed fixtures
         run: |
           uv run --directory apps/backend python ../../scripts/manual/online_ranking_live_server.py \

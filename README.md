@@ -37,14 +37,13 @@ If you need to process uploaded articles, run `.\dev.ps1 worker` in a third term
 
 ### spaCy and Tier 2
 
-`.env.example` enables `NLP_ENGINE=spacy` and `MINING_HYBRID_ENABLED=true`, because Tier 2 (the hybrid slot engine) needs the token features stored at ingest. spaCy is not a default dependency and the `en_core_web_sm` model is a separate package, so install both in the environment that runs the worker before ingesting articles:
+`.env.example` enables `NLP_ENGINE=spacy` and `MINING_HYBRID_ENABLED=true`, because Tier 2 (the hybrid slot engine) needs the token features stored at ingest. spaCy and the `en_core_web_sm` model are the locked optional dependency group `spacy` in `apps/backend/pyproject.toml` (the model is a hash-pinned wheel from the spaCy model releases). `make install`, `.\dev.ps1 be`, the CI jobs and the backend Docker image all install it with `--extra spacy`. To install it by hand:
 
 ```powershell
-uv sync --directory apps/backend --extra nlp   # installs spaCy (the nlp extra also pulls sentence-transformers)
-uv pip install --directory apps/backend "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+uv sync --directory apps/backend --extra spacy
 ```
 
-Without spaCy and the model, ingest fails with `NLP_ENGINE=spacy requires spaCy and model ...`. Articles ingested earlier with `regex` have no stored tokens, so re-ingest them (`python -m aprkb.cli reingest --source slr`, replacing `slr` with the article source) before Tier 2 can produce frames. The production image does not install spaCy or the model yet (`TODO(owner)`: dependency PR for a light `spacy` extra and the Dockerfile).
+Do not install the model with `uv pip install`: a plain `uv sync` removes packages that are not in the lock file. Articles ingested earlier with `regex` have no stored tokens, so re-ingest them (`python -m aprkb.cli reingest --source slr`, replacing `slr` with the article source) before Tier 2 can produce frames. Without spaCy or the model, ingest fails with `NLP_ENGINE=spacy requires spaCy and model ...`; set `NLP_ENGINE=regex` and `MINING_HYBRID_ENABLED=false` for a setup without them. The production deployment (manual, from `main`, see `deploy/README.md` there) must set both variables in its own environment (`TODO(owner)`).
 
 For backend checks, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`. The test fixture creates and removes isolated schemas there and never migrates the application's public schema. Use the same local password and host port as `DATABASE_URL`, then run `make check`.
 

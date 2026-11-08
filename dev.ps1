@@ -23,7 +23,7 @@ function Invoke-DevTool {
 switch ($Target) {
     "be" {
         Invoke-DevTool docker @("compose", "up", "-d", "--wait", "postgres")
-        Invoke-DevTool uv @("sync", "--directory", "apps/backend")
+        Invoke-DevTool uv @("sync", "--directory", "apps/backend", "--extra", "spacy")
         Invoke-DevTool uv @("run", "--directory", "apps/backend", "alembic", "-c", "alembic.ini", "upgrade", "head")
         Invoke-DevTool uv @("run", "--directory", "apps/backend", "python", "-m", "aprkb.seeds.load")
         Invoke-DevTool uv @("run", "--directory", "apps/backend", "uvicorn", "aprkb.api.main:app", "--reload") -LongRunning

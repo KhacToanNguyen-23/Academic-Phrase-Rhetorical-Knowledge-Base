@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from importlib.metadata import version as _distribution_version
 from typing import Any
 
 from aprkb.modules.corpus.sentence_splitter import (
@@ -42,7 +43,7 @@ class SpacyEngine:
         meta = self._nlp.meta
         self._info = NlpEngineInfo(
             engine="spacy",
-            spacy_version=spacy.__version__,
+            spacy_version=_distribution_version("spacy"),
             model_name=model_name,
             model_version=str(meta.get("version", "unknown")),
             components=tuple(self._nlp.pipe_names),

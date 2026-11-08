@@ -35,6 +35,16 @@ Vite proxies `/v1` to `http://localhost:8000` by default. If the API runs on ano
 
 If you need to process uploaded articles, run `.\dev.ps1 worker` in a third terminal.
 
+### spaCy and Tier 2
+
+`.env.example` enables `NLP_ENGINE=spacy` and `MINING_HYBRID_ENABLED=true`, because Tier 2 (the hybrid slot engine) needs the token features stored at ingest. spaCy and the `en_core_web_sm` model are the locked optional dependency group `spacy` in `apps/backend/pyproject.toml` (the model is a hash-pinned wheel from the spaCy model releases). `make install`, `.\dev.ps1 be`, the CI jobs and the backend Docker image all install it with `--extra spacy`. To install it by hand:
+
+```powershell
+uv sync --directory apps/backend --extra spacy
+```
+
+Do not install the model with `uv pip install`: a plain `uv sync` removes packages that are not in the lock file. Articles ingested earlier with `regex` have no stored tokens, so re-ingest them (`python -m aprkb.cli reingest --source slr`, replacing `slr` with the article source) before Tier 2 can produce frames. Without spaCy or the model, ingest fails with `NLP_ENGINE=spacy requires spaCy and model ...`; set `NLP_ENGINE=regex` and `MINING_HYBRID_ENABLED=false` for a setup without them. The production deployment (manual, from `main`, see `deploy/README.md` there) must set both variables in its own environment (`TODO(owner)`).
+
 For backend checks, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`. The test fixture creates and removes isolated schemas there and never migrates the application's public schema. Use the same local password and host port as `DATABASE_URL`, then run `make check`.
 
 Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker. In the internal `/writer` flow, an approved pattern with `PROPRIETARY` provenance can be shown with a `license_flag` marking it for internal use only. Missing license or provenance remains excluded. This policy must be changed before any public deployment.

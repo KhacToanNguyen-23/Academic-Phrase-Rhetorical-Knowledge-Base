@@ -13,7 +13,7 @@ down:
 	docker compose down
 
 install:
-	$(UV) sync --directory apps/backend
+	$(UV) sync --directory apps/backend --extra spacy
 
 migrate:
 	$(UV) run --directory apps/backend alembic -c alembic.ini upgrade head

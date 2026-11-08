@@ -79,6 +79,10 @@ web:
 
 fe: web
 
+.PHONY: phrase-stats
+phrase-stats:
+	$(UV) run --directory apps/backend python -m aprkb.cli phrase-stats $(ARGS)
+
 .PHONY: contracts
 contracts:
 	$(UV) run --directory apps/backend python -m aprkb.cli export-openapi

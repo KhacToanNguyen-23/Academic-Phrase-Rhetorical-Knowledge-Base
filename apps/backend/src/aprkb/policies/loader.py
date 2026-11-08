@@ -8,18 +8,24 @@ from pydantic import BaseModel, ValidationError
 
 from aprkb.policies.schemas import (
     AbbreviationsPolicy,
+    ConstructionsPolicy,
+    ConstructionVerbGroupPolicy,
     DiversityPolicy,
     EpistemicMarkersPolicy,
     EvidenceMatrixPolicy,
     FallbackTiersPolicy,
     GoldLabelingPolicy,
     GoldSamplingPolicy,
+    HybridConstructionsPolicy,
+    LeadInsPolicy,
     LicensePolicy,
     LicensesPolicy,
     MiningFilterPolicy,
+    PhraseStatsPolicy,
     RankingWeightsPolicy,
     ReportingVerbsPolicy,
     SectionHeadingsPolicy,
+    SentenceRulesPolicy,
     SlotAbstractionPolicy,
     ValidationRulesPolicy,
     VocabularyImportPolicy,
@@ -43,6 +49,12 @@ class PolicyBundle:
     gold_labeling: GoldLabelingPolicy
     reporting_verbs: ReportingVerbsPolicy
     slot_abstraction: SlotAbstractionPolicy
+    lead_ins: LeadInsPolicy
+    sentence_rules: SentenceRulesPolicy
+    constructions: ConstructionsPolicy
+    construction_verb_groups: ConstructionVerbGroupPolicy
+    hybrid_constructions: HybridConstructionsPolicy
+    phrase_stats: PhraseStatsPolicy
     vocabulary_import: VocabularyImportPolicy
 
 
@@ -76,5 +88,13 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
         gold_labeling=_load(root / "gold_labeling.yaml", GoldLabelingPolicy),
         reporting_verbs=_load(root / "lexicon" / "reporting_verbs.yaml", ReportingVerbsPolicy),
         slot_abstraction=_load(root / "slot_abstraction.yaml", SlotAbstractionPolicy),
+        lead_ins=_load(root / "lexicon" / "lead_ins.yaml", LeadInsPolicy),
+        sentence_rules=_load(root / "sentence_rules.yaml", SentenceRulesPolicy),
+        constructions=_load(root / "constructions.yaml", ConstructionsPolicy),
+        construction_verb_groups=_load(
+            root / "construction_verb_groups.yaml", ConstructionVerbGroupPolicy
+        ),
+        hybrid_constructions=_load(root / "hybrid_constructions.yaml", HybridConstructionsPolicy),
+        phrase_stats=_load(root / "phrase_stats.yaml", PhraseStatsPolicy),
         vocabulary_import=_load(root / "vocabulary_import.yaml", VocabularyImportPolicy),
     )

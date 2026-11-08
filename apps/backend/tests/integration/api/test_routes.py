@@ -25,7 +25,9 @@ from aprkb.modules.gold.service import delete_sample_batch, label_sample_batch
 from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.identity.service import create_api_key
 from aprkb.modules.journals.models import GuidelineRule, JournalProfile
+from aprkb.modules.mining.candidate_writer import CandidateDraft, CandidateWriter
 from aprkb.modules.mining.models import Candidate
+from aprkb.modules.mining.schemas import SlotDefinition
 from aprkb.modules.patterns.models import (
     EvidenceProvenance,
     PatternVersion,
@@ -39,6 +41,7 @@ from aprkb.modules.recommendation.models import Feedback, RecommendationLog
 from aprkb.modules.taxonomy.models import Intent
 from aprkb.policies.loader import load_policy_bundle
 from aprkb.seeds.load import run_seed
+from aprkb.worker.handlers import _SessionCandidateRepository
 
 
 @pytest_asyncio.fixture
@@ -897,7 +900,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
         "validation_rules": "0.2.0",
-        "epistemic_markers": "0.1.0",
+        "epistemic_markers": "0.3.0",
         "taxonomy_release": "0.1.0",
     }
 
@@ -1849,6 +1852,140 @@ async def test_gold_labeling_keeps_finished_labels_before_raising_other_request_
     async with session_factory() as session:
         statuses = Counter(await session.scalars(select(GoldItem.status)))
     assert statuses == {"draft": 2, "pending_ai": 2}
+
+
+_HYBRID_FRAME = "[X] were preprocessed using [Y]."
+
+
+async def _hybrid_source(session, *, license_code: str) -> tuple[Sentence, License, Intent | None]:
+    intent = await session.scalar(select(Intent).limit(1))
+    license_row = await session.scalar(select(License).where(License.code == license_code))
+    if license_row is None:
+        license_row = License(
+            code=license_code, name=license_code, allows_mining=True, allows_display=True
+        )
+        session.add(license_row)
+        await session.flush()
+    article = Article(license_id=license_row.id, blob_key="phase05/hybrid.txt", title="Hybrid")
+    session.add(article)
+    await session.flush()
+    section = ArticleSection(
+        article_id=article.id, section_code="METHODS", heading="Methods", order=1
+    )
+    session.add(section)
+    await session.flush()
+    sentence = Sentence(
+        article_id=article.id,
+        article_section_id=section.id,
+        text="Samples were preprocessed using the proposed filter.",
+        char_start=0,
+        char_end=len("Samples were preprocessed using the proposed filter."),
+    )
+    session.add(sentence)
+    await session.flush()
+    return sentence, license_row, intent
+
+
+@pytest.mark.asyncio
+async def test_hybrid_candidate_from_writer_is_reviewed_and_promoted_with_dev_license(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "reviewer", "hybrid reviewer")
+    policies = load_policy_bundle()
+    hybrid = policies.hybrid_constructions
+    cluster_key = f"construction=hybrid_passive_academic:{hybrid.version}:" + "a" * 64
+    async with session_factory() as session:
+        sentence, license_row, intent = await _hybrid_source(session, license_code="DEV-UNVERIFIED")
+        repository = _SessionCandidateRepository(session)
+        writer = CandidateWriter(
+            repository,
+            reporting_policy=policies.reporting_verbs,
+            constructions_policy=policies.constructions,
+            verb_group_policy=policies.construction_verb_groups,
+            lead_ins_policy=policies.lead_ins,
+            hybrid_policy=hybrid,
+        )
+        writer.write(
+            CandidateDraft(
+                canonical_frame=_HYBRID_FRAME,
+                source_sentence_ids=[sentence.id],
+                slots={
+                    "X": SlotDefinition.model_validate({"type": "noun_phrase", "signals": []}),
+                    "Y": SlotDefinition.model_validate({"type": "noun_phrase", "signals": []}),
+                },
+                cluster_key=cluster_key,
+                construction_id="hybrid_passive_academic",
+            )
+        )
+        await repository.flush()
+        stored = await session.scalar(select(Candidate).where(Candidate.cluster_key == cluster_key))
+        assert stored is not None
+        stored.intent_id = intent.id if intent is not None else None
+        await session.commit()
+        candidate_id = stored.id
+        license_id = license_row.id
+
+    listing = await api_client.get("/v1/admin/review-queue", headers={"X-API-Key": key})
+    assert listing.status_code == 200
+    assert [item["canonical_frame"] for item in listing.json()] == [_HYBRID_FRAME]
+    assert "Samples were preprocessed" not in listing.text
+
+    before = await _version_count(session_factory)
+    first = await _decision_payload(api_client, key, candidate_id, "approve")
+    assert first.status_code in {200, 201}
+    assert await _version_count(session_factory) == before
+    second = await _decision_payload(api_client, key, candidate_id, "approve")
+    assert second.status_code in {200, 201}
+    assert await _version_count(session_factory) == before + 1
+
+    async with session_factory() as session:
+        candidate = await session.get(Candidate, candidate_id)
+        assert candidate is not None and candidate.status == "accepted"
+        version = await session.scalar(
+            select(PatternVersion).where(PatternVersion.canonical_frame == _HYBRID_FRAME)
+        )
+        assert version is not None
+        evidence = await session.scalar(
+            select(EvidenceProvenance).where(EvidenceProvenance.pattern_version_id == version.id)
+        )
+        assert evidence is not None
+        # Promotion keeps the unverified licence on the evidence; the pack exporter refuses it.
+        assert evidence.source_type == "mined"
+        assert evidence.license_id == license_id
+
+
+@pytest.mark.asyncio
+async def test_hybrid_candidate_with_stale_policy_version_fails_closed(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "reviewer", "stale hybrid reviewer")
+    versions_before = await _version_count(session_factory)
+    async with session_factory() as session:
+        sentence, _, intent = await _hybrid_source(session, license_code="CC-BY")
+        candidate = Candidate(
+            canonical_frame=_HYBRID_FRAME,
+            slots={
+                "X": {"type": "noun_phrase", "signals": []},
+                "Y": {"type": "noun_phrase", "signals": []},
+            },
+            intent_id=intent.id if intent is not None else None,
+            confidence=None,
+            epistemic_strength=None,
+            source_sentence_ids=[sentence.id],
+            cluster_key="construction=hybrid_passive_academic:0.0.1:" + "a" * 64,
+            status="pending",
+        )
+        session.add(candidate)
+        await session.commit()
+        candidate_id = candidate.id
+
+    listing = await api_client.get("/v1/admin/review-queue", headers={"X-API-Key": key})
+    assert listing.status_code == 409
+    decision = await _decision_payload(api_client, key, candidate_id, "approve")
+    assert decision.status_code == 409
+    assert await _version_count(session_factory) == versions_before
 
 
 async def test_online_move_intent_normalization_details_and_trace_with_packaged_policy(

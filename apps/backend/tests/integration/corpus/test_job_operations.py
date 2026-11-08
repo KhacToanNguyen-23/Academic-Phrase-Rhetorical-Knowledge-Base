@@ -301,11 +301,12 @@ async def test_operations_migration_refuses_dropping_attempt_history(ops, postgr
             config.attributes["version_table_schema"] = schema
             command.downgrade(config, "0012_job_retry")
 
+        version_before = await connection.scalar(text("SELECT version_num FROM alembic_version"))
         with pytest.raises(RuntimeError, match="forward fix"):
             async with connection.begin_nested():
                 await connection.run_sync(downgrade)
         assert await connection.scalar(text("SELECT count(*) FROM job_attempts")) == 1
+        # A refused downgrade leaves the revision untouched, whichever merge head is current.
         assert (
             await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            == "0013_job_operations"
-        )
+        ) == version_before

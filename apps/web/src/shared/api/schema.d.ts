@@ -1163,6 +1163,8 @@ export interface components {
             id: string;
             /** Intent Id */
             intent_id: string | null;
+            /** Occurrence Count */
+            occurrence_count: number;
             /** Slots */
             slots: {
                 [key: string]: components["schemas"]["SlotDefinition"];

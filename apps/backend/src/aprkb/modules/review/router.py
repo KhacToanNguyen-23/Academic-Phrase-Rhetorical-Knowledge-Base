@@ -20,9 +20,12 @@ from aprkb.modules.review.schemas import (
     ReviewDecisionResult,
 )
 from aprkb.policies.loader import load_policy_bundle
+from aprkb.policies.schemas import is_safe_construction_frame, is_safe_hybrid_frame
 
 router = APIRouter(tags=["candidate review"])
-_REPORTING_FORMS = load_policy_bundle().reporting_verbs.all_forms
+_POLICIES = load_policy_bundle()
+_REPORTING_FORMS = _POLICIES.reporting_verbs.all_forms
+_LEAD_INS = _POLICIES.lead_ins.lead_ins
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 Reviewer = Annotated[ApiClient, Depends(require_role("reviewer"))]
 
@@ -43,7 +46,17 @@ def _safe_summary(candidate: Candidate) -> CandidateSummary:
         raise HTTPException(status_code=409, detail="Candidate slot schema is invalid") from None
     if set(slots) - {"X", "Y", "Z"}:
         raise HTTPException(status_code=409, detail="Candidate slot names are invalid")
-    if not is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS):
+    if not (
+        is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS, _LEAD_INS)
+        or is_safe_construction_frame(
+            candidate.canonical_frame,
+            _POLICIES.constructions,
+            verb_group_policy=_POLICIES.construction_verb_groups,
+        )
+        or is_safe_hybrid_frame(
+            candidate.canonical_frame, _POLICIES.hybrid_constructions, candidate.cluster_key
+        )
+    ):
         raise HTTPException(status_code=409, detail="Candidate frame is not safely abstracted")
     return CandidateSummary(
         id=candidate.id,
@@ -53,6 +66,7 @@ def _safe_summary(candidate: Candidate) -> CandidateSummary:
         confidence=candidate.confidence,
         epistemic_strength=candidate.epistemic_strength,
         source_sentence_ids=candidate.source_sentence_ids,
+        occurrence_count=len(candidate.source_sentence_ids),
         status=candidate.status,
     )
 

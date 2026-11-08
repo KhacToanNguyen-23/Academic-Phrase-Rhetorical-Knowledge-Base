@@ -1,6 +1,7 @@
 """Cấu hình ứng dụng, đọc từ biến môi trường (.env)."""
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,6 +28,9 @@ class Settings(BaseSettings):
     blob_dir: str = "./data/blobs"
     log_level: str = "INFO"
     reference_library_enabled: bool = False
+    nlp_engine: Literal["regex", "spacy"] = "regex"
+    nlp_model: str = "en_core_web_sm"
+    mining_hybrid_enabled: bool = False
     # Set by the production image build (BUILD_COMMIT_SHA); never a self-asserted image digest.
     build_commit_sha: str = "unknown"
 

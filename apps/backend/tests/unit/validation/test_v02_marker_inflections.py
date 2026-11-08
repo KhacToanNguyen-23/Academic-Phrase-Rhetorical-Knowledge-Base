@@ -115,3 +115,62 @@ def test_v02_blocks_demonstrated_but_allows_suggested_with_single_study(v02):
     )
     assert blocked.span == (14, 26)
     assert allowed.severity is Severity.PASS
+
+
+@pytest.mark.parametrize("form", ["show", "shows", "showed", "shown"])
+def test_v02_blocks_show_without_evidence_even_though_mining_treats_it_as_neutral(v02, form):
+    text = f"The results {form} that X."
+
+    blocked = v02.evaluate(text, ValidationContext(claim_type="causal", evidence_level="none"))
+    allowed = v02.evaluate(
+        text, ValidationContext(claim_type="causal", evidence_level="multiple_consistent")
+    )
+
+    assert blocked.severity is Severity.BLOCK
+    assert allowed.severity is Severity.PASS
+
+
+@pytest.mark.parametrize("form", ["establish", "establishes", "established"])
+def test_v02_does_not_adopt_the_mining_only_establish_marker(v02, form):
+    context = ValidationContext(claim_type="causal", evidence_level="none")
+
+    result = v02.evaluate(f"The results {form} that X.", context)
+
+    assert result.severity is Severity.PASS
+
+
+def test_v02_marker_set_is_pinned_against_mining_lexicon_changes(policy_bundle):
+    """Editing V02's effective list must be a deliberate change to this snapshot."""
+    lexicon = policy_bundle.epistemic_markers
+    assert lexicon.validator_markers == {
+        "low": ["may", "might", "could", "possibly", "appears to"],
+        "moderate": [
+            "suggest",
+            "suggests",
+            "suggested",
+            "indicate",
+            "indicates",
+            "indicated",
+            "is likely",
+        ],
+        "high": [
+            "show",
+            "shows",
+            "showed",
+            "demonstrate",
+            "demonstrates",
+            "demonstrated",
+            "confirm",
+            "confirms",
+            "confirmed",
+        ],
+        "absolute": [
+            "prove",
+            "proves",
+            "proved",
+            "proven",
+            "establish beyond doubt",
+            "always",
+        ],
+    }
+    assert lexicon.irregular_forms == {"prove": ["proven"], "show": ["shown"]}

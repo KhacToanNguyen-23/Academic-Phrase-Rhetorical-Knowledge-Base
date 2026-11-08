@@ -1,16 +1,34 @@
 # DRAFT lexicon; TODO(owner, FR-06.2): approve markers before production use.
-version: 0.1.0
+version: 0.3.0
+# Shared by mining and V02. Changing this block changes both consumers; use the two
+# *_only blocks below for a change that must stay on one side.
 markers:
   low: [may, might, could, possibly, appears to]
   moderate: [suggest, suggests, suggested, indicate, indicates, indicated, is likely]
-  high: [show, shows, showed, demonstrate, demonstrates, demonstrated, confirm, confirms, confirmed]
+  high: [demonstrate, demonstrates, demonstrated, confirm, confirms, confirmed]
   absolute: [prove, proves, proved, proven, establish beyond doubt, always]
+
+# V02 only: writer-claim evidence policy. `show` stays a strong claim for a writer even
+# though mining treats it as neutral (see neutral_verbs and ADR-0012).
+validator_only_markers:
+  high: [show, shows, showed]
+
+# Mining only: EpistemicTagger strength. TODO(owner, FR-08.1): decide whether V02 adopts
+# `establish` as well; it does not today.
+mining_only_markers:
+  high: [establish, establishes, established]
 
 # V02 derives regular inflections (-s/-es, -ed/-d, -ing) from each verb marker.
 # Irregular forms that rules cannot derive are listed here, keyed by the base verb.
 irregular_forms:
   prove: [proven]
   show: [shown]
+
+# Mining only: neutral status leaves strength unset. TODO(owner, FR-06.2): review reporting class.
+# Assume is an assumption, not evidence reporting, and may leave this class later.
+neutral_verbs:
+  [show, shows, showed, shown, find, finds, found, observe, observes, observed,
+   note, notes, noted, assume, assumes, assumed]
 
 # Markers that are not verbs keep exact matching and are never inflected.
 non_inflecting: [always, could, is likely, may, might, possibly]

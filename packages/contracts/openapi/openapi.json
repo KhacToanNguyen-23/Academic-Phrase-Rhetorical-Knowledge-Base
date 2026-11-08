@@ -544,6 +544,10 @@
             ],
             "title": "Intent Id"
           },
+          "occurrence_count": {
+            "title": "Occurrence Count",
+            "type": "integer"
+          },
           "slots": {
             "additionalProperties": {
               "$ref": "#/components/schemas/SlotDefinition"
@@ -572,6 +576,7 @@
           "confidence",
           "epistemic_strength",
           "source_sentence_ids",
+          "occurrence_count",
           "status"
         ],
         "title": "CandidateSummary",

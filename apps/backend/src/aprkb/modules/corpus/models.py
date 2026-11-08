@@ -48,6 +48,7 @@ class Article(MutableEntityMixin, Base):
     license_id: Mapped[UUID] = mapped_column(ForeignKey("licenses.id"))
     blob_key: Mapped[str] = mapped_column(String(1024))
     ingest_status: Mapped[str] = mapped_column(String(32), default="pending")
+    nlp_engine: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # Id of the first import job of one "Lay bai bao" run; continuation jobs inherit it.
     import_batch_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), index=True)
 
@@ -75,4 +76,6 @@ class Sentence(EntityMixin, Base):
     text: Mapped[str] = mapped_column(Text)
     char_start: Mapped[int] = mapped_column(Integer)
     char_end: Mapped[int] = mapped_column(Integer)
+    nlp_features: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    boundary_source: Mapped[str | None] = mapped_column(String(64))
     embedding: Mapped[list[float] | None] = mapped_column(Vector(384))

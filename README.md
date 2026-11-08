@@ -35,6 +35,17 @@ Vite proxies `/v1` to `http://localhost:8000` by default. If the API runs on ano
 
 If you need to process uploaded articles, run `.\dev.ps1 worker` in a third terminal.
 
+### spaCy and Tier 2
+
+`.env.example` enables `NLP_ENGINE=spacy` and `MINING_HYBRID_ENABLED=true`, because Tier 2 (the hybrid slot engine) needs the token features stored at ingest. spaCy is not a default dependency and the `en_core_web_sm` model is a separate package, so install both in the environment that runs the worker before ingesting articles:
+
+```powershell
+uv sync --directory apps/backend --extra nlp   # installs spaCy (the nlp extra also pulls sentence-transformers)
+uv pip install --directory apps/backend "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+```
+
+Without spaCy and the model, ingest fails with `NLP_ENGINE=spacy requires spaCy and model ...`. Articles ingested earlier with `regex` have no stored tokens, so re-ingest them (`python -m aprkb.cli reingest --source slr`, replacing `slr` with the article source) before Tier 2 can produce frames. The production image does not install spaCy or the model yet (`TODO(owner)`: dependency PR for a light `spacy` extra and the Dockerfile).
+
 For backend checks, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`. The test fixture creates and removes isolated schemas there and never migrates the application's public schema. Use the same local password and host port as `DATABASE_URL`, then run `make check`.
 
 Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker. In the internal `/writer` flow, an approved pattern with `PROPRIETARY` provenance can be shown with a `license_flag` marking it for internal use only. Missing license or provenance remains excluded. This policy must be changed before any public deployment.

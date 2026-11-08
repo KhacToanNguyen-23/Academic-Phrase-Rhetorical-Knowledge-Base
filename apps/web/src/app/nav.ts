@@ -5,6 +5,7 @@ import {
   Download,
   FlaskConical,
   Inbox,
+  ListChecks,
   LayoutDashboard,
   Newspaper,
   PenLine,
@@ -37,7 +38,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/extract", label: "Extract", icon: ScanText },
     ],
   },
-  { label: "Corpus", items: [{ to: "/import", label: "Import", icon: Download }] },
+  { label: "Corpus", items: [{ to: "/import", label: "Import", icon: Download }, { to: "/jobs", label: "Jobs", icon: ListChecks }] },
   {
     label: "Tools",
     items: [

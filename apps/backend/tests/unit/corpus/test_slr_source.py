@@ -11,6 +11,33 @@ from aprkb.policies.loader import load_policy_bundle
 
 
 @pytest.mark.asyncio
+async def test_worker_managed_retry_does_not_retry_inside_adapter() -> None:
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(429, headers={"Retry-After": "90"})
+
+    async def must_not_sleep(delay):
+        raise AssertionError("Worker must persist the schedule instead of sleeping here")
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://example.invalid"
+    ) as client:
+        source = SlrRepositorySource(
+            client,
+            Settings(slr_api_key="safe", slr_max_retries=3),
+            load_policy_bundle().licenses,
+            sleep=must_not_sleep,
+            worker_managed_retries=True,
+        )
+        with pytest.raises(httpx.HTTPStatusError) as caught:
+            await source._json("/public/v1/repository/works")
+        assert caught.value.response.headers["Retry-After"] == "90"
+        assert len(requests) == 1
+
+
+@pytest.mark.asyncio
 async def test_list_passes_filters_and_follows_next_cursor_even_for_empty_page() -> None:
     requests: list[httpx.Request] = []
 

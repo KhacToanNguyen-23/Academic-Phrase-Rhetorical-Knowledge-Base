@@ -74,6 +74,24 @@ async def _import_pack(*, path: Path, dry_run: bool) -> None:
         await engine.dispose()
 
 
+async def _init_phrasebank(*, path: Path, dry_run: bool) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - register ORM mappings
+    from aprkb.modules.phrasebank.service import initialize_phrasebank
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                result = await initialize_phrasebank(session, path, dry_run=dry_run)
+            except (OSError, ValueError) as error:
+                print(f"Phrasebank initialization failed: {error}", file=sys.stderr)
+                raise SystemExit(1) from error
+        print(json.dumps(result, indent=2, sort_keys=True))
+    finally:
+        await engine.dispose()
+
+
 async def _export_pack(*, out: Path, only_approved: bool) -> None:
     from aprkb.api.main import app as _app  # noqa: F401 - register ORM mappings
     from aprkb.modules.pack.service import export_pack
@@ -590,6 +608,11 @@ def main() -> None:
     exporter.add_argument("--only-approved", action="store_true")
     commands.add_parser("export-pack-schema")
     commands.add_parser("init-reference")
+    phrasebank = commands.add_parser(
+        "init-phrasebank", help="Initialize both Phrasebank sources from one JSON manifest"
+    )
+    phrasebank.add_argument("--file", type=Path, required=True)
+    phrasebank.add_argument("--dry-run", action="store_true")
     commands.add_parser("bootstrap-key")
     vocabulary_import = commands.add_parser("vocab-import")
     vocabulary_import.add_argument("--file", type=Path, action="append", required=True)
@@ -647,6 +670,8 @@ def main() -> None:
         _export_pack_schema()
     elif args.command == "init-reference":
         asyncio.run(_init_reference())
+    elif args.command == "init-phrasebank":
+        asyncio.run(_init_phrasebank(path=args.file, dry_run=args.dry_run))
     elif args.command == "bootstrap-key":
         asyncio.run(_bootstrap_key())
     elif args.command == "vocab-import":

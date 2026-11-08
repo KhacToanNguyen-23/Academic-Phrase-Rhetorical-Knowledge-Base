@@ -1,10 +1,11 @@
 """One database read contract for current pattern versions and recommendations."""
 
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.corpus.models import Article, License
@@ -17,6 +18,7 @@ from aprkb.modules.patterns.models import (
     UsageConstraint,
 )
 from aprkb.modules.taxonomy.models import Intent, Move, Step
+from aprkb.shared.keywords import keyword_tokens
 
 BRACKET_SLOT = re.compile(r"\[([A-Za-z][A-Za-z0-9_]*)\]")
 BRACE_SLOT = re.compile(r"\{([A-Za-z][A-Za-z0-9_]*)\}")
@@ -60,6 +62,7 @@ class PatternRead:
     source_sentence_count: int
     provenance_count: int
     discipline_affinities: list[dict[str, str | float]]
+    move_code: str | None = None
 
     def as_response(self) -> dict[str, object]:
         return {
@@ -67,6 +70,7 @@ class PatternRead:
             "status": self.status,
             "intent_code": self.intent_code,
             "intent_name": self.intent_name,
+            "move_code": self.move_code,
             "current_version_id": self.current_version_id,
             "version_no": self.version_no,
             "change_note": self.change_note,
@@ -100,19 +104,24 @@ async def load_current_patterns(
     pattern_id: UUID | None = None,
     version_id: UUID | None = None,
     section_code: str | None = None,
+    genre_code: str | None = None,
     status: str | None = None,
     query: str | None = None,
+    normalize_query: bool = False,
     browse_query: str | None = None,
     move_code: str | None = None,
     claim_type: str | None = None,
+    journal_id: UUID | None = None,
     offset: int = 0,
     limit: int | None = None,
     display_only: bool = False,
     internal_use_codes: frozenset[str] = frozenset(),
 ) -> list[PatternRead]:
     statement = (
-        select(PhrasePattern, Intent, PatternVersion, UsageConstraint)
+        select(PhrasePattern, Intent, PatternVersion, UsageConstraint, Move.code)
         .join(Intent, Intent.id == PhrasePattern.intent_id)
+        .join(Step, Step.id == Intent.step_id)
+        .join(Move, Move.id == Step.move_id)
         .join(PatternVersion, PatternVersion.id == PhrasePattern.current_version_id)
         .outerjoin(UsageConstraint, UsageConstraint.pattern_version_id == PatternVersion.id)
     )
@@ -126,16 +135,36 @@ async def load_current_patterns(
         statement = statement.where(UsageConstraint.allowed_sections.contains([section_code]))
     if status:
         statement = statement.where(PhrasePattern.status == status)
+    if genre_code:
+        statement = statement.where(
+            or_(
+                UsageConstraint.allowed_genres.is_(None),
+                UsageConstraint.allowed_genres == [],
+                UsageConstraint.allowed_genres.contains([genre_code]),
+            )
+        )
     if claim_type:
         statement = statement.where(PatternVersion.claim_type == claim_type)
-    if move_code:
-        statement = (
-            statement.join(Step, Step.id == Intent.step_id)
-            .join(Move, Move.id == Step.move_id)
-            .where(Move.code == move_code)
+    if journal_id is not None:
+        statement = statement.where(
+            exists(
+                select(EvidenceProvenance.id)
+                .join(Article, Article.id == EvidenceProvenance.article_id)
+                .where(
+                    EvidenceProvenance.pattern_version_id == PatternVersion.id,
+                    EvidenceProvenance.source_type == "mined",
+                    Article.journal_id == journal_id,
+                )
+            )
         )
+    if move_code:
+        statement = statement.where(Move.code == move_code)
     if query:
-        terms = set(re.findall(r"[^\W_]+", query.casefold(), flags=re.UNICODE))
+        terms = (
+            keyword_tokens(query)
+            if normalize_query
+            else set(re.findall(r"[^\W_]+", query.casefold(), flags=re.UNICODE))
+        )
         if not terms:
             return []
         clauses = []
@@ -151,7 +180,7 @@ async def load_current_patterns(
     rows = (await session.execute(statement)).all()
     if not rows:
         return []
-    version_ids = [version.id for _, _, version, _ in rows]
+    version_ids = [version.id for _, _, version, _, _ in rows]
     variants = list(
         await session.scalars(
             select(PhraseVariant)
@@ -175,9 +204,23 @@ async def load_current_patterns(
             .order_by(DisciplineAffinity.discipline_code)
         )
     )
+    sources_by_version: defaultdict[
+        UUID, list[tuple[EvidenceProvenance, License | None, Article | None]]
+    ] = defaultdict(list)
+    for grouped_source, grouped_license, grouped_article in sources:
+        sources_by_version[grouped_source.pattern_version_id].append(
+            (grouped_source, grouped_license, grouped_article)
+        )
+    variants_by_version: defaultdict[UUID, list[PhraseVariant]] = defaultdict(list)
+    for variant in variants:
+        variants_by_version[variant.pattern_version_id].append(variant)
+    affinities_by_version: defaultdict[UUID, list[DisciplineAffinity]] = defaultdict(list)
+    for affinity in affinities:
+        affinities_by_version[affinity.pattern_version_id].append(affinity)
+
     result: list[PatternRead] = []
-    for pattern, intent, version, usage in rows:
-        provenance = [row for row in sources if row[0].pattern_version_id == version.id]
+    for pattern, intent, version, usage, row_move_code in rows:
+        provenance = sources_by_version[version.id]
         source, license_row, article = provenance[0] if len(provenance) == 1 else (None, None, None)
         source_type = source.source_type if source else "unknown"
         license_flag = bool(license_row and license_row.code in internal_use_codes)
@@ -206,6 +249,7 @@ async def load_current_patterns(
                 status=pattern.status,
                 intent_code=intent.code,
                 intent_name=intent.name,
+                move_code=row_move_code,
                 current_version_id=version.id,
                 version_no=version.version_no,
                 change_note=version.change_note,
@@ -219,13 +263,12 @@ async def load_current_patterns(
                 claim_type_labelled=version.claim_type != "unknown",
                 variants=[
                     {"text": item.text, "register": item.register}
-                    for item in variants
-                    if item.pattern_version_id == version.id
+                    for item in variants_by_version[version.id]
                 ],
                 evidence_min=usage.evidence_min if usage else None,
                 forbidden_contexts=usage.forbidden_contexts if usage else [],
                 allowed_sections=usage.allowed_sections if usage else [],
-                allowed_genres=usage.allowed_genres if usage else [],
+                allowed_genres=(usage.allowed_genres or []) if usage else [],
                 source_type=source_type,
                 license_code=license_row.code if license_row else None,
                 license_name=license_row.name if license_row else None,
@@ -243,8 +286,7 @@ async def load_current_patterns(
                 provenance_count=len(provenance),
                 discipline_affinities=[
                     {"discipline_code": item.discipline_code, "score": item.score}
-                    for item in affinities
-                    if item.pattern_version_id == version.id
+                    for item in affinities_by_version[version.id]
                 ],
             )
         )

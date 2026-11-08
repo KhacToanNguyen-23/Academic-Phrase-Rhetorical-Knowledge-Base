@@ -105,8 +105,20 @@ class LicensesPolicy(VersionedPolicy):
         return self
 
 
+class IntentScores(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    same_move: float = Field(ge=0, le=1, allow_inf_nan=False)
+
+
+class DiversityPolicy(VersionedPolicy):
+    lambda_: float = Field(ge=0, le=1, allow_inf_nan=False)
+    max_similarity: float = Field(ge=0, le=1, allow_inf_nan=False)
+
+
 class RankingWeightsPolicy(VersionedPolicy):
     weights: dict[str, float]
+    intent_scores: IntentScores
     provenance_scores: dict[str, float]
     evidence_alignment_formula: Literal[
         "1 - abs(max_supported - candidate_strength) / strength_span"
@@ -125,7 +137,7 @@ class RankingWeightsPolicy(VersionedPolicy):
     @field_validator("weights")
     @classmethod
     def validate_weights(cls, weights: dict[str, float]) -> dict[str, float]:
-        expected = {"discipline", "journal_genre", "evidence", "linguistic", "provenance"}
+        expected = {"intent", "discipline", "journal_genre", "evidence", "linguistic", "provenance"}
         if set(weights) != expected:
             raise ValueError("weights must define every active scorer exactly once")
         if any(not isfinite(weight) or weight < 0 or weight > 1 for weight in weights.values()):

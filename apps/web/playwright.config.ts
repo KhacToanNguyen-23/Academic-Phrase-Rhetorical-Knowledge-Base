@@ -11,10 +11,11 @@ export default defineConfig({
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["list"], ["html", { outputFolder: "test-results/html", open: "never" }]] : "list",
+  reporter: process.env.CI ? [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]] : "list",
   use: {
     baseURL: process.env.WRITER_E2E_BASE_URL ?? "http://127.0.0.1:5173",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    viewport: { width: 1440, height: 900 },
   },
 });

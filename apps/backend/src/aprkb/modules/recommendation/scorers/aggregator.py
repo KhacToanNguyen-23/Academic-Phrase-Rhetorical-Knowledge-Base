@@ -3,6 +3,21 @@
 from math import isfinite
 
 
+def effective_weights(
+    *, breakdown: dict[str, float | None], weights: dict[str, float]
+) -> dict[str, float]:
+    """Normalize configured weights over the available, enabled criteria of one item."""
+    active = {
+        key: weights[key]
+        for key, value in breakdown.items()
+        if value is not None and weights[key] > 0
+    }
+    total = sum(active.values())
+    if total <= 0:
+        raise ValueError("at least one available scorer must have positive weight")
+    return {key: weights[key] / total if key in active else 0.0 for key in breakdown}
+
+
 def aggregate_scores(
     *, scores: dict[str, float | None], weights: dict[str, float]
 ) -> tuple[float, dict[str, float | None]]:
@@ -22,8 +37,6 @@ def aggregate_scores(
         else:
             active[key] = score
             breakdown[key] = score
-    total_weight = sum(weights[key] for key in active)
-    if total_weight <= 0:
-        raise ValueError("at least one available scorer must have positive weight")
-    total = sum(active[key] * weights[key] for key in active) / total_weight
+    normalized = effective_weights(breakdown=breakdown, weights=weights)
+    total = sum(active[key] * normalized[key] for key in active)
     return total, breakdown

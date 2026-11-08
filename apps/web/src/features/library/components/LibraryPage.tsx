@@ -59,7 +59,7 @@ export function LibraryPage({ selectedId }: { selectedId?: string }) {
           onRetry={() => void retry()}
         />
       ) : (
-        <div className="grid grid-cols-[22rem_1fr] items-start gap-6">
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[22rem_minmax(0,1fr)] [&>*]:min-w-0">
           <Card>
             <CardHeader>
               <CardTitle>Find a pattern</CardTitle>
@@ -225,7 +225,7 @@ function Detail({ id, intentName }: { id: string; intentName: (id: string) => st
     <div className="flex flex-col gap-4">
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <CardTitle>{intentName(pattern.intent_id)}</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -282,7 +282,7 @@ function Detail({ id, intentName }: { id: string; intentName: (id: string) => st
             <Badge variant="warning">FR-02.4</Badge>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-3 text-sm">
+            <dl className="grid grid-cols-[9rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm break-words">
               <dt className="text-muted-foreground">Minimum evidence</dt>
               <dd>{pattern.constraint.evidence_min}</dd>
               <dt className="text-muted-foreground">Do not use when</dt>
@@ -326,7 +326,7 @@ function Detail({ id, intentName }: { id: string; intentName: (id: string) => st
           </CardContent>
         </Card>
       ) : null}
-      <div className="grid grid-cols-2 items-start gap-4">
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 [&>*]:min-w-0">
         <Card>
           <CardHeader>
             <CardTitle>Provenance</CardTitle>

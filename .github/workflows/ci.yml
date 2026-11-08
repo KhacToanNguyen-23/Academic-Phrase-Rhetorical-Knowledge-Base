@@ -89,7 +89,7 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint frontend (zero warnings)
-        run: pnpm lint
+        run: pnpm lint --max-warnings 0
       - name: Check generated API types
         run: pnpm gen:api
       - name: Ensure generated API types are current
@@ -115,7 +115,7 @@ jobs:
         run: |
           docker build -f apps/backend/Dockerfile \
             --build-arg GIT_COMMIT_SHA="${{ github.sha }}" \
-            -t "$BACKEND_IMAGE" apps/backend
+            -t "$BACKEND_IMAGE" .
           echo "Built digest: $(docker image inspect --format '{{.Id}}' "$BACKEND_IMAGE")"
       - name: Build-context canary (secrets/caches/blobs/test output must not leak in)
         run: bash scripts/ci/container-canary.sh
@@ -129,6 +129,7 @@ jobs:
             docker exec pg pg_isready -U aprkb -d aprkb_ci && break
             sleep 1
           done
+          docker exec pg pg_isready -U aprkb -d aprkb_ci
       - name: API container smoke (same digest as worker smoke below)
         run: |
           echo "Smoking digest: $(docker image inspect --format '{{.Id}}' "$BACKEND_IMAGE")"
@@ -173,6 +174,9 @@ jobs:
       DATABASE_URL: postgresql+asyncpg://aprkb:postgres@localhost:5432/aprkb_test
       ARTICLE_SOURCE: "null"
       WRITER_E2E_BASE_URL: http://127.0.0.1:5173
+      VITE_API_PROXY_TARGET: http://127.0.0.1:8016
+      ONLINE_RANKING_LIVE: "1"
+      PLAYWRIGHT_JUNIT_OUTPUT_FILE: test-results/results.xml
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -187,15 +191,19 @@ jobs:
           enable-cache: false
       - name: Install backend dependencies
         run: uv sync --directory apps/backend --locked
-      - name: Migrate and seed the disposable database
+      - name: Start isolated live E2E API with migrations and seed fixtures
         run: |
-          uv run --directory apps/backend alembic -c alembic.ini upgrade head
-          uv run --directory apps/backend python -m aprkb.seeds.load
-      - name: Start backend API in the background
-        run: |
-          uv run --directory apps/backend uvicorn aprkb.api.main:app --host 0.0.0.0 --port 8000 \
+          uv run --directory apps/backend python ../../scripts/manual/online_ranking_live_server.py \
             > /tmp/api.log 2>&1 &
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/v1/health && break; sleep 1; done
+          echo "$!" > /tmp/aprkb-e2e-api.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8016/v1/health > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/api.log
+          exit 1
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 9
@@ -218,9 +226,18 @@ jobs:
           # and WRITER_E2E_BASE_URL below would never be able to reach.
           pnpm exec vite --host 127.0.0.1 --port 5173 > /tmp/web.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:5173 && break; sleep 1; done
+          curl --max-time 10 -fsS http://127.0.0.1:5173 >/dev/null
       - name: Run Playwright e2e specs
         working-directory: apps/web
-        run: pnpm test:e2e
+        run: |
+          pnpm exec playwright test --config=playwright.full.config.ts --reporter=list,html,junit
+          python ../../scripts/ci/check-playwright-results.py test-results/results.xml
+      - name: Stop the isolated E2E API
+        if: ${{ always() }}
+        run: |
+          if [ -f /tmp/aprkb-e2e-api.pid ]; then
+            kill -TERM "$(cat /tmp/aprkb-e2e-api.pid)" 2>/dev/null || true
+          fi
       - name: Upload traces/screenshots on failure
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -228,6 +245,7 @@ jobs:
           name: playwright-e2e-smoke
           path: |
             apps/web/test-results
+            apps/web/playwright-report
           retention-days: 7
           if-no-files-found: ignore
       - name: Backend/frontend logs on failure

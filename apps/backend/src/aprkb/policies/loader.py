@@ -10,6 +10,7 @@ from aprkb.policies.schemas import (
     AbbreviationsPolicy,
     ConstructionsPolicy,
     ConstructionVerbGroupPolicy,
+    DiversityPolicy,
     EpistemicMarkersPolicy,
     EvidenceMatrixPolicy,
     FallbackTiersPolicy,
@@ -33,6 +34,7 @@ from aprkb.policies.schemas import (
 
 @dataclass(frozen=True)
 class PolicyBundle:
+    diversity: DiversityPolicy
     licenses: LicensesPolicy
     ranking_weights: RankingWeightsPolicy
     license: LicensePolicy
@@ -69,6 +71,7 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
     """Load all policy files, failing startup on missing or invalid policy data."""
     root = Path(policy_dir) if policy_dir is not None else Path(__file__).parent
     return PolicyBundle(
+        diversity=_load(root / "diversity.yaml", DiversityPolicy),
         licenses=_load(root / "licenses.yaml", LicensesPolicy),
         ranking_weights=_load(root / "ranking_weights.yaml", RankingWeightsPolicy),
         license=_load(root / "license_policy.yaml", LicensePolicy),

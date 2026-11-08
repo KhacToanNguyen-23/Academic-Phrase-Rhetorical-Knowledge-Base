@@ -1,0 +1,5 @@
+version: 0.1.0
+# TODO(owner, FR-07.6): approve provisional lexical diversity parameters.
+lambda_: 0.7
+# Hard cap: similarity > this value is excluded; fewer than limit may be returned.
+max_similarity: 0.85

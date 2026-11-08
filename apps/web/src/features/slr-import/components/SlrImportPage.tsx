@@ -28,6 +28,8 @@ type Profile = {
   is_active: boolean;
 };
 type JobResult = {
+  duplicates?: DuplicateDetail[];
+  suspected_duplicates?: DuplicateDetail[];
   listed?: number;
   imported?: number;
   skipped_license?: number;
@@ -36,6 +38,15 @@ type JobResult = {
   skipped_invalid_content?: number;
   continuation_job_id?: string | null;
   batch_id?: string | null;
+};
+type DuplicateDetail = {
+  external_id: string | null;
+  title: string | null;
+  reason: string;
+  matched_article_id: string;
+  matched_title: string | null;
+  matched_source: string;
+  matched_status: string;
 };
 type TaxonomyPage = { items: { id: string; label: string }[]; nextCursor: string | null };
 
@@ -647,6 +658,8 @@ export function SlrImportPage() {
               </Alert>
             ) : null}
             {jobId ? (
+              <>
+              <Button variant="outline" asChild><Link to="/jobs" search={{ job: jobId }}>View job history and retry</Link></Button>
               <JobProgress
                 job={job}
                 jobStatus={jobStatus}
@@ -656,6 +669,7 @@ export function SlrImportPage() {
                 result={result}
                 setJobId={setJobId}
               />
+              </>
             ) : null}
           </CardContent>
         </Card>
@@ -770,7 +784,7 @@ function JobProgress({
       ) : null}
       {job.data?.error ? (
         <Alert variant="destructive">
-          <AlertTitle>Import stopped</AlertTitle>
+          <AlertTitle>{jobStatus === "queued" ? "Waiting to retry" : jobStatus === "processing" ? "Previous attempt failed" : "Import stopped"}</AlertTitle>
           <AlertDescription>{job.data.error}</AlertDescription>
         </Alert>
       ) : null}
@@ -805,6 +819,8 @@ function JobProgress({
           </TableRow>
         </TableBody>
       </Table>
+      <DuplicateResults title="Skipped duplicate articles" rows={result?.duplicates ?? []} />
+      <DuplicateResults title="Similar titles to review (imported)" rows={result?.suspected_duplicates ?? []} />
       {result?.batch_id && imported > 0 && ["done", "succeeded"].includes(jobStatus) ? (
         <Button asChild variant="outline" className="w-fit">
           <Link to="/extract" search={{ batch: result.batch_id }}>
@@ -818,6 +834,49 @@ function JobProgress({
         </Button>
       ) : null}
     </div>
+  );
+}
+
+function DuplicateResults({ title, rows }: { title: string; rows: DuplicateDetail[] }) {
+  if (!rows.length) return null;
+  const reasons: Record<string, string> = {
+    source_id: "Same source article ID (before download)",
+    doi: "Same normalized DOI (before download)",
+    file_sha256: "Identical file (after download)",
+    title: "Same normalized title; identity unconfirmed",
+  };
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="font-medium">{title}</h3>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Incoming article</TableHead>
+            <TableHead>Reason</TableHead>
+            <TableHead>Existing article</TableHead>
+            <TableHead>Ingest status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row, index) => (
+            <TableRow key={`${row.external_id}-${row.matched_article_id}-${index}`}>
+              <TableCell className="whitespace-normal">{row.title ?? row.external_id ?? "Untitled"}</TableCell>
+              <TableCell className="whitespace-normal">{reasons[row.reason] ?? row.reason}</TableCell>
+              <TableCell className="whitespace-normal">
+                <span className="block">{row.matched_title ?? "Untitled"}</span>
+                <span className="text-xs text-muted-foreground">{row.matched_source} · {row.matched_article_id}</span>
+              </TableCell>
+              <TableCell className="whitespace-normal">
+                {row.matched_status}
+                {row.matched_status === "failed" ? (
+                  <span className="block text-xs text-muted-foreground">Retry ingestion of the existing article.</span>
+                ) : null}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </section>
   );
 }
 

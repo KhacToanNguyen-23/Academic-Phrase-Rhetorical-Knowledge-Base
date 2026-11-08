@@ -35,6 +35,8 @@ from aprkb.modules.patterns.models import (
     ReviewDecision,
     UsageConstraint,
 )
+from aprkb.modules.patterns.read_model import load_current_patterns
+from aprkb.modules.recommendation import repository as recommendation_repository
 from aprkb.modules.recommendation.models import Feedback, RecommendationLog
 from aprkb.modules.taxonomy.models import Intent
 from aprkb.policies.loader import load_policy_bundle
@@ -137,6 +139,11 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/admin/extraction/phrases/decisions", "post"),
         ("/v1/admin/extraction/phrases/{id}/decision", "post"),
         ("/v1/admin/jobs/{id}", "get"),
+        ("/v1/admin/jobs", "get"),
+        ("/v1/admin/jobs/{id}/attempts", "get"),
+        ("/v1/admin/jobs/{id}/retry", "post"),
+        ("/v1/admin/job-alerts", "get"),
+        ("/v1/admin/job-alerts/{id}/acknowledge", "post"),
         ("/v1/admin/api-keys", "post"),
         ("/v1/admin/api-keys", "get"),
         ("/v1/admin/api-keys", "delete"),
@@ -222,7 +229,8 @@ async def test_recommendations_default_to_approved_patterns_and_count_evidence_h
         "There is limited evidence about" not in item["canonical_frame"]
         for item in initial.json()["items"]
     )
-    assert initial.json()["excluded"].get("GATE_APPROVAL", 0) > 0
+    # Draft/retired rows are excluded by SQL before the defensive gates run.
+    assert initial.json()["excluded"].get("GATE_APPROVAL", 0) == 0
     assert all(
         "The findings may relate to" not in item["canonical_frame"]
         for item in initial.json()["items"]
@@ -236,6 +244,105 @@ async def test_recommendations_default_to_approved_patterns_and_count_evidence_h
     )
     assert filtered.status_code == 200
     assert filtered.json()["excluded"].get("GATE_EVIDENCE", 0) > 0
+
+
+async def test_recommendation_sql_filters_reduce_reads_without_changing_items(
+    api_client, session_factory, monkeypatch
+):
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "SQL retrieval regression")
+    async with session_factory() as session:
+        baseline = await load_current_patterns(session)
+        eligible = [row for row in baseline if row.status == "approved"]
+        assert len(eligible) < len(baseline)
+        assert {row.status for row in baseline} >= {"draft", "retired"}
+        actual = await recommendation_repository.load_pattern_rows(session, intent_code=None)
+        assert actual == eligible
+        # Exercise JSONB empty, matching, non-matching and absent outer-joined rows.
+        genres = [[], ["RESEARCH_ARTICLE"], ["SYSTEMATIC_REVIEW"]]
+        for index, row in enumerate(eligible):
+            usage = await session.scalar(
+                select(UsageConstraint).where(
+                    UsageConstraint.pattern_version_id == row.current_version_id
+                )
+            )
+            if usage is not None:
+                if index == 0:
+                    await session.delete(usage)
+                else:
+                    usage.allowed_genres = genres[index % len(genres)]
+        await session.commit()
+        baseline = await load_current_patterns(session)
+        for genre in (None, "RESEARCH_ARTICLE", "SYSTEMATIC_REVIEW"):
+            expected = [
+                row
+                for row in baseline
+                if row.status == "approved"
+                and (not genre or not row.allowed_genres or genre in row.allowed_genres)
+            ]
+            actual = await recommendation_repository.load_pattern_rows(
+                session, intent_code=None, genre_code=genre
+            )
+            assert actual == expected
+
+    headers = {"X-API-Key": key}
+    payload = {"genre": "RESEARCH_ARTICLE", "limit": 100}
+    optimized = await api_client.post("/v1/recommendations", headers=headers, json=payload)
+    assert optimized.status_code == 200
+
+    async def legacy_loader(session, *, genre_code=None, **kwargs):
+        rows = await load_current_patterns(session, **kwargs)
+        return [
+            row
+            for row in rows
+            if not genre_code or not row.allowed_genres or genre_code in row.allowed_genres
+        ]
+
+    monkeypatch.setattr(recommendation_repository, "load_pattern_rows", legacy_loader)
+    legacy = await api_client.post("/v1/recommendations", headers=headers, json=payload)
+    assert legacy.status_code == 200
+    assert optimized.json()["items"] == legacy.json()["items"]
+
+
+@pytest.mark.parametrize("query", [None, "", "   "])
+async def test_recommendations_warn_when_intent_move_query_are_absent(
+    api_client, session_factory, query
+):
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "context warning")
+    response = await api_client.post(
+        "/v1/recommendations",
+        headers={"X-API-Key": key},
+        json={"query": query, "intent": "", "move": "   ", "section": "INTRO"},
+    )
+    assert response.status_code == 200
+    assert (
+        "Không có intent/move/query; kết quả là toàn bộ pattern được duyệt"
+        in response.json()["warnings"]
+    )
+    assert "Section không được lọc" not in response.json()["warnings"]
+
+
+async def test_recommendations_warn_when_section_absent_and_not_when_context_complete(
+    api_client, session_factory
+):
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "section warning")
+    payload = {
+        "intent": "INTRO_GAP_INDICATE",
+        "query": "evidence",
+        "genre": "RESEARCH_ARTICLE",
+        "claim_type": "descriptive",
+        "evidence_level": "single_study",
+    }
+    for section in (None, "", "INTRO"):
+        response = await api_client.post(
+            "/v1/recommendations", headers={"X-API-Key": key}, json={**payload, "section": section}
+        )
+        assert response.status_code == 200
+        warnings = response.json()["warnings"]
+        assert ("Section không được lọc" in warnings) is (not section)
+        assert "Không có intent/move/query; kết quả là toàn bộ pattern được duyệt" not in warnings
 
 
 @pytest.mark.asyncio
@@ -787,7 +894,8 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         assert item["breakdown"]["journal_genre"] is None
         assert item["license_flag"] is (item["license_code"] == "PROPRIETARY")
     assert body["policy_versions"] == {
-        "ranking_weights": "0.2.0",
+        "ranking_weights": "0.3.0",
+        "diversity": "0.1.0",
         "license_policy": "0.1.0",
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
@@ -961,14 +1069,62 @@ async def test_pattern_browsing_filters_keyword_and_taxonomy_before_old_200_cap(
 
 
 @pytest.mark.asyncio
-async def test_recommendation_search_keeps_query_private_and_uses_honest_journal_fallback(
+async def test_recommendation_search_uses_only_the_selected_journal_phrasebank(
     api_client: AsyncClient, session_factory: async_sessionmaker
 ) -> None:
     async with session_factory() as session:
         await run_seed(session)
-        journal = JournalProfile(name="Search fallback journal", issn="2049-3631")
-        session.add(journal)
+        journal = JournalProfile(name="Search phrasebank journal", issn="2049-3631")
+        other_journal = JournalProfile(name="Other phrasebank journal", issn="2049-3632")
+        empty_journal = JournalProfile(name="Empty phrasebank journal", issn="2049-3633")
+        session.add_all([journal, other_journal, empty_journal])
         _, key = await create_api_key(session, name="search client", role="client")
+        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        license_row = await session.scalar(select(License).where(License.code == "CC-BY"))
+        assert intent is not None and license_row is not None and license_row.allows_display
+        await session.flush()
+
+        for selected_journal, phrase in (
+            (journal, "This fictional journal leaves the question underexplored."),
+            (other_journal, "The other fictional journal leaves this underexplored."),
+        ):
+            article = Article(
+                license_id=license_row.id,
+                journal_id=selected_journal.id,
+                blob_key=f"test/{selected_journal.issn}.txt",
+                title="Self-authored test article",
+                ingest_status="ready",
+            )
+            pattern = PhrasePattern(intent_id=intent.id, status="approved")
+            session.add_all([article, pattern])
+            await session.flush()
+            version = PatternVersion(
+                pattern_id=pattern.id,
+                version_no=1,
+                canonical_frame=phrase,
+                slots={},
+                epistemic_strength="moderate",
+                claim_type="descriptive",
+            )
+            session.add(version)
+            await session.flush()
+            pattern.current_version_id = version.id
+            session.add_all(
+                [
+                    UsageConstraint(
+                        pattern_version_id=version.id,
+                        allowed_sections=["INTRO"],
+                        allowed_genres=["RESEARCH_ARTICLE"],
+                    ),
+                    EvidenceProvenance(
+                        pattern_version_id=version.id,
+                        source_type="mined",
+                        article_id=article.id,
+                        license_id=license_row.id,
+                        sentence_ids=[],
+                    ),
+                ]
+            )
         await session.commit()
 
     payload = {
@@ -986,16 +1142,31 @@ async def test_recommendation_search_keeps_query_private_and_uses_honest_journal
 
     assert response.status_code == 200
     body = response.json()
-    assert body["items"]
-    assert all(item["fallback_tier"] == "generic_genre" for item in body["items"])
-    assert all("underexplored" in item["canonical_frame"] for item in body["items"])
-    assert body["fallback_reason"]
+    assert len(body["items"]) == 1
+    assert body["items"][0]["canonical_frame"] == (
+        "This fictional journal leaves the question underexplored."
+    )
+    assert body["items"][0]["fallback_tier"] == "selected_journal_phrasebank"
+    assert body["fallback_reason"] is None
     async with session_factory() as session:
         log = await session.get(RecommendationLog, UUID(body["recommendation_id"]))
         assert log is not None
         assert "query" not in log.request
         assert log.request["query_hash"]
         assert "underexplored" not in str(log.request)
+
+    empty_bank_response = await api_client.post(
+        "/v1/recommendations",
+        headers={"X-API-Key": key},
+        json={**payload, "journal_id": str(empty_journal.id)},
+    )
+    assert empty_bank_response.status_code == 200
+    assert empty_bank_response.json()["items"] == []
+    assert empty_bank_response.json()["fallback_reason"] is None
+    assert (
+        "No approved journal-linked phrases match these search criteria"
+        in (empty_bank_response.json()["warnings"])
+    )
 
     wildcard_response = await api_client.post(
         "/v1/recommendations",
@@ -1135,7 +1306,7 @@ async def test_feedback_rejects_raw_writer_text(
 
 
 @pytest.mark.asyncio
-async def test_validation_checks_writer_provided_grounding_and_keeps_v05_unavailable(
+async def test_validation_checks_writer_provided_grounding_and_marks_v05_out_of_scope(
     api_client: AsyncClient, session_factory: async_sessionmaker
 ) -> None:
     await run_seed_in_session(session_factory)
@@ -1158,7 +1329,11 @@ async def test_validation_checks_writer_provided_grounding_and_keeps_v05_unavail
     assert v03["severity"] == "block"
     assert v03["applied"] is True
     assert v03["span"] is not None
-    assert "V05" in body["checks_unavailable"]
+    assert "V05" not in body["checks_unavailable"]
+    assert "V05" in body["checks_not_applicable"]
+    v05 = next(rule for rule in body["rules"] if rule["code"] == "V05")
+    assert v05["severity"] == "not_applicable"
+    assert v05["applied"] is False
 
 
 async def _create_candidate(session_factory: async_sessionmaker, *, unsafe: bool = False) -> UUID:
@@ -1811,3 +1986,151 @@ async def test_hybrid_candidate_with_stale_policy_version_fails_closed(
     decision = await _decision_payload(api_client, key, candidate_id, "approve")
     assert decision.status_code == 409
     assert await _version_count(session_factory) == versions_before
+
+
+async def test_online_move_intent_normalization_details_and_trace_with_packaged_policy(
+    session_factory,
+):
+    from dataclasses import replace
+
+    from aprkb.modules.taxonomy.models import Move, Step
+    from aprkb.policies.schemas import RankingWeightsPolicy
+
+    async with session_factory() as session:
+        await run_seed(session)
+        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        move = await session.scalar(
+            select(Move).join(Step, Step.move_id == Move.id).where(Step.id == intent.step_id)
+        )
+        pattern = PhrasePattern(intent_id=intent.id, status="approved")
+        session.add(pattern)
+        await session.flush()
+        version = PatternVersion(
+            pattern_id=pattern.id,
+            version_no=1,
+            canonical_frame="We suggest {topic}.",
+            slots={"topic": "noun_phrase"},
+            epistemic_strength="low",
+            claim_type="descriptive",
+        )
+        session.add(version)
+        await session.flush()
+        pattern.current_version_id = version.id
+        session.add(
+            EvidenceProvenance(
+                pattern_version_id=version.id, source_type="authored", sentence_ids=[]
+            )
+        )
+        actor, key = await create_api_key(session, name="online-ranking", role="client")
+        await session.commit()
+        move_code = move.code
+        version_id = version.id
+
+    app = create_app()
+
+    async def override_db_session():
+        async with session_factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = override_db_session
+    async with app.router.lifespan_context(app):
+        # Acceptance uses the packaged policy, without enabling a scorer in the test.
+        policy = app.state.policy_bundle
+        assert policy.ranking_weights == load_policy_bundle().ranking_weights
+        assert policy.ranking_weights.weights["intent"] > 0
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            cases = [
+                ({"move": move_code}, policy.ranking_weights.intent_scores.same_move),
+                ({"intent": "INTRO_GAP_INDICATE"}, 1.0),
+                (
+                    {
+                        "move": move_code,
+                        "intent": "INTRO_GAP_INDICATE",
+                        "query": "suggests",
+                        "limit": 3,
+                    },
+                    1.0,
+                ),
+            ]
+            for request_body, expected in cases:
+                response = await client.post(
+                    "/v1/recommendations",
+                    headers={"X-API-Key": key},
+                    json=request_body,
+                )
+                assert response.status_code == 200, response.text
+                body = response.json()
+                candidate = next(
+                    item for item in body["items"] if item["pattern_version_id"] == str(version_id)
+                )
+                assert candidate["breakdown"]["intent"] == expected
+                assert all(item["breakdown"]["intent"] == expected for item in body["items"])
+                for issued in body["items"]:
+                    issued_details = issued["explanation_details"]
+                    assert sum(
+                        detail["weight"] for detail in issued_details if detail["available"]
+                    ) == pytest.approx(1.0)
+                    assert sum(
+                        (detail["value"] or 0) * detail["weight"] for detail in issued_details
+                    ) == pytest.approx(issued["score"])
+                if request_body.get("query"):
+                    assert candidate["breakdown"]["linguistic"] == 1.0
+                details = candidate["explanation_details"]
+                assert {item["criterion"] for item in details} == set(candidate["breakdown"])
+                intent_detail = next(item for item in details if item["criterion"] == "intent")
+                assert intent_detail["value"] == expected
+                assert intent_detail["weight"] > 0
+                assert intent_detail["available"] is True
+                assert f"Intent: {expected:.3f}" in candidate["explanations"]
+                for item in details:
+                    if not item["available"]:
+                        assert item["weight"] == 0
+                        assert item["value"] is None
+                assert sum(
+                    item["weight"] for item in details if item["available"]
+                ) == pytest.approx(1)
+                assert sum(
+                    (item["value"] or 0) * item["weight"] for item in details
+                ) == pytest.approx(candidate["score"])
+                assert body["fallback_trace"][-1]["tier"] == "generic_genre"
+                assert body["fallback_trace"][-1]["accepted_count"] >= 1
+                async with session_factory() as session:
+                    log = await session.get(RecommendationLog, UUID(body["recommendation_id"]))
+                    assert log.created_by == actor.id
+                    assert log.results["fallback_trace"] == body["fallback_trace"]
+                    assert log.results["items"] == body["items"]
+                    assert "query" not in log.request
+                    assert ("query_hash" in log.request) is bool(request_body.get("query"))
+
+            # Separate ablation: explicitly disable intent, keeping policy weights valid.
+            disabled = policy.ranking_weights.model_dump()
+            intent_weight = disabled["weights"]["intent"]
+            disabled["weights"]["intent"] = 0
+            disabled["weights"]["discipline"] += intent_weight
+            app.state.policy_bundle = replace(
+                policy, ranking_weights=RankingWeightsPolicy.model_validate(disabled)
+            )
+            for request_body in ({"move": move_code}, {"intent": "INTRO_GAP_INDICATE"}):
+                response = await client.post(
+                    "/v1/recommendations",
+                    headers={"X-API-Key": key},
+                    json=request_body,
+                )
+                assert response.status_code == 200
+                assert response.json()["items"]
+                for item in response.json()["items"]:
+                    assert item["breakdown"]["intent"] is None
+                    details = item["explanation_details"]
+                    intent_detail = next(
+                        detail for detail in details if detail["criterion"] == "intent"
+                    )
+                    assert intent_detail == {
+                        "criterion": "intent",
+                        "value": None,
+                        "weight": 0.0,
+                        "available": False,
+                    }
+                    assert sum(
+                        detail["weight"] for detail in details if detail["available"]
+                    ) == pytest.approx(1)
+            app.state.policy_bundle = policy

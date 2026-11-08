@@ -24,6 +24,7 @@ class PatternView:
     article_id: UUID | None = None
     evidence_min: str | None = None
     forbidden_contexts: tuple[str, ...] = ()
+    move_code: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "allowed_sections", tuple(self.allowed_sections))

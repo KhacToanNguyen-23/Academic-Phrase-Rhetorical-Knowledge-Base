@@ -65,6 +65,20 @@ System integrations continue to authenticate with `X-API-Key`. `GET /v1/auth/me`
 `claim_type`, `genre`, `journal_id`, and evidence filters. An empty context returns
 approved, renderable examples. Evidence strength is not filtered until an evidence
 level is selected; rejected examples are counted under `excluded.GATE_EVIDENCE`.
+Recommendation retrieval filters status (`approved`) and genre in SQL before
+building read views. Empty genre restrictions or absent usage constraints allow
+all genres. Approval and retired gates remain as defensive checks, but SQL-filtered
+draft/retired rows no longer contribute to `excluded.GATE_APPROVAL` or
+`excluded.GATE_RETIRED`. These counts describe candidates seen by the pipeline,
+not all rows in the database; the writer currently displays only the evidence count.
+
+Blank intent, move and section values are treated as absent. Requests lacking
+intent, move and a nonblank query receive
+`Không có intent/move/query; kết quả là toàn bộ pattern được duyệt`;
+requests lacking section receive `Section không được lọc`.
+The first warning describes the broad candidate scope: other supplied filters,
+hard gates and the result limit still apply. No request fields became mandatory.
+
 `query` is split into
 case-insensitive word terms, searches for any matching term, and ranks by
 matched-term coverage; punctuation-only queries return no results. Recommendation
@@ -74,16 +88,18 @@ The published taxonomy returns section `compatible_genres`. `/v1/recommendations
 rejects genre/section pairs absent from that relation. The seed relation is a
 self-authored draft pending taxonomy-owner review (`TODO(owner)`).
 
-Until reviewed journal guidelines and fingerprint data have a usable runtime
-contract, matches are reported as `generic_genre`. A selected journal receives
-an explicit `fallback_reason`; matching genre alone does not establish journal
-suitability. The response includes versioned score breakdowns and gate exclusion
-counts. Intent and evidence eligibility remain hard gates; only eligible candidates
-receive an evidence proximity score. Keyword match uses query term coverage, and
-criteria without data remain null (`—` in the writer). The writer shows each
-criterion once in a horizontal cell. Provisional formulas and
-weights are recorded in `ranking_weights.yaml` with `TODO(owner)`. This is the
-current API behavior, not a claim of journal style support.
+When a journal is selected, recommendations are restricted to approved mined
+patterns whose evidence provenance points to an article assigned to that journal.
+The response labels these results `selected_journal_phrasebank`; an empty mapping
+returns no candidates and does not use a generic fallback. Without a selected
+journal, the configured generic fallback tiers still apply. This source association
+does not claim journal style support or fingerprint-based ranking. The response
+includes versioned score breakdowns and gate exclusion counts. Intent and evidence
+eligibility remain hard gates; only eligible candidates receive an evidence
+proximity score. Keyword match uses query term coverage, and criteria without data
+remain null (`—` in the writer). The writer shows each criterion once in a
+horizontal cell. Provisional formulas and weights are recorded in
+`ranking_weights.yaml` with `TODO(owner)`.
 
 `GET /v1/taxonomy/reference-options` returns DB-backed claim/evidence/strength choices.
 `GET /v1/patterns/versions/{version_id}` returns slots only for the current approved
@@ -96,8 +112,9 @@ and one-character defaults; optional empty slots remain placeholders.
 `POST /v1/validate` runs V02, a deterministic V03 check for numbers, DOI, and
 parenthetical citations absent from the supplied supporting context/slots, and a limited V06
 phrase screen that warns on configured informal wording. V06 is not a grammar checker.
-V05 remains unavailable pending verified Offline guideline data; other unfinished checks
-are also listed as unavailable, so `complete` remains false.
+V05 is marked `not_applicable` because journal-guideline compliance is outside the
+current sentence-validation flow. Other unfinished in-scope checks remain listed as
+unavailable, so `complete` remains false.
 Validation returns text/context hashes and policy versions; it does not store the raw
 sentence. Feedback accepts only a SHA-256 context hash in its optional metadata and
 requires a version actually issued in that client's recommendation. The MVP does not
@@ -109,6 +126,28 @@ See [the root README](../../README.md) for the PRD traceability table and comman
 
 ## Offline data packs
 
+For both Phrasebank sources and their filter mappings, use the shared [Phrasebank initialization workflow](../../doc/phrasebank-initialization.md): `uv run python -m aprkb.cli init-phrasebank --file <data_init.json> --dry-run`, then the same command without `--dry-run` in the configured staging/test destination. One manifest names the existing pattern pack, Manchester collection, and reviewed mappings. Both imports commit together or roll back together. Existing individual pack/reference commands keep their behavior.
+
 `modules/pack/` transfers only the PhrasePattern graph. The `approved_phrases` store from ADR-0009 is intentionally out of scope for pack v0.1; pack tooling does not read it. Offline self-check: `uv run python -m aprkb.cli validate-pack <pack-dir>`. On a separate Offline/staging/test destination, run `uv run python -m aprkb.cli init-reference`, then `uv run python -m aprkb.cli import-pack <pack-dir>` (preview with `--dry-run`). These commands write data; do not run them against the active query-only Online database. Export with `uv run python -m aprkb.cli export-pack --out <pack-dir> --only-approved`; it reads the database and reports excluded approved patterns by ID/code/path. See [data pack spec](../../doc/data-pack-spec.md).
 
 The `/v1/reference-library` GET routes serve a quarantined external reference collection from its own tables. They return 404 unless `REFERENCE_LIBRARY_ENABLED=true`. Import and purge are CLI-only (`uv run python -m aprkb.cli import-reference-library --file <path>` and `uv run python -m aprkb.cli purge-reference-library`). Import replacement and its content-free audit event commit together. Imported entries are disconnected from patterns, recommendations, render, and validation. Keep the source notice in the UI and do not treat these entries as approved or redistributable patterns.
+
+## Bounded worker retry
+
+Import, ingestion and mining jobs now schedule bounded retries for transient failures.
+Defaults: four total attempts, 10s exponential backoff capped at 300s with jitter,
+30s heartbeat, 300s lease and 900s asynchronous attempt timeout. `Retry-After` is
+respected as a minimum. See [ADR-0013](../../doc/adr/0013-bounded-job-retry.md) for
+configuration, transaction guarantees and rollout requirements. Drain all old workers
+before applying migration `0012_job_retry`; do not run mixed worker versions.
+Job inspection exposes `max_attempts`, `next_attempt_at` and `error_code`.
+
+## Job operations
+
+See [ADR-0014](../../doc/adr/0014-job-operations.md). Migration `0013_job_operations`
+adds per-attempt history and repeated-failure alerts. Curator/admin users open
+`/jobs` (also linked from Import) for live progress, errors, acknowledgement and
+manual retry after fixing the cause. Manual retry grants one additional attempt,
+preserves history, and defaults to at most three manual retries per job. In-app
+alerts default to three observed failed/interrupted attempts and resolve on success.
+Configure `JOB_MANUAL_RETRY_LIMIT` and `JOB_FAILURE_ALERT_THRESHOLD` if required.

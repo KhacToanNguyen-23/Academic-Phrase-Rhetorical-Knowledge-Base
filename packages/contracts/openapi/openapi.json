@@ -347,6 +347,17 @@
       },
       "Body_upload_article_v1_admin_corpus_articles_post": {
         "properties": {
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
           "file": {
             "contentMediaType": "application/octet-stream",
             "title": "File",
@@ -698,6 +709,64 @@
           "relative_ratio"
         ],
         "title": "DomainStatRead",
+        "type": "object"
+      },
+      "ExplanationDetail": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "criterion": {
+            "title": "Criterion",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "weight": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "criterion",
+          "value",
+          "weight",
+          "available"
+        ],
+        "title": "ExplanationDetail",
+        "type": "object"
+      },
+      "FallbackTraceEntry": {
+        "properties": {
+          "accepted_count": {
+            "minimum": 0.0,
+            "title": "Accepted Count",
+            "type": "integer"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier",
+          "accepted_count"
+        ],
+        "title": "FallbackTraceEntry",
         "type": "object"
       },
       "FamilyMemberRead": {
@@ -1609,6 +1678,210 @@
         "title": "ImportRunRead",
         "type": "object"
       },
+      "JobAlertAcknowledge": {
+        "properties": {
+          "expected_last_failed_at": {
+            "format": "date-time",
+            "title": "Expected Last Failed At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_last_failed_at"
+        ],
+        "title": "JobAlertAcknowledge",
+        "type": "object"
+      },
+      "JobAlertRead": {
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "failure_count": {
+            "title": "Failure Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "last_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Code"
+          },
+          "last_failed_at": {
+            "format": "date-time",
+            "title": "Last Failed At",
+            "type": "string"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          }
+        },
+        "required": [
+          "id",
+          "job_id",
+          "failure_count",
+          "last_error_code",
+          "last_failed_at",
+          "active",
+          "acknowledged_at",
+          "resolved_at"
+        ],
+        "title": "JobAlertRead",
+        "type": "object"
+      },
+      "JobAttemptRead": {
+        "properties": {
+          "attempt_no": {
+            "title": "Attempt No",
+            "type": "integer"
+          },
+          "completed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "id",
+          "attempt_no",
+          "started_at",
+          "ended_at",
+          "outcome",
+          "stage",
+          "completed",
+          "total",
+          "error_code",
+          "error",
+          "next_attempt_at"
+        ],
+        "title": "JobAttemptRead",
+        "type": "object"
+      },
       "JobRead": {
         "properties": {
           "attempts": {
@@ -1631,10 +1904,91 @@
             ],
             "title": "Error"
           },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "locked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locked At"
+          },
+          "manual_retries": {
+            "title": "Manual Retries",
+            "type": "integer"
+          },
+          "manual_retry_limit": {
+            "default": 3,
+            "title": "Manual Retry Limit",
+            "type": "integer"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "progress_completed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress Completed"
+          },
+          "progress_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress Stage"
+          },
+          "progress_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress Total"
           },
           "result": {
             "anyOf": [
@@ -1667,12 +2021,41 @@
           "type",
           "status",
           "attempts",
+          "max_attempts",
+          "next_attempt_at",
+          "error_code",
           "error",
           "result",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "locked_at",
+          "manual_retries",
+          "progress_stage",
+          "progress_completed",
+          "progress_total"
         ],
         "title": "JobRead",
+        "type": "object"
+      },
+      "JobRetryRequest": {
+        "properties": {
+          "expected_attempts": {
+            "minimum": 0.0,
+            "title": "Expected Attempts",
+            "type": "integer"
+          },
+          "rationale": {
+            "maxLength": 1000,
+            "minLength": 10,
+            "title": "Rationale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_attempts",
+          "rationale"
+        ],
+        "title": "JobRetryRequest",
         "type": "object"
       },
       "JournalRead": {
@@ -2317,6 +2700,17 @@
             ],
             "title": "License Name"
           },
+          "move_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move Code"
+          },
           "slots": {
             "anyOf": [
               {
@@ -2635,6 +3029,17 @@
               }
             ],
             "title": "License Name"
+          },
+          "move_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move Code"
           },
           "slots": {
             "anyOf": [
@@ -3183,6 +3588,13 @@
             "title": "Canonical Frame",
             "type": "string"
           },
+          "explanation_details": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationDetail"
+            },
+            "title": "Explanation Details",
+            "type": "array"
+          },
           "explanations": {
             "items": {
               "type": "string"
@@ -3404,6 +3816,13 @@
               }
             ],
             "title": "Fallback Reason"
+          },
+          "fallback_trace": {
+            "items": {
+              "$ref": "#/components/schemas/FallbackTraceEntry"
+            },
+            "title": "Fallback Trace",
+            "type": "array"
           },
           "items": {
             "items": {
@@ -4947,6 +5366,13 @@
       },
       "ValidationResponse": {
         "properties": {
+          "checks_not_applicable": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Checks Not Applicable",
+            "type": "array"
+          },
           "checks_unavailable": {
             "items": {
               "type": "string"
@@ -4998,6 +5424,7 @@
           "severity",
           "complete",
           "checks_unavailable",
+          "checks_not_applicable",
           "rules"
         ],
         "title": "ValidationResponse",
@@ -6719,6 +7146,276 @@
         ]
       }
     },
+    "/v1/admin/job-alerts": {
+      "get": {
+        "operationId": "list_job_alerts_v1_admin_job_alerts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "active_only",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Active Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobAlertRead"
+                  },
+                  "title": "Response List Job Alerts V1 Admin Job Alerts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Job Alerts",
+        "tags": [
+          "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/job-alerts/{alert_id}/acknowledge": {
+      "post": {
+        "operationId": "acknowledge_job_alert_v1_admin_job_alerts__alert_id__acknowledge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "alert_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Alert Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobAlertAcknowledge"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAlertRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Acknowledge Job Alert",
+        "tags": [
+          "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/jobs": {
+      "get": {
+        "operationId": "list_jobs_v1_admin_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "queued",
+                    "processing",
+                    "succeeded",
+                    "failed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "job_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobRead"
+                  },
+                  "title": "Response List Jobs V1 Admin Jobs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Jobs",
+        "tags": [
+          "admin corpus and jobs"
+        ]
+      }
+    },
     "/v1/admin/jobs/{job_id}": {
       "get": {
         "operationId": "get_job_v1_admin_jobs__job_id__get",
@@ -6773,6 +7470,161 @@
           }
         },
         "summary": "Get Job",
+        "tags": [
+          "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/jobs/{job_id}/attempts": {
+      "get": {
+        "operationId": "job_attempt_history_v1_admin_jobs__job_id__attempts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobAttemptRead"
+                  },
+                  "title": "Response Job Attempt History V1 Admin Jobs  Job Id  Attempts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Job Attempt History",
+        "tags": [
+          "admin corpus and jobs"
+        ]
+      }
+    },
+    "/v1/admin/jobs/{job_id}/retry": {
+      "post": {
+        "operationId": "manual_job_retry_v1_admin_jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobRetryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Manual Job Retry",
         "tags": [
           "admin corpus and jobs"
         ]

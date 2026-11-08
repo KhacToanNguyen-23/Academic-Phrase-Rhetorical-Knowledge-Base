@@ -727,3 +727,11 @@ ADR-0014 với tám family dependency (`discourse_gap` đang tắt), Purity Gate
 giữ nguyên quyền quyết định; Tier 2 chỉ chạy sau hai lần không khớp và khi token spaCy đã lưu tồn
 tại. Candidate tiếp tục qua hàng đợi pending hiện tại. Chưa bật switch trước khi đo coverage trên
 blob có quyền mining và review volume; xem ADR-0014.
+
+## Job operations extension (2026-11-05)
+
+The user approved bounded PostgreSQL retries and the subsequent operational workflow:
+curator/admin manual retry, per-attempt error history, live stage progress and in-app
+repeated-failure alerts. See ADR-0013 and ADR-0014. This adds `/jobs` and the documented
+admin job APIs; it does not introduce Redis/Celery, bypass license checks, change
+Extract/Publication review rules or automatically send external notifications.

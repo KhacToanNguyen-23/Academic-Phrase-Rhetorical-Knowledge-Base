@@ -9,6 +9,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 
+import { JobsPage } from "@/features/jobs/JobsPage";
 import { AdminPage } from "@/features/admin";
 import { useAuth, type AuthContextValue } from "@/features/auth/AuthProvider";
 import { SigninPage } from "@/features/auth/SigninPage";
@@ -111,7 +112,29 @@ const playground = createRoute({
   component: () => <PlaygroundPage patternId={getRouteApi("/shell/guarded/playground").useSearch().pattern} />,
 });
 
-const writer = createRoute({ getParentRoute: () => appLayout, path: "/writer", component: OnlineWriterPage });
+function JobsRoute() {
+  const auth = useAuth();
+  const search = getRouteApi("/shell/guarded/jobs").useSearch();
+  return auth.apiKey && auth.client ? <JobsPage key={`${auth.client.id}:${search.job ?? ""}`} apiKey={auth.apiKey} actorId={auth.client.id} role={auth.client.role} initialJob={search.job} /> : null;
+}
+const jobs = createRoute({ getParentRoute: () => guarded, path: "/jobs", validateSearch: (s: Record<string, unknown>): { job?: string } => ({ job: str(s.job) }), component: JobsRoute });
+
+function WriterRoute() {
+  const search = getRouteApi("/shell/writer").useSearch();
+  const initialContext = {
+    section: search.section ?? "", move: search.move ?? "", intent: search.intent ?? "",
+    genre: search.genre ?? "", query: search.query ?? "",
+  };
+  return <OnlineWriterPage key={JSON.stringify(initialContext)} initialContext={initialContext} />;
+}
+const writer = createRoute({
+  getParentRoute: () => appLayout,
+  path: "/writer",
+  validateSearch: (s: Record<string, unknown>): { section?: string; move?: string; intent?: string; genre?: string; query?: string } => ({
+    section: str(s.section), move: str(s.move), intent: str(s.intent), genre: str(s.genre), query: str(s.query),
+  }),
+  component: WriterRoute,
+});
 
 const inbox = createRoute({ getParentRoute: () => guarded, path: "/inbox", component: InboxPage });
 const admin = createRoute({ getParentRoute: () => guarded, path: "/admin", component: AdminPage });
@@ -187,6 +210,7 @@ export const router = createRouter({
         admin,
         slrImport,
         extract,
+        jobs,
         gold,
         vocabulary,
         vocabularyLemma,

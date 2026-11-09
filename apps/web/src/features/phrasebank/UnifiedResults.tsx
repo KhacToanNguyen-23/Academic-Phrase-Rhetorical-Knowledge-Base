@@ -219,7 +219,16 @@ export function UnifiedResults({ source, query, sectionCode, intentCode, hasSlot
   });
   const patterns = useQuery({
     queryKey: ["phrasebank-pattern-search", query, sectionCode, intentCode, hasSlots],
-    queryFn: () => PHRASEBANK_SOURCES["aprkb-patterns"].search(query, filters),
+    queryFn: async () => {
+      // The patterns API caps one response at 200 rows; page through so none are unreachable.
+      const all: PatternDetail[] = [];
+      for (let offset = 0; offset < 5000; offset += 200) {
+        const batch = await phrasebankSources.patterns(query, filters, { offset, limit: 200 });
+        all.push(...batch);
+        if (batch.length < 200) break;
+      }
+      return all;
+    },
     enabled: showPatterns,
     retry: false,
   });

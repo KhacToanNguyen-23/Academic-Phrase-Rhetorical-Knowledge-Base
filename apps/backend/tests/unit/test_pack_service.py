@@ -55,11 +55,14 @@ async def test_native_projection_uses_candidate_reviews_only_for_first_version(v
         for round_no in (1, 2)
     ]
     session = AsyncMock()
-    session.scalar.return_value = UsageConstraint(
-        allowed_sections=["RESULTS"],
-        allowed_genres=[],
-        forbidden_contexts=[],
-    )
+    session.scalar.side_effect = [
+        UsageConstraint(
+            allowed_sections=["RESULTS"],
+            allowed_genres=[],
+            forbidden_contexts=[],
+        ),
+        None,
+    ]
     session.scalars.side_effect = (
         [[source], [], [], [uuid4()], reviews] if version_no == 1 else [[source], [], []]
     )
@@ -108,11 +111,14 @@ async def test_imported_review_metadata_survives_reexport():
         comment="[reviewer: Offline reviewer (reviewer)] Reviewed metadata",
     )
     session = AsyncMock()
-    session.scalar.return_value = UsageConstraint(
-        allowed_sections=["RESULTS"],
-        allowed_genres=[],
-        forbidden_contexts=[],
-    )
+    session.scalar.side_effect = [
+        UsageConstraint(
+            allowed_sections=["RESULTS"],
+            allowed_genres=[],
+            forbidden_contexts=[],
+        ),
+        None,
+    ]
     session.scalars.side_effect = [
         [EvidenceProvenance(source_type="authored", sentence_ids=[])],
         [],

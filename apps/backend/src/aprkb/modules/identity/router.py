@@ -296,7 +296,7 @@ async def web_identity(request: Request, client: Authenticated) -> Authenticated
     google = token.startswith("google_") and bool(client.google_subject)
     email = (
         token.startswith("email_")
-        and bool(client.email)
+        and client.email is not None
         and client.email.endswith("@hyperdatalab.org")
     )
     if not (google or email):

@@ -3,6 +3,7 @@
 import secrets
 from asyncio import to_thread
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import HTTPException
 from google.auth.exceptions import GoogleAuthError
@@ -17,9 +18,11 @@ from aprkb.modules.identity.schemas import DemoSession
 from aprkb.modules.identity.service import authenticate_api_key, create_api_key
 
 
-def verify_google_credential(credential: str, client_id: str, nonce: str) -> dict:
+def verify_google_credential(credential: str, client_id: str, nonce: str) -> dict[str, Any]:
     try:
-        claims = verify_oauth2_token(credential, GoogleRequest(), audience=client_id)
+        claims: dict[str, Any] = verify_oauth2_token(  # type: ignore[no-untyped-call]
+            credential, GoogleRequest(), audience=client_id
+        )
     except (ValueError, GoogleAuthError):
         raise HTTPException(
             status_code=401, detail="Google sign-in could not be verified"

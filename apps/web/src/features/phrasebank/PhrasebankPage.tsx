@@ -3,47 +3,28 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataState } from "@/components/domain/DataState";
 import { PageHeader } from "@/components/domain/PageHeader";
 import { Input } from "@/components/ui/input";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { MeasurementSlotSuggestions } from "@/features/measurement";
 import { ApiError } from "@/features/slr-import/api/client";
+import { AcademicPhraseBankFilters, type APBFilterState } from "./AcademicPhraseBank";
+import { isReferenceDisabled, taxonomyIntents, UnifiedResults } from "./UnifiedResults";
 import {
   PHRASEBANK_SOURCES,
   phrasebankSources,
-  type ManchesterCategory,
   type PatternDetail,
-  type PatternFilter,
   type SourceId,
   type TaxonomyTree,
 } from "./source-registry";
 
 const SOURCE_CREDIT = "Source: University of Manchester Academic Phrasebank.";
-const PATTERN_PAGE_SIZE = 50;
 
-function isReferenceDisabled(error: unknown) {
-  return (
-    error instanceof ApiError && error.status === 404 && error.body?.error?.message === "Reference library is disabled"
-  );
-}
-function groupBy<T, K extends string>(items: T[], key: (item: T) => K): [K, T[]][] {
-  const groups = new Map<K, T[]>();
-  for (const item of items) groups.set(key(item), [...(groups.get(key(item)) ?? []), item]);
-  return [...groups.entries()];
-}
 function SourceCredit() {
   return <p className="text-sm text-muted-foreground">{SOURCE_CREDIT}</p>;
 }
@@ -56,108 +37,7 @@ function useDebounced(value: string, delay = 250) {
   return debounced;
 }
 
-function CategoryCards({ categories, kind }: { categories: ManchesterCategory[]; kind: "section" | "function" }) {
-  const rows = categories.filter((item) => item.kind === kind);
-  if (!rows.length)
-    return (
-      <DataState
-        state="empty"
-        emptyTitle={`No ${kind === "section" ? "sections" : "general functions"} available`}
-        emptyDescription="No categories match the current filters."
-      />
-    );
-  return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {rows.map((item) => (
-        <Link
-          key={item.slug}
-          to="/phrasebank/$slug"
-          params={{ slug: item.slug }}
-          className={
-            "flex items-center justify-between rounded-[var(--radius)] border border-border p-4 " +
-            "hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
-          }
-        >
-          <span className="font-medium">{item.title}</span>
-          <Badge variant="outline">{item.entry_count}</Badge>
-        </Link>
-      ))}
-    </div>
-  );
-}
 
-type SearchEntry = NonNullable<Awaited<ReturnType<typeof phrasebankSources.search>>>["results"][number]["entry"];
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  const terms = [...new Set(query.trim().split(/\s+/).filter(Boolean))];
-  if (!terms.length) return text;
-  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const set = new Set(terms.map((term) => term.toLocaleLowerCase()));
-  const matcher = new RegExp(`(${terms.map(escape).join("|")})`, "gi");
-  return (
-    <>
-      {text.split(matcher).map((part, index) =>
-        set.has(part.toLocaleLowerCase()) ? (
-          <mark key={index} className="rounded-sm bg-muted px-0.5">
-            {part}
-          </mark>
-        ) : (
-          part
-        ),
-      )}
-    </>
-  );
-}
-function SearchResultEntry({
-  entry,
-  query,
-  slug,
-  headingPosition,
-}: {
-  entry: SearchEntry;
-  query: string;
-  slug: string;
-  headingPosition: string;
-}) {
-  const navigate = useNavigate();
-  const targetId = `heading-${slug}-${headingPosition}`;
-  const openHeading = (
-    <Link
-      to="/phrasebank/$slug"
-      params={{ slug }}
-      hash={targetId}
-      onClick={(event) => {
-        event.preventDefault();
-        void navigate({ to: "/phrasebank/$slug", params: { slug }, hash: targetId }).then(() =>
-          scrollAfterNavigation(targetId),
-        );
-      }}
-      className="text-sm text-primary hover:underline"
-    >
-      Open heading
-    </Link>
-  );
-  if (entry.kind !== "phrase" || !entry.cells?.length) return null;
-  return (
-    <div className="flex flex-col gap-2">
-      <Table aria-label={`Phrases under ${entry.heading}`}>
-        <TableBody>
-          <TableRow>
-            {entry.cells.map((alternatives, index) => (
-              <TableCell key={index} className="whitespace-normal px-4 py-3 align-top leading-7">
-                {alternatives.map((text, textIndex) => (
-                  <div key={textIndex}>
-                    <HighlightedText text={text} query={query} />
-                  </div>
-                ))}
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableBody>
-      </Table>
-      {openHeading}
-    </div>
-  );
-}
 
 function phraseRow(cells: string[][]) {
   return cells.map((alternatives) => alternatives.join(" / ")).join(" ");
@@ -181,11 +61,6 @@ function PhraseRow({ cells }: { cells: string[][] }) {
         </Button>
       </TableCell>
     </TableRow>
-  );
-}
-function taxonomyIntents(taxonomy?: TaxonomyTree) {
-  return (taxonomy?.sections ?? []).flatMap((section) =>
-    section.moves.flatMap((move) => move.steps.flatMap((step) => step.intents)),
   );
 }
 function SourceFilters({
@@ -333,110 +208,22 @@ function PatternGroups({ patterns }: { patterns: PatternDetail[] }) {
   );
 }
 
-function PaginatedPatterns({ query, filters }: { query: string; filters: PatternFilter }) {
-  const [offset, setOffset] = useState(0);
-  const patternSearch = useQuery({
-    queryKey: ["phrasebank-pattern-search", query, filters, offset],
-    queryFn: () =>
-      phrasebankSources.patterns(query, filters, { offset, limit: PATTERN_PAGE_SIZE + 1 }),
-    retry: false,
-  });
-  const patterns = patternSearch.data?.slice(0, PATTERN_PAGE_SIZE) ?? [];
-  const hasPrevious = offset > 0;
-  const hasNext = (patternSearch.data?.length ?? 0) > PATTERN_PAGE_SIZE;
-
-  return (
-    <>
-      {patternSearch.isPending ? (
-        <DataState state="loading" loadingLabel="Loading approved patterns" />
-      ) : patternSearch.isError ? (
-        <DataState
-          state="error"
-          errorTitle="Could not load approved patterns"
-          errorDescription={patternSearch.error.message}
-          onRetry={() => void patternSearch.refetch()}
-        />
-      ) : (
-        <PatternGroups patterns={patterns} />
-      )}
-      {hasPrevious || hasNext ? (
-        <Pagination aria-label="AP-RKB pattern pages">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                aria-disabled={!hasPrevious}
-                className={!hasPrevious ? "pointer-events-none opacity-50" : undefined}
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (hasPrevious) setOffset(offset - PATTERN_PAGE_SIZE);
-                }}
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <span className="px-3 text-sm text-muted-foreground">
-                Page {offset / PATTERN_PAGE_SIZE + 1}
-              </span>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                aria-disabled={!hasNext}
-                className={!hasNext ? "pointer-events-none opacity-50" : undefined}
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (hasNext) setOffset(offset + PATTERN_PAGE_SIZE);
-                }}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      ) : null}
-    </>
-  );
-}
-
 export function PhrasebankHome() {
   const [source, setSource] = useState<"all" | SourceId>("all");
   const [search, setSearch] = useState("");
   const [sectionCode, setSectionCode] = useState("");
   const [intentCode, setIntentCode] = useState("");
+  const [apbFilters, setApbFilters] = useState<APBFilterState>({});
   const [slotFilter, setSlotFilter] = useState("all");
   const query = useDebounced(search.trim());
   const taxonomy = useQuery({ queryKey: ["phrasebank-taxonomy"], queryFn: phrasebankSources.taxonomy, retry: false });
-  const manchester = useQuery({
-    queryKey: ["phrasebank-categories"],
-    queryFn: PHRASEBANK_SOURCES["manchester-reference"].listGroups,
-    retry: false,
-  });
-  const disabled = isReferenceDisabled(manchester.error);
-  const filters = { sectionCode: sectionCode || undefined, intentCode: intentCode || undefined };
-  const results = useQuery({
-    queryKey: ["phrasebank-search", query, sectionCode, intentCode],
-    queryFn: () => PHRASEBANK_SOURCES["manchester-reference"].search(query, filters),
-    enabled: Boolean(query) && source !== "aprkb-patterns",
-    retry: false,
-  });
-  const patternFilters = { ...filters, hasSlots: slotFilter === "all" ? undefined : slotFilter === "with" };
-  const patternPageKey = JSON.stringify([source, query, sectionCode, intentCode, slotFilter]);
-  const referenceSource = PHRASEBANK_SOURCES["manchester-reference"];
-  const visibleCategories = (manchester.data ?? []).filter(
-    (category) =>
-      (!sectionCode ||
-        Boolean(taxonomy.data && referenceSource.filterBySection(category, sectionCode, taxonomy.data))) &&
-      (!intentCode || referenceSource.filterByIntent(category, intentCode)),
-  );
-  const visibleResults = results.data ?? [];
-  const hasSlotFilter = source !== "manchester-reference" && slotFilter !== "all";
-  const hasFilters = Boolean(sectionCode || intentCode || hasSlotFilter);
   const selectedSection = taxonomy.data?.sections.find((section) => section.code === sectionCode);
   const selectedIntent = taxonomyIntents(taxonomy.data).find((intent) => intent.code === intentCode);
-  const hasManchesterContent = query ? visibleResults.length > 0 : visibleCategories.length > 0;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={<span className="text-3xl">Phrasebank</span>}
-        description="Browse reference categories and approved AP-RKB patterns by section, intent, and phrase."
+        description="Search scientific writing phrases by source and rhetorical context."
       />
       <Card>
         <CardHeader>
@@ -462,9 +249,10 @@ export function PhrasebankHome() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All sources</SelectItem>
-                  <SelectItem value="manchester-reference">Manchester reference</SelectItem>
+                  <SelectItem value="all">All Phrasebank</SelectItem>
+                  <SelectItem value="academic-phrase-bank">Academic Phrase Bank</SelectItem>
                   <SelectItem value="aprkb-patterns">AP-RKB patterns</SelectItem>
+                  <SelectItem value="manchester-reference">Manchester reference</SelectItem>
                 </SelectContent>
               </Select>
             </label>
@@ -475,7 +263,7 @@ export function PhrasebankHome() {
               onSectionChange={setSectionCode}
               onIntentChange={setIntentCode}
             />
-            {source !== "manchester-reference" ? (
+            {source !== "manchester-reference" && source !== "academic-phrase-bank" ? (
               <div className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
                 <span>Fill-in fields</span>
                 <Select value={slotFilter} onValueChange={setSlotFilter}>
@@ -500,145 +288,33 @@ export function PhrasebankHome() {
               </div>
             ) : null}
           </div>
-          {hasFilters ? (
-            <div className="flex flex-wrap items-center gap-2" role="status" aria-label="Active filters">
-              <span className="text-sm font-medium">Active filters</span>
-              {sectionCode ? <Badge variant="secondary">Section: {selectedSection?.name ?? sectionCode}</Badge> : null}
-              {intentCode ? <Badge variant="secondary">Intent: {selectedIntent?.name ?? intentCode}</Badge> : null}
-              {hasSlotFilter ? (
-                <Badge variant="secondary">{slotFilter === "with" ? "Has fill-in fields" : "No fill-in fields"}</Badge>
-              ) : null}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto"
-                onClick={() => {
-                  setSectionCode("");
-                  setIntentCode("");
-                  setSlotFilter("all");
-                }}
-              >
-                Clear filters
-              </Button>
+          {slotFilter !== "all" ? (
+            <div className="text-xs text-muted-foreground" role="status">
+              {slotFilter === "with" ? "Showing AP-RKB patterns with fill-in fields." : "Showing AP-RKB patterns without fill-in fields."}
             </div>
           ) : null}
+          <AcademicPhraseBankFilters
+            sectionCode={sectionCode}
+            sectionLabel={selectedSection?.name ?? sectionCode}
+            intentCode={intentCode}
+            intentLabel={selectedIntent?.name ?? intentCode}
+            filters={apbFilters}
+            onSectionClear={() => setSectionCode("")}
+            onIntentClear={() => setIntentCode("")}
+            onFilterChange={(facet, value) => setApbFilters((current) => ({ ...current, [facet]: value }))}
+            visible
+          />
         </CardContent>
       </Card>
-      {query ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">Search results</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-5">
-            {source !== "aprkb-patterns" ? (
-              results.isPending ? (
-                <DataState state="loading" loadingLabel="Loading reference results" />
-              ) : disabled ? (
-                <p role="status" className="text-sm text-muted-foreground">Manchester phrases are unavailable.</p>
-              ) : visibleResults.length === 0 ? (
-                <DataState
-                  state="empty"
-                  emptyTitle="No Manchester reference results"
-                  emptyDescription="Try another phrase or filter."
-                />
-              ) : (
-                <section className="flex flex-col gap-3">
-                  <h3 className="text-lg font-semibold">Manchester reference</h3>
-                  {groupBy(visibleResults, (item) => item.category_slug).map(([slug, items]) => (
-                    <section key={slug} className="flex flex-col gap-3 border-t border-border pt-3 first:border-0 first:pt-0">
-                      <h4 className="text-base font-semibold">{items[0]?.category_title}</h4>
-                      {groupBy(items, (item) => String(item.entry.heading_position)).map(([position, group]) => (
-                        <div key={position} className="flex flex-col gap-3 border-l-2 border-border pl-4">
-                          <h5 className="text-sm font-semibold">{group[0]?.heading}</h5>
-                          {group.map((item) => (
-                            <SearchResultEntry
-                              key={item.entry.id}
-                              entry={item.entry}
-                              query={query}
-                              slug={slug}
-                              headingPosition={position}
-                            />
-                          ))}
-                        </div>
-                      ))}
-                    </section>
-                  ))}
-                </section>
-              )
-            ) : null}
-            {source !== "manchester-reference" ? (
-              <section className="flex flex-col gap-3 border-t border-border pt-5">
-                <h3 className="text-lg font-semibold">AP-RKB patterns</h3>
-                <PaginatedPatterns key={patternPageKey} query={query} filters={patternFilters} />
-              </section>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {source !== "aprkb-patterns" && disabled ? (
-            <Alert role="status">
-              <AlertDescription>
-                Manchester reference phrases are unavailable. AP-RKB patterns are still available below.
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          {source !== "aprkb-patterns" && !disabled ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold">Sections</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {manchester.isPending ? (
-                  <DataState state="loading" loadingLabel="Loading sections" />
-                ) : manchester.isError ? (
-                  <DataState
-                    state="error"
-                    errorTitle="Could not load sections"
-                    errorDescription={manchester.error.message}
-                    onRetry={() => void manchester.refetch()}
-                  />
-                ) : (
-                  <CategoryCards categories={visibleCategories} kind="section" />
-                )}
-              </CardContent>
-            </Card>
-          ) : null}
-          {source !== "aprkb-patterns" && !disabled ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold">General functions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {manchester.isPending ? (
-                  <DataState state="loading" loadingLabel="Loading general functions" />
-                ) : (
-                  <CategoryCards categories={visibleCategories} kind="function" />
-                )}
-              </CardContent>
-            </Card>
-          ) : null}
-          {source !== "manchester-reference" ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold">
-                  <Link
-                    to="/phrasebank/$slug"
-                    params={{ slug: "aprkb-patterns" }}
-                    className="text-primary hover:underline"
-                  >
-                    AP-RKB patterns
-                  </Link>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <PaginatedPatterns key={patternPageKey} query={query} filters={patternFilters} />
-              </CardContent>
-            </Card>
-          ) : null}
-        </>
-      )}
-      {source !== "aprkb-patterns" && !disabled && hasManchesterContent ? <SourceCredit /> : null}
+      <UnifiedResults
+        source={source}
+        query={query}
+        sectionCode={sectionCode}
+        intentCode={intentCode}
+        apbFilters={apbFilters}
+        hasSlots={slotFilter === "all" ? undefined : slotFilter === "with"}
+        taxonomy={taxonomy.data}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import re
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -102,6 +103,7 @@ async def load_current_patterns(
     *,
     intent_code: str | None = None,
     pattern_id: UUID | None = None,
+    pattern_ids: Sequence[UUID] | None = None,
     version_id: UUID | None = None,
     section_code: str | None = None,
     genre_code: str | None = None,
@@ -130,6 +132,10 @@ async def load_current_patterns(
         statement = statement.where(Intent.code == intent_code)
     if pattern_id:
         statement = statement.where(PhrasePattern.id == pattern_id)
+    if pattern_ids is not None:
+        if not pattern_ids:
+            return []
+        statement = statement.where(PhrasePattern.id.in_(pattern_ids))
     if version_id:
         statement = statement.where(PatternVersion.id == version_id)
     if section_code:
@@ -243,7 +249,8 @@ async def load_current_patterns(
             and browse_query.strip().casefold()
             not in (
                 f"{normalized_frame(version.canonical_frame, version.slots)} "
-                f"{intent.code} {' '.join(usage.allowed_sections if usage else [])}"
+                f"{intent.code} "
+                f"{' '.join(usage.allowed_sections if usage else [])}"
             ).casefold()
         ):
             continue

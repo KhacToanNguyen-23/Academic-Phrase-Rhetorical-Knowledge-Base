@@ -4,6 +4,108 @@
  */
 
 export interface paths {
+    "/v1/academic-phrases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Phrases */
+        get: operations["list_phrases_v1_academic_phrases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/academic-phrases/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Domains */
+        get: operations["list_domains_v1_academic_phrases_domains_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/academic-phrases/functions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Functions */
+        get: operations["list_functions_v1_academic_phrases_functions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/academic-phrases/pragmatic-features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Pragmatic Features */
+        get: operations["list_pragmatic_features_v1_academic_phrases_pragmatic_features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/academic-phrases/{pattern_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Phrase */
+        get: operations["get_phrase_v1_academic_phrases__pattern_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/academic-phrases/versions/{version_id}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Phrase Metadata */
+        post: operations["add_phrase_metadata_v1_admin_academic_phrases_versions__version_id__metadata_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/api-keys": {
         parameters: {
             query?: never;
@@ -1202,6 +1304,118 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcademicPhraseMetadataCreate */
+        AcademicPhraseMetadataCreate: {
+            /** Caveats */
+            caveats?: components["schemas"]["PhraseCaveatCreate"][];
+            /** Examples */
+            examples?: components["schemas"]["PhraseExampleCreate"][];
+            /** Function Codes */
+            function_codes: string[];
+            /** Function Version */
+            function_version?: string | null;
+            /** Move Links */
+            move_links?: components["schemas"]["MoveLinkCreate"][];
+            /** Pragmatic Tags */
+            pragmatic_tags?: components["schemas"]["PragmaticTagCreate"][];
+            /** Step Links */
+            step_links?: components["schemas"]["StepLinkCreate"][];
+            /** Usage Profiles */
+            usage_profiles?: components["schemas"]["UsageProfileCreate"][];
+        };
+        /** AcademicPhrasePage */
+        AcademicPhrasePage: {
+            /** Items */
+            items: components["schemas"]["AcademicPhraseRead"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** AcademicPhraseRead */
+        AcademicPhraseRead: {
+            /** Allowed Genres */
+            allowed_genres: string[];
+            /** Allowed Sections */
+            allowed_sections: string[];
+            /** Article Id */
+            article_id: string | null;
+            /** Canonical Frame */
+            canonical_frame: string | null;
+            /** Caveats */
+            caveats?: components["schemas"]["PhraseCaveatRead"][];
+            /** Claim Type */
+            claim_type: string | null;
+            /** Claim Type Labelled */
+            claim_type_labelled: boolean;
+            /** Communicative Functions */
+            communicative_functions?: {
+                [key: string]: unknown;
+            }[];
+            /** Current Version Id */
+            current_version_id: string | null;
+            /** Discipline Affinities */
+            discipline_affinities: components["schemas"]["PatternDisciplineAffinityRead"][];
+            /** Epistemic Strength */
+            epistemic_strength: string | null;
+            /** Epistemic Strength Labelled */
+            epistemic_strength_labelled: boolean;
+            /** Evidence Min */
+            evidence_min: string | null;
+            /** Examples */
+            examples?: components["schemas"]["PhraseExampleRead"][];
+            /** Forbidden Contexts */
+            forbidden_contexts: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Intent Code */
+            intent_code: string;
+            /** Intent Name */
+            intent_name: string;
+            /** License Allows Display */
+            license_allows_display: boolean;
+            /** License Code */
+            license_code: string | null;
+            /** License Flag */
+            license_flag: boolean;
+            /** License Name */
+            license_name: string | null;
+            /** Move Code */
+            move_code?: string | null;
+            /** Move Links */
+            move_links?: {
+                [key: string]: unknown;
+            }[];
+            /** Pragmatic Tags */
+            pragmatic_tags?: components["schemas"]["PragmaticTagRead"][];
+            /** Slots */
+            slots: {
+                [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
+            } | null;
+            /** Source Reference */
+            source_reference: string | null;
+            /** Source Sentence Count */
+            source_sentence_count: number;
+            /** Source Type */
+            source_type: string;
+            /** Status */
+            status: string;
+            /** Step Links */
+            step_links?: {
+                [key: string]: unknown;
+            }[];
+            /** Usage Profiles */
+            usage_profiles?: components["schemas"]["UsageProfileRead"][];
+            /** Variants */
+            variants: components["schemas"]["PatternVariantRead"][];
+            /** Version No */
+            version_no: number | null;
+        };
         /** ApiKeyCreate */
         ApiKeyCreate: {
             /** Name */
@@ -1450,6 +1664,20 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** DomainCatalog */
+        DomainCatalog: {
+            /** Items */
+            items: components["schemas"]["DomainOption"][];
+        };
+        /** DomainOption */
+        DomainOption: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /** Version */
+            version: string;
+        };
         /** DomainStatRead */
         DomainStatRead: {
             /** Domain */
@@ -1554,6 +1782,28 @@ export interface components {
         FeedbackMetadata: {
             /** Context Hash */
             context_hash: string;
+        };
+        /** FunctionCatalog */
+        FunctionCatalog: {
+            /** Items */
+            items: components["schemas"]["FunctionOption"][];
+        };
+        /** FunctionOption */
+        FunctionOption: {
+            /** Code */
+            code: string;
+            /** Family Code */
+            family_code: string;
+            /** Family Label */
+            family_label: string;
+            /** Label */
+            label: string;
+            /** Purpose */
+            purpose: string;
+            /** Status */
+            status: string;
+            /** Version */
+            version: string;
         };
         /** GoldItemDetail */
         GoldItemDetail: {
@@ -2221,6 +2471,19 @@ export interface components {
             /** Skipped Not Ready */
             skipped_not_ready: number;
         };
+        /** MoveLinkCreate */
+        MoveLinkCreate: {
+            /** Move Code */
+            move_code: string;
+            /**
+             * Relation
+             * @default REALIZES_MOVE
+             * @enum {string}
+             */
+            relation: "REALIZES_MOVE" | "SUPPORTS_MOVE";
+            /** Section Code */
+            section_code: string;
+        };
         /** PatternCreate */
         PatternCreate: {
             /** Allowed Genres */
@@ -2464,6 +2727,28 @@ export interface components {
             /** Version No */
             version_no: number;
         };
+        /** PhraseCaveatCreate */
+        PhraseCaveatCreate: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /**
+             * Severity
+             * @default info
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "critical";
+        };
+        /** PhraseCaveatRead */
+        PhraseCaveatRead: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Severity */
+            severity: string;
+        };
         /** PhraseCounts */
         PhraseCounts: {
             /**
@@ -2503,6 +2788,49 @@ export interface components {
             candidate_id: string;
             /** Status */
             status: string;
+        };
+        /** PhraseExampleCreate */
+        PhraseExampleCreate: {
+            /** Explanation */
+            explanation?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "positive" | "negative" | "revised";
+            /** License Code */
+            license_code?: string | null;
+            /**
+             * Origin Kind
+             * @enum {string}
+             */
+            origin_kind: "internal_original" | "illustrative_synthetic" | "licensed";
+            /** Source Ref */
+            source_ref?: string | null;
+            /** Text */
+            text: string;
+        };
+        /** PhraseExampleRead */
+        PhraseExampleRead: {
+            /** Explanation */
+            explanation: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "positive" | "negative" | "revised";
+            /** License Allows Display */
+            license_allows_display: boolean | null;
+            /** License Code */
+            license_code: string | null;
+            /** License Id */
+            license_id: string | null;
+            /** Origin Kind */
+            origin_kind: string;
+            /** Source Ref */
+            source_ref: string | null;
+            /** Text */
+            text: string;
         };
         /** PhrasePage */
         PhrasePage: {
@@ -2560,6 +2888,52 @@ export interface components {
             };
             /** Text */
             text: string;
+        };
+        /** PragmaticCatalog */
+        PragmaticCatalog: {
+            /** Items */
+            items: components["schemas"]["PragmaticFeatureOption"][];
+        };
+        /** PragmaticFeatureOption */
+        PragmaticFeatureOption: {
+            /** Code */
+            code: string;
+            /** Description */
+            description: string | null;
+            /** Facet */
+            facet: string;
+            /** Label */
+            label: string;
+            /** Status */
+            status: string;
+            /** Version */
+            version: string;
+        };
+        /** PragmaticTagCreate */
+        PragmaticTagCreate: {
+            /** Code */
+            code: string;
+            /** Context Note */
+            context_note?: string | null;
+            /** Strength Note */
+            strength_note?: string | null;
+            /** Version */
+            version: string;
+        };
+        /** PragmaticTagRead */
+        PragmaticTagRead: {
+            /** Code */
+            code: string;
+            /** Context Note */
+            context_note: string | null;
+            /** Facet */
+            facet: string;
+            /** Label */
+            label: string;
+            /** Strength Note */
+            strength_note: string | null;
+            /** Version */
+            version: string;
         };
         /**
          * ProtectedSignal
@@ -3145,6 +3519,21 @@ export interface components {
             /** Url */
             url: string;
         };
+        /** StepLinkCreate */
+        StepLinkCreate: {
+            /** Move Code */
+            move_code: string;
+            /**
+             * Relation
+             * @default REALIZES_STEP
+             * @enum {string}
+             */
+            relation: "REALIZES_STEP" | "SUPPORTS_STEP";
+            /** Section Code */
+            section_code: string;
+            /** Step Code */
+            step_code: string;
+        };
         /** TaxonomyIntent */
         TaxonomyIntent: {
             /** Code */
@@ -3220,6 +3609,49 @@ export interface components {
             sections: components["schemas"]["TaxonomySection"][];
             /** Version */
             version: string;
+        };
+        /** UsageProfileCreate */
+        UsageProfileCreate: {
+            /** Audience */
+            audience?: string | null;
+            /** Discipline Code */
+            discipline_code?: string | null;
+            /** Genre Code */
+            genre_code?: string | null;
+            /**
+             * Language Code
+             * @default en
+             */
+            language_code: string;
+            /** Preferred Usage */
+            preferred_usage?: ("general" | "domain_constrained" | "venue_constrained") | null;
+            /** Register Code */
+            register_code?: string | null;
+            /** Register Version */
+            register_version?: string | null;
+            /** Section Code */
+            section_code?: string | null;
+        };
+        /** UsageProfileRead */
+        UsageProfileRead: {
+            /** Audience */
+            audience: string | null;
+            /** Discipline Code */
+            discipline_code: string | null;
+            /** Genre Code */
+            genre_code: string | null;
+            /** Language Code */
+            language_code: string;
+            /** Preferred Usage */
+            preferred_usage: string | null;
+            /** Register Code */
+            register_code: string | null;
+            /** Register Version */
+            register_version: string | null;
+            /** Section Code */
+            section_code: string | null;
+            /** Section Label */
+            section_label: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -3340,6 +3772,218 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_phrases_v1_academic_phrases_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                function?: string | null;
+                function_version?: string | null;
+                section?: string | null;
+                move?: string | null;
+                step?: string | null;
+                intent?: string | null;
+                genre?: string | null;
+                register?: string | null;
+                register_version?: string | null;
+                domain?: string | null;
+                stance?: string | null;
+                stance_version?: string | null;
+                pragmatic?: string | null;
+                pragmatic_version?: string | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicPhrasePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_domains_v1_academic_phrases_domains_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainCatalog"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_functions_v1_academic_phrases_functions_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunctionCatalog"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_pragmatic_features_v1_academic_phrases_pragmatic_features_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PragmaticCatalog"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_phrase_v1_academic_phrases__pattern_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                pattern_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicPhraseRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_phrase_metadata_v1_admin_academic_phrases_versions__version_id__metadata_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcademicPhraseMetadataCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicPhraseRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_keys_v1_admin_api_keys_get: {
         parameters: {
             query?: never;

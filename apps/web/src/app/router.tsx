@@ -20,6 +20,7 @@ import { OverviewPage } from "@/features/overview";
 import { ExtractPage } from "@/features/phrase-extraction";
 import { PlaygroundPage } from "@/features/playground";
 import { PhrasebankCategory, PhrasebankHome, PhrasebankPatternDetail } from "@/features/phrasebank/PhrasebankPage";
+import { AcademicPhraseBankDetail } from "@/features/phrasebank/AcademicPhraseBank";
 import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
 import { SlrImportPage } from "@/features/slr-import";
 import { VocabularyLemmaPage, VocabularyPage } from "@/features/vocabulary";
@@ -103,6 +104,11 @@ const phrasebankPattern = createRoute({
   getParentRoute: () => guarded,
   path: "/phrasebank/pattern/$id",
   component: () => <PhrasebankPatternDetail id={getRouteApi("/shell/guarded/phrasebank/pattern/$id").useParams().id} />,
+});
+const phrasebankApb = createRoute({
+  getParentRoute: () => guarded,
+  path: "/phrasebank/apb/$id",
+  component: () => <AcademicPhraseBankDetail id={getRouteApi("/shell/guarded/phrasebank/apb/$id").useParams().id} />,
 });
 
 const playground = createRoute({
@@ -229,6 +235,7 @@ export const router = createRouter({
         phrasebank,
         phrasebankCategory,
         phrasebankPattern,
+        phrasebankApb,
         playground,
         inbox,
         journals,

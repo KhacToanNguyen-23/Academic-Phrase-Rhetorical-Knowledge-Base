@@ -104,6 +104,12 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/taxonomy/releases", "get"),
         ("/v1/taxonomy/reference-options", "get"),
         ("/v1/patterns", "get"),
+        ("/v1/academic-phrases/functions", "get"),
+        ("/v1/academic-phrases/pragmatic-features", "get"),
+        ("/v1/academic-phrases/domains", "get"),
+        ("/v1/academic-phrases", "get"),
+        ("/v1/academic-phrases/{id}", "get"),
+        ("/v1/admin/academic-phrases/versions/{id}/metadata", "post"),
         ("/v1/patterns/versions/{id}", "get"),
         ("/v1/patterns/{id}", "get"),
         ("/v1/patterns/{id}/versions", "get"),
@@ -174,7 +180,7 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
 
     assert actual == expected
     for path, operations in paths.items():
-        if "/versions" in path:
+        if path.startswith("/v1/patterns") and "/versions" in path:
             assert set(operations) <= {"get", "post"}
             assert path.rstrip("/").count("/") == 4
 

@@ -14,6 +14,7 @@ def load_models() -> None:
         "measurement",
         "mining",
         "patterns",
+        "academic_phrase_bank",
         "recommendation",
         "reference_library",
         "taxonomy",

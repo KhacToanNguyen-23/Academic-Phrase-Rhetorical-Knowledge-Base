@@ -1,4 +1,4 @@
-"""Strict JSON contract for pack v0.1."""
+"""Strict JSON contracts for Offline pack v0.1 and APB-enabled v0.2."""
 
 from datetime import datetime
 from typing import Literal
@@ -19,10 +19,11 @@ class FileDigest(StrictModel):
 class Counts(StrictModel):
     patterns: int = Field(ge=0)
     versions: int = Field(ge=0)
+    apb_proposals: int | None = Field(default=None, ge=0)
 
 
 class Manifest(StrictModel):
-    pack_version: Literal["0.1"]
+    pack_version: Literal["0.1", "0.2"]
     taxonomy_version: str
     producer: str = Field(min_length=1)
     created_at: datetime
@@ -84,6 +85,73 @@ class Review(StrictModel):
     comment: str | None = None
 
 
+class APBFunction(StrictModel):
+    code: str = Field(min_length=1)
+    version: str = Field(min_length=1)
+    context_note: str | None = None
+
+
+class APBMoveLink(StrictModel):
+    section_code: str = Field(min_length=1)
+    move_code: str = Field(min_length=1)
+    relation: Literal["REALIZES_MOVE", "SUPPORTS_MOVE"] = "REALIZES_MOVE"
+
+
+class APBStepLink(StrictModel):
+    section_code: str = Field(min_length=1)
+    move_code: str = Field(min_length=1)
+    step_code: str = Field(min_length=1)
+    relation: Literal["REALIZES_STEP", "SUPPORTS_STEP"] = "REALIZES_STEP"
+
+
+class APBUsageProfile(StrictModel):
+    section_code: str | None = None
+    genre_code: str | None = None
+    language_code: str = "en"
+    register_code: str | None = None
+    register_version: str | None = None
+    discipline_code: str | None = None
+    audience: str | None = None
+    preferred_usage: Literal["general", "domain_constrained", "venue_constrained"] | None = None
+
+
+class APBPragmaticTag(StrictModel):
+    code: str = Field(min_length=1)
+    version: str = Field(min_length=1)
+    strength_note: str | None = None
+    context_note: str | None = None
+
+
+class APBExample(StrictModel):
+    kind: Literal["positive", "negative", "revised"]
+    text: str = Field(min_length=1)
+    explanation: str | None = None
+    origin_kind: Literal["internal_original", "illustrative_synthetic", "licensed"]
+    source_ref: str | None = None
+    license_code: str | None = None
+
+
+class APBCaveat(StrictModel):
+    code: str = Field(min_length=1, max_length=64)
+    severity: Literal["info", "warning", "critical"] = "info"
+    message: str = Field(min_length=1)
+
+
+class APBMetadata(StrictModel):
+    """Candidate annotations produced offline; never imply curator approval."""
+
+    status: Literal["proposed"] = "proposed"
+    function_catalog_version: str = Field(min_length=1)
+    domain_catalog_version: str = Field(min_length=1)
+    functions: list[APBFunction] = Field(default_factory=list)
+    move_links: list[APBMoveLink] = Field(default_factory=list)
+    step_links: list[APBStepLink] = Field(default_factory=list)
+    usage_profiles: list[APBUsageProfile] = Field(default_factory=list)
+    pragmatic_tags: list[APBPragmaticTag] = Field(default_factory=list)
+    examples: list[APBExample] = Field(default_factory=list)
+    caveats: list[APBCaveat] = Field(default_factory=list)
+
+
 class Version(StrictModel):
     version_id: UUID
     version_no: int = Field(ge=1)
@@ -96,6 +164,7 @@ class Version(StrictModel):
     variants: list[Variant] = Field(default_factory=list)
     provenance: Provenance
     reviews: list[Review] = Field(default_factory=list)
+    apb: APBMetadata | None = None
 
 
 class Pattern(StrictModel):

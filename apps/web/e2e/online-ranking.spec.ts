@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { authenticateCurator } from "./support/auth";
 
 // Real API + PostgreSQL. Start scripts/manual/online_ranking_live_server.py,
 // then Vite with VITE_API_PROXY_TARGET=http://127.0.0.1:8016.
@@ -14,7 +15,8 @@ async function select(page: Page, name: string, label: string) {
 }
 
 test("move-only request, normalized retrieval, explanations and render use the live API", async ({ page, request }) => {
-  const taxonomyResponse = await request.get("/v1/taxonomy");
+  const key = await authenticateCurator(page, request);
+  const taxonomyResponse = await request.get("/v1/taxonomy", { headers: { "X-API-Key": key } });
   expect(taxonomyResponse.ok()).toBeTruthy();
   const taxonomy = await taxonomyResponse.json();
   const section = taxonomy.sections.find((s: { code: string }) => s.code === "INTRO");
@@ -55,11 +57,8 @@ test("move-only request, normalized retrieval, explanations and render use the l
 });
 
 test("phrasebank carries AP-RKB context to Writer and obtains a fresh recommendation", async ({ page, request }) => {
-  const login = await request.post("/v1/auth/demo-session");
-  expect(login.ok()).toBeTruthy();
-  const { api_key: key } = await login.json();
-  await page.addInitScript((apiKey: string) => sessionStorage.setItem("aprkb-staff-session", apiKey), key);
-  const patternsResponse = await request.get("/v1/patterns?status=approved");
+  const key = await authenticateCurator(page, request);
+  const patternsResponse = await request.get("/v1/patterns?status=approved", { headers: { "X-API-Key": key } });
   expect(patternsResponse.ok()).toBeTruthy();
   const patterns = await patternsResponse.json();
   const pattern = patterns.find((p: { canonical_frame: string }) => p.canonical_frame === "We suggest {topic}.");

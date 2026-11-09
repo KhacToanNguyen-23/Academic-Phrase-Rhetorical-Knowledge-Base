@@ -6,8 +6,8 @@ async function selectOption(page: Page, label: string, option: string) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => sessionStorage.setItem("aprkb-staff-session", "test-staff-key"));
-  await page.route("**/v1/auth/me", (route) => route.fulfill({
+  await page.addInitScript(() => sessionStorage.setItem("aprkb-web-session", "test-staff-key"));
+  await page.route("**/v1/auth/session/me", (route) => route.fulfill({
     json: { id: "test-id", name: "Test curator", role: "curator" },
   }));
   await page.route("**/v1/vocabulary/filter-options", (route) => route.fulfill({

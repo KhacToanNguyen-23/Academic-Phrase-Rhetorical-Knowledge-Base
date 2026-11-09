@@ -16,7 +16,7 @@ export function vocabularyClient() {
   client.use({
     onRequest({ request }) {
       const key =
-        sessionStorage.getItem("aprkb-staff-session") ?? sessionStorage.getItem("aprkb-api-key");
+        sessionStorage.getItem("aprkb-web-session");
       if (key) request.headers.set("X-API-Key", key);
       return request;
     },

@@ -434,6 +434,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/measurements/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Measurements */
+        post: operations["import_measurements_v1_admin_measurements_imports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/measurements/slot-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Slot Links */
+        get: operations["list_slot_links_v1_admin_measurements_slot_links_get"];
+        put?: never;
+        /** Propose Slot Link */
+        post: operations["propose_slot_link_v1_admin_measurements_slot_links_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/measurements/slot-links/{link_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Slot Link */
+        post: operations["review_slot_link_v1_admin_measurements_slot_links__link_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/releases/{release_id}/publish": {
         parameters: {
             query?: never;
@@ -755,6 +807,57 @@ export interface paths {
         put?: never;
         /** Create Guideline */
         post: operations["create_guideline_v1_journals__journal_id__guidelines_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Measurements */
+        get: operations["list_measurements_v1_measurements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/measurements/slot-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Slot Suggestions */
+        get: operations["slot_suggestions_v1_measurements_slot_suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/measurements/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Measurement */
+        get: operations["get_measurement_v1_measurements__code__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1224,6 +1327,11 @@ export interface components {
             phrases: components["schemas"]["PhraseCounts"];
             /** Ready */
             ready: number;
+        };
+        /** Body_import_measurements_v1_admin_measurements_imports_post */
+        Body_import_measurements_v1_admin_measurements_imports_post: {
+            /** File */
+            file: string;
         };
         /** Body_upload_article_v1_admin_corpus_articles_post */
         Body_upload_article_v1_admin_corpus_articles_post: {
@@ -1994,6 +2102,104 @@ export interface components {
             /** Letter */
             letter: string;
         };
+        /** MeasurementDetail */
+        MeasurementDetail: {
+            /** Aliases */
+            aliases: string[];
+            /** Catalog Version */
+            catalog_version: string;
+            /** Code */
+            code: string;
+            /** Definition */
+            definition: string;
+            /** Example */
+            example: string | null;
+            /** Formula */
+            formula: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "metric" | "method" | "protocol";
+            /** Name */
+            name: string;
+            /** Related */
+            related: components["schemas"]["RelatedMeasurement"][];
+            /** Scale */
+            scale: string | null;
+            /**
+             * Slot Links
+             * @description Approved links only; each entry is a suggestion, never an auto-filled value.
+             */
+            slot_links: components["schemas"]["SlotLinkRead"][];
+            /** Usage Note */
+            usage_note: string | null;
+            /** Value Range */
+            value_range: string | null;
+        };
+        /** MeasurementImportResult */
+        MeasurementImportResult: {
+            /** Catalog Version */
+            catalog_version: string;
+            /** Entries Created */
+            entries_created: number;
+            /** Entries Updated */
+            entries_updated: number;
+            /**
+             * Missing Codes
+             * @description Codes stored earlier but absent from this catalog; kept, not deleted.
+             */
+            missing_codes: string[];
+            /** Relations */
+            relations: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "imported" | "unchanged";
+        };
+        /** MeasurementListResponse */
+        MeasurementListResponse: {
+            /** Catalog Version */
+            catalog_version: string | null;
+            /** Items */
+            items: components["schemas"]["MeasurementSummary"][];
+            /** Total */
+            total: number;
+        };
+        /** MeasurementSummary */
+        MeasurementSummary: {
+            /** Aliases */
+            aliases: string[];
+            /** Code */
+            code: string;
+            /** Definition */
+            definition: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "metric" | "method" | "protocol";
+            /** Name */
+            name: string;
+        };
+        /**
+         * MetricWarning
+         * @description FR-08.2 report-only note; never changes severity or completeness.
+         */
+        MetricWarning: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Name */
+            name: string;
+            /** Span */
+            span: [
+                number,
+                number
+            ];
+        };
         /** MineRequest */
         MineRequest: {
             /** Article Ids */
@@ -2536,6 +2742,25 @@ export interface components {
             /** Order */
             order: number;
         };
+        /** RelatedMeasurement */
+        RelatedMeasurement: {
+            /** Code */
+            code: string;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "outgoing" | "incoming";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "metric" | "method" | "protocol";
+            /** Name */
+            name: string;
+            /** Relation */
+            relation: string;
+        };
         /** ReleaseSummary */
         ReleaseSummary: {
             /**
@@ -2753,6 +2978,99 @@ export interface components {
             signals?: components["schemas"]["ProtectedSignal"][];
             type: components["schemas"]["SlotType"];
         };
+        /** SlotLinkListResponse */
+        SlotLinkListResponse: {
+            /** Items */
+            items: components["schemas"]["SlotLinkRead"][];
+        };
+        /** SlotLinkProposal */
+        SlotLinkProposal: {
+            /** Entry Code */
+            entry_code: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Pattern Id
+             * Format: uuid
+             */
+            pattern_id: string;
+            /** Slot Name */
+            slot_name: string;
+        };
+        /** SlotLinkRead */
+        SlotLinkRead: {
+            /** Canonical Frame */
+            canonical_frame: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entry Code */
+            entry_code: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Pattern Id
+             * Format: uuid
+             */
+            pattern_id: string;
+            /**
+             * Review Status
+             * @enum {string}
+             */
+            review_status: "proposed" | "approved" | "rejected";
+            /** Reviewed At */
+            reviewed_at: string | null;
+            /** Slot Name */
+            slot_name: string;
+        };
+        /** SlotLinkReview */
+        SlotLinkReview: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approved" | "rejected";
+            /** Note */
+            note?: string | null;
+        };
+        /** SlotSuggestion */
+        SlotSuggestion: {
+            /** Code */
+            code: string;
+            /** Example */
+            example: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "metric" | "method" | "protocol";
+            /** Name */
+            name: string;
+        };
+        /** SlotSuggestionsResponse */
+        SlotSuggestionsResponse: {
+            /** Items */
+            items: components["schemas"]["SlotSuggestion"][];
+            /**
+             * Notice
+             * @default Suggestions only. The writer must choose and phrase the slot value.
+             */
+            notice: string;
+            /**
+             * Pattern Id
+             * Format: uuid
+             */
+            pattern_id: string;
+            /** Slot Name */
+            slot_name: string;
+        };
         /**
          * SlotType
          * @enum {string}
@@ -2943,6 +3261,8 @@ export interface components {
             complete: boolean;
             /** Context Hash */
             context_hash: string;
+            /** Metric Warnings */
+            metric_warnings?: components["schemas"]["MetricWarning"][];
             /** Policy Versions */
             policy_versions: {
                 [key: string]: string;
@@ -4064,6 +4384,146 @@ export interface operations {
             };
         };
     };
+    import_measurements_v1_admin_measurements_imports_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_measurements_v1_admin_measurements_imports_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeasurementImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_slot_links_v1_admin_measurements_slot_links_get: {
+        parameters: {
+            query?: {
+                status?: ("proposed" | "approved" | "rejected") | null;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlotLinkListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_slot_link_v1_admin_measurements_slot_links_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SlotLinkProposal"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlotLinkRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_slot_link_v1_admin_measurements_slot_links__link_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SlotLinkReview"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlotLinkRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     publish_release_v1_admin_releases__release_id__publish_post: {
         parameters: {
             query?: never;
@@ -4692,6 +5152,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GuidelineRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_measurements_v1_measurements_get: {
+        parameters: {
+            query?: {
+                kind?: ("metric" | "method" | "protocol") | null;
+                q?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeasurementListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    slot_suggestions_v1_measurements_slot_suggestions_get: {
+        parameters: {
+            query: {
+                pattern_id: string;
+                slot: string;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlotSuggestionsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_measurement_v1_measurements__code__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeasurementDetail"];
                 };
             };
             /** @description Validation Error */

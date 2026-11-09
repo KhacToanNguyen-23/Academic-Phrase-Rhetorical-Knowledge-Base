@@ -168,6 +168,30 @@ Phrasebank applies keyword, section, and intent filters on the backend before li
 
 To enable the local reference browser, set `REFERENCE_LIBRARY_ENABLED=true`, apply migrations from `apps/backend` with `uv run alembic -c alembic.ini upgrade head`, then import the external file with `uv run python -m aprkb.cli import-reference-library --file "D:\Project\FptProject\Academic-Phrase-Rhetorical-Knowledge-Base\data\raw\manchester-diverse\collection.json"`. The input file remains outside git. Remove the imported reference data with `uv run python -m aprkb.cli purge-reference-library`; disable API access again by setting the flag to false.
 
+## Metric & Measurement catalog
+
+`/measurements` is a separate, self-authored catalog that answers "how to measure". It has three
+kinds of entry: metrics (for example accuracy and Cohen's kappa), measurement methods (for example
+a 5-point Likert questionnaire) and data-collection protocols (for example a pre-test/post-test
+design). It complements the phrase core, which answers "how to write". The catalog lives in its own
+`measurement_*` tables and never enters ranking, render, validate or pack export. The API and UI
+are off by default (`MEASUREMENT_ENABLED=false`).
+
+The link to phrases is a curator-reviewed slot link, for example `likert_5_point` for the
+`{instrument}` slot of a Methods pattern. Only approved links are shown, and only as
+suggestions; a slot is never filled automatically (FR-07.5, AT-08). To enable the catalog locally:
+
+1. Set `MEASUREMENT_ENABLED=true`.
+2. Run `uv run alembic -c alembic.ini upgrade head` from `apps/backend`.
+3. Import the catalog: `uv run python -m aprkb.cli measurement-import --file ../../data/seed/measurement_catalog.json`.
+
+Re-importing the same file is a no-op. Codes that disappear from a new catalog are reported, not
+deleted. Remove everything with `uv run python -m aprkb.cli measurement-purge`.
+
+While the flag is on, `/v1/validate` also returns report-only `metric_warnings` (FR-08.2):
+catalog metrics that the sentence names but the writer's slots or context do not. They never
+change the validation severity. See ADR-0015.
+
 ## Offline-to-Online data packs
 
 The backend `modules/pack/` tooling validates and transfers the PhrasePattern graph using natural reference keys and append-only version IDs. It excludes source text and the separate approved phrase store. Offline self-check: `uv run --directory apps/backend python -m aprkb.cli validate-pack <pack-dir>`. Read-only export: `uv run --directory apps/backend python -m aprkb.cli export-pack --out <pack-dir> --only-approved`. Export reports excluded approved patterns by ID/code/path and does not invent missing labels or approvals. Check exported and excluded counts before transfer.

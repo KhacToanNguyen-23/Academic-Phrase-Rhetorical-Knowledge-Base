@@ -6,6 +6,7 @@ test.skip(process.env.ONLINE_RANKING_LIVE !== "1", "Requires isolated seeded liv
 const screens = [
   ["/app", "Workspace"],
   ["/phrasebank", "Phrasebank"], ["/vocabulary", "Academic vocabulary"],
+  ["/measurements", "Metrics & measurement"],
   ["/journals", "Journal profiles"], ["/inbox", "Inbox"],
   ["/gold", "Gold review"], ["/extract", "Phrase extraction"],
   ["/import", "SLR import"], ["/jobs", "Jobs"],

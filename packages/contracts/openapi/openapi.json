@@ -345,6 +345,20 @@
         "title": "BatchRead",
         "type": "object"
       },
+      "Body_import_measurements_v1_admin_measurements_imports_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_measurements_v1_admin_measurements_imports_post",
+        "type": "object"
+      },
       "Body_upload_article_v1_admin_corpus_articles_post": {
         "properties": {
           "doi": {
@@ -2519,6 +2533,288 @@
         "title": "LetterCount",
         "type": "object"
       },
+      "MeasurementDetail": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "catalog_version": {
+            "title": "Catalog Version",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "definition": {
+            "title": "Definition",
+            "type": "string"
+          },
+          "example": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example"
+          },
+          "formula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formula"
+          },
+          "kind": {
+            "enum": [
+              "metric",
+              "method",
+              "protocol"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedMeasurement"
+            },
+            "title": "Related",
+            "type": "array"
+          },
+          "scale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scale"
+          },
+          "slot_links": {
+            "description": "Approved links only; each entry is a suggestion, never an auto-filled value.",
+            "items": {
+              "$ref": "#/components/schemas/SlotLinkRead"
+            },
+            "title": "Slot Links",
+            "type": "array"
+          },
+          "usage_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Note"
+          },
+          "value_range": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Range"
+          }
+        },
+        "required": [
+          "code",
+          "kind",
+          "name",
+          "aliases",
+          "definition",
+          "formula",
+          "scale",
+          "value_range",
+          "usage_note",
+          "example",
+          "catalog_version",
+          "related",
+          "slot_links"
+        ],
+        "title": "MeasurementDetail",
+        "type": "object"
+      },
+      "MeasurementImportResult": {
+        "properties": {
+          "catalog_version": {
+            "title": "Catalog Version",
+            "type": "string"
+          },
+          "entries_created": {
+            "title": "Entries Created",
+            "type": "integer"
+          },
+          "entries_updated": {
+            "title": "Entries Updated",
+            "type": "integer"
+          },
+          "missing_codes": {
+            "description": "Codes stored earlier but absent from this catalog; kept, not deleted.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Codes",
+            "type": "array"
+          },
+          "relations": {
+            "title": "Relations",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "imported",
+              "unchanged"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "catalog_version",
+          "entries_created",
+          "entries_updated",
+          "relations",
+          "missing_codes"
+        ],
+        "title": "MeasurementImportResult",
+        "type": "object"
+      },
+      "MeasurementListResponse": {
+        "properties": {
+          "catalog_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Version"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "catalog_version",
+          "items",
+          "total"
+        ],
+        "title": "MeasurementListResponse",
+        "type": "object"
+      },
+      "MeasurementSummary": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "definition": {
+            "title": "Definition",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "metric",
+              "method",
+              "protocol"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "kind",
+          "name",
+          "aliases",
+          "definition"
+        ],
+        "title": "MeasurementSummary",
+        "type": "object"
+      },
+      "MetricWarning": {
+        "description": "FR-08.2 report-only note; never changes severity or completeness.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "span": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Span",
+            "type": "array"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "span",
+          "message"
+        ],
+        "title": "MetricWarning",
+        "type": "object"
+      },
       "MineRequest": {
         "properties": {
           "article_ids": {
@@ -4235,6 +4531,48 @@
         "title": "ReferenceOption",
         "type": "object"
       },
+      "RelatedMeasurement": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "outgoing",
+              "incoming"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "metric",
+              "method",
+              "protocol"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "relation": {
+            "title": "Relation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "relation",
+          "direction",
+          "code",
+          "kind",
+          "name"
+        ],
+        "title": "RelatedMeasurement",
+        "type": "object"
+      },
       "ReleaseSummary": {
         "properties": {
           "id": {
@@ -4920,6 +5258,248 @@
         "title": "SlotDefinition",
         "type": "object"
       },
+      "SlotLinkListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SlotLinkRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SlotLinkListResponse",
+        "type": "object"
+      },
+      "SlotLinkProposal": {
+        "additionalProperties": false,
+        "properties": {
+          "entry_code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Entry Code",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "pattern_id": {
+            "format": "uuid",
+            "title": "Pattern Id",
+            "type": "string"
+          },
+          "slot_name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Slot Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_code",
+          "pattern_id",
+          "slot_name"
+        ],
+        "title": "SlotLinkProposal",
+        "type": "object"
+      },
+      "SlotLinkRead": {
+        "properties": {
+          "canonical_frame": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Frame"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entry_code": {
+            "title": "Entry Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "pattern_id": {
+            "format": "uuid",
+            "title": "Pattern Id",
+            "type": "string"
+          },
+          "review_status": {
+            "enum": [
+              "proposed",
+              "approved",
+              "rejected"
+            ],
+            "title": "Review Status",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "slot_name": {
+            "title": "Slot Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "entry_code",
+          "pattern_id",
+          "canonical_frame",
+          "slot_name",
+          "review_status",
+          "note",
+          "created_at",
+          "reviewed_at"
+        ],
+        "title": "SlotLinkRead",
+        "type": "object"
+      },
+      "SlotLinkReview": {
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "SlotLinkReview",
+        "type": "object"
+      },
+      "SlotSuggestion": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "example": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example"
+          },
+          "kind": {
+            "enum": [
+              "metric",
+              "method",
+              "protocol"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "kind",
+          "name",
+          "example"
+        ],
+        "title": "SlotSuggestion",
+        "type": "object"
+      },
+      "SlotSuggestionsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SlotSuggestion"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "notice": {
+            "default": "Suggestions only. The writer must choose and phrase the slot value.",
+            "title": "Notice",
+            "type": "string"
+          },
+          "pattern_id": {
+            "format": "uuid",
+            "title": "Pattern Id",
+            "type": "string"
+          },
+          "slot_name": {
+            "title": "Slot Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern_id",
+          "slot_name",
+          "items"
+        ],
+        "title": "SlotSuggestionsResponse",
+        "type": "object"
+      },
       "SlotType": {
         "enum": [
           "noun_phrase",
@@ -5506,6 +6086,13 @@
           "context_hash": {
             "title": "Context Hash",
             "type": "string"
+          },
+          "metric_warnings": {
+            "items": {
+              "$ref": "#/components/schemas/MetricWarning"
+            },
+            "title": "Metric Warnings",
+            "type": "array"
           },
           "policy_versions": {
             "additionalProperties": {
@@ -7847,6 +8434,261 @@
         ]
       }
     },
+    "/v1/admin/measurements/imports": {
+      "post": {
+        "operationId": "import_measurements_v1_admin_measurements_imports_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_measurements_v1_admin_measurements_imports_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Measurements",
+        "tags": [
+          "measurement"
+        ]
+      }
+    },
+    "/v1/admin/measurements/slot-links": {
+      "get": {
+        "operationId": "list_slot_links_v1_admin_measurements_slot_links_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "proposed",
+                    "approved",
+                    "rejected"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotLinkListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Slot Links",
+        "tags": [
+          "measurement"
+        ]
+      },
+      "post": {
+        "operationId": "propose_slot_link_v1_admin_measurements_slot_links_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlotLinkProposal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotLinkRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Propose Slot Link",
+        "tags": [
+          "measurement"
+        ]
+      }
+    },
+    "/v1/admin/measurements/slot-links/{link_id}/review": {
+      "post": {
+        "operationId": "review_slot_link_v1_admin_measurements_slot_links__link_id__review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Link Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlotLinkReview"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotLinkRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Slot Link",
+        "tags": [
+          "measurement"
+        ]
+      }
+    },
     "/v1/admin/releases/{release_id}/publish": {
       "post": {
         "operationId": "publish_release_v1_admin_releases__release_id__publish_post",
@@ -8879,6 +9721,244 @@
         "summary": "Create Guideline",
         "tags": [
           "journals"
+        ]
+      }
+    },
+    "/v1/measurements": {
+      "get": {
+        "operationId": "list_measurements_v1_measurements_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "metric",
+                    "method",
+                    "protocol"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Measurements",
+        "tags": [
+          "measurement"
+        ]
+      }
+    },
+    "/v1/measurements/slot-suggestions": {
+      "get": {
+        "operationId": "slot_suggestions_v1_measurements_slot_suggestions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pattern_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pattern Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "slot",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Slot",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotSuggestionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Slot Suggestions",
+        "tags": [
+          "measurement"
+        ]
+      }
+    },
+    "/v1/measurements/{code}": {
+      "get": {
+        "operationId": "get_measurement_v1_measurements__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Measurement",
+        "tags": [
+          "measurement"
         ]
       }
     },

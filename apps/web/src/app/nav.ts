@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Newspaper,
   PenLine,
+  Ruler,
   ScanText,
   ShieldCheck,
   Star,
@@ -25,6 +26,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/phrasebank", label: "Phrasebank", icon: BookMarked },
       { to: "/vocabulary", label: "Vocabulary", icon: BookText },
+      { to: "/measurements", label: "Measurement", icon: Ruler },
       { to: "/journals", label: "Journals", icon: Newspaper },
     ],
   },

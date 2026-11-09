@@ -18,6 +18,7 @@ class LemmaSummary(BaseModel):
     status: str | None
     status_label: str
     is_core: bool
+    coca_acad: int | None
 
 
 class LemmaPage(BaseModel):
@@ -63,7 +64,6 @@ class FamilyRead(BaseModel):
 
 class LemmaDetail(LemmaSummary):
     coca_all: int | None
-    coca_acad: int | None
     ratio: float | None
     disp: float | None
     range: int | None
@@ -88,3 +88,9 @@ class VocabularyPolicyLabels(BaseModel):
             category=dict(labels.category),
             domains=dict(labels.domains),
         )
+
+
+class VocabularyFilterOptions(BaseModel):
+    pos: dict[str, str]
+    status: dict[str, str]
+    domains: dict[str, str]

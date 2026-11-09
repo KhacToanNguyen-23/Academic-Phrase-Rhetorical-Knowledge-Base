@@ -280,8 +280,18 @@ def _prefix(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+@dataclass(frozen=True)
+class LemmaFilters:
+    core_only: bool = False
+    pos: str | None = None
+    status: str | None = None
+    band_min: int | None = None
+    band_max: int | None = None
+    domain: str | None = None
+
+
 def _lemma_filters(
-    *, q: str | None, letter: str | None, core_only: bool
+    filters: LemmaFilters, *, q: str | None = None, letter: str | None = None
 ) -> list[ColumnElement[bool]]:
     clauses: list[ColumnElement[bool]] = []
     if q:
@@ -292,8 +302,25 @@ def _lemma_filters(
         )
     elif letter:
         clauses.append(VocabLemma.word.like(f"{_prefix(letter.lower())}%", escape="\\"))
-    if core_only:
+    if filters.core_only:
         clauses.append(VocabLemma.is_core.is_(True))
+    if filters.pos is not None:
+        clauses.append(VocabLemma.pos == filters.pos)
+    if filters.status == "unknown":
+        clauses.append(or_(VocabLemma.status.is_(None), VocabLemma.status == ""))
+    elif filters.status is not None:
+        clauses.append(VocabLemma.status == filters.status)
+    if filters.band_min is not None:
+        clauses.append(VocabLemma.band >= filters.band_min)
+    if filters.band_max is not None:
+        clauses.append(VocabLemma.band <= filters.band_max)
+    if filters.domain is not None:
+        clauses.append(
+            VocabLemma.domain_stats.any(
+                (VocabLemmaDomainStat.domain == filters.domain)
+                & (VocabLemmaDomainStat.relative_ratio > 1.0)
+            )
+        )
     return clauses
 
 
@@ -302,23 +329,26 @@ async def list_lemmas(
     *,
     q: str | None,
     letter: str | None,
-    core_only: bool,
+    filters: LemmaFilters,
     sort: str,
     limit: int,
     offset: int,
 ) -> tuple[list[VocabLemma], int]:
-    clauses = _lemma_filters(q=q, letter=letter, core_only=core_only)
+    clauses = _lemma_filters(filters, q=q, letter=letter)
     total = int(
         await session.scalar(select(func.count()).select_from(VocabLemma).where(*clauses)) or 0
     )
-    ordering = (
-        (VocabLemma.rank.asc().nulls_last(), VocabLemma.word, VocabLemma.pos)
-        if sort == "rank"
-        else (VocabLemma.word, VocabLemma.pos)
-    )
+    ordering = {
+        "rank": (VocabLemma.rank.asc().nulls_last(),),
+        "academic_frequency": (VocabLemma.coca_acad.desc().nulls_last(),),
+    }.get(sort, ())
     items = list(
         await session.scalars(
-            select(VocabLemma).where(*clauses).order_by(*ordering).limit(limit).offset(offset)
+            select(VocabLemma)
+            .where(*clauses)
+            .order_by(*ordering, VocabLemma.word, VocabLemma.pos)
+            .limit(limit)
+            .offset(offset)
         )
     )
     return items, total
@@ -350,8 +380,8 @@ async def list_families(
     return items, total
 
 
-async def letter_counts(session: AsyncSession, *, core_only: bool) -> dict[str, int]:
-    clauses = [VocabLemma.is_core.is_(True)] if core_only else []
+async def letter_counts(session: AsyncSession, filters: LemmaFilters) -> dict[str, int]:
+    clauses = _lemma_filters(filters)
     first_letter = func.lower(func.left(VocabLemma.word, literal_column("1")))
     rows = await session.execute(
         select(first_letter, func.count()).where(*clauses).group_by(first_letter)

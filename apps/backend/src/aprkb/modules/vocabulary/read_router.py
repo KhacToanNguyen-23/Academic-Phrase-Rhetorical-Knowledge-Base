@@ -14,6 +14,7 @@ from aprkb.modules.vocabulary.read_schemas import (
     LemmaDetail,
     LemmaPage,
     LetterCount,
+    VocabularyFilterOptions,
     VocabularyPolicyLabels,
 )
 from aprkb.modules.vocabulary.read_service import (
@@ -22,10 +23,47 @@ from aprkb.modules.vocabulary.read_service import (
     list_lemma_page,
     list_letter_counts,
 )
+from aprkb.modules.vocabulary.repository import LemmaFilters
 
 router = APIRouter(tags=["vocabulary"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 Client = Annotated[ApiClient, Depends(require_role("client"))]
+
+
+def lemma_filters(
+    request: Request,
+    core_only: bool = False,
+    pos: Annotated[str | None, Query(min_length=1, max_length=8)] = None,
+    status: Annotated[str | None, Query(min_length=1, max_length=8)] = None,
+    band_min: Annotated[int | None, Query(ge=1, le=2147483647)] = None,
+    band_max: Annotated[int | None, Query(ge=1, le=2147483647)] = None,
+    domain: Annotated[str | None, Query(min_length=1, max_length=8)] = None,
+) -> LemmaFilters:
+    if band_min is not None and band_max is not None and band_min > band_max:
+        raise HTTPException(status_code=422, detail="Minimum band must not exceed maximum band")
+    if (
+        domain is not None
+        and domain not in request.app.state.policy_bundle.vocabulary_import.domain_codes
+    ):
+        raise HTTPException(status_code=422, detail="Unknown academic discipline")
+    return LemmaFilters(
+        core_only=core_only,
+        pos=pos,
+        status=status,
+        band_min=band_min,
+        band_max=band_max,
+        domain=domain,
+    )
+
+
+@router.get("/vocabulary/filter-options", response_model=VocabularyFilterOptions)
+async def vocabulary_filter_options(request: Request, _actor: Client) -> VocabularyFilterOptions:
+    labels = VocabularyPolicyLabels.from_policy(
+        request.app.state.policy_bundle.vocabulary_import.labels
+    )
+    return VocabularyFilterOptions(
+        pos=labels.pos, status={**labels.status, "unknown": "Unknown"}, domains=labels.domains
+    )
 
 
 @router.get("/vocabulary/families", response_model=FamilyPage)
@@ -51,10 +89,10 @@ async def vocabulary_lemmas(
     request: Request,
     _actor: Client,
     session: DatabaseSession,
+    filters: Annotated[LemmaFilters, Depends(lemma_filters)],
     q: str | None = None,
     letter: str | None = Query(default=None, pattern=r"^(?:[a-zA-Z]|#)$"),
-    core_only: bool = False,
-    sort: Literal["alpha", "rank"] = "alpha",
+    sort: Literal["alpha", "rank", "academic_frequency"] = "alpha",
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> LemmaPage:
@@ -67,7 +105,7 @@ async def vocabulary_lemmas(
         session,
         q=q,
         letter=letter.lower() if letter else None,
-        core_only=core_only,
+        filters=filters,
         sort=sort,
         limit=limit,
         offset=offset,
@@ -80,9 +118,9 @@ async def vocabulary_lemmas(
 async def vocabulary_letters(
     _actor: Client,
     session: DatabaseSession,
-    core_only: bool = False,
+    filters: Annotated[LemmaFilters, Depends(lemma_filters)],
 ) -> list[LetterCount]:
-    counts = await list_letter_counts(session, core_only=core_only)
+    counts = await list_letter_counts(session, filters)
     return [
         LetterCount(letter=letter, count=counts[letter])
         for letter in [*"abcdefghijklmnopqrstuvwxyz", "#"]

@@ -14,6 +14,7 @@ from aprkb.modules.vocabulary.read_schemas import (
     VocabularyPolicyLabels,
 )
 from aprkb.modules.vocabulary.repository import (
+    LemmaFilters,
     get_lemma,
     letter_counts,
     list_families,
@@ -36,6 +37,7 @@ def to_summary(lemma: VocabLemma, labels: VocabularyPolicyLabels) -> LemmaSummar
         status=lemma.status,
         status_label=_label(labels.status, lemma.status),
         is_core=lemma.is_core,
+        coca_acad=lemma.coca_acad,
     )
 
 
@@ -76,7 +78,6 @@ def to_detail(
     return LemmaDetail(
         **to_summary(lemma, labels).model_dump(),
         coca_all=lemma.coca_all,
-        coca_acad=lemma.coca_acad,
         ratio=lemma.ratio,
         disp=lemma.disp,
         range=lemma.domain_range,
@@ -100,7 +101,7 @@ async def list_lemma_page(
     *,
     q: str | None,
     letter: str | None,
-    core_only: bool,
+    filters: LemmaFilters,
     sort: str,
     limit: int,
     offset: int,
@@ -110,7 +111,7 @@ async def list_lemma_page(
         session,
         q=q,
         letter=letter,
-        core_only=core_only,
+        filters=filters,
         sort=sort,
         limit=limit,
         offset=offset,
@@ -118,8 +119,8 @@ async def list_lemma_page(
     return [to_summary(item, labels) for item in items], total
 
 
-async def list_letter_counts(session: AsyncSession, *, core_only: bool) -> dict[str, int]:
-    return await letter_counts(session, core_only=core_only)
+async def list_letter_counts(session: AsyncSession, filters: LemmaFilters) -> dict[str, int]:
+    return await letter_counts(session, filters)
 
 
 async def list_family_page(

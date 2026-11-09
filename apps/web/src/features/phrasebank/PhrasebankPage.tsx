@@ -9,6 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataState } from "@/components/domain/DataState";
 import { PageHeader } from "@/components/domain/PageHeader";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { ApiError } from "@/features/slr-import/api/client";
@@ -18,11 +25,13 @@ import {
   type ManchesterCategory,
   type ManchesterSearchResult,
   type PatternDetail,
+  type PatternFilter,
   type SourceId,
   type TaxonomyTree,
 } from "./source-registry";
 
 const SOURCE_CREDIT = "Source: University of Manchester Academic Phrasebank.";
+const PATTERN_PAGE_SIZE = 50;
 
 function isReferenceDisabled(error: unknown) {
   return (
@@ -191,12 +200,15 @@ function SourceFilters({
   onSectionChange: (value: string) => void;
   onIntentChange: (value: string) => void;
 }) {
+  const intents = taxonomyIntents(taxonomy);
+  const selectedIntent = intents.find((intent) => intent.code === intentCode);
+
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="flex flex-col gap-1">
+    <>
+      <div className="flex min-w-0 flex-col gap-1">
         <span className="text-sm font-medium">Section</span>
         <Select value={sectionCode || "all"} onValueChange={(value) => onSectionChange(value === "all" ? "" : value)}>
-          <SelectTrigger aria-label="Section filter">
+          <SelectTrigger aria-label="Section filter" className="w-full">
             <SelectValue placeholder="All sections" />
           </SelectTrigger>
           <SelectContent>
@@ -209,15 +221,21 @@ function SourceFilters({
           </SelectContent>
         </Select>
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         <span className="text-sm font-medium">Intent</span>
         <Select value={intentCode || "all"} onValueChange={(value) => onIntentChange(value === "all" ? "" : value)}>
-          <SelectTrigger aria-label="Intent filter">
-            <SelectValue placeholder="All intents" />
+          <SelectTrigger
+            aria-label="Intent filter"
+            className="w-full *:data-[slot=select-value]:min-w-0"
+            title={selectedIntent?.name}
+          >
+            <SelectValue placeholder="All intents">
+              <span className="truncate">{selectedIntent?.name ?? "All intents"}</span>
+            </SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-w-(--radix-select-content-available-width)">
             <SelectItem value="all">All intents</SelectItem>
-            {taxonomyIntents(taxonomy).map((intent) => (
+            {intents.map((intent) => (
               <SelectItem key={intent.code} value={intent.code}>
                 {intent.name}
               </SelectItem>
@@ -225,7 +243,7 @@ function SourceFilters({
           </SelectContent>
         </Select>
       </div>
-    </div>
+    </>
   );
 }
 function taxonomyUnmappedCount(
@@ -311,11 +329,75 @@ function PatternGroups({ patterns }: { patterns: PatternDetail[] }) {
   );
 }
 
+function PaginatedPatterns({ query, filters }: { query: string; filters: PatternFilter }) {
+  const [offset, setOffset] = useState(0);
+  const patternSearch = useQuery({
+    queryKey: ["phrasebank-pattern-search", query, filters, offset],
+    queryFn: () =>
+      phrasebankSources.patterns(query, filters, { offset, limit: PATTERN_PAGE_SIZE + 1 }),
+    retry: false,
+  });
+  const patterns = patternSearch.data?.slice(0, PATTERN_PAGE_SIZE) ?? [];
+  const hasPrevious = offset > 0;
+  const hasNext = (patternSearch.data?.length ?? 0) > PATTERN_PAGE_SIZE;
+
+  return (
+    <>
+      {patternSearch.isPending ? (
+        <DataState state="loading" loadingLabel="Loading approved patterns" />
+      ) : patternSearch.isError ? (
+        <DataState
+          state="error"
+          errorTitle="Could not load approved patterns"
+          errorDescription={patternSearch.error.message}
+          onRetry={() => void patternSearch.refetch()}
+        />
+      ) : (
+        <PatternGroups patterns={patterns} />
+      )}
+      {hasPrevious || hasNext ? (
+        <Pagination aria-label="AP-RKB pattern pages">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                aria-disabled={!hasPrevious}
+                className={!hasPrevious ? "pointer-events-none opacity-50" : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (hasPrevious) setOffset(offset - PATTERN_PAGE_SIZE);
+                }}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <span className="px-3 text-sm text-muted-foreground">
+                Page {offset / PATTERN_PAGE_SIZE + 1}
+              </span>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                aria-disabled={!hasNext}
+                className={!hasNext ? "pointer-events-none opacity-50" : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (hasNext) setOffset(offset + PATTERN_PAGE_SIZE);
+                }}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      ) : null}
+    </>
+  );
+}
+
 export function PhrasebankHome() {
   const [source, setSource] = useState<"all" | SourceId>("all");
   const [search, setSearch] = useState("");
   const [sectionCode, setSectionCode] = useState("");
   const [intentCode, setIntentCode] = useState("");
+  const [slotFilter, setSlotFilter] = useState("all");
   const query = useDebounced(search.trim());
   const taxonomy = useQuery({ queryKey: ["phrasebank-taxonomy"], queryFn: phrasebankSources.taxonomy, retry: false });
   const manchester = useQuery({
@@ -331,13 +413,8 @@ export function PhrasebankHome() {
     enabled: Boolean(query) && source !== "aprkb-patterns",
     retry: false,
   });
-  const patternSearch = useQuery({
-    queryKey: ["phrasebank-pattern-search", query, sectionCode, intentCode],
-    queryFn: () => PHRASEBANK_SOURCES["aprkb-patterns"].search(query, filters),
-    enabled: source !== "manchester-reference",
-    retry: false,
-  });
-  const patternMatches = patternSearch.data ?? [];
+  const patternFilters = { ...filters, hasSlots: slotFilter === "all" ? undefined : slotFilter === "with" };
+  const patternPageKey = JSON.stringify([source, query, sectionCode, intentCode, slotFilter]);
   const referenceSource = PHRASEBANK_SOURCES["manchester-reference"];
   const visibleCategories = (manchester.data ?? []).filter(
     (category) =>
@@ -358,33 +435,64 @@ export function PhrasebankHome() {
         <CardHeader>
           <CardTitle>Search the phrasebank</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-end gap-3">
-          <Input
-            className="max-w-xl"
-            type="search"
-            aria-label="Search phrasebanks"
-            placeholder="Search phrases and categories"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <Select value={source} onValueChange={(value) => setSource(value as "all" | SourceId)}>
-            <SelectTrigger aria-label="Source filter" className="w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sources</SelectItem>
-              <SelectItem value="manchester-reference">Manchester reference</SelectItem>
-              <SelectItem value="aprkb-patterns">AP-RKB patterns</SelectItem>
-            </SelectContent>
-          </Select>
-          <SourceFilters
-            taxonomy={taxonomy.data}
-            sectionCode={sectionCode}
-            intentCode={intentCode}
-            onSectionChange={setSectionCode}
-            onIntentChange={setIntentCode}
-          />
-          <Button onClick={() => setSearch((value) => value)}>Search</Button>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Input
+              className="min-w-0 max-w-xl"
+              type="search"
+              aria-label="Search phrasebanks"
+              placeholder="Search phrases and categories"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <Button onClick={() => setSearch((value) => value)}>Search</Button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_2fr_1fr]">
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-sm font-medium">Source</span>
+              <Select value={source} onValueChange={(value) => setSource(value as "all" | SourceId)}>
+                <SelectTrigger aria-label="Source filter" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sources</SelectItem>
+                  <SelectItem value="manchester-reference">Manchester reference</SelectItem>
+                  <SelectItem value="aprkb-patterns">AP-RKB patterns</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <SourceFilters
+              taxonomy={taxonomy.data}
+              sectionCode={sectionCode}
+              intentCode={intentCode}
+              onSectionChange={setSectionCode}
+              onIntentChange={setIntentCode}
+            />
+            {source !== "manchester-reference" ? (
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="text-sm font-medium">Fill-in fields</span>
+                <Select value={slotFilter} onValueChange={setSlotFilter}>
+                  <SelectTrigger
+                    aria-label="Fill-in fields"
+                    aria-describedby={source === "all" ? "phrasebank-slot-filter-scope" : undefined}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All phrases</SelectItem>
+                    <SelectItem value="with">Has fill-in fields</SelectItem>
+                    <SelectItem value="without">No fill-in fields</SelectItem>
+                  </SelectContent>
+                </Select>
+                {source === "all" ? (
+                  <span id="phrasebank-slot-filter-scope" className="text-xs text-muted-foreground">
+                    AP-RKB patterns only
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
       {hasFilters && !query && source !== "aprkb-patterns" && manchester.data ? (
@@ -398,15 +506,9 @@ export function PhrasebankHome() {
             <CardTitle>Search results</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
-            <p className="text-sm text-muted-foreground">
-              Showing up to{" "}
-              {source === "aprkb-patterns"
-                ? "200 AP-RKB"
-                : source === "manchester-reference"
-                  ? "50 Manchester"
-                  : "50 Manchester and 200 AP-RKB"}{" "}
-              matching results.
-            </p>
+            {source !== "aprkb-patterns" ? (
+              <p className="text-sm text-muted-foreground">Showing up to 50 Manchester matching results.</p>
+            ) : null}
             {source !== "aprkb-patterns" ? (
               results.isPending ? (
                 <DataState state="loading" loadingLabel="Loading reference results" />
@@ -446,18 +548,7 @@ export function PhrasebankHome() {
             {source !== "manchester-reference" ? (
               <section className="flex flex-col gap-3">
                 <h3 className="font-medium">AP-RKB patterns</h3>
-                {patternSearch.isPending ? (
-                  <DataState state="loading" loadingLabel="Loading approved patterns" />
-                ) : patternSearch.isError ? (
-                  <DataState
-                    state="error"
-                    errorTitle="Could not load approved patterns"
-                    errorDescription={patternSearch.error.message}
-                    onRetry={() => void patternSearch.refetch()}
-                  />
-                ) : (
-                  <PatternGroups patterns={patternMatches} />
-                )}
+                <PaginatedPatterns key={patternPageKey} query={query} filters={patternFilters} />
               </section>
             ) : null}
           </CardContent>
@@ -531,19 +622,7 @@ export function PhrasebankHome() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <p className="text-sm text-muted-foreground">Showing up to 200 matching patterns.</p>
-                {patternSearch.isPending ? (
-                  <DataState state="loading" loadingLabel="Loading approved patterns" />
-                ) : patternSearch.isError ? (
-                  <DataState
-                    state="error"
-                    errorTitle="Could not load approved patterns"
-                    errorDescription={patternSearch.error.message}
-                    onRetry={() => void patternSearch.refetch()}
-                  />
-                ) : (
-                  <PatternGroups patterns={patternMatches} />
-                )}
+                <PaginatedPatterns key={patternPageKey} query={query} filters={patternFilters} />
               </CardContent>
             </Card>
           ) : null}

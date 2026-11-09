@@ -1893,8 +1893,8 @@
           "status",
           "status_label",
           "is_core",
-          "coca_all",
           "coca_acad",
+          "coca_all",
           "ratio",
           "disp",
           "range",
@@ -1938,6 +1938,17 @@
               }
             ],
             "title": "Band"
+          },
+          "coca_acad": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coca Acad"
           },
           "id": {
             "format": "uuid",
@@ -1996,7 +2007,8 @@
           "band",
           "status",
           "status_label",
-          "is_core"
+          "is_core",
+          "coca_acad"
         ],
         "title": "LemmaSummary",
         "type": "object"
@@ -5059,6 +5071,38 @@
         ],
         "title": "ValidationRuleResponse",
         "type": "object"
+      },
+      "VocabularyFilterOptions": {
+        "properties": {
+          "domains": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Domains",
+            "type": "object"
+          },
+          "pos": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Pos",
+            "type": "object"
+          },
+          "status": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Status",
+            "type": "object"
+          }
+        },
+        "required": [
+          "pos",
+          "status",
+          "domains"
+        ],
+        "title": "VocabularyFilterOptions",
+        "type": "object"
       }
     }
   },
@@ -7541,6 +7585,24 @@
             }
           },
           {
+            "description": "Filter by whether fill-in fields are defined.",
+            "in": "query",
+            "name": "has_slots",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by whether fill-in fields are defined.",
+              "title": "Has Slots"
+            }
+          },
+          {
             "in": "query",
             "name": "status",
             "required": false,
@@ -8652,6 +8714,55 @@
         ]
       }
     },
+    "/v1/vocabulary/filter-options": {
+      "get": {
+        "operationId": "vocabulary_filter_options_v1_vocabulary_filter_options_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VocabularyFilterOptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vocabulary Filter Options",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
     "/v1/vocabulary/lemmas": {
       "get": {
         "operationId": "vocabulary_lemmas_v1_vocabulary_lemmas_get",
@@ -8691,23 +8802,14 @@
           },
           {
             "in": "query",
-            "name": "core_only",
-            "required": false,
-            "schema": {
-              "default": false,
-              "title": "Core Only",
-              "type": "boolean"
-            }
-          },
-          {
-            "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
               "default": "alpha",
               "enum": [
                 "alpha",
-                "rank"
+                "rank",
+                "academic_frequency"
               ],
               "title": "Sort",
               "type": "string"
@@ -8734,6 +8836,106 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "core_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Core Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pos",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pos"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "band_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 2147483647,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Band Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "band_max",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 2147483647,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Band Max"
+            }
+          },
+          {
+            "in": "query",
+            "name": "domain",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Domain"
             }
           },
           {
@@ -8852,6 +9054,96 @@
               "default": false,
               "title": "Core Only",
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pos",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pos"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "band_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 2147483647,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Band Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "band_max",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 2147483647,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Band Max"
+            }
+          },
+          {
+            "in": "query",
+            "name": "domain",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Domain"
             }
           },
           {

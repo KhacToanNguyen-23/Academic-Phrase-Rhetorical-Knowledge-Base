@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,17 +21,68 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DataState } from "@/components/domain/DataState";
 import { PageHeader } from "@/components/domain/PageHeader";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { useFamilies, useLemmas, useLetters } from "../api/client";
+import { useFamilies, useLemmas, useLetters, useVocabularyFilterOptions } from "../api/client";
 import { VocabularyImportCard } from "./VocabularyImportCard";
 
 const route = getRouteApi("/shell/guarded/vocabulary");
 const alphabet = [..."abcdefghijklmnopqrstuvwxyz", "#"];
+const noLemmaFilters = {
+  letter: undefined,
+  pos: undefined,
+  status: undefined,
+  bandMin: undefined,
+  bandMax: undefined,
+  domain: undefined,
+  sort: undefined,
+};
+const sortOptions = {
+  alpha: "A–Z",
+  rank: "Academic rank",
+  academic_frequency: "Most frequent in academic texts",
+};
 
 function statusVariant(status: string | null): "success" | "warning" | "secondary" | "default" {
   if (status === "y") return "success";
   if (status === "r") return "warning";
   if (status === "x") return "secondary";
   return "default";
+}
+
+function VocabularySelect({
+  label,
+  value,
+  options,
+  allLabel,
+  onChange,
+}: {
+  label: string;
+  value?: string;
+  options: Record<string, string>;
+  allLabel?: string;
+  onChange: (value: string | undefined) => void;
+}) {
+  const id = `vocabulary-${label.toLowerCase().replaceAll(" ", "-")}`;
+  const selectedLabel = value ? options[value] : allLabel;
+  return (
+    <Field className="min-w-0">
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <Select value={value ?? "all"} onValueChange={(next) => onChange(next === "all" ? undefined : next)}>
+        <SelectTrigger id={id} className="w-full *:data-[slot=select-value]:min-w-0" title={selectedLabel}>
+          <SelectValue>
+            <span className="truncate">{selectedLabel === "unknown" ? `Unknown (${value})` : selectedLabel}</span>
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {allLabel ? <SelectItem value="all">{allLabel}</SelectItem> : null}
+          {Object.entries(options).map(([code, name]) => (
+            <SelectItem key={code} value={code}>
+              {name === "unknown" ? `Unknown (${code})` : name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
+  );
 }
 
 function QueryState({
@@ -76,32 +126,92 @@ function QueryState({
   return null;
 }
 
+function VocabularyPagination({
+  total,
+  offset,
+  limit,
+  onPageChange,
+}: {
+  total: number;
+  offset: number;
+  limit: number;
+  onPageChange: (offset: number) => void;
+}) {
+  if (total === 0) return null;
+  const first = offset + 1;
+  const last = Math.min(offset + limit, total);
+  const hasPrevious = offset > 0;
+  const hasNext = last < total;
+  return (
+    <Pagination>
+      <PaginationContent>
+        <PaginationItem>
+          <PaginationPrevious
+            href="#"
+            aria-disabled={!hasPrevious}
+            className={!hasPrevious ? "pointer-events-none opacity-50" : undefined}
+            onClick={(event) => {
+              event.preventDefault();
+              if (hasPrevious) onPageChange(Math.max(0, offset - limit));
+            }}
+          />
+        </PaginationItem>
+        <PaginationItem>
+          <span className="px-3 text-sm text-muted-foreground">
+            {first <= last ? `${first.toLocaleString()}–${last.toLocaleString()} of ` : ""}
+            {total.toLocaleString()}
+          </span>
+        </PaginationItem>
+        <PaginationItem>
+          <PaginationNext
+            href="#"
+            aria-disabled={!hasNext}
+            className={!hasNext ? "pointer-events-none opacity-50" : undefined}
+            onClick={(event) => {
+              event.preventDefault();
+              if (hasNext) onPageChange(offset + limit);
+            }}
+          />
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
+  );
+}
+
 export function VocabularyPage() {
   const { client: authClient } = useAuth();
   const search = route.useSearch();
   const navigate = useNavigate({ from: "/vocabulary" });
   const [query, setQuery] = useState(search.q ?? "");
-  const [debouncedQuery, setDebouncedQuery] = useState(search.q ?? "");
+  const [minBand, setMinBand] = useState(search.bandMin?.toString() ?? "");
+  const [maxBand, setMaxBand] = useState(search.bandMax?.toString() ?? "");
   const [showImport, setShowImport] = useState(false);
   const view = search.view ?? "lemmas";
-  const coreOnly = search.coreOnly ?? false;
   const sort = search.sort ?? "alpha";
   const offset = search.offset ?? 0;
   const limit = 50;
   const isCurator = authClient?.role === "curator" || authClient?.role === "admin";
-  const letters = useLetters(coreOnly);
+  const filterOptions = useVocabularyFilterOptions();
+  const lemmaFilters = {
+    pos: search.pos,
+    status: search.status,
+    band_min: search.bandMin,
+    band_max: search.bandMax,
+    domain: search.domain,
+  };
+  const letters = useLetters(lemmaFilters);
   const lemmas = useLemmas({
-    q: debouncedQuery || undefined,
+    ...lemmaFilters,
+    q: search.q,
     letter: search.letter,
-    core_only: coreOnly,
     sort,
     limit,
     offset,
   });
-  const families = useFamilies({ q: debouncedQuery || undefined, limit, offset });
+  const families = useFamilies({ q: search.q, limit, offset });
   // Unfiltered totals for the summary strip.
-  const allLetters = useLetters(false);
-  const coreLetters = useLetters(true);
+  const allLetters = useLetters();
+  const coreLetters = useLetters({ core_only: true });
   const familyTotal = useFamilies({ limit: 1, offset: 0 });
   const sumLetters = (data?: { count: number }[]) => data?.reduce((sum, item) => sum + item.count, 0);
   const lemmaCount = sumLetters(allLetters.data);
@@ -109,38 +219,46 @@ export function VocabularyPage() {
   const maxLetter = Math.max(1, ...(letters.data ?? []).map((item) => item.count));
 
   useEffect(() => {
+    const nextQuery = query.trim() || undefined;
+    if (nextQuery === search.q) return;
     const timer = window.setTimeout(() => {
-      setDebouncedQuery(query.trim());
       void navigate({
         search: (previous) => ({
           ...previous,
-          q: query.trim() || undefined,
-          letter: query.trim() ? undefined : previous.letter,
+          q: nextQuery,
+          letter: nextQuery ? undefined : previous.letter,
           offset: 0,
         }),
       });
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [navigate, query]);
+  }, [navigate, query, search.q]);
   useEffect(() => {
-    if (search.q !== undefined && search.q !== query) setQuery(search.q);
-  }, [search.q, query]);
+    setQuery(search.q ?? "");
+  }, [search.q]);
+  useEffect(() => {
+    setMinBand(search.bandMin?.toString() ?? "");
+    setMaxBand(search.bandMax?.toString() ?? "");
+  }, [search.bandMin, search.bandMax]);
 
   const counts = useMemo(() => new Map((letters.data ?? []).map((item) => [item.letter, item.count])), [letters.data]);
   const totalLettersCount = useMemo(
     () => (letters.data ?? []).reduce((sum, item) => sum + item.count, 0),
     [letters.data],
   );
-  const total = view === "families" ? (families.data?.total ?? 0) : (lemmas.data?.total ?? 0);
-  const first = total === 0 ? 0 : offset + 1;
-  const last = Math.min(offset + limit, total);
-  const hasActiveFilters = Boolean(search.q || search.letter || coreOnly || sort !== "alpha");
+  const hasActiveFilters = Boolean(
+    search.q || search.letter || Object.values(lemmaFilters).some((value) => value !== undefined) || sort !== "alpha",
+  );
+  const bandMin = minBand === "" ? undefined : Number(minBand);
+  const bandMax = maxBand === "" ? undefined : Number(maxBand);
+  const reversedBand = bandMin !== undefined && bandMax !== undefined && bandMin > bandMax;
   const updateSearch = (patch: Partial<typeof search>) =>
     void navigate({ search: (previous) => ({ ...previous, ...patch }) });
   const clearFilters = () => {
     setQuery("");
-    setDebouncedQuery("");
-    updateSearch({ q: undefined, letter: undefined, coreOnly: undefined, sort: undefined, offset: 0 });
+    setMinBand("");
+    setMaxBand("");
+    updateSearch({ ...noLemmaFilters, q: undefined, offset: 0 });
   };
 
   return (
@@ -183,9 +301,7 @@ export function VocabularyPage() {
           updateSearch({
             view: nextView as "lemmas" | "families",
             offset: 0,
-            letter: nextView === "families" ? undefined : search.letter,
-            coreOnly: nextView === "families" ? undefined : search.coreOnly,
-            sort: nextView === "families" ? undefined : search.sort,
+            ...(nextView === "families" ? noLemmaFilters : {}),
           })
         }
         className="flex flex-col gap-4"
@@ -218,45 +334,94 @@ export function VocabularyPage() {
               ) : null}
             </div>
             <TabsContent value="lemmas" className="flex flex-col gap-4">
-              <div className="flex items-end gap-6">
-                <Field orientation="horizontal" className="h-8 w-auto items-center">
-                  <Checkbox
-                    id="vocabulary-core"
-                    checked={coreOnly}
-                    onCheckedChange={(checked) =>
-                      updateSearch({ coreOnly: checked === true ? true : undefined, offset: 0 })
-                    }
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {filterOptions.data ? (
+                  <>
+                    <VocabularySelect
+                      label="Part of speech"
+                      allLabel="All parts of speech"
+                      value={search.pos}
+                      options={filterOptions.data.pos}
+                      onChange={(pos) => updateSearch({ pos, offset: 0 })}
+                    />
+                    <VocabularySelect
+                      label="Status"
+                      allLabel="All statuses"
+                      value={search.status}
+                      options={filterOptions.data.status}
+                      onChange={(status) => updateSearch({ status, offset: 0 })}
+                    />
+                    <VocabularySelect
+                      label="Discipline"
+                      allLabel="All disciplines"
+                      value={search.domain}
+                      options={filterOptions.data.domains}
+                      onChange={(domain) => updateSearch({ domain, offset: 0 })}
+                    />
+                  </>
+                ) : null}
+                <VocabularySelect
+                  label="Sort order"
+                  value={sort}
+                  options={sortOptions}
+                  onChange={(value) => updateSearch({ sort: value as keyof typeof sortOptions, offset: 0 })}
+                />
+              </div>
+              {filterOptions.isError ? (
+                <p role="alert" className="text-sm text-muted-foreground">Could not load vocabulary filter options.</p>
+              ) : null}
+              {search.domain ? (
+                <p className="text-sm text-muted-foreground">
+                  Showing lemmas used more often than expected in this discipline.
+                </p>
+              ) : null}
+              <form
+                className="flex flex-wrap items-end gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!reversedBand) updateSearch({ bandMin, bandMax, offset: 0 });
+                }}
+              >
+                <Field className="w-28">
+                  <FieldLabel htmlFor="vocabulary-min-band">Min band</FieldLabel>
+                  <Input
+                    id="vocabulary-min-band"
+                    type="number"
+                    min={1}
+                    max={2147483647}
+                    value={minBand}
+                    onChange={(event) => setMinBand(event.target.value)}
+                    aria-invalid={reversedBand}
                   />
-                  <FieldLabel htmlFor="vocabulary-core">Core only</FieldLabel>
                 </Field>
-                <Field className="w-44">
-                  <FieldLabel>Sort order</FieldLabel>
-                  <Select
-                    value={sort}
-                    onValueChange={(value) => updateSearch({ sort: value as "alpha" | "rank", offset: 0 })}
-                  >
-                    <SelectTrigger aria-label="Sort order">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="alpha">A–Z</SelectItem>
-                      <SelectItem value="rank">Academic rank</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <Field className="w-28">
+                  <FieldLabel htmlFor="vocabulary-max-band">Max band</FieldLabel>
+                  <Input
+                    id="vocabulary-max-band"
+                    type="number"
+                    min={1}
+                    max={2147483647}
+                    value={maxBand}
+                    onChange={(event) => setMaxBand(event.target.value)}
+                    aria-invalid={reversedBand}
+                  />
                 </Field>
-                {hasActiveFilters ? (
-                  <Button variant="outline" onClick={clearFilters}>
+                <Button type="submit" variant="outline" disabled={reversedBand}>Apply band</Button>
+                {hasActiveFilters || minBand || maxBand ? (
+                  <Button type="button" variant="ghost" onClick={clearFilters}>
                     Reset filters
                   </Button>
                 ) : null}
-              </div>
+              </form>
+              {reversedBand ? (
+                <p role="alert" className="text-sm text-destructive">Min band must be less than or equal to max band.</p>
+              ) : null}
               <ToggleGroup
                 type="single"
                 value={search.letter ?? "all"}
                 onValueChange={(value) => {
                   if (!value) return;
                   setQuery("");
-                  setDebouncedQuery("");
                   updateSearch({ letter: value === "all" ? undefined : value, q: undefined, offset: 0 });
                 }}
                 aria-label="Filter vocabulary by initial letter"
@@ -309,7 +474,7 @@ export function VocabularyPage() {
                 emptyTitle={hasActiveFilters ? "No lemmas match these filters" : "No academic lemmas loaded"}
                 emptyDescription={
                   hasActiveFilters
-                    ? "Try another search, letter, or sort order."
+                    ? "Try another search or adjust the filters."
                     : "The lexicon has not been imported yet."
                 }
                 emptyAction={
@@ -332,6 +497,7 @@ export function VocabularyPage() {
                       <TableHead>Part of speech</TableHead>
                       <TableHead numeric>Rank</TableHead>
                       <TableHead numeric>Band</TableHead>
+                      {sort === "academic_frequency" ? <TableHead numeric>Academic frequency</TableHead> : null}
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -353,6 +519,9 @@ export function VocabularyPage() {
                         </TableCell>
                         <TableCell numeric>{item.rank !== null ? `#${item.rank}` : "—"}</TableCell>
                         <TableCell numeric>{item.band !== null ? `Band ${item.band}` : "—"}</TableCell>
+                        {sort === "academic_frequency" ? (
+                          <TableCell numeric>{item.coca_acad?.toLocaleString() ?? "—"}</TableCell>
+                        ) : null}
                         <TableCell>
                           <Badge variant={statusVariant(item.status)}>{item.status_label || "Unknown"}</Badge>
                         </TableCell>
@@ -361,41 +530,12 @@ export function VocabularyPage() {
                   </TableBody>
                 </Table>
               ) : null}
-              {total > 0 ? (
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        text="Previous"
-                        aria-disabled={offset === 0}
-                        className={offset === 0 ? "pointer-events-none opacity-50" : undefined}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          if (offset > 0) updateSearch({ offset: Math.max(0, offset - limit) });
-                        }}
-                        href="#"
-                      />
-                    </PaginationItem>
-                    <PaginationItem>
-                      <span className="px-3 text-sm text-muted-foreground">
-                        {first.toLocaleString()}–{last.toLocaleString()} of {total.toLocaleString()}
-                      </span>
-                    </PaginationItem>
-                    <PaginationItem>
-                      <PaginationNext
-                        text="Next"
-                        aria-disabled={last >= total}
-                        className={last >= total ? "pointer-events-none opacity-50" : undefined}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          if (last < total) updateSearch({ offset: offset + limit });
-                        }}
-                        href="#"
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              ) : null}
+              <VocabularyPagination
+                total={lemmas.data?.total ?? 0}
+                offset={offset}
+                limit={limit}
+                onPageChange={(nextOffset) => updateSearch({ offset: nextOffset })}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -490,11 +630,12 @@ export function VocabularyPage() {
                   ))}
                 </div>
               ) : null}
-              {total > 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Showing {first.toLocaleString()}–{last.toLocaleString()} of {total.toLocaleString()} families.
-                </p>
-              ) : null}
+              <VocabularyPagination
+                total={families.data?.total ?? 0}
+                offset={offset}
+                limit={limit}
+                onPageChange={(nextOffset) => updateSearch({ offset: nextOffset })}
+              />
             </CardContent>
           </Card>
         </TabsContent>

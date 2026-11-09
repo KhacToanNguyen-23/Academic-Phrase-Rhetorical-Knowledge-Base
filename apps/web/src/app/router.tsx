@@ -117,12 +117,22 @@ const inbox = createRoute({ getParentRoute: () => guarded, path: "/inbox", compo
 const admin = createRoute({ getParentRoute: () => guarded, path: "/admin", component: AdminPage });
 const slrImport = createRoute({ getParentRoute: () => guarded, path: "/import", component: SlrImportPage });
 const gold = createRoute({ getParentRoute: () => guarded, path: "/gold", component: GoldPage });
+const vocabularyBand = (value: unknown) => {
+  const band = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
+  return Number.isInteger(band) && band >= 1 && band <= 2147483647 ? band : undefined;
+};
+const vocabularySort = (value: unknown): "alpha" | "rank" | "academic_frequency" | undefined =>
+  value === "rank" || value === "alpha" || value === "academic_frequency" ? value : undefined;
 const vocabularySearch = (s: Record<string, unknown>) => ({
   view: s.view === "families" ? ("families" as const) : s.view === "lemmas" ? ("lemmas" as const) : undefined,
   letter: str(s.letter),
   q: str(s.q),
-  coreOnly: typeof s.coreOnly === "boolean" ? s.coreOnly : s.coreOnly === "true" ? true : undefined,
-  sort: s.sort === "rank" ? ("rank" as const) : s.sort === "alpha" ? ("alpha" as const) : undefined,
+  pos: str(s.pos),
+  status: str(s.status),
+  bandMin: vocabularyBand(s.bandMin),
+  bandMax: vocabularyBand(s.bandMax),
+  domain: str(s.domain),
+  sort: vocabularySort(s.sort),
   offset: typeof s.offset === "number" ? s.offset : Number.isFinite(Number(s.offset)) ? Number(s.offset) : undefined,
 });
 const vocabulary = createRoute({

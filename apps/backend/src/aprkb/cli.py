@@ -134,9 +134,59 @@ def _export_pack_schema() -> None:
 
     output = Path(__file__).resolve().parents[4] / "packages/contracts/data-pack/pack.schema.json"
     output.parent.mkdir(parents=True, exist_ok=True)
+    schema = PackSchema.model_json_schema()
+    schema["allOf"] = [
+        {
+            "if": {
+                "properties": {
+                    "manifest": {
+                        "properties": {"pack_version": {"const": "0.1"}},
+                        "required": ["pack_version"],
+                    }
+                },
+                "required": ["manifest"],
+            },
+            "then": {
+                "properties": {
+                    "patterns": {
+                        "items": {
+                            "properties": {"versions": {"items": {"properties": {"apb": False}}}}
+                        }
+                    },
+                    "manifest": {
+                        "properties": {"counts": {"properties": {"apb_proposals": False}}}
+                    },
+                }
+            },
+        }
+    ]
+    schema["allOf"].append(
+        {
+            "if": {
+                "properties": {
+                    "manifest": {
+                        "properties": {"pack_version": {"const": "0.2"}},
+                        "required": ["pack_version"],
+                    }
+                },
+                "required": ["manifest"],
+            },
+            "then": {
+                "properties": {
+                    "manifest": {
+                        "properties": {
+                            "counts": {
+                                "required": ["apb_proposals"],
+                                "properties": {"apb_proposals": {"type": "integer", "minimum": 0}},
+                            }
+                        }
+                    }
+                }
+            },
+        }
+    )
     output.write_text(
-        json.dumps(PackSchema.model_json_schema(), ensure_ascii=False, indent=2, sort_keys=True)
-        + "\n",
+        json.dumps(schema, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     print(f"Wrote {output}")
@@ -609,7 +659,7 @@ def main() -> None:
     commands.add_parser("export-pack-schema")
     commands.add_parser("init-reference")
     phrasebank = commands.add_parser(
-        "init-phrasebank", help="Initialize both Phrasebank sources from one JSON manifest"
+        "init-phrasebank", help="Initialize AP-RKB, APB, and reference sources from one manifest"
     )
     phrasebank.add_argument("--file", type=Path, required=True)
     phrasebank.add_argument("--dry-run", action="store_true")

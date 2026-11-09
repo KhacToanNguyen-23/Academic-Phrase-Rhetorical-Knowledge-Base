@@ -104,3 +104,84 @@ def test_unknown_fields_and_provenance_uuid_are_e14(tmp_path: Path) -> None:
         ),
     )
     assert has_code(pack, "E14")
+
+
+def test_v02_accepts_proposed_apb_metadata(tmp_path: Path) -> None:
+    pack = make_pack(tmp_path)
+    patterns = json.loads((pack / "patterns.json").read_text(encoding="utf-8"))
+    patterns[0]["versions"][0]["apb"] = {
+        "status": "proposed",
+        "function_catalog_version": "1.0.0",
+        "domain_catalog_version": "0.1.0",
+        "functions": [{"code": "DESCRIBE_DESIGN", "version": "1.0.0"}],
+        "move_links": [],
+        "step_links": [],
+        "usage_profiles": [{"discipline_code": "SCI"}],
+        "pragmatic_tags": [{"code": "STANCE_NEUTRAL", "version": "1.0.0"}],
+        "examples": [
+            {
+                "kind": "positive",
+                "text": "The study uses {method}.",
+                "origin_kind": "illustrative_synthetic",
+            }
+        ],
+        "caveats": [],
+    }
+    content = json.dumps(patterns, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    (pack / "patterns.json").write_bytes(content.encode("utf-8"))
+    manifest = json.loads((pack / "manifest.json").read_text(encoding="utf-8"))
+    manifest["pack_version"] = "0.2"
+    manifest["counts"]["apb_proposals"] = 1
+    manifest["files"][0]["sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    (pack / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    report = validate_pack(pack)
+    assert not report.has_errors
+
+
+@pytest.mark.parametrize(
+    "mutate,expected",
+    [
+        (lambda apb: apb["functions"][0].update(code="UNKNOWN"), "E17"),
+        (lambda apb: apb.update(status="reviewed"), "E17"),
+        (lambda apb: apb["usage_profiles"][0].update(discipline_code="UNKNOWN"), "E17"),
+        (
+            lambda apb: apb["examples"].append(
+                {
+                    "kind": "positive",
+                    "text": "Licensed example.",
+                    "origin_kind": "licensed",
+                    "source_ref": "https://example.org/source",
+                    "license_code": "PROPRIETARY",
+                }
+            ),
+            "E12",
+        ),
+    ],
+)
+def test_v02_rejects_invalid_apb_metadata(tmp_path: Path, mutate: Any, expected: str) -> None:
+    pack = make_pack(tmp_path)
+    patterns = json.loads((pack / "patterns.json").read_text(encoding="utf-8"))
+    apb = {
+        "status": "proposed",
+        "function_catalog_version": "1.0.0",
+        "domain_catalog_version": "0.1.0",
+        "functions": [{"code": "DESCRIBE_DESIGN", "version": "1.0.0"}],
+        "move_links": [],
+        "step_links": [],
+        "usage_profiles": [{"discipline_code": "SCI"}],
+        "pragmatic_tags": [],
+        "examples": [],
+        "caveats": [],
+    }
+    mutate(apb)
+    patterns[0]["versions"][0]["apb"] = apb
+    content = json.dumps(patterns, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    (pack / "patterns.json").write_bytes(content.encode("utf-8"))
+    manifest = json.loads((pack / "manifest.json").read_text(encoding="utf-8"))
+    manifest["pack_version"] = "0.2"
+    manifest["counts"]["apb_proposals"] = 1
+    manifest["files"][0]["sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    (pack / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    assert expected in {finding.code for finding in validate_pack(pack).findings}

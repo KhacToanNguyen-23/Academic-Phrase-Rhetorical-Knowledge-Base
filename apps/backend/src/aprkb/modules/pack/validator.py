@@ -49,6 +49,14 @@ class References:
     genres: frozenset[str]
     enums: dict[str, frozenset[str]]
     licenses: dict[str, bool]
+    display_licenses: dict[str, bool]
+    move_paths: frozenset[tuple[str, str, str]]
+    step_paths: frozenset[tuple[str, str, str, str]]
+    apb_functions: frozenset[tuple[str, str]]
+    apb_pragmatic_features: frozenset[tuple[str, str, str]]
+    apb_function_catalog_version: str
+    domain_version: str
+    domains: frozenset[str]
 
 
 @dataclass
@@ -78,10 +86,29 @@ def load_references(reference_dir: Path | None = SEED_DIR) -> References:
     taxonomy = json.loads((reference_dir / "taxonomy.json").read_text(encoding="utf-8"))
     enums = json.loads((reference_dir / "reference_enums.json").read_text(encoding="utf-8"))
     licenses = yaml.safe_load((reference_dir / "licenses.yaml").read_text(encoding="utf-8"))
+    license_policy = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "policies" / "licenses.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    apb_policy = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "policies" / "academic_phrase_bank.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    vocabulary_policy = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "policies" / "vocabulary_import.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
     paths: set[tuple[str, str, str, str, str]] = set()
+    move_paths: set[tuple[str, str, str]] = set()
+    step_paths: set[tuple[str, str, str, str]] = set()
     for section in taxonomy["sections"]:
         for move in section["moves"]:
+            move_paths.add((taxonomy["version"], section["code"], move["code"]))
             for step in move["steps"]:
+                step_paths.add((taxonomy["version"], section["code"], move["code"], step["code"]))
                 for intent in step["intents"]:
                     paths.add(
                         (
@@ -99,6 +126,23 @@ def load_references(reference_dir: Path | None = SEED_DIR) -> References:
         genres=frozenset(g["code"] for g in taxonomy["article_genres"]),
         enums={key: frozenset(item["code"] for item in values) for key, values in enums.items()},
         licenses={item["code"]: item["allows_mining"] for item in licenses["licenses"]},
+        display_licenses={
+            item["code"]: item["allows_display"] for item in license_policy["licenses"]
+        },
+        move_paths=frozenset(move_paths),
+        step_paths=frozenset(step_paths),
+        apb_functions=frozenset(
+            (function[0], apb_policy["version"])
+            for family in apb_policy["function_families"]
+            for function in family["functions"]
+        ),
+        apb_pragmatic_features=frozenset(
+            (feature[0], apb_policy["version"], feature[1])
+            for feature in apb_policy["pragmatic_features"]
+        ),
+        apb_function_catalog_version=apb_policy["version"],
+        domain_version=vocabulary_policy["version"],
+        domains=frozenset(vocabulary_policy["domain_codes"]),
     )
 
 
@@ -154,7 +198,7 @@ def _scan_provenance(items: list[Finding], value: Any, path: str) -> None:
 
 
 def validate_pattern(
-    raw: Any, references: References, *, base: str = "pattern"
+    raw: Any, references: References, *, base: str = "pattern", pack_version: str = "0.1"
 ) -> tuple[Pattern | None, list[Finding]]:
     """Apply the same graph checks to imported and exported patterns."""
     items: list[Finding] = []
@@ -206,6 +250,12 @@ def validate_pattern(
     for j, version in enumerate(versions):
         if isinstance(version, dict):
             _check_version(items, version, f"{base}.versions[{j}]", references)
+            if pack_version == "0.1" and version.get("apb") is not None:
+                _finding(
+                    items, "E14", f"{base}.versions[{j}].apb", "APB metadata requires pack v0.2"
+                )
+            if pack_version == "0.2":
+                _check_apb(items, version.get("apb"), f"{base}.versions[{j}].apb", references)
     return pattern, items
 
 
@@ -232,7 +282,10 @@ def validate_pack(path: Path, references: References | None = None) -> Validatio
             manifest = None
     patterns: list[Pattern] = []
     for index, raw in enumerate(patterns_raw):
-        pattern, findings = validate_pattern(raw, references, base=f"patterns[{index}]")
+        pack_version = manifest.pack_version if manifest is not None else "0.1"
+        pattern, findings = validate_pattern(
+            raw, references, base=f"patterns[{index}]", pack_version=pack_version
+        )
         items.extend(findings)
         if pattern is not None:
             patterns.append(pattern)
@@ -248,6 +301,17 @@ def validate_pack(path: Path, references: References | None = None) -> Validatio
             len(p.get("versions", [])) for p in patterns_raw if isinstance(p, dict)
         ):
             _finding(items, "E01", "manifest.counts", "Manifest counts do not match patterns.json")
+        apb_count = sum(
+            1
+            for pattern in patterns_raw
+            if isinstance(pattern, dict)
+            for version in pattern.get("versions", [])
+            if isinstance(version, dict) and version.get("apb") is not None
+        )
+        if manifest.pack_version == "0.1" and manifest.counts.apb_proposals is not None:
+            _finding(items, "E14", "manifest.counts.apb_proposals", "APB counts require pack v0.2")
+        if manifest.pack_version == "0.2" and manifest.counts.apb_proposals != apb_count:
+            _finding(items, "E01", "manifest.counts.apb_proposals", "APB proposal count mismatch")
     items.sort(key=lambda item: (item.path, item.code, item.message))
     digest = hashlib.sha256(manifest_bytes + patterns_bytes).hexdigest()
     return ValidationReport(
@@ -385,3 +449,174 @@ def _check_version(
             )
     elif kind == "authored" and version.get("reviews"):
         _finding(items, "E13", f"{base}.reviews", "Authored version may not carry mining reviews")
+
+
+def _check_apb(items: list[Finding], raw: Any, base: str, refs: References) -> None:
+    if raw is None:
+        return
+    if not isinstance(raw, dict):
+        _finding(items, "E17", base, "APB metadata must be an object")
+        return
+    if raw.get("status") != "proposed":
+        _finding(items, "E17", f"{base}.status", "Offline APB labels must remain proposed")
+    if raw.get("function_catalog_version") != refs.apb_function_catalog_version:
+        _finding(
+            items,
+            "E17",
+            f"{base}.function_catalog_version",
+            "APB function catalog version is unavailable",
+        )
+    if raw.get("domain_catalog_version") != refs.domain_version:
+        _finding(
+            items,
+            "E17",
+            f"{base}.domain_catalog_version",
+            "APB domain catalog version is unavailable",
+        )
+    functions = raw.get("functions", [])
+    if not isinstance(functions, list) or not functions:
+        _finding(items, "E17", f"{base}.functions", "At least one APB function is required")
+    else:
+        seen_functions: set[tuple[str, str]] = set()
+        for i, function in enumerate(functions):
+            path = f"{base}.functions[{i}]"
+            if not isinstance(function, dict):
+                _finding(items, "E17", path, "APB function must be an object")
+                continue
+            code, version = function.get("code"), function.get("version")
+            if not isinstance(code, str) or not isinstance(version, str):
+                _finding(items, "E17", path, "APB function code and version must be strings")
+                continue
+            function_key = (code, version)
+            if function_key not in refs.apb_functions:
+                _finding(items, "E17", path, "Unknown APB function code/version")
+            if function_key in seen_functions:
+                _finding(items, "E17", path, "Duplicate APB function assignment")
+            seen_functions.add(function_key)
+
+    for field in (
+        "move_links",
+        "step_links",
+        "usage_profiles",
+        "pragmatic_tags",
+        "examples",
+        "caveats",
+    ):
+        if not isinstance(raw.get(field, []), list):
+            _finding(items, "E17", f"{base}.{field}", "APB metadata field must be an array")
+            return
+
+    seen_links: set[tuple[str, ...]] = set()
+    for i, link in enumerate(raw.get("move_links", [])):
+        path = f"{base}.move_links[{i}]"
+        if not isinstance(link, dict):
+            _finding(items, "E17", path, "Move link must be an object")
+            continue
+        section_code, move_code = link.get("section_code"), link.get("move_code")
+        if not isinstance(section_code, str) or not isinstance(move_code, str):
+            _finding(items, "E17", path, "Move path codes must be strings")
+            continue
+        move_key = (refs.taxonomy_version, section_code, move_code)
+        if move_key not in refs.move_paths:
+            _finding(items, "E03", path, "Move path is unresolved in the pack taxonomy version")
+        move_identity = (*move_key, str(link.get("relation")))
+        if move_identity in seen_links:
+            _finding(items, "E17", path, "Duplicate Move link")
+        seen_links.add(move_identity)
+
+    for i, link in enumerate(raw.get("step_links", [])):
+        path = f"{base}.step_links[{i}]"
+        if not isinstance(link, dict):
+            _finding(items, "E17", path, "Step link must be an object")
+            continue
+        section_code, move_code, step_code = (
+            link.get("section_code"),
+            link.get("move_code"),
+            link.get("step_code"),
+        )
+        if (
+            not isinstance(section_code, str)
+            or not isinstance(move_code, str)
+            or not isinstance(step_code, str)
+        ):
+            _finding(items, "E17", path, "Step path codes must be strings")
+            continue
+        step_key = (
+            refs.taxonomy_version,
+            section_code,
+            move_code,
+            step_code,
+        )
+        if step_key not in refs.step_paths:
+            _finding(items, "E03", path, "Step path is unresolved in the pack taxonomy version")
+        step_identity = (*step_key, str(link.get("relation")))
+        if step_identity in seen_links:
+            _finding(items, "E17", path, "Duplicate Step link")
+        seen_links.add(step_identity)
+
+    for i, profile in enumerate(raw.get("usage_profiles", [])):
+        path = f"{base}.usage_profiles[{i}]"
+        if not isinstance(profile, dict):
+            _finding(items, "E17", path, "Usage profile must be an object")
+            continue
+        section = profile.get("section_code")
+        genre = profile.get("genre_code")
+        register = profile.get("register_code")
+        domain = profile.get("discipline_code")
+        if section is not None and section not in refs.sections:
+            _finding(items, "E07", f"{path}.section_code", "Unknown section code")
+        if genre is not None and genre not in refs.genres:
+            _finding(items, "E08", f"{path}.genre_code", "Unknown genre code")
+        if register is not None and not any(
+            code == register and version == profile.get("register_version") and facet == "register"
+            for code, version, facet in refs.apb_pragmatic_features
+        ):
+            _finding(items, "E17", f"{path}.register_code", "Unknown register code/version")
+        if domain is not None and domain not in refs.domains:
+            _finding(items, "E17", f"{path}.discipline_code", "Unknown domain code")
+
+    seen_tags: set[tuple[str, str]] = set()
+    for i, tag in enumerate(raw.get("pragmatic_tags", [])):
+        path = f"{base}.pragmatic_tags[{i}]"
+        if not isinstance(tag, dict):
+            _finding(items, "E17", path, "Pragmatic tag must be an object")
+            continue
+        code, version = tag.get("code"), tag.get("version")
+        if not isinstance(code, str) or not isinstance(version, str):
+            _finding(items, "E17", path, "Pragmatic tag code and version must be strings")
+            continue
+        tag_key = (code, version)
+        if not any(
+            code == tag_key[0] and version == tag_key[1]
+            for code, version, _ in refs.apb_pragmatic_features
+        ):
+            _finding(items, "E17", path, "Unknown pragmatic feature code/version")
+        if tag_key in seen_tags:
+            _finding(items, "E17", path, "Duplicate pragmatic tag")
+        seen_tags.add(tag_key)
+
+    for i, example in enumerate(raw.get("examples", [])):
+        path = f"{base}.examples[{i}]"
+        if not isinstance(example, dict):
+            _finding(items, "E17", path, "Example must be an object")
+            continue
+        if example.get("origin_kind") == "licensed":
+            license_code = example.get("license_code")
+            if (
+                not example.get("source_ref")
+                or not license_code
+                or not refs.display_licenses.get(str(license_code), False)
+            ):
+                _finding(
+                    items,
+                    "E12",
+                    path,
+                    "Licensed examples require a source reference and display-permitted license",
+                )
+
+
+def validate_apb_metadata(raw: Any, references: References) -> list[Finding]:
+    """Validate an APB proposal using the same reference data as pack validation."""
+    items: list[Finding] = []
+    _check_apb(items, raw, "apb", references)
+    return items

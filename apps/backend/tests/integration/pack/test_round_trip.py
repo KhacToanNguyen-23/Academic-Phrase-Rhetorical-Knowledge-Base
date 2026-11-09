@@ -7,6 +7,7 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from aprkb.modules.academic_phrase_bank.models import PatternVersionAPBProposal
 from aprkb.modules.audit.models import AuditEvent
 from aprkb.modules.corpus.models import Article, License, Sentence
 from aprkb.modules.identity.service import create_api_key
@@ -24,6 +25,59 @@ from aprkb.modules.taxonomy.models import Intent
 from aprkb.seeds.load import init_reference
 
 SAMPLE = Path(__file__).resolve().parents[5] / "data/packs/sample-demo"
+
+
+async def test_v02_apb_proposals_round_trip_deterministically(postgres_test_engine, tmp_path):
+    factory = async_sessionmaker(postgres_test_engine, expire_on_commit=False)
+    async with factory() as session:
+        await init_reference(session)
+        await session.commit()
+
+    pack = tmp_path / "apb-pack"
+    pack.mkdir()
+    patterns = json.loads((SAMPLE / "patterns.json").read_text(encoding="utf-8"))
+    patterns[0]["versions"][0]["apb"] = {
+        "status": "proposed",
+        "function_catalog_version": "1.0.0",
+        "domain_catalog_version": "0.1.0",
+        "functions": [{"code": "DESCRIBE_DESIGN", "version": "1.0.0"}],
+        "move_links": [],
+        "step_links": [],
+        "usage_profiles": [{"discipline_code": "SCI"}],
+        "pragmatic_tags": [{"code": "STANCE_NEUTRAL", "version": "1.0.0"}],
+        "examples": [
+            {
+                "kind": "positive",
+                "text": "The study uses {approach}.",
+                "origin_kind": "illustrative_synthetic",
+            }
+        ],
+        "caveats": [],
+    }
+    content = json.dumps(patterns, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    (pack / "patterns.json").write_bytes(content.encode("utf-8"))
+    manifest = json.loads((SAMPLE / "manifest.json").read_text(encoding="utf-8"))
+    manifest["pack_version"] = "0.2"
+    manifest["counts"]["apb_proposals"] = 1
+    manifest["files"][0]["sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    (pack / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    async with factory() as session:
+        report, counts = await import_pack(session, pack)
+        assert not report.has_errors
+        assert counts["apb_proposals"] == 1
+        proposal = await session.scalar(select(PatternVersionAPBProposal))
+        assert proposal is not None and proposal.status == "proposed"
+        assert proposal.payload["functions"][0]["code"] == "DESCRIBE_DESIGN"
+        exported = tmp_path / "exported-once"
+        await export_pack(session, exported)
+        await session.commit()
+
+    async with factory() as session:
+        exported_twice = tmp_path / "exported-twice"
+        await export_pack(session, exported_twice)
+        for name in ("manifest.json", "patterns.json"):
+            assert (exported / name).read_bytes() == (exported_twice / name).read_bytes()
 
 
 async def test_export_validate_import_preserves_native_reviews_and_rejects_changes(

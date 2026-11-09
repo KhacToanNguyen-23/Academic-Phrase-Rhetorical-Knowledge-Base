@@ -34,11 +34,18 @@ related rows (domain statistics for `acad_core`, and families/lemmas/members for
 - `POST /v1/admin/vocabulary/imports`
 - `GET /v1/admin/vocabulary/imports`
 
-## Research field pilot
+## Research field filter
 
-The Lemmas tab can filter by research field and subfield once a sample has been built.
-This uses the OpenAlex classification of each sampled paper. The existing Discipline
-filter still uses the imported AVL domain ratios.
+The Lemmas tab filters by the nine academic fields in the imported vocabulary.
+A lemma matches when its stored domain tags include the selected field or its
+relative usage ratio for that field is above 1.0. This combines with the other
+lemma filters and uses data already in PostgreSQL.
+
+## Local research field pilot
+
+The original sampled-paper lookup remains available through the lemmas API for
+clients that use `research_group`. The following setup builds local evidence for
+that API.
 
 1. Import the vocabulary and apply database migrations.
 2. Select two contrasting fields, such as Computer Science and Medicine. Use the SLR

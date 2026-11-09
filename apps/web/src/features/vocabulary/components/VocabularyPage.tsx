@@ -33,8 +33,6 @@ const noLemmaFilters = {
   bandMin: undefined,
   bandMax: undefined,
   domain: undefined,
-  researchField: undefined,
-  researchSubfield: undefined,
   sort: undefined,
 };
 const sortOptions = {
@@ -193,43 +191,17 @@ export function VocabularyPage() {
   const limit = 50;
   const isCurator = authClient?.role === "curator" || authClient?.role === "admin";
   const filterOptions = useVocabularyFilterOptions();
-  const researchGroups = filterOptions.data?.research_groups ?? [];
-  const selectedField = researchGroups.find((group) => group.subfield_id === null && group.key === search.researchField);
-  const selectedSubfield = researchGroups.find((group) =>
-    group.subfield_id !== null && group.key === search.researchSubfield
-    && (!selectedField || group.field_id === selectedField.field_id),
-  );
-  const researchField = selectedField?.key ?? (selectedSubfield ? `field:${selectedSubfield.field_id}` : undefined);
-  const researchSubfield = selectedSubfield?.key;
-  const researchGroup = researchSubfield ?? researchField;
-  const requestedResearchGroup = search.researchSubfield ?? search.researchField;
-  const waitingForResearchOptions = Boolean(requestedResearchGroup && filterOptions.isPending);
-  const staleResearchGroup = filterOptions.isSuccess && researchGroup !== requestedResearchGroup;
-  const researchSelectionNeedsUpdate = filterOptions.isSuccess
-    && (researchField !== search.researchField || researchSubfield !== search.researchSubfield);
-  const offset = staleResearchGroup ? 0 : search.offset ?? 0;
-  const researchFields = Object.fromEntries(
-    researchGroups.filter((group) => group.subfield_id === null).map((group) => [group.key, group.field_name]),
-  );
-  const researchSubfields = Object.fromEntries(
-    researchGroups.flatMap((group) =>
-      group.subfield_name && `field:${group.field_id}` === researchField
-        ? [[group.key, group.subfield_name]]
-        : [],
-    ),
-  );
+  const offset = search.offset ?? 0;
   const lemmaFilters = {
     pos: search.pos,
     status: search.status,
     band_min: search.bandMin,
     band_max: search.bandMax,
     domain: search.domain,
-    research_group: researchGroup,
   };
-  const letters = useLetters(lemmaFilters, !waitingForResearchOptions);
+  const letters = useLetters(lemmaFilters);
   const lemmas = useLemmas(
     { ...lemmaFilters, q: search.q, letter: search.letter, sort, limit, offset },
-    !waitingForResearchOptions,
   );
   const families = useFamilies({ q: search.q, limit, offset });
   // Unfiltered totals for the summary strip.
@@ -263,20 +235,6 @@ export function VocabularyPage() {
     setMinBand(search.bandMin?.toString() ?? "");
     setMaxBand(search.bandMax?.toString() ?? "");
   }, [search.bandMin, search.bandMax]);
-  useEffect(() => {
-    if (researchSelectionNeedsUpdate) {
-      void navigate({
-        search: (previous) => ({
-          ...previous,
-          researchField,
-          researchSubfield,
-          offset: staleResearchGroup ? 0 : previous.offset,
-        }),
-        replace: true,
-      });
-    }
-  }, [navigate, researchField, researchSubfield, researchSelectionNeedsUpdate, staleResearchGroup]);
-
   const counts = useMemo(() => new Map((letters.data ?? []).map((item) => [item.letter, item.count])), [letters.data]);
   const totalLettersCount = useMemo(
     () => (letters.data ?? []).reduce((sum, item) => sum + item.count, 0),
@@ -388,8 +346,8 @@ export function VocabularyPage() {
                       onChange={(status) => updateSearch({ status, offset: 0 })}
                     />
                     <VocabularySelect
-                      label="Discipline"
-                      allLabel="All disciplines"
+                      label="Research field"
+                      allLabel="All research fields"
                       value={search.domain}
                       options={filterOptions.data.domains}
                       onChange={(domain) => updateSearch({ domain, offset: 0 })}
@@ -408,47 +366,7 @@ export function VocabularyPage() {
               ) : null}
               {search.domain ? (
                 <p className="text-sm text-muted-foreground">
-                  Showing lemmas used more often than expected in this discipline.
-                </p>
-              ) : null}
-              {Object.keys(researchFields).length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <VocabularySelect
-                      label="Research field"
-                      allLabel="All research fields"
-                      value={researchField}
-                      options={researchFields}
-                      onChange={(field) => updateSearch({
-                        researchField: field,
-                        researchSubfield: undefined,
-                        offset: 0,
-                      })}
-                    />
-                    {Object.keys(researchSubfields).length > 0 ? (
-                      <VocabularySelect
-                        label="Subfield"
-                        allLabel="All subfields"
-                        value={researchSubfield}
-                        options={researchSubfields}
-                        onChange={(subfield) => updateSearch({
-                          researchField,
-                          researchSubfield: subfield,
-                          offset: 0,
-                        })}
-                      />
-                    ) : null}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Research field uses OpenAlex classifications. Results reflect the sampled papers.
-                  </p>
-                </div>
-              ) : filterOptions.isSuccess ? (
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">Research field (OpenAlex).</span>{" "}
-                  {lemmaCount === 0
-                    ? "Import vocabulary first, then build a research paper sample to enable this filter."
-                    : "Build a research paper sample to enable this filter."}
+                  Showing words tagged for this field or used more often than expected in it.
                 </p>
               ) : null}
               <form
@@ -543,7 +461,7 @@ export function VocabularyPage() {
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <QueryState
-                pending={waitingForResearchOptions || lemmas.isPending}
+                pending={lemmas.isPending}
                 error={lemmas.isError ? lemmas.error : null}
                 empty={!lemmas.isPending && !lemmas.isError && lemmas.data.items.length === 0}
                 onRetry={() => void lemmas.refetch()}
@@ -565,7 +483,7 @@ export function VocabularyPage() {
                   ) : undefined
                 }
               />
-              {!waitingForResearchOptions && !lemmas.isPending && !lemmas.isError && lemmas.data.items.length > 0 ? (
+              {!lemmas.isPending && !lemmas.isError && lemmas.data.items.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -574,7 +492,6 @@ export function VocabularyPage() {
                       <TableHead numeric>Rank</TableHead>
                       <TableHead numeric>Band</TableHead>
                       {sort === "academic_frequency" ? <TableHead numeric>Academic frequency</TableHead> : null}
-                      {researchGroup ? <TableHead numeric>Research evidence</TableHead> : null}
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -599,13 +516,6 @@ export function VocabularyPage() {
                         {sort === "academic_frequency" ? (
                           <TableCell numeric>{item.coca_acad?.toLocaleString() ?? "—"}</TableCell>
                         ) : null}
-                        {researchGroup ? (
-                          <TableCell numeric>
-                            {item.research_evidence
-                              ? `${item.research_evidence.paper_count.toLocaleString()} of ${item.research_evidence.sample_count.toLocaleString()} sampled papers`
-                              : "—"}
-                          </TableCell>
-                        ) : null}
                         <TableCell>
                           <Badge variant={statusVariant(item.status)}>{item.status_label || "Unknown"}</Badge>
                         </TableCell>
@@ -615,7 +525,7 @@ export function VocabularyPage() {
                 </Table>
               ) : null}
               <VocabularyPagination
-                total={waitingForResearchOptions ? 0 : lemmas.data?.total ?? 0}
+                total={lemmas.data?.total ?? 0}
                 offset={offset}
                 limit={limit}
                 onPageChange={(nextOffset) => updateSearch({ offset: nextOffset })}

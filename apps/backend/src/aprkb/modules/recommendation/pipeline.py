@@ -31,6 +31,8 @@ class RecommendationItem:
 class RecommendationResult:
     items: tuple[RecommendationItem, ...]
     excluded: dict[str, int]
+    tiers_tried: tuple[tuple[str, int], ...] = ()
+    omitted_tied_count: int = 0
 
 
 class RecommendationPipeline:
@@ -55,7 +57,9 @@ class RecommendationPipeline:
         accepted: list[RecommendationItem] = []
         excluded: Counter[str] = Counter()
         seen: set[object] = set()
+        tiers_tried: list[tuple[str, int]] = []
         for tier in self._tier_loader.tiers:
+            before = len(accepted)
             for pattern in self._tier_loader.load(tier, context):
                 if pattern.pattern_version_id in seen:
                     continue
@@ -78,6 +82,7 @@ class RecommendationPipeline:
                         explanations=(),
                     )
                 )
+            tiers_tried.append((tier, len(accepted) - before))
             if len(accepted) >= context.limit:
                 break
         tier_order = {tier: index for index, tier in enumerate(self._tier_loader.tiers)}
@@ -90,6 +95,21 @@ class RecommendationPipeline:
             )
         )
         diversified = self._diversifier.diversify(accepted)
+        selected_ids = {item.pattern.pattern_version_id for item in diversified[: context.limit]}
+        cutoff_score = (
+            diversified[context.limit - 1].score if len(diversified) > context.limit else None
+        )
+        omitted_tied_count = (
+            sum(
+                item.score == cutoff_score and item.pattern.pattern_version_id not in selected_ids
+                for item in accepted
+            )
+            if cutoff_score is not None and len(diversified) >= context.limit
+            else 0
+        )
         return RecommendationResult(
-            items=tuple(diversified[: context.limit]), excluded=dict(excluded)
+            items=tuple(diversified[: context.limit]),
+            excluded=dict(excluded),
+            tiers_tried=tuple(tiers_tried),
+            omitted_tied_count=omitted_tied_count,
         )

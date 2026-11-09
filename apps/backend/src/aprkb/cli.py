@@ -5,6 +5,7 @@ import asyncio
 import json
 import sys
 from contextlib import suppress
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
@@ -73,6 +74,24 @@ async def _import_pack(*, path: Path, dry_run: bool) -> None:
         await engine.dispose()
 
 
+async def _init_phrasebank(*, path: Path, dry_run: bool) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - register ORM mappings
+    from aprkb.modules.phrasebank.service import initialize_phrasebank
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                result = await initialize_phrasebank(session, path, dry_run=dry_run)
+            except (OSError, ValueError) as error:
+                print(f"Phrasebank initialization failed: {error}", file=sys.stderr)
+                raise SystemExit(1) from error
+        print(json.dumps(result, indent=2, sort_keys=True))
+    finally:
+        await engine.dispose()
+
+
 async def _export_pack(*, out: Path, only_approved: bool) -> None:
     from aprkb.api.main import app as _app  # noqa: F401 - register ORM mappings
     from aprkb.modules.pack.service import export_pack
@@ -115,9 +134,59 @@ def _export_pack_schema() -> None:
 
     output = Path(__file__).resolve().parents[4] / "packages/contracts/data-pack/pack.schema.json"
     output.parent.mkdir(parents=True, exist_ok=True)
+    schema = PackSchema.model_json_schema()
+    schema["allOf"] = [
+        {
+            "if": {
+                "properties": {
+                    "manifest": {
+                        "properties": {"pack_version": {"const": "0.1"}},
+                        "required": ["pack_version"],
+                    }
+                },
+                "required": ["manifest"],
+            },
+            "then": {
+                "properties": {
+                    "patterns": {
+                        "items": {
+                            "properties": {"versions": {"items": {"properties": {"apb": False}}}}
+                        }
+                    },
+                    "manifest": {
+                        "properties": {"counts": {"properties": {"apb_proposals": False}}}
+                    },
+                }
+            },
+        }
+    ]
+    schema["allOf"].append(
+        {
+            "if": {
+                "properties": {
+                    "manifest": {
+                        "properties": {"pack_version": {"const": "0.2"}},
+                        "required": ["pack_version"],
+                    }
+                },
+                "required": ["manifest"],
+            },
+            "then": {
+                "properties": {
+                    "manifest": {
+                        "properties": {
+                            "counts": {
+                                "required": ["apb_proposals"],
+                                "properties": {"apb_proposals": {"type": "integer", "minimum": 0}},
+                            }
+                        }
+                    }
+                }
+            },
+        }
+    )
     output.write_text(
-        json.dumps(PackSchema.model_json_schema(), ensure_ascii=False, indent=2, sort_keys=True)
-        + "\n",
+        json.dumps(schema, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     print(f"Wrote {output}")
@@ -175,6 +244,27 @@ async def _import_vocabulary(*, files: list[Path]) -> None:
                 f"{file_path.name}: {result.source_kind}, rows={result.rows_read}, "
                 f"inserted={result.inserted}, updated={result.updated}, skipped={result.skipped}"
             )
+    finally:
+        await engine.dispose()
+
+
+async def _build_vocabulary_research(*, path: Path) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.vocabulary.research_builder import ResearchManifest, build_research_snapshot
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine)
+    try:
+        manifest = ResearchManifest.model_validate_json(path.read_bytes())
+        async with factory.begin() as session:
+            groups, stats = await build_research_snapshot(session, manifest)
+        print(
+            f"Built evidence from {len(manifest.papers)} papers "
+            f"for {groups} field/subfield groups with {stats} lemma associations."
+        )
+    except (OSError, ValueError) as error:
+        print(f"Vocabulary research build failed: {error}", file=sys.stderr)
+        raise SystemExit(2) from error
     finally:
         await engine.dispose()
 
@@ -269,6 +359,54 @@ async def _import_reference_library(*, file_path: Path) -> None:
         print(
             f"Imported reference library: {counts['categories']} categories, "
             f"{counts['entries']} entries, {counts['blocks']} blocks, {counts['tables']} tables."
+        )
+    finally:
+        await engine.dispose()
+
+
+async def _import_measurement_catalog(*, file_path: Path) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.measurement.importer import import_catalog, load_catalog
+    from aprkb.policies.loader import load_policy_bundle
+
+    catalog = load_catalog(file_path, load_policy_bundle().measurement)
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                result = await import_catalog(
+                    session, catalog, actor_id=None, request_id="cli-measurement-import"
+                )
+            except Exception:
+                await session.rollback()
+                raise
+        print(
+            f"Measurement catalog {result['catalog_version']}: {result['status']}, "
+            f"{result['entries_created']} created, {result['entries_updated']} updated, "
+            f"{result['relations']} relations, {len(result['missing_codes'])} missing code(s)."
+        )
+    finally:
+        await engine.dispose()
+
+
+async def _purge_measurement_catalog() -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.measurement.importer import purge_catalog
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                counts = await purge_catalog(session, request_id="cli-measurement-purge")
+            except Exception:
+                await session.rollback()
+                raise
+        print(
+            f"Purged measurement catalog: {counts['entries']} entries, "
+            f"{counts['relations']} relations, {counts['slot_links']} slot links, "
+            f"{counts['import_runs']} import runs."
         )
     finally:
         await engine.dispose()
@@ -415,6 +553,8 @@ async def _mining_stats(*, sample: int, seed: int) -> None:
     from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
     from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
     from aprkb.modules.mining.stats import StatsSentence, compute_mining_stats
+    from aprkb.nlp.features import SentenceAnalysis
+    from aprkb.nlp.syntax import usable_tokens
     from aprkb.policies.loader import load_policy_bundle
 
     engine = create_async_engine(settings.database_url, pool_pre_ping=True)
@@ -422,7 +562,7 @@ async def _mining_stats(*, sample: int, seed: int) -> None:
     try:
         async with factory() as session:
             rows = await session.execute(
-                select(Sentence, ArticleSection.section_code)
+                select(Sentence, ArticleSection.section_code, Article.nlp_engine)
                 .join(Article, Article.id == Sentence.article_id)
                 .join(License, License.id == Article.license_id)
                 .outerjoin(ArticleSection, ArticleSection.id == Sentence.article_section_id)
@@ -433,17 +573,87 @@ async def _mining_stats(*, sample: int, seed: int) -> None:
                 )
                 .order_by(Sentence.article_id, Sentence.char_start, Sentence.id)
             )
-            sentences = [
-                StatsSentence(
-                    text=sentence.text,
-                    section_code=section_code,
-                    sentence_id=sentence.id,
-                    char_start=sentence.char_start,
+            sentences = []
+            for sentence, section_code, nlp_engine in rows:
+                analysis = None
+                if sentence.nlp_features is not None:
+                    try:
+                        analysis = SentenceAnalysis.from_json(sentence.nlp_features)
+                    except ValueError:
+                        analysis = None
+                tokens = usable_tokens(analysis)
+                locator = (
+                    f"syntax:{nlp_engine['model_name']}:{nlp_engine['model_version']}"
+                    if tokens is not None
+                    and isinstance(nlp_engine, dict)
+                    and nlp_engine.get("engine") == "spacy"
+                    and isinstance(nlp_engine.get("model_name"), str)
+                    and isinstance(nlp_engine.get("model_version"), str)
+                    else None
                 )
-                for sentence, section_code in rows
-            ]
+                sentences.append(
+                    StatsSentence(
+                        text=sentence.text,
+                        section_code=section_code,
+                        sentence_id=sentence.id,
+                        char_start=sentence.char_start,
+                        tokens=tokens,
+                        locator=locator,
+                    )
+                )
         stats = compute_mining_stats(sentences, load_policy_bundle(), sample=sample, seed=seed)
         _print_mining_stats(stats)
+    finally:
+        await engine.dispose()
+
+
+async def _phrase_stats(
+    *,
+    focal_batch: UUID | None,
+    focal_journal: UUID | None,
+    background_batches: list[UUID],
+    background_journals: list[UUID],
+    all_other: bool,
+    top: int | None,
+    output_format: str,
+) -> None:
+    from aprkb.modules.extraction.phrase_stats import PhraseStatsRequest, compute_phrase_stats
+    from aprkb.modules.extraction.phrase_stats_repository import candidate_articles
+    from aprkb.policies.loader import load_policy_bundle
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            rows = await candidate_articles(session)
+        result = compute_phrase_stats(
+            rows,
+            PhraseStatsRequest(
+                focal_batch_id=focal_batch,
+                focal_journal_id=focal_journal,
+                background_batch_ids=tuple(background_batches),
+                background_journal_ids=tuple(background_journals),
+                all_other=all_other,
+                top_n=top,
+            ),
+            load_policy_bundle().phrase_stats,
+        )
+        if output_format == "json":
+            print(json.dumps(asdict(result), ensure_ascii=False, indent=2, default=str))
+            return
+        print("candidate statuses: pending, accepted (rejected excluded)")
+        print(f"focal articles: {result.n_focal}; background articles: {result.n_bg}")
+        for notice in result.notices:
+            print(f"notice: {notice}")
+        ranking = result.recurrence_ranking if result.notices else result.score_ranking
+        print("ranking: recurrence" if result.notices else "ranking: smoothed contrast")
+        print("frame | df_focal/n_focal | df_bg/n_bg | occurrences | score | sample_sentence_ids")
+        for row in ranking:
+            print(
+                f"{row.frame} | {row.df_focal}/{row.n_focal} | {row.df_bg}/{row.n_bg} | "
+                f"{row.occurrences} | {row.score:.4f} | "
+                f"{','.join(str(value) for value in row.sample_sentence_ids)}"
+            )
     finally:
         await engine.dispose()
 
@@ -462,6 +672,9 @@ def _print_mining_stats(stats: object) -> None:
     print(f"filter kept: {stats.filter_kept}")
     if stats.filter_rejected:
         print(f"filter rejected: {stats.filter_rejected}")
+    print(f"imperative accepted: {stats.imperative_accepted}")
+    print(f"construction matches: {stats.construction_matches}")
+    print(f"construction rejections: {stats.construction_rejections}")
     denominator = stats.filter_kept or 1
     print("extraction reasons (percent of filter-kept sentences):")
     for reason, count in stats.extraction_reasons.items():
@@ -514,9 +727,19 @@ def main() -> None:
     exporter.add_argument("--only-approved", action="store_true")
     commands.add_parser("export-pack-schema")
     commands.add_parser("init-reference")
+    phrasebank = commands.add_parser(
+        "init-phrasebank", help="Initialize AP-RKB, APB, and reference sources from one manifest"
+    )
+    phrasebank.add_argument("--file", type=Path, required=True)
+    phrasebank.add_argument("--dry-run", action="store_true")
     commands.add_parser("bootstrap-key")
     vocabulary_import = commands.add_parser("vocab-import")
     vocabulary_import.add_argument("--file", type=Path, action="append", required=True)
+    vocabulary_research = commands.add_parser(
+        "build-vocabulary-research",
+        help="Replace local vocabulary research evidence using a classified-paper manifest",
+    )
+    vocabulary_research.add_argument("manifest", type=Path)
     openapi = commands.add_parser("export-openapi")
     openapi.add_argument("--check", action="store_true")
     reingest = commands.add_parser(
@@ -536,11 +759,29 @@ def main() -> None:
     )
     mining_stats.add_argument("--sample", type=int, default=0)
     mining_stats.add_argument("--seed", type=int, default=0)
+    phrase_stats = commands.add_parser(
+        "phrase-stats", help="Contrast masked-frame document frequency across article sets"
+    )
+    focal = phrase_stats.add_mutually_exclusive_group(required=True)
+    focal.add_argument("--focal-batch", type=UUID)
+    focal.add_argument("--focal-journal", type=UUID)
+    phrase_stats.add_argument("--background-batch", type=UUID, action="append", default=[])
+    phrase_stats.add_argument("--background-journal", type=UUID, action="append", default=[])
+    phrase_stats.add_argument("--background", choices=("all-other",))
+    phrase_stats.add_argument("--top", type=int)
+    phrase_stats.add_argument("--format", choices=("table", "json"), default="table")
     reference_import = commands.add_parser(
         "import-reference-library", help="Import quarantined internal reference data"
     )
     reference_import.add_argument("--file", type=Path, required=True)
     commands.add_parser("purge-reference-library", help="Remove all reference-library data")
+    measurement_import = commands.add_parser(
+        "measurement-import", help="Import the self-authored Metric & Measurement catalog"
+    )
+    measurement_import.add_argument("--file", type=Path, required=True)
+    commands.add_parser(
+        "measurement-purge", help="Remove the measurement catalog and its slot links"
+    )
     commands.add_parser(
         "export-reference-mapping-template",
         help="Print an empty reference-to-taxonomy mapping template",
@@ -560,10 +801,14 @@ def main() -> None:
         _export_pack_schema()
     elif args.command == "init-reference":
         asyncio.run(_init_reference())
+    elif args.command == "init-phrasebank":
+        asyncio.run(_init_phrasebank(path=args.file, dry_run=args.dry_run))
     elif args.command == "bootstrap-key":
         asyncio.run(_bootstrap_key())
     elif args.command == "vocab-import":
         asyncio.run(_import_vocabulary(files=args.file))
+    elif args.command == "build-vocabulary-research":
+        asyncio.run(_build_vocabulary_research(path=args.manifest))
     elif args.command == "export-openapi":
         _export_openapi(check=args.check)
     elif args.command == "reingest":
@@ -576,8 +821,32 @@ def main() -> None:
         if args.sample < 0:
             parser.error("--sample must be non-negative")
         asyncio.run(_mining_stats(sample=args.sample, seed=args.seed))
+    elif args.command == "phrase-stats":
+        if args.top is not None and args.top < 1:
+            parser.error("--top must be positive")
+        if args.background == "all-other" and (args.background_batch or args.background_journal):
+            parser.error("--background all-other cannot be combined with explicit background IDs")
+        if args.background != "all-other" and not (
+            args.background_batch or args.background_journal
+        ):
+            parser.error("provide background IDs or --background all-other")
+        asyncio.run(
+            _phrase_stats(
+                focal_batch=args.focal_batch,
+                focal_journal=args.focal_journal,
+                background_batches=args.background_batch,
+                background_journals=args.background_journal,
+                all_other=args.background == "all-other",
+                top=args.top,
+                output_format=args.format,
+            )
+        )
     elif args.command == "import-reference-library":
         asyncio.run(_import_reference_library(file_path=args.file))
+    elif args.command == "measurement-import":
+        asyncio.run(_import_measurement_catalog(file_path=args.file))
+    elif args.command == "measurement-purge":
+        asyncio.run(_purge_measurement_catalog())
     elif args.command == "purge-reference-library":
         asyncio.run(_purge_reference_library())
     elif args.command == "export-reference-mapping-template":

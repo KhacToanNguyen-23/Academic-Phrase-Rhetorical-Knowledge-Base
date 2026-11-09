@@ -11,4 +11,9 @@ class FrameNormalizer(MiningStage):
     requirement_id = "FR-06.2"
 
     def process(self, batch: list[MiningItem]) -> list[MiningItem]:
-        return [replace(item, text=re.sub(r"\s+", " ", item.text).strip()) for item in batch]
+        return [
+            item
+            if item.canonical_skeleton is not None
+            else replace(item, text=re.sub(r"\s+", " ", item.text).strip())
+            for item in batch
+        ]

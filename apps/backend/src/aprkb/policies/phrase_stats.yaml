@@ -1,0 +1,6 @@
+# Provisional display thresholds; TODO(owner, FR-06.2): calibrate after a real focal batch.
+version: 0.1.0
+smoothing_alpha: 0.5
+min_focal_docs: 2
+warn_below_focal_articles: 10
+top_n: 50

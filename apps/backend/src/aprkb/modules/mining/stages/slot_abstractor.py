@@ -1,11 +1,18 @@
 """Conservative regex extraction for reviewed reporting verb constructions."""
 
-import hashlib
 import re
+from collections import Counter
 from dataclasses import dataclass, replace
 
 from aprkb.modules.mining.schemas import Ownership, ProtectedSignal, SlotDefinition, SlotType, Tense
 from aprkb.modules.mining.stages.base import ExtractionOccurrence, MiningItem, MiningStage
+from aprkb.nlp.features import TokenFeature
+from aprkb.nlp.syntax import (
+    normalized_children_by_head,
+    select_syntax_root,
+    subtree_span,
+    validate_token_features,
+)
 from aprkb.policies.schemas import ReportingVerbsPolicy, SlotAbstractionPolicy
 
 _SIGNAL_PATTERNS = {
@@ -34,14 +41,27 @@ class _Located:
     subject: tuple[int, int]
     clause: tuple[int, int]
     modifiers: str = ""
+    lead_in: str = ""
+    modality: str | None = None
 
 
 class SlotAbstractor(MiningStage):
     name = "slot_abstractor"
     requirement_id = "FR-06.2"
 
-    def __init__(self, verbs: ReportingVerbsPolicy, policy: SlotAbstractionPolicy) -> None:
+    def __init__(
+        self,
+        verbs: ReportingVerbsPolicy,
+        policy: SlotAbstractionPolicy,
+        lead_ins: tuple[str, ...] | list[str] = (),
+    ) -> None:
         self._policy = policy
+        self._lead_ins = {value.strip().casefold() for value in lead_ins}
+        self._lemma_to_class = {
+            lemma.strip().casefold(): class_name
+            for class_name, forms in verbs.classes.items()
+            for lemma in forms.lemmas
+        }
         self._forms: list[tuple[str, Tense, str]] = []
         for class_name, forms in verbs.classes.items():
             for tense, values in (
@@ -52,6 +72,7 @@ class SlotAbstractor(MiningStage):
                 self._forms.extend((form, tense, class_name) for form in values)
         self._forms.sort(key=lambda row: (-len(row[0]), row[0].casefold()))
         self._modifiers = {word.casefold() for word in policy.verb_modifiers}
+        self._syntax_fallbacks: Counter[str] = Counter()
 
     def process(self, batch: list[MiningItem]) -> list[MiningItem]:
         extracted: list[MiningItem] = []
@@ -61,13 +82,29 @@ class SlotAbstractor(MiningStage):
                 extracted.append(result)
         return extracted
 
-    def extractability_reason(self, text: str) -> str | None:
+    @property
+    def syntax_fallback_reasons(self) -> dict[str, int]:
+        return dict(self._syntax_fallbacks)
+
+    def extractability_reason(
+        self, text: str, tokens: tuple[TokenFeature, ...] | None = None
+    ) -> str | None:
         """Return why ``text`` cannot be abstracted, or ``None`` when it can."""
-        located = self._locate(text)
+        located = self._locate(text, tokens=tokens)
         return located if isinstance(located, str) else None
 
-    def _locate(self, text: str) -> str | _Located:
+    def _locate(
+        self, text: str, *, tokens: tuple[TokenFeature, ...] | None = None
+    ) -> str | _Located:
         """Find verb, subject and clause spans, or return the reason extraction is impossible."""
+        if tokens is not None:
+            syntax = self._locate_syntax(text, tokens)
+            if syntax != "syntax_invalid_tokens":
+                return syntax
+            self._syntax_fallbacks["syntax_invalid_tokens"] += 1
+        return self._locate_regex(text)
+
+    def _locate_regex(self, text: str) -> str | _Located:
         match = self._reporting_match(text)
         if match is None:
             return "no_reporting_verb"
@@ -92,7 +129,7 @@ class SlotAbstractor(MiningStage):
             return "clause_too_short"
         determiner = _determiner_match(
             text[subject_start:subject_end],
-            self._policy.own_determiners + self._policy.prior_determiners,
+            self._policy.own_determiners + self._policy.prior_determiners + ["this", "these"],
         )
         if determiner is not None:
             noun_start, noun_end = _trim_span(text, subject_start + determiner.end(), subject_end)
@@ -101,6 +138,154 @@ class SlotAbstractor(MiningStage):
         return _Located(
             tense, surface, (subject_start, subject_end), (clause_start, clause_end), modifiers
         )
+
+    def _locate_syntax(self, text: str, tokens: tuple[TokenFeature, ...]) -> str | _Located:
+        if not validate_token_features(text, tokens):
+            return "syntax_invalid_tokens"
+        children = normalized_children_by_head(tokens)
+        selection = select_syntax_root(tokens)
+        if selection is None:
+            return "syntax_invalid_tokens"
+        parser_root = next(token for token in tokens if token.dep == "ROOT")
+        root = selection.token
+        class_name = self._lemma_to_class.get(root.lemma.casefold())
+        promoted_subject = selection.promoted_subject_span
+        if class_name is None:
+            return "no_reporting_verb"
+        if any(
+            token.dep == "conj" and token.lemma.casefold() in self._lemma_to_class
+            for token in tokens
+            if token.head == root.i
+        ):
+            return "coordinated_reporting_verbs"
+
+        subject = next(
+            (
+                token
+                for token in (tokens[index] for index in children[root.i])
+                if token.dep in {"nsubj", "nsubjpass", "expl"}
+            ),
+            parser_root if promoted_subject is not None else None,
+        )
+        if subject is None:
+            return "no_subject"
+        if subject.pos not in {"NOUN", "PROPN", "PRON"}:
+            return "subject_not_nominal"
+        subject_start, subject_end = (
+            promoted_subject
+            if promoted_subject is not None
+            else subtree_span(tokens, children, subject.i)
+        )
+
+        that_clause: tuple[int, int, int, int] | None = None
+        for child_index in children[root.i]:
+            marker = next(
+                (
+                    tokens[index]
+                    for index in children[child_index]
+                    if tokens[index].dep == "mark" and tokens[index].lemma.casefold() == "that"
+                ),
+                None,
+            )
+            if marker is not None:
+                clause_start, clause_end = subtree_span(tokens, children, child_index)
+                that_clause = (marker.end, clause_end, child_index, marker.i)
+                break
+        if that_clause is None:
+            return "no_that"
+        clause_start, clause_end, _, marker_index = that_clause
+        subject_start, subject_end = _trim_span(text, subject_start, subject_end)
+        clause_start, clause_end = _trim_span(text, clause_start, clause_end)
+
+        lead_in = text[:subject_start].strip()
+        if lead_in and lead_in.removesuffix(",").strip().casefold() not in self._lead_ins:
+            return "unlisted_lead_in"
+        marker = tokens[marker_index]
+        if not re.fullmatch(r"\s*", text[root.end : marker.start]):
+            return "unmatched_content"
+
+        subject_start, subject_end = _extend_following_citation(text, subject_start, subject_end)
+        clause_start, clause_end = _extend_following_citation(text, clause_start, clause_end)
+        if not re.fullmatch(r"\s*[.!?]*\s*", text[clause_end:]):
+            return "unmatched_content"
+
+        group_indices = {
+            token.i
+            for token in tokens
+            if subject_end <= token.start < token.end <= root.start
+            and token.dep in {"aux", "auxpass", "neg", "advmod"}
+        }
+        for index in group_indices:
+            token = tokens[index]
+            if token.dep == "advmod" and token.lemma.casefold() not in self._modifiers:
+                return "unlisted_modifier"
+        gap_tokens = [
+            token for token in tokens if subject_end <= token.start < token.end <= root.start
+        ]
+        if any(token.dep not in {"aux", "auxpass", "neg", "advmod"} for token in gap_tokens):
+            return "unmatched_content"
+        modifiers = " ".join(
+            text[tokens[index].start : tokens[index].end] for index in sorted(group_indices)
+        )
+        tense = self._syntax_tense(tokens, root.i, group_indices)
+        subject_words = re.findall(r"\b[\w'-]+\b", text[subject_start:subject_end])
+        clause_words = re.findall(r"\b[\w'-]+\b", text[clause_start:clause_end])
+        if not subject_words:
+            return "no_subject"
+        if len(subject_words) > self._policy.max_subject_words:
+            return "subject_too_long"
+        if len(clause_words) < self._policy.min_clause_words:
+            return "clause_too_short"
+        determiner = _determiner_match(
+            text[subject_start:subject_end],
+            self._policy.own_determiners + self._policy.prior_determiners + ["this", "these"],
+        )
+        if determiner is not None:
+            noun_start, noun_end = _trim_span(text, subject_start + determiner.end(), subject_end)
+            if noun_start == noun_end:
+                return "empty_noun_phrase"
+        modality = next(
+            (
+                text[tokens[index].start : tokens[index].end]
+                for index in sorted(group_indices)
+                if tokens[index].tag == "MD"
+            ),
+            None,
+        )
+        return _Located(
+            tense,
+            text[root.start : root.end],
+            (subject_start, subject_end),
+            (clause_start, clause_end),
+            modifiers,
+            lead_in,
+            modality,
+        )
+
+    @staticmethod
+    def _syntax_tense(
+        tokens: tuple[TokenFeature, ...], root_index: int, group_indices: set[int]
+    ) -> Tense:
+        group = [tokens[index] for index in sorted(group_indices)] + [tokens[root_index]]
+        lemmas = {token.lemma.casefold() for token in group}
+        modals = [token for token in group if token.tag == "MD"]
+        if modals:
+            return (
+                Tense.PRESENT_PERFECT
+                if any(token.lemma.casefold() == "have" for token in group)
+                else Tense.PRESENT
+            )
+        have_aux = [token for token in group if token.lemma.casefold() == "have"]
+        if any(token.tag == "VBD" for token in have_aux):
+            return Tense.PAST_PERFECT
+        if any(token.tag in {"VBZ", "VBP"} for token in have_aux):
+            return Tense.PRESENT_PERFECT
+        finite = [token for token in group if token.tag == "MD" or "VerbForm=Fin" in token.morph]
+        if "did" in lemmas or any("Tense=Past" in token.morph for token in finite):
+            return Tense.PAST
+        if any("Tense=Pres" in token.morph for token in finite):
+            return Tense.PRESENT
+        return Tense.UNKNOWN
 
     def _peel_modifiers(self, text: str, start: int, end: int) -> int:
         """Move ``end`` left past trailing negation, modal and emphasis words of the subject."""
@@ -111,7 +296,7 @@ class SlotAbstractor(MiningStage):
             end = _trim_span(text, start, start + match.start())[1]
 
     def _extract(self, item: MiningItem) -> MiningItem | None:
-        located = self._locate(item.text)
+        located = self._locate(item.text, tokens=item.tokens)
         if isinstance(located, str):
             return None
         tense, surface = located.tense, located.surface
@@ -119,32 +304,24 @@ class SlotAbstractor(MiningStage):
         clause_start, clause_end = located.clause
         subject = item.text[subject_start:subject_end]
 
-        determiner = _determiner_match(
-            item.text[subject_start:subject_end],
-            self._policy.own_determiners + self._policy.prior_determiners,
+        ownership, determiner, determiner_type = _ownership_decision(
+            subject, item.previous_text, self._policy, item.section_code
         )
         has_determiner_slot = determiner is not None
-        determiner_text = ""
         spans: dict[str, tuple[int, int]] = {}
         slot_defs: dict[str, SlotDefinition] = {}
         if has_determiner_slot:
             if determiner is None:
                 return None
             det_span = (subject_start, subject_start + determiner.end())
-            determiner_text = item.text[slice(*det_span)].casefold()
             noun_start, noun_end = _trim_span(item.text, det_span[1], subject_end)
             if noun_start == noun_end:
                 return None
             spans["X"] = det_span
             spans["Y"] = (noun_start, noun_end)
             spans["Z"] = (clause_start, clause_end)
-            det_type = (
-                SlotType.DETERMINER_OWN
-                if determiner_text in self._policy.own_determiners
-                else SlotType.DETERMINER_PRIOR
-            )
             slot_defs = {
-                "X": _definition(det_type, item.text[slice(*det_span)]),
+                "X": _definition(determiner_type, item.text[slice(*det_span)]),
                 "Y": _definition(SlotType.NOUN_PHRASE, item.text[noun_start:noun_end]),
                 "Z": _definition(SlotType.CLAUSE, item.text[clause_start:clause_end]),
             }
@@ -156,9 +333,16 @@ class SlotAbstractor(MiningStage):
                 "Y": _definition(SlotType.CLAUSE, item.text[clause_start:clause_end]),
             }
 
-        ownership = self._ownership(item, determiner_text)
         verb = f"{located.modifiers} {surface}" if located.modifiers else surface
-        frame = f"[X] [Y] {verb} that [Z]" if "Z" in spans else f"[X] {verb} that [Y]"
+        if item.tokens is not None:
+            frame_verb = (
+                f"{located.modifiers} {located.surface}" if located.modifiers else located.surface
+            )
+        else:
+            frame_verb = verb
+        frame = f"[X] [Y] {frame_verb} that [Z]" if "Z" in spans else f"[X] {frame_verb} that [Y]"
+        if item.tokens is not None and located.lead_in:
+            frame = f"{located.lead_in} {frame}"
         trailing = re.search(r"[.!?]+\s*$", item.text)
         if trailing is not None:
             frame += trailing.group(0).strip()
@@ -171,20 +355,16 @@ class SlotAbstractor(MiningStage):
                 for name, (start, end) in spans.items()
             },
         )
-        binding = "\x1f".join(
-            f"{name}:{re.sub(r'\s+', ' ', item.text[start:end]).strip().casefold()}"
-            for name, (start, end) in sorted(spans.items())
-        )
         return replace(
             item,
             text=frame,
             slots=slot_defs,
             occurrences=[occurrence],
             tense=tense,
+            modality=(located.modality if item.tokens is not None else _modality(verb)),
             ownership=ownership,
             cluster_key=None,
             confidence=None,
-            slot_binding_fingerprint=hashlib.sha256(binding.encode("utf-8")).hexdigest(),
         )
 
     def _reporting_match(self, text: str) -> tuple[int, int, Tense, str, str] | None:
@@ -194,22 +374,6 @@ class SlotAbstractor(MiningStage):
             if match is not None:
                 return match.start(), match.end(), tense, class_name, match.group(0)
         return None
-
-    def _ownership(self, item: MiningItem, determiner: str) -> Ownership:
-        if determiner in self._policy.prior_determiners:
-            return Ownership.PRIOR
-        if determiner in self._policy.own_determiners:
-            if item.previous_text and (
-                _CITATION_PATTERN.search(item.previous_text)
-                or re.search(
-                    r"\b(?:prior|previous|earlier|other)\s+(?:study|studies|research|work|author)s?\b|\b(?:prior|previous|earlier)\s+research\b",
-                    item.previous_text,
-                    re.I,
-                )
-            ):
-                return Ownership.UNCLEAR
-            return Ownership.OWN
-        return Ownership.UNCLEAR
 
 
 def _trim_span(text: str, start: int, end: int) -> tuple[int, int]:
@@ -221,6 +385,79 @@ def _trim_span(text: str, start: int, end: int) -> tuple[int, int]:
 
 
 _CITATION_PATTERN = re.compile(r"\[(?:\d+[\s,;–-]*)+\]|\([^()]*\b(?:18|19|20)\d{2}\b[^()]*\)")
+
+
+def infer_ownership(
+    subject: str,
+    previous_text: str | None,
+    policy: SlotAbstractionPolicy | None,
+    section_code: str | None = None,
+) -> Ownership:
+    """Apply the same conservative ownership rule to reporting and construction frames."""
+    return _ownership_decision(subject, previous_text, policy, section_code)[0]
+
+
+def _ownership_decision(
+    subject: str,
+    previous_text: str | None,
+    policy: SlotAbstractionPolicy | None,
+    section_code: str | None,
+) -> tuple[Ownership, re.Match[str] | None, SlotType]:
+    normalized = subject.strip().casefold()
+    if re.search(r"\bet\s+al\b", normalized) or _CITATION_PATTERN.search(subject):
+        prefix = _determiner_match(
+            normalized,
+            (policy.own_determiners + policy.prior_determiners + ["this", "these"])
+            if policy is not None
+            else [],
+        )
+        return Ownership.PRIOR, prefix, SlotType.DETERMINER_PRIOR
+    if re.match(r"we\b", normalized):
+        return Ownership.OWN, None, SlotType.DETERMINER_OWN
+    if policy is None:
+        return Ownership.UNCLEAR, None, SlotType.NOUN_PHRASE
+    determiner = _determiner_match(
+        normalized, policy.prior_determiners + policy.own_determiners + ["this", "these"]
+    )
+    if determiner is None:
+        return Ownership.UNCLEAR, None, SlotType.NOUN_PHRASE
+    det_text = normalized[: determiner.end()].strip()
+    head = re.match(r"\s*([a-z]+)", normalized[determiner.end() :])
+    head_noun = head.group(1) if head else ""
+    pair = f"{det_text} {head_noun}".strip()
+    if det_text in policy.prior_determiners or pair in policy.prior_head_pairs:
+        return Ownership.PRIOR, determiner, SlotType.DETERMINER_PRIOR
+    if det_text in {"our", "the present", "the current"}:
+        return Ownership.OWN, determiner, SlotType.DETERMINER_OWN
+    if det_text == "this" and head_noun in policy.own_head_nouns:
+        return Ownership.OWN, determiner, SlotType.DETERMINER_OWN
+    if pair not in policy.contextual_own_pairs:
+        return Ownership.UNCLEAR, None, SlotType.NOUN_PHRASE
+    blocked = bool(
+        previous_text
+        and (
+            _CITATION_PATTERN.search(previous_text)
+            or re.search(
+                r"\b(?:prior|previous|earlier|other)\s+(?:study|studies|research|work|author)s?\b|\b(?:prior|previous|earlier)\s+research\b",
+                previous_text,
+                re.I,
+            )
+        )
+    )
+    blocked = blocked or section_code in {"INTRO", "RELATED_WORK"}
+    if not blocked:
+        return Ownership.OWN, determiner, SlotType.DETERMINER_OWN
+    return Ownership.UNCLEAR, None, SlotType.NOUN_PHRASE
+
+
+def _modality(verb_group: str) -> str | None:
+    match = re.search(r"\b(may|might|could|can|should|would|must)\b", verb_group, re.I)
+    return match.group(0) if match is not None else None
+
+
+def _extend_following_citation(text: str, start: int, end: int) -> tuple[int, int]:
+    match = re.match(r"\s*" + _CITATION_PATTERN.pattern, text[end:])
+    return (start, end + match.end()) if match is not None else (start, end)
 
 
 def _determiner_match(subject: str, cues: list[str]) -> re.Match[str] | None:

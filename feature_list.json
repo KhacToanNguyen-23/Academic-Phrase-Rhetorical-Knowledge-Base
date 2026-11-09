@@ -199,6 +199,55 @@
     "verification_command": "Boundary API regressions beyond 200 patterns and 50 Manchester hits; focused Phrasebank e2e",
     "status": "passing",
     "evidence": "167 focused backend unit tests, 31 pattern/render API tests, 3 reference API tests, and 9 Edge Phrasebank tests passed. Boundary regressions cover >200 patterns and >50 reference hits. Web build/typecheck and lint passed (one existing hook warning).",
-    "notes": "Plan: plans/2026-11-04-internal-use-rendering/phase-02-phrasebank-filtering.md. Import-flow standardization explicitly deferred."
+    "notes": "Plan: plans/2026-11-04-internal-use-rendering/phase-02-phrasebank-filtering.md."
+  },
+  {
+    "id": "phrasebank-ui-apb-default",
+    "title": "Open the unified Phrasebank collection",
+    "user_visible_behavior": "Browse Phrasebank records from all sources together when opening the page",
+    "verification_command": "Playwright confirms /phrasebank defaults to the combined collection and displays source provenance",
+    "status": "passing-unverified",
+    "evidence": "Web production build passed: Phrasebank opens with records from all three sources in one result area; source selection narrows the same collection. Playwright skipped in Fast mode.",
+    "notes": "Plan: plans/2026-11-09-academic-phrase-part2-plan.md",
+    "priority": "P1"
+  },
+  {
+    "id": "phrasebank-ui-compact-filters",
+    "title": "Group Phrasebank search and filters",
+    "user_visible_behavior": "Find APB phrases using a compact primary toolbar and on-demand advanced filters",
+    "verification_command": "Playwright verifies combined server filters, active chips, clear-all, and keyboard access",
+    "status": "passing-unverified",
+    "evidence": "Web production build passed: all sources share the same search/source/section toolbar; contextual filters switch between APB Communicative Function and the existing Section/Intent taxonomy. APB stance/register/domain remain in responsive More filters. Playwright checks skipped in Fast mode.",
+    "notes": "Plan: plans/2026-11-09-phrasebank-ui-redesign/plan.md",
+    "priority": "P1"
+  },
+  {
+    "id": "phrasebank-ui-source-separation",
+    "title": "Filter Phrasebank records by source",
+    "user_visible_behavior": "Narrow the unified Phrasebank collection by provenance while keeping one page layout",
+    "verification_command": "Playwright verifies source filtering changes records and applicable suggestions without changing the shared layout",
+    "status": "passing-unverified",
+    "evidence": "Web production build passed: source selector offers All Phrasebank, APB, AP-RKB, and Manchester in the shared collection toolbar. Browser checks skipped in Fast mode.",
+    "notes": "Plan: plans/2026-11-09-academic-phrase-part2-plan.md",
+    "priority": "P1"
+  },
+  {
+    "id": "phrasebank-ui-responsive-controls",
+    "title": "Use Phrasebank filters across screen sizes",
+    "user_visible_behavior": "Use search, source selection, and filters by keyboard on desktop and mobile",
+    "verification_command": "Playwright checks 1280px and 390px layouts, keyboard focus, and absence of horizontal overflow",
+    "status": "passing-unverified",
+    "evidence": "Web production build passed: advanced filters use a bottom sheet below 640px and a popover on wider screens; controls use existing accessible UI primitives. Viewport checks skipped in Fast mode.",
+    "notes": "Plan: plans/2026-11-09-phrasebank-ui-redesign/plan.md",
+    "priority": "P1"
+  },
+  {
+    "id": "shared-phrasebank-initialization",
+    "title": "Initialize AP-RKB, APB, and optional Manchester through one manifest",
+    "user_visible_behavior": "Set up AP-RKB patterns and APB phrases together, with optional Manchester references and mappings",
+    "verification_command": "Combined initialization API tests cover pack/seed inputs, APB records, optional references, rollback, and idempotency",
+    "status": "passing",
+    "evidence": "Updated manifest integration checks: 5 passed on isolated aprkb_test schemas; 8 focused unit/integration cases passed; Ruff, formatting and mypy passed. Dry-run on aprkb_acceptance reported 9 seed patterns already present and 32 APB records, then rolled back without writes.",
+    "notes": "Plan: plans/existing-pack-adoption/plan.md. One manifest selects either an AP-RKB seed JSON or offline pack, includes APB JSON, and can optionally include a Manchester collection plus mappings. Other ingestion and runtime flows remain unchanged."
   }
 ]

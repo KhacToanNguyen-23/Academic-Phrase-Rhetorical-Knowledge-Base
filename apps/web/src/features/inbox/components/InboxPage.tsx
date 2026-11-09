@@ -93,7 +93,7 @@ export function InboxPage() {
         }}
       >
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <TabsList aria-label="Submission status">
+          <TabsList aria-label="Submission status" className="max-w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto">
             {FILTERS.map((item) => (
               <TabsTrigger key={item.id} value={item.id}>
                 {item.label}
@@ -125,7 +125,7 @@ export function InboxPage() {
               }
             />
           ) : (
-            <div className="grid min-w-0 grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)] items-start gap-6">
+            <div className="grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)] [&>*]:min-w-0">
               <Card>
                 <CardHeader>
                   <CardTitle>Submissions</CardTitle>
@@ -262,7 +262,7 @@ function SubmissionDetail({ submission, intent, client }: { submission: Submissi
           <Alert>
             <AlertTitle>Similar pattern found</AlertTitle>
             <AlertDescription>
-              <Link to="/library" search={{ p: submission.near_duplicate.pattern_id }}>
+              <Link to="/phrasebank/pattern/$id" params={{ id: submission.near_duplicate.pattern_id }}>
                 {submission.near_duplicate.pattern_id}
               </Link>{" "}
               is {pct(submission.near_duplicate.similarity)} similar. Consider adding a variant instead.

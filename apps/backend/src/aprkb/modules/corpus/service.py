@@ -34,11 +34,15 @@ async def create_upload(
     blob_key: str,
     actor: ApiClient,
     request_id: str,
+    doi: str | None = None,
+    content_sha256: str | None = None,
 ) -> tuple[Article, Job]:
     article = Article(
         id=article_id,
         source="upload",
         title=title,
+        doi=doi,
+        content_sha256=content_sha256,
         license_id=license_row.id,
         blob_key=blob_key,
         ingest_status="pending",

@@ -431,19 +431,23 @@ Chạy mọi rule trong `build_rules()` rồi trả danh sách `RuleResult`. Sev
 
 ### 6.3 Mining (`modules/mining/pipeline.py`) — chạy trong worker
 
-**Mở rộng M2 được chủ sở hữu duyệt ngày 2026-10-31:** triển khai slot abstraction regex, protected spans, lexicon reporting/subject và keying bảo thủ, bật trong worker; candidate vẫn pending và qua hai vòng review. Kiểm thử bằng dữ liệu giả tự viết. Chưa đánh giá chất lượng trên dữ liệu thật; gold và evaluator chờ API bài báo. spaCy và NER hoãn `TODO(owner, FR-06.2)`. Xem [ADR-0006](doc/adr/0007-rule-based-slot-abstraction.md).
+**Mở rộng M2 được chủ sở hữu duyệt ngày 2026-10-31:** triển khai slot abstraction regex, protected spans, lexicon reporting/subject và keying bảo thủ, bật trong worker; candidate vẫn pending và qua hai vòng review. Kiểm thử bằng dữ liệu giả tự viết. Chưa đánh giá chất lượng trên dữ liệu thật; gold và evaluator chờ API bài báo. Từ phase 2, spaCy được dùng ở ingest sau lớp boundary rule-first qua `NLP_ENGINE` (mặc định `regex`); phase 3 cho phép `SentenceFilter` và `SlotAbstractor` đọc token feature hợp lệ với regex fallback. NER vẫn hoãn. Xem [ADR-0007](doc/adr/0007-rule-based-slot-abstraction.md) và [ADR-0010](doc/adr/0010-spacy-ingest-token-features.md).
+
+**Mở rộng có giới hạn phase 4–6:** mining nhận token feature đã lưu để khớp ba nhóm construction tự viết trong YAML có version, với closed-world matching; reporting-verb path luôn được ưu tiên. Frame syntax giữ nguyên lead-in đã duyệt, verb group và connector `that`; nội dung ngoài slot nếu không thuộc policy đóng sẽ bị loại với reason count. Tense và modality là thuộc tính riêng; modality hiện chưa được lưu vào DB. Ownership của `we`, `our` và các cụm prior là cố định; `this`/`these`/`the only` cần cue trong câu trước cùng section và không có citation/prior blocker. Nhánh imperative có policy flag và chỉ được tính aggregate. CLI `phrase-stats` so sánh document frequency của masked frame giữa hai nhóm bài; đây là số mô tả, không phải kiểm định ý nghĩa thống kê. Không có parser PDF/JATS, NER, classifier tổng quát, endpoint thống kê hay lưu văn bản bài báo trong report. Danh sách cue provisional có `TODO(owner, FR-06.2)`.
+
+**Cập nhật phase 7:** ownership được quyết định theo determiner và danh từ đầu với bốn tier trong `slot_abstraction.yaml`; `own_study_cues` đã bị loại bỏ. Epistemic tagging chạy sau reporting/construction extraction trên masked frame. `show` là neutral với strength `None`; `epistemic_status` chỉ tồn tại trong `MiningItem`, không được lưu hoặc đưa vào `cluster_key`. Tier, verb modifier và neutral verb lists còn provisional (`TODO(owner, FR-06.2)`). Xem ADR-0012.
 
 ```
-job "ingest_article": corpus.ingest → license_check → parser → section_detector → sentence_splitter
-job "mine_article"  : Sentence[] → sentence_filter → move_classifier → epistemic_tagger
-                      → slot_abstractor → frame_normalizer → clusterer → dedup_matcher
+job "ingest_article": corpus.ingest → license_check → parser → section_detector → sentence_boundary_resolver → sentence_features?
+job "mine_article"  : Sentence[] → sentence_filter → move_classifier → slot_abstractor
+                      → epistemic_tagger → frame_normalizer → clusterer → dedup_matcher
                       → candidate_writer (Candidate.status = pending)
 ```
 
 - `license_check`: nếu `allows_mining = false` thì dừng job, ghi lý do. **Cài thật.**
-- `sentence_splitter`: bản cài đơn giản dựa trên regex, giữ nguyên `char_start/char_end`. **Cài thật** (tạm thời).
-- `sentence_filter`: lọc theo độ dài và bỏ trích dẫn dạng `[12]`, `(Author, 2020)`. **Cài thật** (đơn giản).
-- Các stage còn lại: trả nguyên batch, có `TODO`.
+- `sentence_boundary_resolver`: boundary rule-first dùng chung cho regex và spaCy, giữ nguyên `char_start/char_end`; `NLP_ENGINE=regex` là mặc định, `NLP_ENGINE=spacy` lưu feature token vào `sentences.nlp_features`. **Cài thật** (phase 2).
+- `sentence_filter`: lọc theo độ dài, bỏ trích dẫn dạng `[12]`, `(Author, 2020)`, và khi có token feature thì kiểm tra finite verb/ROOT. **Cài thật**; ngưỡng syntax còn `TODO(owner, FR-07)`.
+- `slot_abstractor`: dùng dependency ROOT/subject/that-clause khi có token feature hợp lệ; frame giữ cả câu bằng các slot có kiểu, verb group và lead-in đã duyệt. Nội dung ngoài policy đóng bị từ chối có reason count; dữ liệu token thiếu hoặc hỏng fallback về regex. **Cài thật (phase 3–6); quyết định ở ADR-0012**.
 - `candidate_writer`: **bắt buộc** ghi `source_sentence_ids`. Mining **không bao giờ** ghi vào `phrase_patterns` / `pattern_versions`.
 
 Duyệt candidate (`modules/patterns/review.py`): chỉ con đường này mới tạo `PatternVersion` từ `Candidate`, sau khi đủ 2 vòng `ReviewDecision` approve.
@@ -562,7 +566,7 @@ version: 0.1.0
 markers:
   low:      [may, might, could, possibly, appears to]
   moderate: [suggest, indicate, is likely]
-  high:     [show, demonstrate, confirm]
+  high:     [demonstrate, confirm, establish]
   absolute: [prove, establish beyond doubt, always]
 ```
 
@@ -707,3 +711,38 @@ Và:
 | RBAC / audit | `core/auth.py`, `core/audit.py` | `integration/api`, AT-12 |
 | Mining → Candidate | `mining/*`, `workers/handlers/mine_article.py` | `unit/mining/stages` |
 | Discipline (P2) | `discipline/null_source.py` | — |
+
+
+**Cập nhật phase 8–9.1:** `author_action` dùng danh sách adjunct đóng, có phiên bản: preposition
+được giữ literal và object thành slot; purpose `advcl`/`xcomp` chỉ được chấp nhận khi có marker
+`to`. Frame thay đúng span slot trên câu nguồn, giữ nguyên phần còn lại; adjunct không được
+đăng ký bị đếm là `unlisted_adjunct`, quá hai adjunct là `too_many_adjuncts`. Phase 9.1 chỉ thêm
+chủ ngữ chủ động literal `this paper`, `this study`, `this article`; chủ ngữ khác bị từ chối với
+reason riêng. Không thêm anchor hoặc adjunct. Passive, chủ ngữ `it`, copula `be` và dạng adjunct
+chưa đăng ký vẫn ngoài phạm vi. Anchor và adjunct lists còn provisional
+(`TODO(owner, FR-06.2)`). Xem ADR-0013.
+
+**Cập nhật hybrid slot engine (Phase 0–6, 2026-11-06):** bổ sung Tier 2 mở giới hạn trong
+ADR-0014 với tám family dependency (`discourse_gap` đang tắt), Purity Gate và `MINING_HYBRID_ENABLED` (mặc định tắt). Tier 1
+giữ nguyên quyền quyết định; Tier 2 chỉ chạy sau hai lần không khớp và khi token spaCy đã lưu tồn
+tại. Candidate tiếp tục qua hàng đợi pending hiện tại. Chưa bật switch trước khi đo coverage trên
+blob có quyền mining và review volume; xem ADR-0014.
+
+## Job operations extension (2026-11-05)
+
+The user approved bounded PostgreSQL retries and the subsequent operational workflow:
+curator/admin manual retry, per-attempt error history, live stage progress and in-app
+repeated-failure alerts. See ADR-0013 and ADR-0014. This adds `/jobs` and the documented
+admin job APIs; it does not introduce Redis/Celery, bypass license checks, change
+Extract/Publication review rules or automatically send external notifications.
+
+## Metric & Measurement extension (2026-11-09)
+
+Task 3 adds a separate, self-authored catalog of metrics, measurement methods and protocols,
+answering "how to measure" alongside the phrase core's "how to write". It is off by default
+(`MEASUREMENT_ENABLED`). It adds `/v1/measurements` read routes, curator import and slot-link
+review under `/v1/admin/measurements`, and a `/measurements` page. Approved slot links only
+suggest values for a pattern slot (FR-07.5/AT-08: never auto-filled). While enabled,
+`/v1/validate` adds report-only `metric_warnings` (FR-08.2) without changing severity. It does
+not change ranking, render or pack export, and it adds no NLP extractor. `measurement-purge`
+removes the catalog. See ADR-0015.

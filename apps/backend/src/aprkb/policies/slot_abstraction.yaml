@@ -1,9 +1,13 @@
-# Provisional regex span bounds and determiner cues; TODO(owner, FR-06.2): approve.
-version: 0.2.0
+# Provisional ownership tiers; TODO(owner, FR-06.2): approve.
+version: 0.4.0
 max_subject_words: 8
 min_clause_words: 2
-own_determiners: [our, this, these, "the only"]
-prior_determiners: [prior, previous, earlier]
+own_determiners: [our, "the present", "the current"]
+own_head_nouns: [paper, study, article]
+contextual_own_pairs:
+  ["these results", "these findings", "this result", "this finding", "this method", "this approach", "this model", "this work"]
+prior_determiners: [their, prior, previous, earlier]
+prior_head_pairs: ["these studies", "these authors"]
 # Words right before the reporting verb that change meaning (negation, modality, emphasis).
 # They are peeled off the subject and kept literal, so "do not suggest" is never masked.
 # TODO(owner, FR-06.2): approve the list.

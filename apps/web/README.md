@@ -70,10 +70,35 @@ The staff shell accepts curator/admin API keys and keeps the key in the current
 tab's session storage. The local-only Quick demo button seeds self-authored sample
 data and issues a curator key; it requires the Vite development server and a
 loopback backend with `APP_ENV=local`.
-Run `pnpm test:e2e` with API/Vite against a seeded disposable `aprkb_test`
-database. Phrasebank tests mock their API responses and cover the lab-only
-collection. The Writer test uses the real API and the current Phrasebank Basic
-seed data. CI runs this suite in `frontend-e2e-smoke` for push and pull request
-events. On Windows, `WRITER_E2E_BROWSER=msedge` uses the installed Edge browser.
-Failure traces and screenshots go to `test-results`; CI's HTML report goes to
-the separate `playwright-report` directory.
+The Playwright specs under `e2e/` cover the redesigned Phrasebank controls and
+the live Writer search/render/validate/feedback flow. Run `pnpm test:e2e` with
+API/Vite against a migrated, seeded disposable `aprkb_test` database. The Writer
+uses the loopback-only guest demo path, so the API must run with `APP_ENV=local`;
+the Phrasebank tests stub their own staff identity and reference responses.
+Set `WRITER_E2E_BASE_URL` when Vite is not at `http://127.0.0.1:5173`. On Windows,
+`WRITER_E2E_BROWSER=msedge` uses the installed Edge Chromium browser; CI installs
+Playwright Chromium. The supported desktop viewport is 1440px (minimum 1024px).
+
+The CI smoke remains Stage A observability (`continue-on-error`), not a required
+check. CI saves traces/screenshots in `test-results/` and the HTML report in the
+separate `playwright-report/`; both are uploaded together so report generation
+cannot erase test artifacts.
+
+### Extraction feedback
+
+`/extract` requests only ready articles whose extraction has not started or failed.
+The request notice allows for existing jobs being reused; the refreshed article summary
+shows queued, running, completed, failed and not-ready counts. Completed extraction with
+no matches is distinguished from an empty review status. Accepting saves to the approved
+phrase collection, without promoting a writing suggestion. Decisions cannot be changed here.
+
+Database-free regression checks (with Vite running):
+`pnpm exec playwright test e2e/extraction.spec.ts`. These tests mock the API; they do not
+verify database persistence or worker execution.
+
+`/jobs` is the live curator/admin operations page, linked from Import. It shows job
+filters, last stage/counts, heartbeat and scheduled retry, attempt history, in-app
+failure alerts, acknowledgement and one-attempt manual retry with rationale. Apply
+backend migration `0013_job_operations` before using it. The UI-contract tests in
+`e2e/jobs.spec.ts` use API fixtures; backend operations tests use real isolated
+PostgreSQL schemas. See [ADR-0014](../../doc/adr/0014-job-operations.md).

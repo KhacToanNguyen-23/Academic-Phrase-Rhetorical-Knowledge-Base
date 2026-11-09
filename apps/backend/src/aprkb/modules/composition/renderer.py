@@ -5,6 +5,7 @@ never invent values.
 """
 
 import re
+from collections import Counter
 from collections.abc import Mapping
 
 
@@ -17,6 +18,27 @@ class SlotValidationError(ValueError):
 
 
 SLOT = re.compile(r"\{([A-Za-z][A-Za-z0-9_]*)\}")
+SENTENCE_ENDING = re.compile(r"[.!?][\"')\]]?\s*$")
+
+
+def render_warnings(frame: str, values: Mapping[str, str]) -> list[str]:
+    warnings = []
+    repeated = sorted(name for name, count in Counter(SLOT.findall(frame)).items() if count > 1)
+    for name in repeated:
+        warnings.append(
+            f"Slot {{{name}}} appears more than once; its value is repeated in the rendered text"
+        )
+    sentence_values = sorted(
+        name
+        for name, value in values.items()
+        if value.strip() and SENTENCE_ENDING.search(value.strip())
+    )
+    if sentence_values:
+        warnings.append(
+            "Slot values ending with sentence punctuation may contain full sentences: "
+            + ", ".join(sentence_values)
+        )
+    return warnings
 
 
 def render_frame(

@@ -1,88 +1,109 @@
 # Conservative morphology groups; no cross-lemma synonym merging without review.
 # Provisional vocabulary; TODO(owner, FR-06.2): approve before production use.
-version: 0.2.0
+version: 0.3.0
 classes:
   suggest:
+    lemmas: [suggest]
     present: [suggest, suggests]
     past: [suggested]
     present_perfect: [has suggested, have suggested]
   indicate:
+    lemmas: [indicate]
     present: [indicate, indicates]
     past: [indicated]
     present_perfect: [has indicated, have indicated]
   report:
+    lemmas: [report]
     present: [report, reports]
     past: [reported]
     present_perfect: [has reported, have reported]
   show:
+    lemmas: [show]
     present: [show, shows]
     past: [showed]
     present_perfect: [has shown, have shown]
   demonstrate:
+    lemmas: [demonstrate]
     present: [demonstrate, demonstrates]
     past: [demonstrated]
     present_perfect: [has demonstrated, have demonstrated]
   find:
+    lemmas: [find]
     present: [find, finds]
     past: [found]
     present_perfect: [has found, have found]
   prove:
+    lemmas: [prove]
     present: [prove, proves]
     past: [proved, proven]
     present_perfect: [has proved, have proved, has proven, have proven]
   reveal:
+    lemmas: [reveal]
     present: [reveal, reveals]
     past: [revealed]
     present_perfect: [has revealed, have revealed]
   confirm:
+    lemmas: [confirm]
     present: [confirm, confirms]
     past: [confirmed]
     present_perfect: [has confirmed, have confirmed]
   imply:
+    lemmas: [imply]
     present: [imply, implies]
     past: [implied]
     present_perfect: [has implied, have implied]
   highlight:
+    lemmas: [highlight]
     present: [highlight, highlights]
     past: [highlighted]
     present_perfect: [has highlighted, have highlighted]
   observe:
+    lemmas: [observe]
     present: [observe, observes]
     past: [observed]
     present_perfect: [has observed, have observed]
   conclude:
+    lemmas: [conclude]
     present: [conclude, concludes]
     past: [concluded]
     present_perfect: [has concluded, have concluded]
   argue:
+    lemmas: [argue]
     present: [argue, argues]
     past: [argued]
     present_perfect: [has argued, have argued]
   note:
+    lemmas: [note]
     present: [note, notes]
     past: [noted]
     present_perfect: [has noted, have noted]
   establish:
+    lemmas: [establish]
     present: [establish, establishes]
     past: [established]
     present_perfect: [has established, have established]
   verify:
+    lemmas: [verify]
     present: [verify, verifies]
     past: [verified]
     present_perfect: [has verified, have verified]
   state:
+    lemmas: [state]
     present: [state, states]
     past: [stated]
     present_perfect: [has stated, have stated]
   claim:
+    lemmas: [claim]
     present: [claim, claims]
     past: [claimed]
     present_perfect: [has claimed, have claimed]
   assume:
+    lemmas: [assume]
     present: [assume, assumes]
     past: [assumed]
     present_perfect: [has assumed, have assumed]
   propose:
+    lemmas: [propose]
     present: [propose, proposes]
     past: [proposed]
     present_perfect: [has proposed, have proposed]

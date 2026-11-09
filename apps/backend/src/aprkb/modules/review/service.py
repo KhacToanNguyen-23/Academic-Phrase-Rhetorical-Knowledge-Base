@@ -23,8 +23,11 @@ from aprkb.modules.review import repository
 from aprkb.modules.review.schemas import CandidateIntentUpdate, ReviewDecisionCreate
 from aprkb.modules.taxonomy.models import Intent, Move, Section, Step, TaxonomyRelease
 from aprkb.policies.loader import load_policy_bundle
+from aprkb.policies.schemas import is_safe_construction_frame, is_safe_hybrid_frame
 
-_REPORTING_FORMS = load_policy_bundle().reporting_verbs.all_forms
+_POLICIES = load_policy_bundle()
+_REPORTING_FORMS = _POLICIES.reporting_verbs.all_forms
+_LEAD_INS = _POLICIES.lead_ins.lead_ins
 
 
 async def list_review_queue(session: AsyncSession) -> list[Candidate]:
@@ -245,7 +248,17 @@ async def _promote_candidate(
 
 
 def _candidate_is_safe_to_promote(candidate: Candidate) -> bool:
-    if not is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS):
+    if not (
+        is_safe_masked_frame(candidate.canonical_frame, _REPORTING_FORMS, _LEAD_INS)
+        or is_safe_construction_frame(
+            candidate.canonical_frame,
+            _POLICIES.constructions,
+            verb_group_policy=_POLICIES.construction_verb_groups,
+        )
+        or is_safe_hybrid_frame(
+            candidate.canonical_frame, _POLICIES.hybrid_constructions, candidate.cluster_key
+        )
+    ):
         return False
     if not isinstance(candidate.slots, dict):
         return False

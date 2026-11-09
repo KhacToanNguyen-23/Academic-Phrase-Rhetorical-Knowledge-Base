@@ -80,8 +80,20 @@ export function WriterValidation({
               <Notice>
                 Some checks are unavailable ({validation.checks_unavailable.join(", ")}). This sentence has not been
                 fully validated.
-                {validation.checks_unavailable.includes("V05") &&
-                  " V05 is not checked because verified Offline guideline data is unavailable."}
+              </Notice>
+            )}
+            {validation.checks_not_applicable.length > 0 && (
+              <Notice>
+                Journal guideline compliance is outside this sentence-level check.
+              </Notice>
+            )}
+            {(validation.metric_warnings ?? []).length > 0 && (
+              // FR-08.2 / ADR-0015: report-only; it does not change the claim-check severity.
+              <Notice>
+                Check your measures:{" "}
+                {(validation.metric_warnings ?? []).map((warning) => warning.name).join(", ")}{" "}
+                {(validation.metric_warnings ?? []).length === 1 ? "is" : "are"} named in the sentence but not in
+                your slots or context. Keep a metric only if your study actually measured it.
               </Notice>
             )}
             {issues.map((rule) => (

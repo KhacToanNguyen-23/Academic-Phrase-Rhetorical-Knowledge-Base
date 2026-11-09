@@ -1,13 +1,14 @@
 import {
   BookMarked,
-  BookOpen,
   BookText,
   Download,
   FlaskConical,
   Inbox,
+  ListChecks,
   LayoutDashboard,
   Newspaper,
   PenLine,
+  Ruler,
   ScanText,
   ShieldCheck,
   Star,
@@ -23,9 +24,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Reference",
     items: [
-      { to: "/library", label: "Library", icon: BookOpen },
       { to: "/phrasebank", label: "Phrasebank", icon: BookMarked },
       { to: "/vocabulary", label: "Vocabulary", icon: BookText },
+      { to: "/measurements", label: "Measurement", icon: Ruler },
       { to: "/journals", label: "Journals", icon: Newspaper },
     ],
   },
@@ -37,12 +38,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/extract", label: "Extract", icon: ScanText },
     ],
   },
-  { label: "Corpus", items: [{ to: "/import", label: "Import", icon: Download }] },
+  { label: "Corpus", items: [{ to: "/import", label: "Import", icon: Download }, { to: "/jobs", label: "Jobs", icon: ListChecks }] },
   {
     label: "Tools",
     items: [
       { to: "/playground", label: "Playground", icon: FlaskConical },
-      { to: "/writer", label: "Writer", icon: PenLine, publicAccess: true },
+      { to: "/writer", label: "Writer", icon: PenLine },
     ],
   },
 ];

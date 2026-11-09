@@ -6,6 +6,12 @@
 **/.env.*
 **/node_modules
 **/.venv
+.video-tools
+.pytest-*
+artifacts
+retry-voice-*.mp3
+apps/web/test-results
+apps/web/playwright-report
 **/venv
 **/__pycache__
 **/*.pyc

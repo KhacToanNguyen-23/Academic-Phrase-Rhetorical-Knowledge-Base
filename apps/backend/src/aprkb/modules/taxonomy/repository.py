@@ -63,6 +63,18 @@ async def intents_for_steps(session: AsyncSession, step_ids: Sequence[UUID]) -> 
     )
 
 
+async def intent_exists_in_release(session: AsyncSession, *, release_id: UUID, code: str) -> bool:
+    intent_id = await session.scalar(
+        select(Intent.id)
+        .join(Step, Step.id == Intent.step_id)
+        .join(Move, Move.id == Step.move_id)
+        .join(Section, Section.id == Move.section_id)
+        .where(Section.release_id == release_id, Intent.code == code)
+        .limit(1)
+    )
+    return intent_id is not None
+
+
 async def article_genres(session: AsyncSession) -> list[ArticleGenre]:
     return list(await session.scalars(select(ArticleGenre).order_by(ArticleGenre.code)))
 

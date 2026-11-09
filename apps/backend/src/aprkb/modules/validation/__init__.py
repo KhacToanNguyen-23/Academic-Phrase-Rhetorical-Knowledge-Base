@@ -1,4 +1,4 @@
-"""validation — PRD-08 Evidence-aware Language Validator [P0].
+"""Sentence-level validation for evidence strength, grounding, and configured style.
 
-Kiểm tra V01–V08: claim strength vs evidence, fabricated content, guideline, ngôn ngữ.
+Journal guideline compliance (V05) is outside the current Online Writer scope.
 """

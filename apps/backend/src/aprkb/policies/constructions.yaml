@@ -1,0 +1,60 @@
+# First self-authored construction families; TODO(owner, FR-06.2): expand only after review.
+version: 0.3.0
+constructions:
+  - id: author_action
+    function: author_action
+    # TODO(owner, FR-06.2): provisional anchors; expand only after owner review.
+    anchor_lemmas: [propose, present, introduce, develop, use, compare, conduct, evaluate, provide, consider, implement]
+    # Owner-approved Phase 9.1 literal subjects; no other "this ..." subject is accepted.
+    subject_phrases: [we, "this paper", "this study", "this article"]
+    children:
+      - path: [[nsubj]]
+        mode: literal
+        include_descendant_deps: [det]
+      - path: [[dobj, obj]]
+        mode: slot
+        slot: X
+    allowed_literal: [in, this, paper, study, work, article, research]
+    # TODO(owner, FR-06.2): closed adjunct inventory; expand only after owner review.
+    adjuncts:
+      prepositions: [in, for, with, as, "on", by]
+      purpose_deps: [advcl, xcomp]
+      max_count: 2
+      literal_in_objects: [paper, study, work, article, research]
+  - id: relation_role
+    function: relation
+    anchor_lemmas: [play]
+    children:
+      - path: [[nsubj, nsubjpass]]
+        mode: slot
+        slot: X
+      - path: [[dobj, obj]]
+        mode: literal
+        lemmas: [role]
+        include_descendant_deps: [det, amod]
+      - path: [[dobj, obj], [prep], [pobj, obj]]
+        path_lemmas: [[], [in], []]
+        mode: slot
+        slot: Y
+    allowed_literal: [a, key, crucial, vital, major, central]
+    frame_templates:
+      - '[X] {play|plays|played} a {key|crucial|vital|major|central} role in [Y].'
+  - id: performance
+    function: evaluation
+    anchor_lemmas: [improve, enhance, outperform, boost, reduce]
+    children:
+      - path: [[nsubj, nsubjpass]]
+        mode: slot
+        slot: X
+      - path: [[advmod]]
+        mode: literal_optional
+        optional: true
+      - path: [[dobj, obj]]
+        mode: head_literal_modifiers_slot
+        slot: Y
+        lemmas: [accuracy, performance, efficiency]
+        modifier_deps: [amod, compound]
+    allowed_literal: [significantly, substantially, markedly, considerably]
+    frame_templates:
+      - '[X] {improve|improves|improved|enhance|enhances|enhanced|outperform|outperforms|outperformed|boost|boosts|boosted|reduce|reduces|reduced} [Y] {accuracy|performance|efficiency}.'
+      - '[X] {significantly|substantially|markedly|considerably} {improve|improves|improved|enhance|enhances|enhanced|outperform|outperforms|outperformed|boost|boosts|boosted|reduce|reduces|reduced} [Y] {accuracy|performance|efficiency}.'

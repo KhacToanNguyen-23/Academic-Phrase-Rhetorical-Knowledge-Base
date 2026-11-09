@@ -31,6 +31,7 @@ class SlrRepositorySource:
         config: Settings = settings,
         licenses: LicensesPolicy | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        worker_managed_retries: bool = False,
     ) -> None:
         if config.slr_api_key is None:
             raise ValueError("SLR_API_KEY is required when ARTICLE_SOURCE=slr")
@@ -41,6 +42,7 @@ class SlrRepositorySource:
         )
         self._owns_client = client is None
         self._sleep = sleep
+        self._max_retries = 0 if worker_managed_retries else config.slr_max_retries
         self._policy = licenses or load_policy_bundle().licenses
         self._license_lookup = {self._norm(k): v for k, v in self._policy.source_aliases.items()}
         self._license_perms = {row.code: row.allows_mining for row in self._policy.licenses}
@@ -63,14 +65,14 @@ class SlrRepositorySource:
             await self._client.aclose()
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
-        for attempt in range(self._config.slr_max_retries + 1):
+        for attempt in range(self._max_retries + 1):
             response = await self._client.request(
                 method,
                 path.lstrip("/"),
                 headers={"X-API-Key": self._key.get_secret_value()},
                 **kwargs,
             )
-            if response.status_code == 429 and attempt < self._config.slr_max_retries:
+            if response.status_code == 429 and attempt < self._max_retries:
                 try:
                     delay = float(response.headers.get("Retry-After", "60"))
                 except ValueError:
@@ -79,7 +81,7 @@ class SlrRepositorySource:
                     "SLR rate limited on %s; retry %s/%s in %ss",
                     path,
                     attempt + 1,
-                    self._config.slr_max_retries,
+                    self._max_retries,
                     delay,
                 )
                 await self._sleep(delay)
@@ -184,11 +186,11 @@ class SlrRepositorySource:
         path = f"/public/v1/repository/works/{article.external_id}/artifacts/{locator}/download"
         data_buffer = bytearray()
         response_type = ""
-        for attempt in range(self._config.slr_max_retries + 1):
+        for attempt in range(self._max_retries + 1):
             async with self._client.stream(
                 "GET", path.lstrip("/"), headers={"X-API-Key": self._key.get_secret_value()}
             ) as response:
-                if response.status_code == 429 and attempt < self._config.slr_max_retries:
+                if response.status_code == 429 and attempt < self._max_retries:
                     try:
                         delay = float(response.headers.get("Retry-After", "60"))
                     except ValueError:

@@ -2,6 +2,8 @@
 
 from fastapi import APIRouter
 
+from aprkb.modules.academic_phrase_bank.router import admin_router as academic_phrase_admin
+from aprkb.modules.academic_phrase_bank.router import router as academic_phrases
 from aprkb.modules.analytics.router import router as analytics
 from aprkb.modules.composition.router import router as composition
 from aprkb.modules.corpus.router import admin_router as corpus_admin
@@ -10,6 +12,8 @@ from aprkb.modules.gold.router import router as gold
 from aprkb.modules.identity.router import admin_router as identity_admin
 from aprkb.modules.identity.router import router as identity
 from aprkb.modules.journals.router import router as journals
+from aprkb.modules.measurement.router import admin_router as measurement_admin
+from aprkb.modules.measurement.router import router as measurement
 from aprkb.modules.patterns.router import router as patterns
 from aprkb.modules.recommendation.router import router as recommendation
 from aprkb.modules.reference_library.router import router as reference_library
@@ -38,3 +42,7 @@ api_router.include_router(analytics, prefix="/feedback")
 api_router.include_router(reference_library, prefix="/reference-library")
 api_router.include_router(vocabulary)
 api_router.include_router(vocabulary_admin, prefix="/admin")
+api_router.include_router(academic_phrases, prefix="/academic-phrases")
+api_router.include_router(academic_phrase_admin, prefix="/admin")
+api_router.include_router(measurement, prefix="/measurements")
+api_router.include_router(measurement_admin, prefix="/admin/measurements")

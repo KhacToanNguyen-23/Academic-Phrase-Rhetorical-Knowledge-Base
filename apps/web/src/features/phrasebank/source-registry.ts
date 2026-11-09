@@ -1,4 +1,3 @@
-import { withSessionApiKey } from "@/features/auth/session";
 import { createBackendClient } from "@/shared/api/contract-client";
 import type { components } from "@/shared/api/schema";
 import { unwrap } from "@/features/slr-import/api/client";
@@ -6,6 +5,7 @@ import { unwrap } from "@/features/slr-import/api/client";
 export const SOURCE_REGISTRY = [
   { id: "manchester-reference", label: "Manchester reference", family: "external" },
   { id: "aprkb-patterns", label: "AP-RKB patterns", family: "internal" },
+  { id: "academic-phrase-bank", label: "Academic Phrase Bank", family: "internal" },
 ] as const;
 
 export type SourceId = (typeof SOURCE_REGISTRY)[number]["id"];
@@ -16,8 +16,29 @@ export type ManchesterSearchResult = components["schemas"]["SearchResult"];
 export type PatternSummary = components["schemas"]["PatternSummary"];
 export type PatternDetail = components["schemas"]["PatternDetail"];
 export type TaxonomyTree = components["schemas"]["TaxonomyTree"];
+export type AcademicPhrase = components["schemas"]["AcademicPhraseRead"];
+export type AcademicPhrasePage = components["schemas"]["AcademicPhrasePage"];
+export type FunctionOption = components["schemas"]["FunctionOption"];
+export type PragmaticFeatureOption = components["schemas"]["PragmaticFeatureOption"];
+export type DomainOption = components["schemas"]["DomainOption"];
+
+export type AcademicPhraseFilter = {
+  q?: string;
+  functionCode?: string;
+  functionVersion?: string;
+  sectionCode?: string;
+  intentCode?: string;
+  registerCode?: string;
+  registerVersion?: string;
+  domainCode?: string;
+  stanceCode?: string;
+  stanceVersion?: string;
+  limit?: number;
+  offset?: number;
+};
 
 export type TaxonomyFilter = { sectionCode?: string; intentCode?: string };
+export type PatternFilter = TaxonomyFilter & { hasSlots?: boolean };
 
 export interface PhrasebankSource<TGroup, TSearch, TDetail> {
   id: SourceId;
@@ -30,7 +51,15 @@ export interface PhrasebankSource<TGroup, TSearch, TDetail> {
 }
 
 function client() {
-  return withSessionApiKey(createBackendClient(import.meta.env.VITE_API_BASE_URL ?? ""));
+  const api = createBackendClient(import.meta.env.VITE_API_BASE_URL ?? "");
+  api.use({
+    onRequest({ request }) {
+      const key = sessionStorage.getItem("aprkb-web-session");
+      if (key) request.headers.set("X-API-Key", key);
+      return request;
+    },
+  });
+  return api;
 }
 
 function sectionForIntent(taxonomy: TaxonomyTree, intentCode: string): string | undefined {
@@ -65,14 +94,57 @@ export const phrasebankSources = {
     params: { query: { q, section: filter.sectionCode, intent: filter.intentCode, phrase_only: true, limit: 50 } },
   })),
   taxonomy: async () => unwrap(await client().GET("/v1/taxonomy")),
-  patterns: async (q?: string, filter: TaxonomyFilter = {}): Promise<PatternDetail[]> => {
+  patterns: async (
+    q?: string,
+    filter: PatternFilter = {},
+    { offset = 0, limit = 200 } = {},
+  ): Promise<PatternDetail[]> => {
     return unwrap(await client().GET("/v1/patterns", {
-      params: { query: { status: "approved", q: q || undefined, section: filter.sectionCode, intent: filter.intentCode, limit: 200 } },
+      params: {
+        query: {
+          status: "approved",
+          q: q || undefined,
+          section: filter.sectionCode,
+          intent: filter.intentCode,
+          has_slots: filter.hasSlots,
+          offset,
+          limit,
+        },
+      },
     }));
   },
   pattern: async (id: string): Promise<PatternDetail> => unwrap(await client().GET("/v1/patterns/{pattern_id}", {
     params: { path: { pattern_id: id } },
   })),
+  academicFunctions: async (): Promise<FunctionOption[]> =>
+    (unwrap(await client().GET("/v1/academic-phrases/functions"))).items,
+  academicPragmaticFeatures: async (): Promise<PragmaticFeatureOption[]> =>
+    (unwrap(await client().GET("/v1/academic-phrases/pragmatic-features"))).items,
+  academicDomains: async (): Promise<DomainOption[]> =>
+    (unwrap(await client().GET("/v1/academic-phrases/domains"))).items,
+  academicPhrases: async (filter: AcademicPhraseFilter = {}): Promise<AcademicPhrasePage> =>
+    unwrap(await client().GET("/v1/academic-phrases", {
+      params: {
+        query: {
+          q: filter.q,
+          function: filter.functionCode,
+          function_version: filter.functionVersion,
+          section: filter.sectionCode,
+          intent: filter.intentCode,
+          register: filter.registerCode,
+          register_version: filter.registerVersion,
+          domain: filter.domainCode,
+          stance: filter.stanceCode,
+          stance_version: filter.stanceVersion,
+          limit: filter.limit ?? 50,
+          offset: filter.offset ?? 0,
+        },
+      },
+    })),
+  academicPhrase: async (id: string): Promise<AcademicPhrase> =>
+    unwrap(await client().GET("/v1/academic-phrases/{pattern_id}", {
+      params: { path: { pattern_id: id } },
+    })),
 };
 
 const referenceSource: PhrasebankSource<ManchesterCategory, ManchesterSearchResult, ManchesterDetail> = {

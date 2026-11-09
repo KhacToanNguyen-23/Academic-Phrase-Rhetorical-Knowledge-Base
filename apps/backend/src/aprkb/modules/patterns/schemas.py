@@ -81,6 +81,7 @@ class PatternSummary(BaseModel):
     id: UUID
     status: str
     intent_code: str
+    move_code: str | None = None
     intent_name: str
     canonical_frame: str | None
     version_no: int | None

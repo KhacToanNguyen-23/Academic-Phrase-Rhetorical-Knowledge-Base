@@ -134,3 +134,6 @@ plans/.current-brainstorm.md
 apps/web/dist-inspect/
 # Script thu thập thử từ Manchester Academic Phrasebank: chỉ dùng local, không đưa vào repo (BR-10, seed phải own_authored)
 scripts/collect_manchester_demo.py
+
+# Local scratch output (pytest runs, throwaway venvs)
+tmp/

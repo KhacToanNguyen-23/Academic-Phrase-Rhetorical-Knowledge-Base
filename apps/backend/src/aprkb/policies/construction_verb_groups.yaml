@@ -1,0 +1,12 @@
+# Candidate verb-group literals for author_action; TODO(owner, FR-06.2): review before expansion.
+version: 0.1.0
+modifier_positions: # TODO(owner, FR-06.2): review the closed candidate list and positions.
+  also: [between_subject_and_anchor]
+  first: [before_subject, between_subject_and_anchor]
+  then: [before_subject, between_subject_and_anchor]
+  therefore: [before_subject]
+  additionally: [before_subject, between_subject_and_anchor]
+  finally: [before_subject]
+  next: [before_subject, between_subject_and_anchor]
+  here: [before_subject, after_anchor_before_object]
+auxiliary_lemmas: [have, will] # TODO(owner, FR-06.2): review the candidate auxiliary list.

@@ -1,8 +1,10 @@
 # AP-RKB — Academic Phrase & Rhetorical Knowledge Base
 
-AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. It does not implement the excluded admin console, production NLP extraction, or taxonomy publishing. The `/writer` web route uses the real API and PostgreSQL; other prototype screens still use local mock data.
+AP-RKB is an academic writing assistant scaffold. The backend recommends rhetorical phrase frames, validates claim strength against evidence, and lets curators upload licensed text for traceable mining candidates. Phase-6 syntax mining consumes stored spaCy token features when `NLP_ENGINE=spacy` and accepts only closed, reviewed frame content; the Tier 2 hybrid fallback retains approved fixed leads and rejects split modifiers, heading joins, and frames below its provisional fixed-content threshold. NER, production classifiers and taxonomy publishing remain out of scope. The `/writer` web route uses the real API and PostgreSQL; other prototype screens still use local mock data.
 
 ## Architecture
+
+Phrasebank data initialization uses one [JSON manifest workflow](doc/phrasebank-initialization.md) for AP-RKB patterns, Manchester references, and their filter mappings. It reuses the existing import formats and preserves the current runtime APIs.
 
 ```text
 apps/web (React + TypeScript SPA; Vite runs locally by default)
@@ -13,9 +15,9 @@ apps/backend (FastAPI modular monolith)
   corpus blobs ── local ./data/blobs via BlobStore
 ```
 
-The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker is started separately with `make worker`; no Redis or Celery service is used. Text and Markdown ingestion are implemented; JATS and PDF parsers remain explicit stubs. SLR imports use curator-managed profiles in `/import`: saving a profile and choosing “Lấy bài báo” creates a queued job whose filters are snapshotted in its payload. Job results report listed, imported and skipped counts. Set `ARTICLE_SOURCE=slr`, `SLR_API_BASE_URL` (default `https://slr-api.hyperdatalab.org/api`) and `SLR_API_KEY`; timeout, retry count and maximum download size use `SLR_TIMEOUT_SECONDS`, `SLR_MAX_RETRIES` and `SLR_MAX_DOWNLOAD_BYTES`. SLR enforces a limit of 120 requests per minute, handled through `Retry-After`. Imports fail closed: missing, unknown or non-mining licenses are skipped before download. The real SLR API currently returns no license data, so for development only `SLR_DEV_FALLBACK_LICENSE=DEV-UNVERIFIED` assigns that placeholder license to works whose license is missing or unknown; works with a known non-mining license stay blocked. The setting is rejected unless `APP_ENV` is `local` or `test`, and articles under `DEV-UNVERIFIED` must be deleted before production. PDF files can be stored, but the PDF parser remains a stub, so they cannot be mined yet. License aliases and rights are defined in `apps/backend/src/aprkb/policies/licenses.yaml`. OpenAlex is not queried. Ingest splits sentences with an abbreviation list (`policies/lexicon/abbreviations.yaml`), maps headings to section codes (`policies/section_headings.yaml`), and the mining `sentence_filter` drops table rows, captions, math and numeric noise and non-rhetorical sections (thresholds in `policies/mining_filter.yaml`, provisional). After changing these rules, run `uv run --directory apps/backend python -m aprkb.cli reingest --source slr`; it replaces sentences and their pending candidates, and skips articles that have reviewed candidates. See [ADR-0001](doc/adr/0001-modular-monolith.md), [ADR-0005](doc/adr/0005-external-article-source.md), [ADR-0006](doc/adr/0006-slr-repository-import.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
+The scaffold keeps the existing `apps/backend/src/aprkb` package and module boundaries. PostgreSQL is the sole database and job queue. The worker is started separately with `make worker`; no Redis or Celery service is used. Text and Markdown ingestion are implemented; JATS and PDF parsers remain explicit stubs. SLR imports use curator-managed profiles in `/import`: saving a profile and choosing “Lấy bài báo” creates a queued job whose filters are snapshotted in its payload. Job results report listed, imported and skipped counts. Set `ARTICLE_SOURCE=slr`, `SLR_API_BASE_URL` (default `https://slr-api.hyperdatalab.org/api`) and `SLR_API_KEY`; timeout, retry count and maximum download size use `SLR_TIMEOUT_SECONDS`, `SLR_MAX_RETRIES` and `SLR_MAX_DOWNLOAD_BYTES`. SLR enforces a limit of 120 requests per minute, handled through `Retry-After`. Imports fail closed: missing, unknown or non-mining licenses are skipped before download. The real SLR API currently returns no license data, so for development only `SLR_DEV_FALLBACK_LICENSE=DEV-UNVERIFIED` assigns that placeholder license to works whose license is missing or unknown; works with a known non-mining license stay blocked. The setting is rejected unless `APP_ENV` is `local` or `test`, and articles under `DEV-UNVERIFIED` must be deleted before production. PDF files can be stored, but the PDF parser remains a stub, so they cannot be mined yet. License aliases and rights are defined in `apps/backend/src/aprkb/policies/licenses.yaml`. OpenAlex is not queried. Ingest uses the shared character-level boundary rules from `policies/sentence_rules.yaml`; `NLP_ENGINE=regex` is the default and `NLP_ENGINE=spacy` stores token features with the selected model. The mining `sentence_filter` drops table rows, captions, math and numeric noise and non-rhetorical sections (thresholds in `policies/mining_filter.yaml`, provisional). After changing these rules, run `uv run --directory apps/backend python -m aprkb.cli reingest --source slr`; it replaces sentences and their pending candidates, and skips articles that have reviewed candidates. See [ADR-0001](doc/adr/0001-modular-monolith.md), [ADR-0005](doc/adr/0005-external-article-source.md), [ADR-0006](doc/adr/0006-slr-repository-import.md), [ADR-0010](doc/adr/0010-spacy-ingest-token-features.md) and [the scaffold PRD](SCAFFOLD_PRD.md).
 
-The development pipeline uses the existing upload/import → ingest → `mine_article` worker → pending candidate → two reviewer rounds flow. Rule-based slot extraction stores typed public slot schemas and private provenance offsets; it does not write patterns or versions. The `/extract` page works on top of that flow: it groups articles by import batch, queues mining for one or more batches, shows each article's text beside its mined phrases, and lets one reviewer accept or reject each phrase; accepted phrases are stored in `approved_phrases` (not as patterns), see [ADR-0009](doc/adr/0009-phrase-extraction-page.md). Gold labels are a separate development/evaluation path: Groq can draft labels behind explicit runtime settings, and one human reviewer makes the final decision. Only human-approved, current gold items are scored by `eval-mining`; classifier, spaCy/NER, synonym expansion and production AI assistance remain deferred. See [ADR-0007](doc/adr/0007-rule-based-slot-abstraction.md), [ADR-0008](doc/adr/0008-gold-dev-labeling.md), and the [knowledge enrichment flow](doc/knowledge-enrichment-flow.md).
+The development pipeline uses the existing upload/import → ingest → `mine_article` worker → pending candidate → two reviewer rounds flow. Rule-based slot extraction stores typed public slot schemas and private provenance offsets; it does not write patterns or versions. Syntax reporting frames preserve the whole sentence around typed slots, the ROOT verb group and only approved lead-ins; unlisted surrounding content is rejected. Tense and modality remain separate, and modality is not persisted yet. Ownership uses determiner+noun tiers: unconditional own, guarded own, prior, or literal unclear; the tier lists are provisional. Epistemic tagging runs after extraction on masked frames; `show` is neutral with no strength, and the status field is in-memory only. A small, versioned closed-world registry adds author-action, relation/role, and performance/evaluation frames from stored token features; the reporting-verb path keeps precedence. The `/extract` page works on top of that flow: it groups articles by import batch, queues mining for one or more batches, shows each article's text beside its mined phrases, and lets one reviewer accept or reject each phrase; accepted phrases are stored in `approved_phrases` (not as patterns), see [ADR-0009](doc/adr/0009-phrase-extraction-page.md). The read-only `phrase-stats` CLI contrasts frame document frequency across batches or journals; results are descriptive and show no sentence text. Gold labels are a separate development/evaluation path: Groq can draft labels behind explicit runtime settings, and one human reviewer makes the final decision. Only human-approved, current gold items are scored by `eval-mining`; NER, synonym expansion and production AI assistance remain deferred. See [ADR-0007](doc/adr/0007-rule-based-slot-abstraction.md), [ADR-0010](doc/adr/0010-spacy-ingest-token-features.md), [ADR-0011](doc/adr/0011-construction-registry-and-frame-statistics.md), [ADR-0012](doc/adr/0012-slot-abstractor-frames-and-ownership.md), [ADR-0008](doc/adr/0008-gold-dev-labeling.md), and the [knowledge enrichment flow](doc/knowledge-enrichment-flow.md).
 
 ## Quick start
 
@@ -33,13 +35,30 @@ Vite proxies `/v1` to `http://localhost:8000` by default. If the API runs on ano
 
 If you need to process uploaded articles, run `.\dev.ps1 worker` in a third terminal.
 
-For backend checks, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`. The test fixture creates and removes isolated schemas there and never migrates the application's public schema. Use the same local password and host port as `DATABASE_URL`, then run `make check`.
+### spaCy and Tier 2
+
+`.env.example` enables `NLP_ENGINE=spacy` and `MINING_HYBRID_ENABLED=true`, because Tier 2 (the hybrid slot engine) needs the token features stored at ingest. spaCy and the `en_core_web_sm` model are the locked optional dependency group `spacy` in `apps/backend/pyproject.toml` (the model is a hash-pinned wheel from the spaCy model releases). `make install`, `.\dev.ps1 be`, the CI jobs and the backend Docker image all install it with `--extra spacy`. To install it by hand:
+
+```powershell
+uv sync --directory apps/backend --extra spacy
+```
+
+Do not install the model with `uv pip install`: a plain `uv sync` removes packages that are not in the lock file. Articles ingested earlier with `regex` have no stored tokens, so re-ingest them (`python -m aprkb.cli reingest --source slr`, replacing `slr` with the article source) before Tier 2 can produce frames. Without spaCy or the model, ingest fails with `NLP_ENGINE=spacy requires spaCy and model ...`; set `NLP_ENGINE=regex` and `MINING_HYBRID_ENABLED=false` for a setup without them. The production deployment (manual, from `main`, see `deploy/README.md` there) must set both variables in its own environment (`TODO(owner)`).
+
+For PostgreSQL-backed backend checks, set `TEST_DATABASE_URL` in the current PowerShell process to a valid connection for the dedicated `aprkb_test` database, then run the PowerShell script below. For example:
+
+```powershell
+$env:TEST_DATABASE_URL = "postgresql+asyncpg://aprkb:<current-local-password>@localhost:5432/aprkb_test"
+.\scripts\test-backend.ps1
+```
+
+Replace the placeholder locally; do not paste credentials into source files or point this variable at `aprkb` or production. The script checks the database name before running pytest. The fixture creates and removes isolated schemas in `aprkb_test` and never migrates the application's public schema.
 
 Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker. In the internal `/writer` flow, an approved pattern with `PROPRIETARY` provenance can be shown with a `license_flag` marking it for internal use only. Missing license or provenance remains excluded. This policy must be changed before any public deployment.
 
 Open the staff prototype at <http://localhost:5173/> and sign in with a curator or admin API key. In Vite development mode, **Quick demo** re-runs the idempotent self-authored seed data and issues a fresh local curator key. This button is restricted to loopback requests with `APP_ENV=local`. System integrations continue using their client API keys; client/reviewer pattern reads expose only approved current versions with display rights.
 
-With `APP_ENV=local`, the writer connects automatically without an API key; the backend grants a local demo client only to requests from loopback addresses. This access is disabled in other environments. The flow uses published taxonomy/reference options, recommendation, approved version detail, render, validation, and feedback APIs. Render requires a `recommendation_id` issued to the same client. Validation runs V02, a limited V03 check for unsupported numeric/DOI/citation details against slot values and the separate supporting-context field, and a configured phrase screen for V06. Search keywords are not treated as evidence. V06 does not perform grammar analysis; V05 remains explicitly not checked until verified Offline guideline data is available. Other unfinished checks remain unavailable, so the UI labels copied text a draft. Journal-specific ranking waits for reviewed Offline guideline/fingerprint data and currently reports generic fallback. The MVP does not expose a validation override route.
+With `APP_ENV=local`, the writer connects automatically without an API key; the backend grants a local demo client only to requests from loopback addresses. This access is disabled in other environments. The flow uses published taxonomy/reference options, recommendation, approved version detail, render, validation, and feedback APIs. Render requires a `recommendation_id` issued to the same client. When a journal is selected, recommendation queries only approved mined patterns whose provenance article belongs to that journal; an empty mapping returns no candidates and never falls back to another journal or generic patterns. Validation runs V02, a limited V03 check for unsupported numeric/DOI/citation details against slot values and the separate supporting-context field, and a configured phrase screen for V06. Search keywords are not treated as evidence. V06 does not perform grammar analysis. V05 is outside the current sentence-validation scope; the Writer labels journal-guideline compliance separately from unavailable sentence checks. Other unfinished in-scope checks remain unavailable, so the UI labels copied text a draft. The MVP does not expose a validation override route.
 
 Writer recommendation scores show each available criterion in its own horizontal cell with the criterion name and value; unavailable criteria display `—`.
 
@@ -74,10 +93,12 @@ CR-06 changed the current weights; they remain provisional pending owner review.
 | `make setup` | Start PostgreSQL, install backend dependencies, migrate, and seed |
 | `make dev` / `make be` | Start PostgreSQL, prepare backend, and run the API |
 | `make check` | Run lint and backend tests |
+| `.\scripts\test-backend.ps1` | Run backend tests after validating `TEST_DATABASE_URL` targets `aprkb_test` |
 | `make install` | Sync backend dependencies with `uv` |
 | `make migrate` | Apply the Alembic migration |
 | `make seed` | Idempotently load reference enums, taxonomy, and self-authored patterns |
 | `make bootstrap-key` | Create the first admin API key and print it once |
+| `make phrase-stats ARGS="--focal-batch <uuid> --background all-other"` | Contrast masked frame document frequencies (read-only; no sentence text) |
 | `make run` | Start FastAPI with reload |
 | `make worker` | Poll PostgreSQL jobs and process ingestion/mining |
 | `make test` | Run backend unit, integration, and scaffold acceptance tests |
@@ -150,6 +171,30 @@ Phrasebank applies keyword, section, and intent filters on the backend before li
 `/phrasebank` reads the lab-authored Phrasebank Basic patterns from `/v1/patterns`, the same approved records used by recommendation and rendering. Category headings are represented as intents under the METHODS section; example text is stored as a canonical frame, slots, and authored provenance. The former external reference-library backend remains isolated and disabled; it is not a source for this Online flow.
 
 For local or deployed Online initialization, apply migrations and run `python -m aprkb.seeds.load`. Every environment loads Phrasebank Basic from the packaged JSON plus taxonomy and reference options; Online initialization does not read legacy `data/seed/patterns.json` fixtures.
+
+## Metric & Measurement catalog
+
+`/measurements` is a separate, self-authored catalog that answers "how to measure". It has three
+kinds of entry: metrics (for example accuracy and Cohen's kappa), measurement methods (for example
+a 5-point Likert questionnaire) and data-collection protocols (for example a pre-test/post-test
+design). It complements the phrase core, which answers "how to write". The catalog lives in its own
+`measurement_*` tables and never enters ranking, render, validate or pack export. The API and UI
+are off by default (`MEASUREMENT_ENABLED=false`).
+
+The link to phrases is a curator-reviewed slot link, for example `likert_5_point` for the
+`{instrument}` slot of a Methods pattern. Only approved links are shown, and only as
+suggestions; a slot is never filled automatically (FR-07.5, AT-08). To enable the catalog locally:
+
+1. Set `MEASUREMENT_ENABLED=true`.
+2. Run `uv run alembic -c alembic.ini upgrade head` from `apps/backend`.
+3. Import the catalog: `uv run python -m aprkb.cli measurement-import --file ../../data/seed/measurement_catalog.json`.
+
+Re-importing the same file is a no-op. Codes that disappear from a new catalog are reported, not
+deleted. Remove everything with `uv run python -m aprkb.cli measurement-purge`.
+
+While the flag is on, `/v1/validate` also returns report-only `metric_warnings` (FR-08.2):
+catalog metrics that the sentence names but the writer's slots or context do not. They never
+change the validation severity. See ADR-0015.
 
 ## Offline-to-Online data packs
 

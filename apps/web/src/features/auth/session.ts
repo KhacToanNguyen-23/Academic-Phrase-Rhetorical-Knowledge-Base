@@ -3,7 +3,7 @@
 // so a login is never silently ignored by one feature (see the 401 on /writer and the
 // "API key required" on /phrasebank that came from clients reading a different key).
 
-export const STAFF_SESSION_KEY = "aprkb-staff-session";
+export const STAFF_SESSION_KEY = "aprkb-web-session";
 
 // Older builds and the manual key field on the SLR import page store the key here.
 // Read it as a fallback only; never write new sessions to it.

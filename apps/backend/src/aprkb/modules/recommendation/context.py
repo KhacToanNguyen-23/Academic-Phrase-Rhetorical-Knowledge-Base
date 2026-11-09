@@ -16,6 +16,7 @@ class RecommendationContext:
     client_id: UUID
     limit: int = 10
     query: str | None = None
+    move_code: str | None = None
 
     def __post_init__(self) -> None:
         if self.limit < 1:

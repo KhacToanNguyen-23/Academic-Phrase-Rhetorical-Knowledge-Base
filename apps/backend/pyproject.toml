@@ -16,10 +16,17 @@ dependencies = [
   "structlog>=24.4",
   "python-multipart>=0.0.20",
   "httpx>=0.28",
+  "google-auth[requests]>=2.40",
   "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
+# Light spaCy runtime for Tier 2 and rule-first ingest boundaries (NLP_ENGINE=spacy).
+# The model is a separate wheel, resolved through [tool.uv.sources] below.
+spacy = [
+  "spacy>=3.8",
+  "en-core-web-sm>=3.8",
+]
 # M2 — Corpus Intelligence
 nlp = [
   "spacy>=3.8",
@@ -36,6 +43,9 @@ dev = [
   "pyright>=1.1.390",
   "types-openpyxl>=3.1",
 ]
+
+[tool.uv.sources]
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }
 
 [build-system]
 requires = ["hatchling"]
@@ -65,3 +75,7 @@ asyncio_default_fixture_loop_scope = "function"
 python_version = "3.12"
 strict = true
 files = ["src/aprkb"]
+
+[[tool.mypy.overrides]]
+module = ["spacy", "spacy.*"]
+ignore_missing_imports = true

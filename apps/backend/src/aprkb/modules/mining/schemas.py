@@ -37,6 +37,7 @@ class Tense(StrEnum):
     PRESENT = "present"
     PAST = "past"
     PRESENT_PERFECT = "present_perfect"
+    PAST_PERFECT = "past_perfect"
     UNKNOWN = "unknown"
 
 
@@ -46,9 +47,19 @@ class Ownership(StrEnum):
     UNCLEAR = "unclear"
 
 
-def is_safe_masked_frame(frame: str, reporting_forms: Iterable[str]) -> bool:
+def is_safe_masked_frame(
+    frame: str, reporting_forms: Iterable[str], lead_ins: Iterable[str] = ()
+) -> bool:
     """Accept only the extractor's positional grammar and a reviewed reporting verb."""
     normalized = frame.strip().casefold().rstrip(".!?").strip()
+    allowed_lead_ins = {value.strip().casefold().removesuffix(",") for value in lead_ins}
+    if ", " in normalized:
+        possible_lead_in, remainder = normalized.split(", ", 1)
+        if possible_lead_in not in allowed_lead_ins:
+            return False
+        normalized = remainder
+    if ", " in normalized:
+        return False
     known_forms = {form.strip().casefold() for form in reporting_forms}
     if normalized.startswith("[x] [y] "):
         prefix, separator, suffix = normalized.partition(" that [z]")

@@ -1,0 +1,5 @@
+{
+  "schema_version": "1",
+  "pattern_seed": "seed/patterns.json",
+  "academic_phrases": "seed/academic_phrases.json"
+}

@@ -106,13 +106,13 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
     mutationFn: async () =>
       unwrap(
         await api.POST("/v1/admin/corpus/mine", {
-          body: { article_ids: [], batch_ids: scope.batch_id, unbatched: scope.unbatched },
+          body: { article_ids: mineableArticles.map((article) => article.id), batch_ids: [], unbatched: false },
         }),
       ),
     onSuccess: (result) => {
       setNotice({
         tone: "ok",
-        text: `Queued ${result?.job_ids.length ?? 0} article(s) for extraction${
+        text: `Extraction requested for ${result?.job_ids.length ?? 0} article(s); existing jobs may be reused${
           result?.skipped_not_ready ? `; skipped ${result.skipped_not_ready} not ready` : ""
         }.`,
       });
@@ -128,10 +128,11 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
           body: { decision },
         }),
       ),
-    onSuccess: (_, { decision }) => {
+    onSuccess: (_, { id, decision }) => {
+      setChecked((old) => toggle(old, id, false));
       setNotice({
         tone: "ok",
-        text: decision === "accept" ? "Phrase accepted and saved." : "Phrase rejected.",
+        text: decision === "accept" ? "Phrase saved to approved phrases." : "Phrase rejected.",
       });
       refresh();
     },
@@ -144,11 +145,11 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
           body: { candidate_ids: [...checked], decision },
         }),
       ),
-    onSuccess: (result) => {
+    onSuccess: (result, decision) => {
       const failed = result?.failed.length ?? 0;
       setNotice({
         tone: failed ? "bad" : "ok",
-        text: `${result?.results.length ?? 0} phrase(s) processed${
+        text: `${result?.results.length ?? 0} phrase(s) ${decision === "accept" ? "saved to approved phrases" : "rejected"}${
           failed ? `; ${failed} failed: ${result.failed[0].reason}` : ""
         }.`,
       });
@@ -166,12 +167,27 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
     rejected: sum((batch) => batch.phrases.rejected),
   };
   const ready = articles.data?.filter((article) => article.ingest_status === "ready") ?? [];
-  const mineable = ready.filter(
+  const mineableArticles = ready.filter(
     (article) => article.mining_status === "not_started" || article.mining_status === "failed",
-  ).length;
+  );
+  const mineable = mineableArticles.length;
   const phrasesFirst = ready.length > 0 && ready.every((article) => article.mining_status === "succeeded");
   const items = phrases.data?.items ?? [];
   const total = phrases.data?.total ?? 0;
+  const relevantArticles = articleFilter
+    ? articles.data?.filter((article) => article.id === articleFilter) ?? []
+    : articles.data ?? [];
+  const noMatches = relevantArticles.length > 0 && relevantArticles.every(
+    (article) => article.mining_status === "succeeded"
+      && article.phrases.pending + article.phrases.accepted + article.phrases.rejected === 0,
+  );
+
+  useEffect(() => {
+    if (phrases.isSuccess && offset > 0 && offset >= total) {
+      setOffset(Math.max(0, Math.ceil(total / PAGE_SIZE) - 1) * PAGE_SIZE);
+      setChecked(new Set());
+    }
+  }, [phrases.isSuccess, offset, total]);
   const sourceSentenceIds = new Set(items.flatMap((phrase) => phrase.sources.map((source) => source.sentence_id)));
   const busy = decide.isPending || decideMany.isPending;
   const filteredArticles = useMemo(() => {
@@ -218,7 +234,7 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
       <PageHeader
         title="Phrase extraction"
         description={
-          "Choose imported batches, extract candidate phrases, and review their source evidence before " + "saving."
+          "Choose papers, find phrase candidates, and accept or reject them with their source evidence."
         }
       />
       <Card>
@@ -293,6 +309,15 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
               <AlertDescription>{notice.text}</AlertDescription>
             </Alert>
           ) : null}
+          {articles.isSuccess ? (
+            <p className="text-sm text-muted-foreground" aria-label="Extraction status summary">
+              {articles.data.filter((article) => article.mining_status === "queued").length} queued ·{" "}
+              {articles.data.filter((article) => article.mining_status === "processing").length} running ·{" "}
+              {articles.data.filter((article) => article.mining_status === "succeeded").length} completed ·{" "}
+              {articles.data.filter((article) => article.mining_status === "failed").length} failed ·{" "}
+              {articles.data.filter((article) => article.ingest_status !== "ready").length} not ready for extraction
+            </p>
+          ) : null}
           {inProgress ? (
             <p className="text-sm text-muted-foreground">
               Extraction is running. Phrases will appear when the worker finishes the queued articles.
@@ -340,7 +365,11 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
                   {articleFilter ? (
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">One article filtered</Badge>
-                      <Button variant="ghost" size="sm" onClick={() => setArticleFilter(undefined)}>
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        setArticleFilter(undefined);
+                        setChecked(new Set());
+                        setOffset(0);
+                      }}>
                         Show all articles
                       </Button>
                     </div>
@@ -415,6 +444,10 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
             <Card className={phrasesFirst ? "order-first min-w-0" : "min-w-0"}>
               <CardHeader>
                 <CardTitle>Phrase candidates</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Accepted phrases are saved to the approved phrase collection. They do not automatically become writing suggestions.
+                  Decisions cannot currently be changed here.
+                </p>
                 <Tabs value={status} onValueChange={(value) => changeStatus(value as PhraseStatus)}>
                   <TabsList className="mt-3">
                     <TabsTrigger value="pending">
@@ -489,11 +522,19 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
                 ) : items.length === 0 ? (
                   <DataState
                     state="empty"
-                    emptyTitle={inProgress ? "Extraction is still running" : "No phrase candidates"}
+                    emptyTitle={
+                      inProgress ? "Extraction is still running"
+                        : noMatches ? "Extraction finished with no matches"
+                          : `No ${status} phrases`
+                    }
                     emptyDescription={
                       inProgress
                         ? "Candidates will appear when the worker finishes."
-                        : "Try another batch or phrase status."
+                        : noMatches
+                          ? 'The current extractor recognizes a limited set of sentences, such as “X reports that Y”. A completed run can find no matching phrases.'
+                          : status === "pending"
+                            ? "No phrases are waiting for review in this view. Check accepted or rejected phrases, or the article extraction states."
+                            : `No phrases have been ${status} in this view. Try another status or batch.`
                     }
                   />
                 ) : (
@@ -514,7 +555,7 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
                       variant="outline"
                       size="sm"
                       disabled={offset === 0}
-                      onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                      onClick={() => { setChecked(new Set()); setOffset(Math.max(0, offset - PAGE_SIZE)); }}
                     >
                       Previous page
                     </Button>
@@ -525,7 +566,7 @@ export function ExtractPage({ initialBatch }: { initialBatch?: string }) {
                       variant="outline"
                       size="sm"
                       disabled={offset + PAGE_SIZE >= total}
-                      onClick={() => setOffset(offset + PAGE_SIZE)}
+                      onClick={() => { setChecked(new Set()); setOffset(offset + PAGE_SIZE); }}
                     >
                       Next page
                     </Button>

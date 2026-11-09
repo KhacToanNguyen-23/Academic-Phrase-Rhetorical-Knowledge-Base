@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from aprkb.modules.corpus.importer import MAX_IMPORT_BATCH_LIMIT
 
@@ -121,14 +121,67 @@ class ImportProfileRead(BaseModel):
 
 
 class JobRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     type: str
     status: str
     attempts: int
+    max_attempts: int
+    next_attempt_at: datetime | None
+    error_code: str | None
     error: str | None
     result: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
+    locked_at: datetime | None
+    manual_retries: int
+    manual_retry_limit: int = 3
+    progress_stage: str | None
+    progress_completed: int | None
+    progress_total: int | None
+
+
+class JobRetryRequest(BaseModel):
+    expected_attempts: int = Field(ge=0)
+    rationale: str = Field(min_length=10, max_length=1000)
+
+    @field_validator("rationale")
+    @classmethod
+    def meaningful_reason(cls, value: str) -> str:
+        if len(value.strip()) < 10:
+            raise ValueError("Explain the corrected cause in at least 10 characters")
+        return value.strip()
+
+
+class JobAttemptRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    attempt_no: int
+    started_at: datetime
+    ended_at: datetime | None
+    outcome: str
+    stage: str | None
+    completed: int | None
+    total: int | None
+    error_code: str | None
+    error: str | None
+    next_attempt_at: datetime | None
+
+
+class JobAlertRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    job_id: UUID
+    failure_count: int
+    last_error_code: str | None
+    last_failed_at: datetime
+    active: bool
+    acknowledged_at: datetime | None
+    resolved_at: datetime | None
+
+
+class JobAlertAcknowledge(BaseModel):
+    expected_last_failed_at: AwareDatetime
 
 
 class SlrTaxonomyItem(BaseModel):

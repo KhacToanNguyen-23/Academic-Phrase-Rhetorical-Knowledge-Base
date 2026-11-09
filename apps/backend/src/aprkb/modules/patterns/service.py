@@ -44,6 +44,7 @@ async def list_patterns(
     offset: int,
     limit: int,
     query: str | None = None,
+    has_slots: bool | None = None,
     renderable_only: bool = False,
     internal_use_codes: frozenset[str] = frozenset(),
 ) -> list[dict[str, object]]:
@@ -53,6 +54,7 @@ async def list_patterns(
         section_code=section,
         status=status,
         browse_query=query,
+        has_slots=has_slots,
         offset=offset,
         limit=limit,
         display_only=renderable_only,

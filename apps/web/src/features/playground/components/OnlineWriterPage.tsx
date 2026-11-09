@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { DataState, PageHeader } from "@/components/domain";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { readApiKey } from "@/features/auth/session";
 import { liveApi, type RecommendationRequest } from "../live/api";
 import { WriterComposer } from "./WriterComposer";
 import { WriterContextForm, blankContext, type WriterContext } from "./WriterContextForm";
@@ -11,10 +10,10 @@ import { WriterResults } from "./WriterResults";
 import { ErrorText, type WriterStage } from "./WriterStatus";
 import { WriterValidation } from "./WriterValidation";
 
-export function OnlineWriterPage() {
+export function OnlineWriterPage({ initialContext = {} }: { initialContext?: Partial<WriterContext> }) {
   // Online Writer: FR-07 search → FR-07.5 render → FR-08 validation → FR-07.7 feedback.
-  const apiKey = useAuth().apiKey ?? readApiKey() ?? "";
-  const [context, setContext] = useState<WriterContext>(blankContext);
+  const apiKey = useAuth().apiKey ?? "";
+  const [context, setContext] = useState<WriterContext>(() => ({ ...blankContext, ...initialContext }));
   const [supportingContext, setSupportingContext] = useState("");
   const [picked, setPicked] = useState("");
   const [slots, setSlots] = useState<Record<string, string>>({});
@@ -105,6 +104,7 @@ export function OnlineWriterPage() {
   const searchedWith = [
     taxonomy.data?.article_genres.find((item) => item.code === context.genre)?.name,
     taxonomy.data?.sections.find((item) => item.code === context.section)?.name,
+    taxonomy.data?.sections.flatMap((item) => item.moves).find((item) => item.code === context.move)?.name,
     intentName(context.intent),
     optionLabel("claim_type", context.claimType),
     optionLabel("evidence_level", context.evidenceLevel),
@@ -144,6 +144,7 @@ export function OnlineWriterPage() {
     render.reset(); validation.reset(); feedback.reset();
     recommendation.mutate({ epoch: epoch.current, request: {
       section: context.section || null,
+      move: context.move || null,
       intent: context.intent || null,
       genre: context.genre || null,
       claim_type: context.claimType || null,

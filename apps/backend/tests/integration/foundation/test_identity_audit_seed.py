@@ -162,7 +162,8 @@ async def test_seed_is_idempotent_and_contains_required_reference_and_sample_dat
     basic_count = sum(
         len(category["examples"]) for category in _read_phrasebank_basic()["categories"]
     )
-    assert len(first["phrase_patterns"]) == basic_count
+    # Phrasebank Basic patterns + the 32 Academic Phrase Bank entries seeded as drafts.
+    assert len(first["phrase_patterns"]) == basic_count + 32
 
     async with session_factory() as session:
         licenses = await session.scalars(select(License))

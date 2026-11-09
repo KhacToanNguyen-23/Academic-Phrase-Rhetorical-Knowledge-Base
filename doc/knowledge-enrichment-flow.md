@@ -145,9 +145,9 @@ Mã nguồn: `apps/backend/src/aprkb/modules/extraction/`, web
 | Trạng thái | Chức năng | Endpoint | Giới hạn hiện tại |
 |---|---|---|---|
 | [x] | Đọc pattern hiện hành đã approve qua hợp đồng Online chung | `GET /v1/patterns`, detail/version | Nhãn `unknown` trả null và cờ `labelled=false`; không trả source text |
-| [~] | Gợi ý phrase có giải thích điểm và fallback tier | `POST /v1/recommendations` | Hiện dùng `generic_genre`; chưa có dữ liệu xác minh cho journal/genre, fingerprint hoặc discipline ranking. Có gate `evidence_min` và `forbidden_contexts` (so mã literal section/genre/claim type, chờ owner chốt semantics) |
-| [x] | Render phrase với slot của người viết | `POST /v1/render` | Cần recommendation đã cấp cho cùng client; kiểm tra slot bắt buộc/độ dài tối thiểu |
-| [~] | Kiểm tra câu, giữ hợp đồng kết quả V01–V08 | `POST /v1/validate` | V02 kiểm tra claim/evidence bằng `EvidencePolicy`; V03 kiểm tra grounding giới hạn; V06 dò cụm từ style cấu hình, không kiểm tra ngữ pháp. V01/V04/V05/V07/V08 trả `unavailable`, không phải pass |
+| [~] | Gợi ý phrase có giải thích điểm và fallback tier | `POST /v1/recommendations` | Khi chọn journal, chỉ trả pattern mined đã approve có provenance bài thuộc journal đó; journal được xác định bằng `Article.journal_id` trong dữ liệu cục bộ Offline/SLR, không gọi OpenAlex lúc recommend. Không có mapping thì trả rỗng, không fallback. Cảnh báo nêu intent không hợp lệ, bộ lọc không khớp và các tie bị cắt bởi limit. Chưa có fingerprint hoặc discipline ranking. Không chọn journal thì dùng fallback tier generic. Có gate `evidence_min` và `forbidden_contexts` (so mã literal section/genre/claim type, chờ owner chốt semantics) |
+| [x] | Render phrase với slot của người viết | `POST /v1/render` | Cần recommendation đã cấp cho cùng client; kiểm tra slot bắt buộc/độ dài tối thiểu; cảnh báo slot lặp và giá trị slot kết thúc bằng dấu câu câu hoàn chỉnh để người viết rà soát |
+| [~] | Kiểm tra câu, giữ hợp đồng kết quả V01–V08 | `POST /v1/validate` | V02 kiểm tra claim/evidence bằng `EvidencePolicy`; V03 kiểm tra grounding giới hạn; V06 dò cụm từ style cấu hình, không kiểm tra ngữ pháp. Response cảnh báo khi kiểm tra chưa đầy đủ và khi còn placeholder `{slot}`. V05 là `not_applicable` vì luồng Writer kiểm tra câu, không kiểm tra tuân thủ guideline journal/toàn bản thảo. V01/V04/V07/V08 vẫn `unavailable`, không phải pass |
 
 Hai lỗi metadata đã sửa trên nền `dev`: Online ưu tiên `source_sentence_count`
 được import, fallback sang số sentence ID cục bộ khi count là null; tạo version

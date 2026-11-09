@@ -1,4 +1,4 @@
-"""AT-04: an article source outage fails the import job and leaves local search available."""
+"""AT-04: a source outage schedules bounded retry and leaves local search available."""
 
 from pathlib import Path
 
@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from aprkb.seeds.load import run_seed
 from tests.integration.corpus.test_article_import import (
-    test_source_outage_fails_the_import_job_without_touching_the_corpus as covered_case,
+    test_source_outage_schedules_retry_without_touching_the_corpus as covered_case,
 )
 
 

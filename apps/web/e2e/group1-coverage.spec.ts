@@ -1,9 +1,16 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { authenticateCurator } from "./support/auth";
 
 test.skip(process.env.ONLINE_RANKING_LIVE !== "1", "Requires the isolated live Group 1 API");
 test.use({
   browserName: "chromium",
   ...(process.env.WRITER_E2E_BROWSER === "msedge" ? { channel: "msedge" as const } : {}),
+});
+
+let apiKey = "";
+
+test.beforeEach(async ({ page, request }) => {
+  apiKey = await authenticateCurator(page, request);
 });
 
 async function select(page: Page, name: string, label: string) {
@@ -12,7 +19,7 @@ async function select(page: Page, name: string, label: string) {
 }
 
 async function rhetoric(request: APIRequestContext) {
-  const response = await request.get("/v1/taxonomy");
+  const response = await request.get("/v1/taxonomy", { headers: { "X-API-Key": apiKey } });
   expect(response.ok()).toBeTruthy();
   const taxonomy = await response.json();
   const section = taxonomy.sections.find((s: { code: string }) => s.code === "INTRO");

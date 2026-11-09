@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class LemmaResearchEvidence(BaseModel):
+    paper_count: int
+    sample_count: int
 
 
 class LemmaSummary(BaseModel):
@@ -18,6 +23,8 @@ class LemmaSummary(BaseModel):
     status: str | None
     status_label: str
     is_core: bool
+    coca_acad: int | None
+    research_evidence: LemmaResearchEvidence | None = None
 
 
 class LemmaPage(BaseModel):
@@ -63,7 +70,6 @@ class FamilyRead(BaseModel):
 
 class LemmaDetail(LemmaSummary):
     coca_all: int | None
-    coca_acad: int | None
     ratio: float | None
     disp: float | None
     range: int | None
@@ -88,3 +94,21 @@ class VocabularyPolicyLabels(BaseModel):
             category=dict(labels.category),
             domains=dict(labels.domains),
         )
+
+
+class VocabularyResearchGroup(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    key: str
+    field_id: str
+    field_name: str
+    subfield_id: str | None
+    subfield_name: str | None
+    paper_count: int
+
+
+class VocabularyFilterOptions(BaseModel):
+    pos: dict[str, str]
+    status: dict[str, str]
+    domains: dict[str, str]
+    research_groups: list[VocabularyResearchGroup] = Field(default_factory=list)

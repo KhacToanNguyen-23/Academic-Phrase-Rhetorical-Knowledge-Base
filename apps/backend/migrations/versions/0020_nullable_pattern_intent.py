@@ -2,8 +2,8 @@
 
 from alembic import op
 
-revision = "0016_nullable_pattern_intent"
-down_revision = "0015_academic_phrase_bank"
+revision = "0020_nullable_pattern_intent"
+down_revision = "0019_academic_phrase_bank"
 branch_labels = None
 depends_on = None
 

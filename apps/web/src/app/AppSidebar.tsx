@@ -53,6 +53,10 @@ export function AppSidebar({ pathname, theme, onToggleTheme }: Props) {
   const inboxCount = submissions.data?.filter((s) => s.status === "pending").length;
   const ThemeIcon = theme === "dark" ? Sun : Moon;
   const themeLabel = theme === "dark" ? "Light theme" : "Dark theme";
+  const signOut = () => {
+    auth.logout();
+    void navigate({ to: "/" });
+  };
 
   return (
     <Sidebar collapsible="icon" aria-label="Main navigation">
@@ -104,6 +108,7 @@ export function AppSidebar({ pathname, theme, onToggleTheme }: Props) {
         <SidebarMenu>
           {isAdmin && <NavLink item={ADMIN_ITEM} pathname={pathname} />}
           {client ? (
+            <>
             <SidebarMenuItem>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -124,18 +129,20 @@ export function AppSidebar({ pathname, theme, onToggleTheme }: Props) {
                     {themeLabel}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      auth.logout();
-                      void navigate({ to: "/" });
-                    }}
-                  >
+                  <DropdownMenuItem onSelect={signOut}>
                     <LogOut strokeWidth={1.5} />
                     Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={signOut} tooltip="Sign out">
+                <LogOut strokeWidth={1.5} />
+                <span>Sign out</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            </>
           ) : (
             <>
               <SidebarMenuItem>

@@ -12,11 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aprkb.core.deps import get_db_session
 from aprkb.core.security import require_role
 from aprkb.modules.identity.models import ApiClient
+from aprkb.modules.measurement.metric_check import find_undeclared_metrics
+from aprkb.modules.measurement.repository import metric_terms
 from aprkb.modules.recommendation.repository import reference_strengths
 from aprkb.modules.validation.context import ValidationContext
 from aprkb.modules.validation.pipeline import ValidationPipeline
 from aprkb.modules.validation.rules import build_rules
 from aprkb.modules.validation.schemas import (
+    MetricWarning,
     ValidationRequest,
     ValidationResponse,
     ValidationRuleResponse,
@@ -66,6 +69,33 @@ async def validate_text(
         warnings.append(
             "Validation is incomplete because checks are unavailable: " + ", ".join(unavailable)
         )
+    policy_versions = {
+        "evidence_matrix": bundle.evidence_matrix.version,
+        "epistemic_markers": bundle.epistemic_markers.version,
+        "validation_rules": bundle.validation_rules.version,
+    }
+    metric_warnings: list[MetricWarning] = []
+    if request.app.state.settings.measurement_enabled:
+        # ADR-0015 / FR-08.2: report-only; severity and completeness stay unchanged.
+        policy_versions["measurement"] = bundle.measurement.version
+        metric_warnings = [
+            MetricWarning(
+                code=item.code,
+                name=item.name,
+                span=item.span,
+                message=(
+                    f"The metric '{item.name}' is not in the supplied slots or context; "
+                    "confirm it was actually measured."
+                ),
+            )
+            for item in find_undeclared_metrics(
+                payload.text,
+                context.source_values,
+                await metric_terms(session),
+                min_term_length=bundle.measurement.metric_check_min_term_length,
+            )
+        ]
+        warnings.extend(warning.message for warning in metric_warnings)
     unfilled_slots = sorted(set(UNFILLED_SLOT.findall(payload.text)))
     if unfilled_slots:
         warnings.append(
@@ -78,11 +108,7 @@ async def validate_text(
         context_hash=sha256(
             json.dumps(context.__dict__, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest(),
-        policy_versions={
-            "evidence_matrix": bundle.evidence_matrix.version,
-            "epistemic_markers": bundle.epistemic_markers.version,
-            "validation_rules": bundle.validation_rules.version,
-        },
+        policy_versions=policy_versions,
         severity=result.severity.value,
         complete=result.complete,
         checks_unavailable=unavailable,
@@ -101,4 +127,5 @@ async def validate_text(
             )
             for rule in result.rules
         ],
+        metric_warnings=metric_warnings,
     )

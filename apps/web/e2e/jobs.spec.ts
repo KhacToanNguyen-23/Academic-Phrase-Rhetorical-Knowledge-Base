@@ -12,7 +12,7 @@ async function mockApi(page: Page, role = "curator", conflict = false) {
     manual_retries: 0, manual_retry_limit: 3, progress_stage: "listing_articles",
     progress_completed: null, progress_total: null };
   let acknowledged = false;
-  await page.addInitScript(() => sessionStorage.setItem("aprkb-staff-session", "jobs-ui-test"));
+  await page.addInitScript(() => sessionStorage.setItem("aprkb-web-session", "jobs-ui-test"));
   await page.route("**/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -20,7 +20,7 @@ async function mockApi(page: Page, role = "curator", conflict = false) {
     if (post) posts.push({ path, body: route.request().postDataJSON() });
     else gets.push(path);
     let data: unknown;
-    if (path === "/v1/auth/me") data = { id, name: "Operator", role };
+    if (path === "/v1/auth/session/me") data = { id, name: "Operator", role };
     else if (path === "/v1/admin/jobs") data = !url.searchParams.get("status") || url.searchParams.get("status") === job.status ? [job] : [];
     else if (path === `/v1/admin/jobs/${id}`) data = job;
     else if (path.endsWith("/attempts")) data = [{ id: alertId, attempt_no: 4, started_at: failedAt, ended_at: failedAt, outcome: "failed", stage: "listing_articles", completed: null, total: null, error_code: "transport_unavailable", error: "Processing failed (ConnectError)", next_attempt_at: null }];

@@ -22,12 +22,15 @@ class Settings(BaseSettings):
 
     app_env: str = "local"
     app_secret_key: str = "change-me"
+    google_client_id: str | None = None
     api_cors_origins: list[str] = ["http://localhost:5173"]
 
     database_url: str = "postgresql+asyncpg://aprkb:aprkb@localhost:5432/aprkb"
     blob_dir: str = "./data/blobs"
     log_level: str = "INFO"
     reference_library_enabled: bool = False
+    # ADR-0015: separate Metric & Measurement catalog, off until the catalog is reviewed.
+    measurement_enabled: bool = False
     nlp_engine: Literal["regex", "spacy"] = "regex"
     nlp_model: str = "en_core_web_sm"
     mining_hybrid_enabled: bool = False

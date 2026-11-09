@@ -19,7 +19,7 @@ const STATUS_LABEL: Record<PatternStatus, string> = {
   retired: "Retired",
 };
 
-type Destination = "/library" | "/inbox" | "/admin";
+type Destination = "/phrasebank" | "/inbox" | "/admin";
 
 const isQuarantined = (s: Submission) =>
   s.license_status === "unknown" || s.license_status === "restricted" || !s.user_opt_in;
@@ -123,7 +123,7 @@ export function OverviewPage() {
           value={approved}
           label="Approved patterns"
           note={patterns.data ? `of ${all.length} in the bank` : undefined}
-          to="/library"
+          to="/phrasebank"
           failed={patterns.isError}
         />
         <Figure value={logs.data?.length} label="API requests today" to="/admin" failed={logs.isError} />
@@ -176,7 +176,7 @@ export function OverviewPage() {
                   {pending.length > ROW_LIMIT ? `${pending.length - ROW_LIMIT} more in the inbox. ` : ""}
                   {quarantined ? `${quarantined} quarantined for an unknown or restricted licence. ` : ""}
                   {inReview
-                    ? `${inReview} ${inReview === 1 ? "pattern is" : "patterns are"} in review in the library.`
+                    ? `${inReview} ${inReview === 1 ? "pattern is" : "patterns are"} in review in phrasebank.`
                     : ""}
                 </p>
               </div>

@@ -248,6 +248,27 @@ async def _import_vocabulary(*, files: list[Path]) -> None:
         await engine.dispose()
 
 
+async def _build_vocabulary_research(*, path: Path) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.vocabulary.research_builder import ResearchManifest, build_research_snapshot
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine)
+    try:
+        manifest = ResearchManifest.model_validate_json(path.read_bytes())
+        async with factory.begin() as session:
+            groups, stats = await build_research_snapshot(session, manifest)
+        print(
+            f"Built evidence from {len(manifest.papers)} papers "
+            f"for {groups} field/subfield groups with {stats} lemma associations."
+        )
+    except (OSError, ValueError) as error:
+        print(f"Vocabulary research build failed: {error}", file=sys.stderr)
+        raise SystemExit(2) from error
+    finally:
+        await engine.dispose()
+
+
 async def _reingest(*, source: str) -> None:
     from aprkb.api.main import app as _app  # noqa: F401
     from aprkb.modules.corpus.models import Article
@@ -338,6 +359,54 @@ async def _import_reference_library(*, file_path: Path) -> None:
         print(
             f"Imported reference library: {counts['categories']} categories, "
             f"{counts['entries']} entries, {counts['blocks']} blocks, {counts['tables']} tables."
+        )
+    finally:
+        await engine.dispose()
+
+
+async def _import_measurement_catalog(*, file_path: Path) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.measurement.importer import import_catalog, load_catalog
+    from aprkb.policies.loader import load_policy_bundle
+
+    catalog = load_catalog(file_path, load_policy_bundle().measurement)
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                result = await import_catalog(
+                    session, catalog, actor_id=None, request_id="cli-measurement-import"
+                )
+            except Exception:
+                await session.rollback()
+                raise
+        print(
+            f"Measurement catalog {result['catalog_version']}: {result['status']}, "
+            f"{result['entries_created']} created, {result['entries_updated']} updated, "
+            f"{result['relations']} relations, {len(result['missing_codes'])} missing code(s)."
+        )
+    finally:
+        await engine.dispose()
+
+
+async def _purge_measurement_catalog() -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.measurement.importer import purge_catalog
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                counts = await purge_catalog(session, request_id="cli-measurement-purge")
+            except Exception:
+                await session.rollback()
+                raise
+        print(
+            f"Purged measurement catalog: {counts['entries']} entries, "
+            f"{counts['relations']} relations, {counts['slot_links']} slot links, "
+            f"{counts['import_runs']} import runs."
         )
     finally:
         await engine.dispose()
@@ -666,6 +735,11 @@ def main() -> None:
     commands.add_parser("bootstrap-key")
     vocabulary_import = commands.add_parser("vocab-import")
     vocabulary_import.add_argument("--file", type=Path, action="append", required=True)
+    vocabulary_research = commands.add_parser(
+        "build-vocabulary-research",
+        help="Replace local vocabulary research evidence using a classified-paper manifest",
+    )
+    vocabulary_research.add_argument("manifest", type=Path)
     openapi = commands.add_parser("export-openapi")
     openapi.add_argument("--check", action="store_true")
     reingest = commands.add_parser(
@@ -701,6 +775,13 @@ def main() -> None:
     )
     reference_import.add_argument("--file", type=Path, required=True)
     commands.add_parser("purge-reference-library", help="Remove all reference-library data")
+    measurement_import = commands.add_parser(
+        "measurement-import", help="Import the self-authored Metric & Measurement catalog"
+    )
+    measurement_import.add_argument("--file", type=Path, required=True)
+    commands.add_parser(
+        "measurement-purge", help="Remove the measurement catalog and its slot links"
+    )
     commands.add_parser(
         "export-reference-mapping-template",
         help="Print an empty reference-to-taxonomy mapping template",
@@ -726,6 +807,8 @@ def main() -> None:
         asyncio.run(_bootstrap_key())
     elif args.command == "vocab-import":
         asyncio.run(_import_vocabulary(files=args.file))
+    elif args.command == "build-vocabulary-research":
+        asyncio.run(_build_vocabulary_research(path=args.manifest))
     elif args.command == "export-openapi":
         _export_openapi(check=args.check)
     elif args.command == "reingest":
@@ -760,6 +843,10 @@ def main() -> None:
         )
     elif args.command == "import-reference-library":
         asyncio.run(_import_reference_library(file_path=args.file))
+    elif args.command == "measurement-import":
+        asyncio.run(_import_measurement_catalog(file_path=args.file))
+    elif args.command == "measurement-purge":
+        asyncio.run(_purge_measurement_catalog())
     elif args.command == "purge-reference-library":
         asyncio.run(_purge_reference_library())
     elif args.command == "export-reference-mapping-template":

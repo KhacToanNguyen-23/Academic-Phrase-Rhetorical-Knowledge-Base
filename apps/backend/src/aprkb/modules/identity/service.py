@@ -1,11 +1,13 @@
 """API client creation and lookup; callers own transaction boundaries."""
 
+from datetime import UTC, datetime
+
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.core.security import generate_api_key, hash_api_key, verify_api_key
 from aprkb.modules.audit.service import record_event
-from aprkb.modules.identity.models import ApiClient
+from aprkb.modules.identity.models import ApiClient, StaffSession
 from aprkb.seeds.load import run_seed
 
 VALID_ROLES = {"admin", "curator", "reviewer", "client"}
@@ -32,6 +34,17 @@ async def create_api_key(session: AsyncSession, *, name: str, role: str) -> tupl
 async def authenticate_api_key(session: AsyncSession, plaintext: str) -> ApiClient | None:
     if not plaintext:
         return None
+    if plaintext.startswith(("staff_", "google_", "email_")):
+        result = await session.scalar(
+            select(ApiClient)
+            .join(StaffSession, StaffSession.client_id == ApiClient.id)
+            .where(
+                StaffSession.token_hash == hash_api_key(plaintext),
+                StaffSession.expires_at > datetime.now(UTC),
+                ApiClient.is_active.is_(True),
+            )
+        )
+        return result
     key_hash = hash_api_key(plaintext)
     client = await session.scalar(select(ApiClient).where(ApiClient.key_hash == key_hash))
     if client is None or not client.is_active or not verify_api_key(plaintext, client.key_hash):
@@ -92,3 +105,18 @@ async def initialize_local_demo_session(
         await session.rollback()
         raise
     return client, plaintext
+
+
+def hash_password(password: str, salt: str | None = None) -> str:
+    import hashlib
+    import secrets
+
+    salt = salt or secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 600_000).hex()
+    return f"{salt}${digest}"
+
+
+def verify_password(password: str, stored: str) -> bool:
+    import hmac
+
+    return hmac.compare_digest(hash_password(password, stored.split("$", 1)[0]), stored)

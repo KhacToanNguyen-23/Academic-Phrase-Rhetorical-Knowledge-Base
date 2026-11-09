@@ -87,6 +87,15 @@ export function WriterValidation({
                 Journal guideline compliance is outside this sentence-level check.
               </Notice>
             )}
+            {(validation.metric_warnings ?? []).length > 0 && (
+              // FR-08.2 / ADR-0015: report-only; it does not change the claim-check severity.
+              <Notice>
+                Check your measures:{" "}
+                {(validation.metric_warnings ?? []).map((warning) => warning.name).join(", ")}{" "}
+                {(validation.metric_warnings ?? []).length === 1 ? "is" : "are"} named in the sentence but not in
+                your slots or context. Keep a metric only if your study actually measured it.
+              </Notice>
+            )}
             {issues.map((rule) => (
               <Alert key={rule.code} variant={rule.severity === "block" ? "destructive" : "default"}>
                 <AlertTitle className="flex items-center gap-2">

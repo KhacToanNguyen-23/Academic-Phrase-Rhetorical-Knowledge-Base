@@ -3,8 +3,8 @@
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0015_academic_phrase_bank"
-down_revision = "0014_merge_jobs_and_cluster"
+revision = "0019_academic_phrase_bank"
+down_revision = "0018_merge_measurement_and_dev"
 branch_labels = None
 depends_on = None
 

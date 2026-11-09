@@ -92,7 +92,14 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
     expected = {
         ("/v1/health", "get"),
         ("/v1/auth/me", "get"),
-        ("/v1/auth/demo-session", "post"),
+        ("/v1/auth/session/me", "get"),
+        ("/v1/auth/register", "post"),
+        ("/v1/auth/login", "post"),
+        ("/v1/auth/logout", "post"),
+        ("/v1/auth/setup", "post"),
+        ("/v1/auth/google", "post"),
+        ("/v1/auth/google/config", "get"),
+        ("/v1/auth/google/me", "get"),
         ("/v1/taxonomy", "get"),
         ("/v1/taxonomy/releases", "get"),
         ("/v1/taxonomy/reference-options", "get"),
@@ -155,11 +162,20 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/admin/api-keys", "delete"),
         ("/v1/admin/releases/{id}/publish", "post"),
         ("/v1/vocabulary/families", "get"),
+        ("/v1/vocabulary/filter-options", "get"),
         ("/v1/vocabulary/lemmas", "get"),
         ("/v1/vocabulary/letters", "get"),
         ("/v1/vocabulary/lemmas/{id}", "get"),
         ("/v1/admin/vocabulary/imports", "get"),
         ("/v1/admin/vocabulary/imports", "post"),
+        # ADR-0015 Metric & Measurement catalog (off unless MEASUREMENT_ENABLED).
+        ("/v1/measurements", "get"),
+        ("/v1/measurements/slot-suggestions", "get"),
+        ("/v1/measurements/{id}", "get"),
+        ("/v1/admin/measurements/imports", "post"),
+        ("/v1/admin/measurements/slot-links", "get"),
+        ("/v1/admin/measurements/slot-links", "post"),
+        ("/v1/admin/measurements/slot-links/{id}/review", "post"),
     }
 
     assert actual == expected
@@ -1087,7 +1103,13 @@ async def test_pattern_browsing_filters_keyword_and_taxonomy_before_old_200_cap(
         intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
         assert intent is not None
         final_pattern_id = None
+        plain_pattern_id = None
         for index in range(201):
+            frame = "Ordinary phrase"
+            if index == 199:
+                frame = "Plain needle phrase"
+            elif index == 200:
+                frame = "Late needle phrase {topic}"
             pattern = PhrasePattern(
                 intent_id=intent.id,
                 status="approved",
@@ -1098,8 +1120,8 @@ async def test_pattern_browsing_filters_keyword_and_taxonomy_before_old_200_cap(
             version = PatternVersion(
                 pattern_id=pattern.id,
                 version_no=1,
-                canonical_frame="Late needle phrase" if index == 200 else "Ordinary phrase",
-                slots={},
+                canonical_frame=frame,
+                slots={"topic": {"type": "text"}} if index == 200 else {},
                 epistemic_strength="low",
                 claim_type="descriptive",
             )
@@ -1117,14 +1139,23 @@ async def test_pattern_browsing_filters_keyword_and_taxonomy_before_old_200_cap(
                 ]
             )
             final_pattern_id = pattern.id
+            if index == 199:
+                plain_pattern_id = pattern.id
         await session.commit()
-    response = await api_client.get(
-        "/v1/patterns",
-        headers={"X-API-Key": key},
-        params={"q": "NEEDLE", "section": "INTRO", "intent": "INTRO_GAP_INDICATE", "limit": 1},
-    )
-    assert response.status_code == 200, response.text
-    assert [row["id"] for row in response.json()] == [str(final_pattern_id)]
+    for has_slots, expected_id in [("true", final_pattern_id), ("false", plain_pattern_id)]:
+        response = await api_client.get(
+            "/v1/patterns",
+            headers={"X-API-Key": key},
+            params={
+                "q": "NEEDLE",
+                "section": "INTRO",
+                "intent": "INTRO_GAP_INDICATE",
+                "has_slots": has_slots,
+                "limit": 1,
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert [row["id"] for row in response.json()] == [str(expected_id)]
 
 
 @pytest.mark.asyncio

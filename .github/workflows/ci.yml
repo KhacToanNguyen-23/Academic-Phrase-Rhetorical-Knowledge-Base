@@ -1,7 +1,10 @@
 name: CI
 
 on:
+  # Feature branches are covered by their pull_request run; running push as well
+  # executed every commit twice. Protected branches still run on push.
   push:
+    branches: [dev, main]
   pull_request:
 
 # Required check names (document verbatim before ruleset activation; see
@@ -64,8 +67,8 @@ jobs:
         run: uv run --directory apps/backend alembic -c alembic.ini upgrade head
       - name: PostgreSQL-backed integration tests must not skip
         run: bash scripts/ci/require-db-tests.sh
-      - name: Run full backend test suite
-        run: make test
+      - name: Run remaining backend tests (tests/integration already ran above)
+        run: uv run --directory apps/backend pytest --ignore=tests/integration
 
   frontend-quality-and-build:
     name: frontend-quality-and-build

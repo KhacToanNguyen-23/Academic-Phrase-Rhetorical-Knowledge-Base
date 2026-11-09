@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     app_env: str = "local"
     app_secret_key: str = "change-me"
+    google_client_id: str | None = None
     api_cors_origins: list[str] = ["http://localhost:5173"]
 
     database_url: str = "postgresql+asyncpg://aprkb:aprkb@localhost:5432/aprkb"

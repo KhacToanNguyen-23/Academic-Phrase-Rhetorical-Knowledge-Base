@@ -67,7 +67,9 @@ async def _seed_vocabulary(session_factory: async_sessionmaker) -> str:
             domains=["HIS"],
             coca_acad=30,
         )
-        beta = VocabLemma(word="beta", pos="v", rank=1, band=2, status="x", coca_acad=10)
+        beta = VocabLemma(
+            word="beta", pos="v", rank=1, band=2, status="x", coca_acad=10, domains=["MED"]
+        )
         numeric = VocabLemma(word="9lives", pos="n", rank=3, is_core=True)
         family = VocabFamily(headword="alpha", rank=1, family_freq=14)
         session.add_all([alpha, beta, numeric, family])
@@ -141,6 +143,7 @@ async def test_vocabulary_filters_pagination_and_detail(
         ({"pos": "v", "status": "x", "band_min": 2, "band_max": 2}, ["beta"]),
         ({"band_max": 1, "domain": "HIS"}, ["alpha"]),
         ({"domain": "SCI"}, []),
+        ({"domain": "MED"}, ["beta"]),
         ({"status": "unknown"}, ["9lives"]),
         ({"band_min": 2}, ["beta"]),
         ({"sort": "academic_frequency"}, ["alpha", "beta", "9lives"]),
@@ -152,7 +155,9 @@ async def test_vocabulary_filters_pagination_and_detail(
         assert [item["word"] for item in filtered.json()["items"]] == expected_words
 
     filtered_letters = await api_client.get(
-        "/v1/vocabulary/letters", params={"pos": "v", "band_min": 2}, headers=headers
+        "/v1/vocabulary/letters",
+        params={"pos": "v", "band_min": 2, "domain": "MED"},
+        headers=headers,
     )
     assert filtered_letters.status_code == 200
     assert [item for item in filtered_letters.json() if item["count"]] == [

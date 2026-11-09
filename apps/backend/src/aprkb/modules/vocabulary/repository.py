@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, Integer, func, literal_column, or_, select, tuple_
+from sqlalchemy import ColumnElement, Integer, any_, func, literal_column, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -319,9 +319,12 @@ def _lemma_filters(
         clauses.append(VocabLemma.band <= filters.band_max)
     if filters.domain is not None:
         clauses.append(
-            VocabLemma.domain_stats.any(
-                (VocabLemmaDomainStat.domain == filters.domain)
-                & (VocabLemmaDomainStat.relative_ratio > 1.0)
+            or_(
+                any_(VocabLemma.domains) == filters.domain,
+                VocabLemma.domain_stats.any(
+                    (VocabLemmaDomainStat.domain == filters.domain)
+                    & (VocabLemmaDomainStat.relative_ratio > 1.0)
+                ),
             )
         )
     if filters.research_group is not None:

@@ -1,6 +1,5 @@
 import {
   BookMarked,
-  BookOpen,
   BookText,
   Download,
   FlaskConical,
@@ -25,7 +24,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Reference",
     items: [
-      { to: "/library", label: "Library", icon: BookOpen },
       { to: "/phrasebank", label: "Phrasebank", icon: BookMarked },
       { to: "/vocabulary", label: "Vocabulary", icon: BookText },
       { to: "/measurements", label: "Measurement", icon: Ruler },
@@ -45,7 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Tools",
     items: [
       { to: "/playground", label: "Playground", icon: FlaskConical },
-      { to: "/writer", label: "Writer", icon: PenLine, publicAccess: true },
+      { to: "/writer", label: "Writer", icon: PenLine },
     ],
   },
 ];

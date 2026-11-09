@@ -108,10 +108,57 @@ async function mockLibrary(page: Page) {
   });
 }
 
+const academicPhrase = {
+  id: "apb-phrase-1", status: "proposed", intent_code: "INTRO_GAP_INDICATE", intent_name: "Indicating a gap",
+  canonical_frame: "The role of {topic} in {context} remains underexplored.", version_no: 1, current_version_id: "apb-version-1",
+  slots: { topic: { type: "research_topic", label: "Research topic", instruction: "Name a bounded topic", example: "federated learning", required: true }, context: "research_context" },
+  variants: [], allowed_sections: ["INTRO"], allowed_genres: ["RESEARCH_ARTICLE"], move_code: "INTRO_GAP",
+  communicative_functions: [{ code: "INDICATE_GAP", label: "Indicating a gap", family_code: "IDENTIFYING_NICHE", family_label: "Establishing a niche", purpose: "Show what remains unknown", status: "proposed", version: "1.0.0" }],
+  move_links: [{ section_code: "INTRO", code: "INTRO_GAP", label: "Establishing a niche", relation: "REALIZES_MOVE" }],
+  step_links: [{ section_code: "INTRO", move_code: "INTRO_GAP", code: "INTRO_INDICATE", label: "Indicating a gap", relation: "REALIZES_STEP" }],
+  usage_profiles: [{ section_code: "INTRO", section_label: "Introduction", genre_code: "RESEARCH_ARTICLE", language_code: "en", register_code: "REGISTER_FORMAL_ACADEMIC", discipline_code: "SCI", audience: "Researchers", preferred_usage: "general" }],
+  pragmatic_tags: [{ code: "STANCE_EPISTEMIC", version: "1.0.0", label: "Epistemic stance", facet: "stance_type", context_note: "Use for a bounded literature gap.", strength_note: null }],
+  examples: [
+    { kind: "positive", text: "The role of federated learning in intermittent networks remains underexplored.", explanation: "Names a bounded research context.", origin_kind: "illustrative_synthetic", license_code: null, license_allows_display: true, source_ref: null },
+    { kind: "negative", text: "Everything about this topic is unexplored.", explanation: "Overstates the gap.", origin_kind: "illustrative_synthetic", license_code: null, license_allows_display: true, source_ref: null },
+  ],
+  caveats: [{ code: "GAP_REQUIRES_REVIEW", severity: "warning", message: "Support a gap claim with a documented literature review." }],
+  source_type: "original", license_code: "CC-BY", license_name: "Creative Commons Attribution", license_allows_display: true,
+  license_flag: false, source_reference: null, article_id: null, source_sentence_count: 0,
+  discipline_affinities: [], epistemic_strength: null, epistemic_strength_labelled: false, claim_type: null, claim_type_labelled: false,
+  evidence_min: null, forbidden_contexts: [],
+};
+
+async function mockAcademicPhraseBank(page: Page) {
+  const functions = [{ code: "INDICATE_GAP", family_code: "IDENTIFYING_NICHE", family_label: "Establishing a niche", label: "Indicating a gap", purpose: "Show what remains unknown", status: "proposed", version: "1.0.0" }];
+  const features = [
+    { code: "STANCE_EPISTEMIC", description: null, facet: "stance_type", label: "Epistemic stance", status: "proposed", version: "1.0.0" },
+    { code: "REGISTER_FORMAL_ACADEMIC", description: null, facet: "register", label: "Formal academic", status: "proposed", version: "1.0.0" },
+  ];
+  const domains = [{ code: "SCI", label: "Science", version: "1.0.0" }];
+  await page.route("**/v1/academic-phrases**", (route) => {
+    const url = new URL(route.request().url());
+    const detailRequest = url.pathname.endsWith("/apb-phrase-1");
+    if (url.pathname.endsWith("/functions")) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: functions }) });
+    if (url.pathname.endsWith("/pragmatic-features")) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: features }) });
+    if (url.pathname.endsWith("/domains")) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: domains }) });
+    const params = url.searchParams;
+    const matches = params.get("function") === "INDICATE_GAP"
+      && params.get("function_version") === "1.0.0"
+      && params.get("section") === "INTRO"
+      && params.get("stance") === "STANCE_EPISTEMIC"
+      && params.get("register") === "REGISTER_FORMAL_ACADEMIC"
+      && params.get("domain") === "SCI"
+      && params.get("q") === "underexplored";
+    if (detailRequest) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(academicPhrase) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: matches ? [academicPhrase] : [], total: matches ? 1 : 0, limit: 50, offset: 0 }) });
+  });
+}
+
 // The redesigned filters are Radix comboboxes, not native <select> elements.
 async function selectFilter(page: Page, name: string, option: string) {
   await page.getByRole("combobox", { name, exact: true }).click();
-  await page.getByRole("option", { name: option, exact: true }).click();
+  await page.getByRole("option").filter({ hasText: option }).click();
   await expect(page.getByRole("combobox", { name, exact: true })).toContainText(option);
 }
 
@@ -170,6 +217,39 @@ test("home uses compact expandable groups and source filtering without key warni
   await patternGroup(page, "INTRO · Invented intent").locator("summary").click();
   await expect(page.getByRole("link", { name: "Use in writer" })).toBeVisible();
   expect(consoleErrors.filter((message) => /unique "key" prop/i.test(message))).toEqual([]);
+});
+
+test("APB combines server filters and renders full phrase detail with examples and caveats", async ({ page }) => {
+  const apbApiKeys: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/v1/academic-phrases")) {
+      apbApiKeys.push(request.headers()["x-api-key"] ?? "");
+    }
+  });
+  await authenticate(page);
+  await mockLibrary(page);
+  await mockAcademicPhraseBank(page);
+  await page.goto("/phrasebank");
+  await selectFilter(page, "Source filter", "Academic Phrase Bank");
+  const searchBox = page.getByRole("searchbox", { name: "Search phrasebanks" });
+  await searchBox.fill("underexplored");
+  await selectFilter(page, "Section filter", "Introduction");
+  await selectFilter(page, "APB function filter", "Indicating a gap");
+  await selectFilter(page, "APB stance filter", "Epistemic stance");
+  await selectFilter(page, "APB register filter", "Formal academic");
+  await selectFilter(page, "APB domain filter", "Science");
+  await expect(page.getByRole("status", { name: "Active APB filters" })).toContainText("Function: Indicating a gap");
+  await expect(page.getByRole("link", { name: /The role of \{topic\}/ })).toBeVisible();
+  expect(apbApiKeys.length).toBeGreaterThan(0);
+  expect(apbApiKeys.every((key) => key === "test-staff-key")).toBe(true);
+  await page.getByRole("link", { name: /The role of \{topic\}/ }).click();
+  await expect(page).toHaveURL(/\/phrasebank\/apb\/apb-phrase-1$/);
+  await expect(page.getByText("Positive examples")).toBeVisible();
+  await expect(page.getByText("Negative examples")).toBeVisible();
+  await expect(page.getByText("GAP_REQUIRES_REVIEW")).toHaveCount(0);
+  await expect(page.getByText("Support a gap claim with a documented literature review.")).toBeVisible();
+  await expect(page.getByText("VTB Concept/Sense")).toBeVisible();
+  await expect(page.getByText("display permitted").first()).toBeVisible();
 });
 
 test("category keeps source order, separate table shapes, index navigation, copy and screenshot", async ({ page, context }) => {

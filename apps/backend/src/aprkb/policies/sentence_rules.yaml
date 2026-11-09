@@ -1,0 +1,39 @@
+# Shared character-level sentence-boundary vocabulary.
+# Provisional values; TODO(owner, FR-07): review against the phase-2 gold set.
+version: 0.1.0
+sentence_starters:
+  - a
+  - an
+  - the
+  - this
+  - that
+  - these
+  - those
+  - we
+  - they
+  - it
+  - he
+  - she
+  - our
+  - however
+  - therefore
+  - thus
+  - in
+  - results
+  - next
+  - then
+  - latency
+unit_tokens:
+  - ms
+  - s
+  - sec
+  - secs
+  - min
+  - mins
+  - h
+  - hz
+  - khz
+  - mhz
+  - db
+heading_max_chars: 120
+heading_max_words: 12

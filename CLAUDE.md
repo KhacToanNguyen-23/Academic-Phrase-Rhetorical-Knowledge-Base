@@ -2,7 +2,7 @@
 
 ## Project state and source of truth
 
-AP-RKB is a runnable backend scaffold, not an empty architecture prototype. Preserve the current repository layout: the Python package is `apps/backend/src/aprkb`; unit, integration, and acceptance tests are under `apps/backend/tests`. `SCAFFOLD_PRD.md` defines this scaffold's scope and overrides older product documents where they differ. Keep the API and worker behavior within that scope; do not add the admin console, production NLP extraction, taxonomy publishing, or excluded evaluation algorithms.
+AP-RKB is a runnable backend scaffold, not an empty architecture prototype. Preserve the current repository layout: the Python package is `apps/backend/src/aprkb`; unit, integration, and acceptance tests are under `apps/backend/tests`. `SCAFFOLD_PRD.md` defines this scaffold's scope and overrides older product documents where they differ. Keep the API and worker behavior within that scope; do not add the admin console, general-purpose NLP extraction, taxonomy publishing, or excluded evaluation algorithms. Owner-approved exceptions are the versioned, closed-world construction registry in ADR-0011 and the read-only frame-statistics CLI; keep both within their documented limits.
 
 ## Commands
 

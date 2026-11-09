@@ -1,8 +1,10 @@
 """PostgreSQL API/import isolation tests use invented fixture text only."""
 
+import hashlib
 import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -15,6 +17,8 @@ from aprkb.core.config import settings
 from aprkb.core.deps import get_db_session
 from aprkb.modules.audit.models import AuditEvent
 from aprkb.modules.identity.service import create_api_key
+from aprkb.modules.patterns.models import PhrasePattern
+from aprkb.modules.phrasebank.service import initialize_phrasebank
 from aprkb.modules.reference_library.importer import import_library, parse_document, purge_library
 from aprkb.modules.reference_library.mapping import export_template, import_mapping_file
 from aprkb.modules.reference_library.models import (
@@ -23,7 +27,7 @@ from aprkb.modules.reference_library.models import (
     ReferenceSource,
     ReferenceTaxonomyMap,
 )
-from aprkb.seeds.load import run_seed
+from aprkb.seeds.load import init_reference, run_seed
 
 
 @pytest_asyncio.fixture
@@ -378,3 +382,164 @@ async def test_reference_routes_return_standard_404_when_flag_is_off(api_client,
     response = await api_client.get("/v1/reference-library/categories")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def _write_phrasebank_init(tmp_path, *, bad_mapping=False, bad_pack=False):
+    sample = Path(__file__).resolve().parents[5] / "data/packs/sample-demo"
+    pack = tmp_path / "patterns"
+    pack.mkdir()
+    payload = (sample / "patterns.json").read_text(encoding="utf-8").encode()
+    (pack / "patterns.json").write_bytes(payload)
+    manifest = json.loads((sample / "manifest.json").read_text(encoding="utf-8"))
+    manifest["files"][0]["sha256"] = "0" * 64 if bad_pack else hashlib.sha256(payload).hexdigest()
+    (pack / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    collection = {
+        "source": "Example University Phrase Library",
+        "status": "quarantined",
+        "license_status": "unknown",
+        "page_count": 1,
+        "block_count": 1,
+        "table_count": 1,
+        "pages": [
+            {
+                "title": "Introducing work",
+                "source_url": "https://example.test/introducing-work/",
+                "resolved_url": "https://example.test/introducing-work/",
+                "captured_at": "2026-01-01",
+                "html_sha256": "a" * 64,
+                "source_category": "fixture",
+                "license_status": "unknown",
+                "rights_status": "unverified",
+                "status": "quarantined",
+                "note": "Fixture only",
+                "blocks": [
+                    {
+                        "block_id": "one",
+                        "heading": "Introducing work",
+                        "kind": "table",
+                        "rows": [["Combinedneedle", "invented phrase"]],
+                    }
+                ],
+            }
+        ],
+    }
+    (tmp_path / "collection.json").write_text(json.dumps(collection), encoding="utf-8")
+    mapping = {
+        "reference_key": "heading:introducing-work:0",
+        "reference_title": "Introducing work",
+        "target_kind": "intent",
+        "target_code": "UNKNOWN" if bad_mapping else "DISCUSSION_FINDING",
+        "review_status": "approved",
+        "mapped_by": "fixture",
+        "note": None,
+    }
+    (tmp_path / "mappings.json").write_text(json.dumps({"mappings": [mapping]}), encoding="utf-8")
+    path = tmp_path / "data_init.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": "1",
+                "pattern_pack": "patterns",
+                "reference_library": "collection.json",
+                "reference_mappings": "mappings.json",
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+async def test_phrasebank_init_imports_both_sources_and_filter_mappings(
+    api_client, session_factory, tmp_path
+):
+    path = _write_phrasebank_init(tmp_path)
+    async with session_factory() as session:
+        await init_reference(session)
+        await session.commit()
+    async with session_factory() as session:
+        preview = await initialize_phrasebank(session, path, dry_run=True)
+        assert preview["patterns"]["patterns"] == 6
+    async with session_factory() as session:
+        assert await session.scalar(select(func.count()).select_from(PhrasePattern)) == 0
+        assert await session.scalar(select(func.count()).select_from(ReferenceEntry)) == 0
+        assert await session.scalar(select(func.count()).select_from(AuditEvent)) == 0
+    async with session_factory() as session:
+        imported = await initialize_phrasebank(session, path)
+        assert imported["patterns"]["patterns"] == 6
+    async with session_factory() as session:
+        repeated = await initialize_phrasebank(session, path)
+        assert repeated["patterns"] == {"patterns": 0, "versions": 0}
+    async with session_factory() as session:
+        assert await session.scalar(select(func.count()).select_from(PhrasePattern)) == 6
+        assert await session.scalar(select(func.count()).select_from(ReferenceEntry)) == 1
+        mapping_keys = list(await session.scalars(select(ReferenceTaxonomyMap.reference_key)))
+        # A combined initialization must not seed extra mappings from checked-in YAML.
+        assert mapping_keys == ["heading:introducing-work:0"]
+    key = await _client_key(session_factory)
+    headers = {"X-API-Key": key}
+    patterns = await api_client.get(
+        "/v1/patterns",
+        params={"section": "DISCUSSION", "intent": "DISCUSSION_FINDING"},
+        headers=headers,
+    )
+    assert patterns.status_code == 200, patterns.text
+    assert patterns.json()
+    reference = await api_client.get(
+        "/v1/reference-library/search",
+        headers=headers,
+        params={
+            "q": "Combinedneedle",
+            "section": "DISCUSSION",
+            "intent": "DISCUSSION_FINDING",
+            "phrase_only": True,
+        },
+    )
+    assert reference.status_code == 200, reference.text
+    assert len(reference.json()["results"]) == 1
+    assert reference.json()["results"][0]["intent_code"] == "DISCUSSION_FINDING"
+
+
+@pytest.mark.parametrize("failure", ["mapping", "pack"])
+async def test_phrasebank_init_failure_rolls_back_all_sources(session_factory, tmp_path, failure):
+    path = _write_phrasebank_init(
+        tmp_path, bad_mapping=failure == "mapping", bad_pack=failure == "pack"
+    )
+    async with session_factory() as session:
+        await init_reference(session)
+        await session.commit()
+        await import_library(session, fixture_library(), request_id="existing-reference")
+    async with session_factory() as session:
+        with pytest.raises(ValueError, match="Unknown intent|Pattern pack rejected"):
+            await initialize_phrasebank(session, path)
+    async with session_factory() as session:
+        assert await session.scalar(select(func.count()).select_from(PhrasePattern)) == 0
+        assert await session.scalar(select(func.count()).select_from(ReferenceEntry)) == 8
+        text = list(await session.scalars(select(ReferenceEntry.search_text)))
+        assert not any("Combinedneedle" in item for item in text)
+        assert await session.scalar(select(func.count()).select_from(AuditEvent)) == 1
+
+
+async def test_phrasebank_init_uses_explicit_category_filter_mapping(
+    api_client, session_factory, tmp_path
+):
+    path = _write_phrasebank_init(tmp_path)
+    mapping_path = tmp_path / "mappings.json"
+    document = json.loads(mapping_path.read_text(encoding="utf-8"))
+    document["mappings"][0].update(
+        reference_key="category:introducing-work", target_kind="section", target_code="RESULTS"
+    )
+    mapping_path.write_text(json.dumps(document), encoding="utf-8")
+    async with session_factory() as session:
+        await init_reference(session)
+        await session.commit()
+    async with session_factory() as session:
+        await initialize_phrasebank(session, path)
+    key = await _client_key(session_factory)
+    response = await api_client.get(
+        "/v1/reference-library/search",
+        headers={"X-API-Key": key},
+        params={"q": "Combinedneedle", "section": "RESULTS", "phrase_only": True},
+    )
+    assert response.status_code == 200, response.text
+    assert len(response.json()["results"]) == 1
+    assert response.json()["results"][0]["section_code"] == "RESULTS"

@@ -59,7 +59,11 @@ async def test_online_sentence_count_uses_stored_count_or_local_ids(
     )
     session = AsyncMock()
     session.execute.side_effect = [
-        Mock(all=Mock(return_value=[(pattern, Intent(code="TEST", name="Test"), version, None)])),
+        Mock(
+            all=Mock(
+                return_value=[(pattern, Intent(code="TEST", name="Test"), version, None, "MOVE")]
+            )
+        ),
         Mock(all=Mock(return_value=[(source, None, None)])),
     ]
     session.scalars.side_effect = [[], []]
@@ -68,6 +72,8 @@ async def test_online_sentence_count_uses_stored_count_or_local_ids(
 
     assert len(rows) == 1
     assert rows[0].as_response()["source_sentence_count"] == expected
+    assert rows[0].move_code == "MOVE"
+    assert rows[0].as_response()["move_code"] == "MOVE"
 
 
 @pytest.mark.parametrize(
@@ -110,7 +116,11 @@ async def test_internal_permission_does_not_bypass_other_renderability_checks(
     ]
     session = AsyncMock()
     session.execute.side_effect = [
-        Mock(all=Mock(return_value=[(pattern, Intent(code="TEST", name="Test"), version, None)])),
+        Mock(
+            all=Mock(
+                return_value=[(pattern, Intent(code="TEST", name="Test"), version, None, "MOVE")]
+            )
+        ),
         Mock(all=Mock(return_value=sources)),
     ]
     session.scalars.side_effect = [[], []]
@@ -146,6 +156,7 @@ async def test_browsing_search_filters_beyond_old_cap_before_offset(display_only
                     claim_type="descriptive",
                 ),
                 None,
+                "MOVE",
             )
         )
         sources.append(
@@ -206,6 +217,7 @@ async def test_association_groups_preserve_full_read_mapping_and_child_order(dis
             )
             if index == 0
             else None,
+            "MOVE",
         )
         for index, version_id in enumerate(version_ids)
     ]
@@ -255,6 +267,7 @@ async def test_association_groups_preserve_full_read_mapping_and_child_order(dis
         "status": "approved",
         "intent_code": "TEST",
         "intent_name": "Test intent",
+        "move_code": "MOVE",
         "current_version_id": version_ids[0],
         "version_no": 1,
         "change_note": "Reviewed",
@@ -330,3 +343,25 @@ async def test_association_groups_preserve_full_read_mapping_and_child_order(dis
         }
         snapshots.extend([multiple_sources, empty])
     assert [asdict(row) for row in rows] == snapshots
+
+
+@pytest.mark.parametrize("move", [None, "REPORT"])
+@pytest.mark.parametrize("normalize_query,expected", [(True, "%suggest%"), (False, "%suggests%")])
+async def test_move_join_always_selected_once_and_retrieval_normalization_is_opt_in(
+    move, normalize_query, expected
+):
+    session = AsyncMock()
+    session.execute.return_value = Mock(all=Mock(return_value=[]))
+    assert (
+        await load_current_patterns(
+            session, move_code=move, query="suggests", normalize_query=normalize_query
+        )
+        == []
+    )
+    statement = session.execute.await_args.args[0]
+    compiled = statement.compile()
+    sql = str(compiled)
+    assert sql.count("JOIN steps") == 1
+    assert sql.count("JOIN moves") == 1
+    assert "moves.code" in sql.split("FROM")[0]
+    assert expected in compiled.params.values()

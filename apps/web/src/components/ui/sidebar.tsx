@@ -485,7 +485,13 @@ const sidebarMenuButtonVariants = cva(
   }
 )
 
-function SidebarMenuButton({
+type SidebarMenuButtonProps = React.ComponentPropsWithoutRef<"button"> & {
+  asChild?: boolean
+  isActive?: boolean
+  tooltip?: string | React.ComponentProps<typeof TooltipContent>
+} & VariantProps<typeof sidebarMenuButtonVariants>
+
+const SidebarMenuButton = React.forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(function SidebarMenuButton({
   asChild = false,
   isActive = false,
   variant = "default",
@@ -493,16 +499,13 @@ function SidebarMenuButton({
   tooltip,
   className,
   ...props
-}: React.ComponentProps<"button"> & {
-  asChild?: boolean
-  isActive?: boolean
-  tooltip?: string | React.ComponentProps<typeof TooltipContent>
-} & VariantProps<typeof sidebarMenuButtonVariants>) {
+}, ref) {
   const Comp = asChild ? Slot.Root : "button"
   const { isMobile, state } = useSidebar()
 
   const button = (
     <Comp
+      ref={ref}
       data-slot="sidebar-menu-button"
       data-sidebar="menu-button"
       data-size={size}
@@ -512,7 +515,9 @@ function SidebarMenuButton({
     />
   )
 
-  if (!tooltip) {
+  // An open but hidden tooltip still consumes Escape before the mobile Sheet.
+  // Expanded labels already provide the name, so mount tooltips only for icons.
+  if (!tooltip || isMobile || state !== "collapsed") {
     return button
   }
 
@@ -528,12 +533,11 @@ function SidebarMenuButton({
       <TooltipContent
         side="right"
         align="center"
-        hidden={state !== "collapsed" || isMobile}
         {...tooltip}
       />
     </Tooltip>
   )
-}
+})
 
 function SidebarMenuAction({
   className,

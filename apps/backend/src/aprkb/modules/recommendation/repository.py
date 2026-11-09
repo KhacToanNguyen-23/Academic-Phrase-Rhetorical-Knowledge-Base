@@ -18,9 +18,10 @@ async def load_pattern_rows(
     move_code: str | None = None,
     claim_type: str | None = None,
     genre_code: str | None = None,
+    journal_id: UUID | None = None,
     internal_use_codes: frozenset[str] = frozenset(),
 ) -> list[PatternRead]:
-    """FR-07.1: retrieve DB-backed candidates; query is literal substring matching in this MVP."""
+    """FR-07.1: retrieve candidates using normalized keyword substrings."""
     # FR-07.2 gating happens in the pipeline after retrieval and before ranking
     # or returning any candidate.
     return await load_current_patterns(
@@ -28,7 +29,9 @@ async def load_pattern_rows(
         intent_code=intent_code,
         status="approved",
         genre_code=genre_code,
+        journal_id=journal_id,
         query=query,
+        normalize_query=True,
         move_code=move_code,
         claim_type=claim_type,
         internal_use_codes=internal_use_codes,

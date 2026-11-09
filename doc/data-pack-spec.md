@@ -16,6 +16,8 @@ Errors: E01 manifest/digest/counts; E02 taxonomy version; E03 intent path; E04 s
 
 ## Process and versioning
 
+To initialize both sources shown in Phrasebank, the [Phrasebank initialization workflow](phrasebank-initialization.md) wraps this unchanged v0.1 pack together with the Manchester collection and its reviewed mappings. The wrapper is a path manifest; Manchester data is not added to the pattern-pack schema.
+
 Offline runs `aprkb validate-pack <directory>` without a database. A separate staging/test destination runs `aprkb init-reference`, previews with `aprkb import-pack <directory> --dry-run`, then imports with `aprkb import-pack <directory>`. These are write operations: do not point them at the active Online database, which is query-only in the current workflow. Provisioning Online data is a separate operational process. Import is transactional and idempotent; changed known versions fail E15. Each changed import writes one content-free audit event. Export with `aprkb export-pack --out <directory> --only-approved`; generate schema with `aprkb export-pack-schema`. v0.1 is append-only; incompatible contract changes require a new pack version and transition documentation.
 
 ## Implementation limits (2026-11-04)

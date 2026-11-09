@@ -332,6 +332,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/job-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Job Alerts */
+        get: operations["list_job_alerts_v1_admin_job_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/job-alerts/{alert_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge Job Alert */
+        post: operations["acknowledge_job_alert_v1_admin_job_alerts__alert_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Jobs */
+        get: operations["list_jobs_v1_admin_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -343,6 +394,40 @@ export interface paths {
         get: operations["get_job_v1_admin_jobs__job_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/jobs/{job_id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job Attempt History */
+        get: operations["job_attempt_history_v1_admin_jobs__job_id__attempts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/jobs/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Manual Job Retry */
+        post: operations["manual_job_retry_v1_admin_jobs__job_id__retry_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1026,6 +1111,8 @@ export interface components {
         };
         /** Body_upload_article_v1_admin_corpus_articles_post */
         Body_upload_article_v1_admin_corpus_articles_post: {
+            /** Doi */
+            doi?: string | null;
             /** File */
             file: string;
             /** License Code */
@@ -1093,6 +1180,8 @@ export interface components {
             id: string;
             /** Intent Id */
             intent_id: string | null;
+            /** Occurrence Count */
+            occurrence_count: number;
             /** Slots */
             slots: {
                 [key: string]: components["schemas"]["SlotDefinition"];
@@ -1147,6 +1236,24 @@ export interface components {
             freq: number;
             /** Relative Ratio */
             relative_ratio: number;
+        };
+        /** ExplanationDetail */
+        ExplanationDetail: {
+            /** Available */
+            available: boolean;
+            /** Criterion */
+            criterion: string;
+            /** Value */
+            value: number | null;
+            /** Weight */
+            weight: number;
+        };
+        /** FallbackTraceEntry */
+        FallbackTraceEntry: {
+            /** Accepted Count */
+            accepted_count: number;
+            /** Tier */
+            tier: string;
         };
         /** FamilyMemberRead */
         FamilyMemberRead: {
@@ -1518,6 +1625,73 @@ export interface components {
             /** Warnings */
             warnings: unknown[];
         };
+        /** JobAlertAcknowledge */
+        JobAlertAcknowledge: {
+            /**
+             * Expected Last Failed At
+             * Format: date-time
+             */
+            expected_last_failed_at: string;
+        };
+        /** JobAlertRead */
+        JobAlertRead: {
+            /** Acknowledged At */
+            acknowledged_at: string | null;
+            /** Active */
+            active: boolean;
+            /** Failure Count */
+            failure_count: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Last Error Code */
+            last_error_code: string | null;
+            /**
+             * Last Failed At
+             * Format: date-time
+             */
+            last_failed_at: string;
+            /** Resolved At */
+            resolved_at: string | null;
+        };
+        /** JobAttemptRead */
+        JobAttemptRead: {
+            /** Attempt No */
+            attempt_no: number;
+            /** Completed */
+            completed: number | null;
+            /** Ended At */
+            ended_at: string | null;
+            /** Error */
+            error: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Next Attempt At */
+            next_attempt_at: string | null;
+            /** Outcome */
+            outcome: string;
+            /** Stage */
+            stage: string | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Total */
+            total: number | null;
+        };
         /** JobRead */
         JobRead: {
             /** Attempts */
@@ -1529,11 +1703,32 @@ export interface components {
             created_at: string;
             /** Error */
             error: string | null;
+            /** Error Code */
+            error_code: string | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /** Locked At */
+            locked_at: string | null;
+            /** Manual Retries */
+            manual_retries: number;
+            /**
+             * Manual Retry Limit
+             * @default 3
+             */
+            manual_retry_limit: number;
+            /** Max Attempts */
+            max_attempts: number;
+            /** Next Attempt At */
+            next_attempt_at: string | null;
+            /** Progress Completed */
+            progress_completed: number | null;
+            /** Progress Stage */
+            progress_stage: string | null;
+            /** Progress Total */
+            progress_total: number | null;
             /** Result */
             result: {
                 [key: string]: unknown;
@@ -1547,6 +1742,13 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** JobRetryRequest */
+        JobRetryRequest: {
+            /** Expected Attempts */
+            expected_attempts: number;
+            /** Rationale */
+            rationale: string;
         };
         /** JournalRead */
         JournalRead: {
@@ -1754,6 +1956,8 @@ export interface components {
             license_flag: boolean;
             /** License Name */
             license_name: string | null;
+            /** Move Code */
+            move_code?: string | null;
             /** Slots */
             slots: {
                 [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
@@ -1845,6 +2049,8 @@ export interface components {
             license_flag: boolean;
             /** License Name */
             license_name: string | null;
+            /** Move Code */
+            move_code?: string | null;
             /** Slots */
             slots: {
                 [key: string]: components["schemas"]["PatternSlotDefinition"] | string;
@@ -2029,6 +2235,8 @@ export interface components {
             };
             /** Canonical Frame */
             canonical_frame: string;
+            /** Explanation Details */
+            explanation_details?: components["schemas"]["ExplanationDetail"][];
             /** Explanations */
             explanations: string[];
             /** Fallback Tier */
@@ -2089,6 +2297,8 @@ export interface components {
             };
             /** Fallback Reason */
             fallback_reason?: string | null;
+            /** Fallback Trace */
+            fallback_trace?: components["schemas"]["FallbackTraceEntry"][];
             /** Items */
             items: components["schemas"]["RecommendationItemResponse"][];
             /** Policy Versions */
@@ -2256,6 +2466,8 @@ export interface components {
             text: string;
             /** Unfilled Slots */
             unfilled_slots: string[];
+            /** Warnings */
+            warnings?: string[];
         };
         /** RenderValidationIssue */
         RenderValidationIssue: {
@@ -2588,6 +2800,8 @@ export interface components {
         };
         /** ValidationResponse */
         ValidationResponse: {
+            /** Checks Not Applicable */
+            checks_not_applicable: string[];
             /** Checks Unavailable */
             checks_unavailable: string[];
             /** Complete */
@@ -2609,6 +2823,8 @@ export interface components {
              * Format: uuid
              */
             validation_id: string;
+            /** Warnings */
+            warnings?: string[];
         };
         /** ValidationRuleResponse */
         ValidationRuleResponse: {
@@ -3499,6 +3715,114 @@ export interface operations {
             };
         };
     };
+    list_job_alerts_v1_admin_job_alerts_get: {
+        parameters: {
+            query?: {
+                active_only?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAlertRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_job_alert_v1_admin_job_alerts__alert_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobAlertAcknowledge"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAlertRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_jobs_v1_admin_jobs_get: {
+        parameters: {
+            query?: {
+                status?: ("queued" | "processing" | "succeeded" | "failed") | null;
+                job_type?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_job_v1_admin_jobs__job_id__get: {
         parameters: {
             query?: never;
@@ -3511,6 +3835,79 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_attempt_history_v1_admin_jobs__job_id__attempts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAttemptRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    manual_job_retry_v1_admin_jobs__job_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobRetryRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

@@ -16,6 +16,7 @@ class CandidateSummary(BaseModel):
     confidence: float | None
     epistemic_strength: str | None
     source_sentence_ids: list[UUID]
+    occurrence_count: int
     status: str
 
 

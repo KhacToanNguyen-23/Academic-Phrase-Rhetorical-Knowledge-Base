@@ -1,6 +1,7 @@
 """Versioned validation rule registry."""
 
 from aprkb.modules.validation.rules.base import RuleResult, Severity, ValidationRule
+from aprkb.modules.validation.rules.not_applicable import NotApplicableValidationRule
 from aprkb.modules.validation.rules.todo import TodoValidationRule
 from aprkb.modules.validation.rules.v02_claim_evidence import V02ClaimEvidenceRule
 from aprkb.modules.validation.rules.v03_grounding import V03GroundingRule
@@ -21,7 +22,18 @@ def build_rules(
     for number in range(1, 9):
         code = f"V{number:02}"
         setting = policy.rules.get(code)
-        if code == "V02" and setting is not None and setting.enabled:
+        if code == "V05":
+            # The Online Writer validates one sentence. Journal-wide compliance
+            # is intentionally outside this flow; writers already use journal
+            # guidance when choosing a target journal.
+            rules.append(
+                NotApplicableValidationRule(
+                    code,
+                    "FR-08.4",
+                    "Journal guideline compliance is outside sentence validation.",
+                )
+            )
+        elif code == "V02" and setting is not None and setting.enabled:
             rules.append(
                 V02ClaimEvidenceRule(
                     evidence_policy=evidence_policy,

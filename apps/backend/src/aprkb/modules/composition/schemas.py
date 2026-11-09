@@ -15,6 +15,7 @@ class RenderResponse(BaseModel):
     pattern_version_id: UUID
     text: str
     unfilled_slots: list[str]
+    warnings: list[str] = Field(default_factory=list)
 
 
 class RenderValidationIssue(BaseModel):

@@ -29,6 +29,7 @@ class Tense(StrEnum):
     PAST = "past"
     PRESENT = "present"
     PRESENT_PERFECT = "present_perfect"
+    PAST_PERFECT = "past_perfect"
     NONE = "none"
 
 

@@ -1863,6 +1863,16 @@
             ],
             "title": "Ratio"
           },
+          "research_evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LemmaResearchEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "anyOf": [
               {
@@ -1926,6 +1936,24 @@
         "title": "LemmaPage",
         "type": "object"
       },
+      "LemmaResearchEvidence": {
+        "properties": {
+          "paper_count": {
+            "title": "Paper Count",
+            "type": "integer"
+          },
+          "sample_count": {
+            "title": "Sample Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "paper_count",
+          "sample_count"
+        ],
+        "title": "LemmaResearchEvidence",
+        "type": "object"
+      },
       "LemmaSummary": {
         "properties": {
           "band": {
@@ -1977,6 +2005,16 @@
               }
             ],
             "title": "Rank"
+          },
+          "research_evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LemmaResearchEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "status": {
             "anyOf": [
@@ -5088,6 +5126,13 @@
             "title": "Pos",
             "type": "object"
           },
+          "research_groups": {
+            "items": {
+              "$ref": "#/components/schemas/VocabularyResearchGroup"
+            },
+            "title": "Research Groups",
+            "type": "array"
+          },
           "status": {
             "additionalProperties": {
               "type": "string"
@@ -5102,6 +5147,58 @@
           "domains"
         ],
         "title": "VocabularyFilterOptions",
+        "type": "object"
+      },
+      "VocabularyResearchGroup": {
+        "properties": {
+          "field_id": {
+            "title": "Field Id",
+            "type": "string"
+          },
+          "field_name": {
+            "title": "Field Name",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "paper_count": {
+            "title": "Paper Count",
+            "type": "integer"
+          },
+          "subfield_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subfield Id"
+          },
+          "subfield_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subfield Name"
+          }
+        },
+        "required": [
+          "key",
+          "field_id",
+          "field_name",
+          "subfield_id",
+          "subfield_name",
+          "paper_count"
+        ],
+        "title": "VocabularyResearchGroup",
         "type": "object"
       }
     }
@@ -8939,6 +9036,23 @@
             }
           },
           {
+            "in": "query",
+            "name": "research_group",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(?:field|subfield):[1-9][0-9]{0,11}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Research Group"
+            }
+          },
+          {
             "in": "header",
             "name": "X-API-Key",
             "required": false,
@@ -9144,6 +9258,23 @@
                 }
               ],
               "title": "Domain"
+            }
+          },
+          {
+            "in": "query",
+            "name": "research_group",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(?:field|subfield):[1-9][0-9]{0,11}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Research Group"
             }
           },
           {

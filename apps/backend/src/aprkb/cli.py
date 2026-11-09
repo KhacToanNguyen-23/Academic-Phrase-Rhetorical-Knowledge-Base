@@ -179,6 +179,27 @@ async def _import_vocabulary(*, files: list[Path]) -> None:
         await engine.dispose()
 
 
+async def _build_vocabulary_research(*, path: Path) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.vocabulary.research_builder import ResearchManifest, build_research_snapshot
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine)
+    try:
+        manifest = ResearchManifest.model_validate_json(path.read_bytes())
+        async with factory.begin() as session:
+            groups, stats = await build_research_snapshot(session, manifest)
+        print(
+            f"Built evidence from {len(manifest.papers)} papers "
+            f"for {groups} field/subfield groups with {stats} lemma associations."
+        )
+    except (OSError, ValueError) as error:
+        print(f"Vocabulary research build failed: {error}", file=sys.stderr)
+        raise SystemExit(2) from error
+    finally:
+        await engine.dispose()
+
+
 async def _reingest(*, source: str) -> None:
     from aprkb.api.main import app as _app  # noqa: F401
     from aprkb.modules.corpus.models import Article
@@ -517,6 +538,11 @@ def main() -> None:
     commands.add_parser("bootstrap-key")
     vocabulary_import = commands.add_parser("vocab-import")
     vocabulary_import.add_argument("--file", type=Path, action="append", required=True)
+    vocabulary_research = commands.add_parser(
+        "build-vocabulary-research",
+        help="Replace local vocabulary research evidence using a classified-paper manifest",
+    )
+    vocabulary_research.add_argument("manifest", type=Path)
     openapi = commands.add_parser("export-openapi")
     openapi.add_argument("--check", action="store_true")
     reingest = commands.add_parser(
@@ -564,6 +590,8 @@ def main() -> None:
         asyncio.run(_bootstrap_key())
     elif args.command == "vocab-import":
         asyncio.run(_import_vocabulary(files=args.file))
+    elif args.command == "build-vocabulary-research":
+        asyncio.run(_build_vocabulary_research(path=args.manifest))
     elif args.command == "export-openapi":
         _export_openapi(check=args.check)
     elif args.command == "reingest":

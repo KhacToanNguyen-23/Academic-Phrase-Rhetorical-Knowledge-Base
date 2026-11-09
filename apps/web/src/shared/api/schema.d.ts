@@ -1601,6 +1601,7 @@ export interface components {
             rank: number | null;
             /** Ratio */
             ratio: number | null;
+            research_evidence?: components["schemas"]["LemmaResearchEvidence"] | null;
             /** Status */
             status: string | null;
             /** Status Label */
@@ -1614,6 +1615,13 @@ export interface components {
             items: components["schemas"]["LemmaSummary"][];
             /** Total */
             total: number;
+        };
+        /** LemmaResearchEvidence */
+        LemmaResearchEvidence: {
+            /** Paper Count */
+            paper_count: number;
+            /** Sample Count */
+            sample_count: number;
         };
         /** LemmaSummary */
         LemmaSummary: {
@@ -1634,6 +1642,7 @@ export interface components {
             pos_label: string;
             /** Rank */
             rank: number | null;
+            research_evidence?: components["schemas"]["LemmaResearchEvidence"] | null;
             /** Status */
             status: string | null;
             /** Status Label */
@@ -2629,10 +2638,27 @@ export interface components {
             pos: {
                 [key: string]: string;
             };
+            /** Research Groups */
+            research_groups?: components["schemas"]["VocabularyResearchGroup"][];
             /** Status */
             status: {
                 [key: string]: string;
             };
+        };
+        /** VocabularyResearchGroup */
+        VocabularyResearchGroup: {
+            /** Field Id */
+            field_id: string;
+            /** Field Name */
+            field_name: string;
+            /** Key */
+            key: string;
+            /** Paper Count */
+            paper_count: number;
+            /** Subfield Id */
+            subfield_id: string | null;
+            /** Subfield Name */
+            subfield_name: string | null;
         };
     };
     responses: never;
@@ -4546,6 +4572,7 @@ export interface operations {
                 band_min?: number | null;
                 band_max?: number | null;
                 domain?: string | null;
+                research_group?: string | null;
             };
             header?: {
                 "X-API-Key"?: string | null;
@@ -4617,6 +4644,7 @@ export interface operations {
                 band_min?: number | null;
                 band_max?: number | null;
                 domain?: string | null;
+                research_group?: string | null;
             };
             header?: {
                 "X-API-Key"?: string | null;

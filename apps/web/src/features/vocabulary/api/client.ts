@@ -24,17 +24,19 @@ export function vocabularyClient() {
   return client;
 }
 
-export function useLemmas(params: LemmaQuery) {
+export function useLemmas(params: LemmaQuery, enabled = true) {
   return useQuery({
     queryKey: ["vocabulary-lemmas", params],
+    enabled,
     queryFn: async (): Promise<LemmaPage> =>
       unwrap(await vocabularyClient().GET("/v1/vocabulary/lemmas", { params: { query: params } })) as LemmaPage,
   });
 }
 
-export function useLetters(params: LetterQuery = {}) {
+export function useLetters(params: LetterQuery = {}, enabled = true) {
   return useQuery({
     queryKey: ["vocabulary-letters", params],
+    enabled,
     queryFn: async (): Promise<LetterCount[]> =>
       unwrap(await vocabularyClient().GET("/v1/vocabulary/letters", { params: { query: params } })) ?? [],
   });

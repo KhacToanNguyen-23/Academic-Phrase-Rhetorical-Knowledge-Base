@@ -132,6 +132,8 @@ const vocabularySearch = (s: Record<string, unknown>) => ({
   bandMin: vocabularyBand(s.bandMin),
   bandMax: vocabularyBand(s.bandMax),
   domain: str(s.domain),
+  researchField: str(s.researchField),
+  researchSubfield: str(s.researchSubfield),
   sort: vocabularySort(s.sort),
   offset: typeof s.offset === "number" ? s.offset : Number.isFinite(Number(s.offset)) ? Number(s.offset) : undefined,
 });

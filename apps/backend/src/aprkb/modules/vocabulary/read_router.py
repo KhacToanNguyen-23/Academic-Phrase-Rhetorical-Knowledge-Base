@@ -16,6 +16,7 @@ from aprkb.modules.vocabulary.read_schemas import (
     LetterCount,
     VocabularyFilterOptions,
     VocabularyPolicyLabels,
+    VocabularyResearchGroup,
 )
 from aprkb.modules.vocabulary.read_service import (
     get_lemma_detail,
@@ -23,7 +24,7 @@ from aprkb.modules.vocabulary.read_service import (
     list_lemma_page,
     list_letter_counts,
 )
-from aprkb.modules.vocabulary.repository import LemmaFilters
+from aprkb.modules.vocabulary.repository import LemmaFilters, list_research_groups
 
 router = APIRouter(tags=["vocabulary"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -38,6 +39,9 @@ def lemma_filters(
     band_min: Annotated[int | None, Query(ge=1, le=2147483647)] = None,
     band_max: Annotated[int | None, Query(ge=1, le=2147483647)] = None,
     domain: Annotated[str | None, Query(min_length=1, max_length=8)] = None,
+    research_group: Annotated[
+        str | None, Query(pattern=r"^(?:field|subfield):[1-9][0-9]{0,11}$")
+    ] = None,
 ) -> LemmaFilters:
     if band_min is not None and band_max is not None and band_min > band_max:
         raise HTTPException(status_code=422, detail="Minimum band must not exceed maximum band")
@@ -53,16 +57,25 @@ def lemma_filters(
         band_min=band_min,
         band_max=band_max,
         domain=domain,
+        research_group=research_group,
     )
 
 
 @router.get("/vocabulary/filter-options", response_model=VocabularyFilterOptions)
-async def vocabulary_filter_options(request: Request, _actor: Client) -> VocabularyFilterOptions:
+async def vocabulary_filter_options(
+    request: Request, _actor: Client, session: DatabaseSession
+) -> VocabularyFilterOptions:
     labels = VocabularyPolicyLabels.from_policy(
         request.app.state.policy_bundle.vocabulary_import.labels
     )
     return VocabularyFilterOptions(
-        pos=labels.pos, status={**labels.status, "unknown": "Unknown"}, domains=labels.domains
+        pos=labels.pos,
+        status={**labels.status, "unknown": "Unknown"},
+        domains=labels.domains,
+        research_groups=[
+            VocabularyResearchGroup.model_validate(group)
+            for group in await list_research_groups(session)
+        ],
     )
 
 

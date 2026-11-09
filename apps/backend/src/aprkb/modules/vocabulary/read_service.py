@@ -10,6 +10,7 @@ from aprkb.modules.vocabulary.read_schemas import (
     FamilyMemberRead,
     FamilyRead,
     LemmaDetail,
+    LemmaResearchEvidence,
     LemmaSummary,
     VocabularyPolicyLabels,
 )
@@ -26,7 +27,11 @@ def _label(values: dict[str, str], code: str | None) -> str:
     return values.get(code or "", code or "")
 
 
-def to_summary(lemma: VocabLemma, labels: VocabularyPolicyLabels) -> LemmaSummary:
+def to_summary(
+    lemma: VocabLemma,
+    labels: VocabularyPolicyLabels,
+    research_evidence: LemmaResearchEvidence | None = None,
+) -> LemmaSummary:
     return LemmaSummary(
         id=lemma.id,
         word=lemma.word,
@@ -38,6 +43,7 @@ def to_summary(lemma: VocabLemma, labels: VocabularyPolicyLabels) -> LemmaSummar
         status_label=_label(labels.status, lemma.status),
         is_core=lemma.is_core,
         coca_acad=lemma.coca_acad,
+        research_evidence=research_evidence,
     )
 
 
@@ -116,7 +122,16 @@ async def list_lemma_page(
         limit=limit,
         offset=offset,
     )
-    return [to_summary(item, labels) for item in items], total
+    return [
+        to_summary(
+            item,
+            labels,
+            LemmaResearchEvidence(paper_count=paper_count, sample_count=sample_count)
+            if paper_count is not None and sample_count is not None
+            else None,
+        )
+        for item, paper_count, sample_count in items
+    ], total
 
 
 async def list_letter_counts(session: AsyncSession, filters: LemmaFilters) -> dict[str, int]:

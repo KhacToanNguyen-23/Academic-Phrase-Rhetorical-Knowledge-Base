@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, func, literal_column, or_, select, tuple_
+from sqlalchemy import ColumnElement, Integer, func, literal_column, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +20,8 @@ from aprkb.modules.vocabulary.models import (
     VocabImportRun,
     VocabLemma,
     VocabLemmaDomainStat,
+    VocabLemmaResearchStat,
+    VocabResearchGroup,
 )
 from aprkb.modules.vocabulary.parsers import DomainStatRow, FamilyRow, LemmaRow, MemberRow
 
@@ -288,6 +290,7 @@ class LemmaFilters:
     band_min: int | None = None
     band_max: int | None = None
     domain: str | None = None
+    research_group: str | None = None
 
 
 def _lemma_filters(
@@ -321,6 +324,16 @@ def _lemma_filters(
                 & (VocabLemmaDomainStat.relative_ratio > 1.0)
             )
         )
+    if filters.research_group is not None:
+        clauses.append(
+            select(VocabLemmaResearchStat.lemma_id)
+            .where(
+                VocabLemmaResearchStat.lemma_id == VocabLemma.id,
+                VocabLemmaResearchStat.group_key == filters.research_group,
+            )
+            .correlate(VocabLemma)
+            .exists()
+        )
     return clauses
 
 
@@ -333,7 +346,7 @@ async def list_lemmas(
     sort: str,
     limit: int,
     offset: int,
-) -> tuple[list[VocabLemma], int]:
+) -> tuple[list[tuple[VocabLemma, int | None, int | None]], int]:
     clauses = _lemma_filters(filters, q=q, letter=letter)
     total = int(
         await session.scalar(select(func.count()).select_from(VocabLemma).where(*clauses)) or 0
@@ -342,16 +355,42 @@ async def list_lemmas(
         "rank": (VocabLemma.rank.asc().nulls_last(),),
         "academic_frequency": (VocabLemma.coca_acad.desc().nulls_last(),),
     }.get(sort, ())
-    items = list(
+    paper_count: ColumnElement[int] = literal_column("NULL", Integer)
+    sample_count: ColumnElement[int] = literal_column("NULL", Integer)
+    if filters.research_group is not None:
+        paper_count = (
+            select(VocabLemmaResearchStat.paper_count)
+            .where(
+                VocabLemmaResearchStat.lemma_id == VocabLemma.id,
+                VocabLemmaResearchStat.group_key == filters.research_group,
+            )
+            .scalar_subquery()
+        )
+        sample_count = (
+            select(VocabResearchGroup.paper_count)
+            .where(VocabResearchGroup.key == filters.research_group)
+            .scalar_subquery()
+        )
+    rows = await session.execute(
+        select(VocabLemma, paper_count, sample_count)
+        .where(*clauses)
+        .order_by(*ordering, VocabLemma.word, VocabLemma.pos)
+        .limit(limit)
+        .offset(offset)
+    )
+    return [(lemma, count, sample) for lemma, count, sample in rows], total
+
+
+async def list_research_groups(session: AsyncSession) -> list[VocabResearchGroup]:
+    return list(
         await session.scalars(
-            select(VocabLemma)
-            .where(*clauses)
-            .order_by(*ordering, VocabLemma.word, VocabLemma.pos)
-            .limit(limit)
-            .offset(offset)
+            select(VocabResearchGroup).order_by(
+                VocabResearchGroup.field_name,
+                VocabResearchGroup.subfield_name.asc().nulls_first(),
+                VocabResearchGroup.key,
+            )
         )
     )
-    return items, total
 
 
 async def list_families(

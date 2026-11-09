@@ -7,10 +7,10 @@ test.use({
 
 test("import result explains confirmed duplicates and title review hints", async ({ page }) => {
   await page.addInitScript(() => {
-    sessionStorage.setItem("aprkb-staff-session", "test-staff-key");
+    sessionStorage.setItem("aprkb-web-session", "test-staff-key");
     sessionStorage.setItem("aprkb-api-key", "test-corpus-key");
   });
-  await page.route("**/v1/auth/me", (route) => route.fulfill({ json: {
+  await page.route("**/v1/auth/session/me", (route) => route.fulfill({ json: {
     id: "curator", name: "Test curator", role: "curator",
   } }));
   await page.route("**/v1/admin/corpus/sources/slr/taxonomy**", (route) => route.fulfill({ json: { items: [], nextCursor: null } }));

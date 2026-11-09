@@ -3,8 +3,8 @@
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0017_apb_offline_proposals"
-down_revision = "0016_nullable_pattern_intent"
+revision = "0021_apb_offline_proposals"
+down_revision = "0020_nullable_pattern_intent"
 branch_labels = None
 depends_on = None
 

@@ -1,13 +1,10 @@
 import { expect, test, type Page, type APIRequestContext } from "@playwright/test";
+import { authenticateCurator } from "./support/auth";
 
 test.skip(process.env.ONLINE_RANKING_LIVE !== "1", "Requires isolated live API");
 
 async function staff(page: Page, request: APIRequestContext) {
-  const response = await request.post("/v1/auth/demo-session");
-  expect(response.ok()).toBeTruthy();
-  const { api_key: key } = await response.json();
-  // Preserve real storage mutations across reload; do not reseed the setting.
-  await page.addInitScript((key) => sessionStorage.setItem("aprkb-staff-session", key), key);
+  await authenticateCurator(page, request);
   await page.goto("/app");
   await expect(page.getByRole("heading", { name: "Workspace", exact: true })).toBeVisible();
 }
@@ -83,7 +80,7 @@ test("EDGE-A02 outside pointer dismisses mobile navigation", async ({ page, requ
 
 test("EDGE-A03 account menu works with keyboard and Escape does not sign out", async ({ page, request }) => {
   await staff(page, request);
-  const before = await page.evaluate(() => sessionStorage.getItem("aprkb-staff-session"));
+  const before = await page.evaluate(() => sessionStorage.getItem("aprkb-web-session"));
   await page.locator('[data-sidebar="footer"] button').first().focus();
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menu")).toBeVisible();
@@ -91,7 +88,7 @@ test("EDGE-A03 account menu works with keyboard and Escape does not sign out", a
   await expect(page.getByRole("menuitem", { name: "Sign out", exact: true })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
-  expect(await page.evaluate(() => sessionStorage.getItem("aprkb-staff-session"))).toBe(before);
+  expect(await page.evaluate(() => sessionStorage.getItem("aprkb-web-session"))).toBe(before);
 });
 
 test("EDGE-S01 sidebar collapse persists across real reload", async ({ page, request }) => {
@@ -132,7 +129,8 @@ test("EDGE-S03 changing orientation restores usable mobile navigation", async ({
   await expect(page.getByRole("dialog", { name: "Sidebar", exact: true })).toHaveCount(0);
 });
 
-test("EDGE-R01 transport failure can recover with a fresh recommendation", async ({ page }) => {
+test("EDGE-R01 transport failure can recover with a fresh recommendation", async ({ page, request }) => {
+  await staff(page, request);
   await page.goto("/writer");
   await expect(page.getByRole("radiogroup", { name: "Recommended patterns" })).toBeVisible();
   await page.route("**/v1/recommendations", (route) => route.abort("internetdisconnected"));

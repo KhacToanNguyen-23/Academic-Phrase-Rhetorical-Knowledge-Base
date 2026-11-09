@@ -1,15 +1,13 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { authenticateCurator } from "./support/auth";
 
 test.skip(process.env.ONLINE_RANKING_LIVE !== "1", "Requires isolated live API");
 
 async function login(page: Page, request: APIRequestContext, collapsed = false) {
-  const session = await request.post("/v1/auth/demo-session");
-  expect(session.ok()).toBeTruthy();
-  const { api_key: key } = await session.json();
-  await page.addInitScript(({ key, collapsed }) => {
-    sessionStorage.setItem("aprkb-staff-session", key);
+  await authenticateCurator(page, request);
+  await page.addInitScript(({ collapsed }) => {
     localStorage.setItem("aprkb.sidebar.collapsed", collapsed ? "1" : "0");
-  }, { key, collapsed });
+  }, { collapsed });
   await page.goto("/app");
   await expect(page.getByRole("heading", { name: "Workspace", exact: true })).toBeVisible();
 }
@@ -60,7 +58,7 @@ test("MENU icon sidebar keeps tooltips and anchors account menu", async ({ page,
   await expectMenuInViewport(page);
   await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
   await expect.poll(() => new URL(page.url()).pathname).toBe("/");
-  expect(await page.evaluate(() => sessionStorage.getItem("aprkb-staff-session"))).toBeNull();
+  expect(await page.evaluate(() => sessionStorage.getItem("aprkb-web-session"))).toBeNull();
 });
 
 for (const width of [320, 375, 768, 1280, 1440]) {
@@ -73,6 +71,6 @@ for (const width of [320, 375, 768, 1280, 1440]) {
     await page.screenshot({ path: test.info().outputPath(`account-menu-${width}.png`) });
     await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
     await expect.poll(() => new URL(page.url()).pathname).toBe("/");
-    expect(await page.evaluate(() => sessionStorage.getItem("aprkb-staff-session"))).toBeNull();
+    expect(await page.evaluate(() => sessionStorage.getItem("aprkb-web-session"))).toBeNull();
   });
 }

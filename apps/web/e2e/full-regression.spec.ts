@@ -1,4 +1,5 @@
 import { expect, test, type Page, type APIRequestContext } from "@playwright/test";
+import { authenticateCurator } from "./support/auth";
 
 test.skip(process.env.ONLINE_RANKING_LIVE !== "1", "Requires isolated seeded live API");
 
@@ -13,11 +14,7 @@ const screens = [
 ] as const;
 
 async function staff(page: Page, request: APIRequestContext) {
-  const response = await request.post("/v1/auth/demo-session");
-  expect(response.ok()).toBeTruthy();
-  const session = await response.json();
-  expect(typeof session.api_key).toBe("string");
-  await page.addInitScript((key: string) => sessionStorage.setItem("aprkb-staff-session", key), session.api_key);
+  await authenticateCurator(page, request);
 }
 
 function errorsOn(page: Page) {
@@ -117,17 +114,17 @@ test("FULL-AUTH preserves safe next with query", async ({ page, request }) => {
 });
 
 test("FULL-AUTH invalid saved session is removed and sign-in recovers", async ({ page }) => {
-  await page.addInitScript(() => sessionStorage.setItem("aprkb-staff-session", "invalid-full-test-key"));
+  await page.addInitScript(() => sessionStorage.setItem("aprkb-web-session", "invalid-full-test-key"));
   await page.goto("/inbox");
   await expect(page.getByRole("heading", { name: "Sign in to Academic Wordbank" })).toBeVisible();
-  expect(await page.evaluate(() => sessionStorage.getItem("aprkb-staff-session"))).toBeNull();
-  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeDisabled();
-  await page.getByLabel("Curator or admin API key").fill("   ");
-  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeDisabled();
-  await page.getByLabel("Curator or admin API key").fill("invalid-full-test-key");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("Invalid or revoked API key");
-  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeEnabled();
+  expect(await page.evaluate(() => sessionStorage.getItem("aprkb-web-session"))).toBeNull();
+  const submit = page.getByRole("button", { name: "Sign in with email", exact: true });
+  await expect(submit).toBeDisabled();
+  await page.getByLabel("Organization email").fill("nobody@hyperdatalab.org");
+  await page.getByLabel("Password", { exact: true }).fill("wrong-password");
+  await submit.click();
+  await expect(page.getByRole("alert")).toContainText("Incorrect email or password");
+  await expect(submit).toBeEnabled();
 });
 
 test("FULL-AUTH curator cannot load admin data", async ({ page, request }) => {
@@ -141,13 +138,12 @@ test("FULL-AUTH curator cannot load admin data", async ({ page, request }) => {
 });
 
 for (const [width, height] of [[320, 700], [375, 812], [768, 1024], [1440, 900]]) {
-  for (const path of ["/", "/signin", "/writer"]) {
+  for (const path of ["/", "/signin"]) {
     test(`FULL-BOUNDARY viewport ${width}x${height}: ${path}`, async ({ page }) => {
       const errors = errorsOn(page);
       await page.setViewportSize({ width, height });
       await page.goto(path);
       await expect(page.locator("h1").first()).toBeVisible();
-      if (path === "/writer") await expect(page.getByRole("button", { name: "Find patterns", exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       expect(errors).toEqual([]);
       await page.screenshot({ path: test.info().outputPath(`viewport-${width}.png`), fullPage: true });
@@ -155,14 +151,10 @@ for (const [width, height] of [[320, 700], [375, 812], [768, 1024], [1440, 900]]
   }
 }
 
-test("FULL-KEYBOARD guest command menu contains only Writer and escapes", async ({ page }) => {
+test("FULL-AUTH guest is redirected from Writer to sign-in", async ({ page }) => {
   await page.goto("/writer");
-  await page.keyboard.press("Control+k");
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByRole("option", { name: "Writer", exact: true })).toBeVisible();
-  await expect(page.getByRole("option", { name: "Inbox", exact: true })).toHaveCount(0);
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/signin\?next=%2Fwriter/);
+  await expect(page.getByRole("button", { name: "Find patterns", exact: true })).toHaveCount(0);
 });
 
 test("FULL-KEYBOARD staff command navigation and skip target", async ({ page, request }) => {
@@ -227,8 +219,8 @@ test("FULL-AUTH sign-out removes saved key and protected access", async ({ page,
   await page.locator('[data-sidebar="footer"] button').first().click();
   await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
   await expect.poll(() => new URL(page.url()).pathname).toBe("/");
-  expect(await page.evaluate(() => sessionStorage.getItem("aprkb-staff-session"))).toBeNull();
+  expect(await page.evaluate(() => sessionStorage.getItem("aprkb-web-session"))).toBeNull();
   // Client-side link navigation must remain guarded after the session is cleared.
-  await page.getByRole("link", { name: "Open the library", exact: true }).click();
-  await expect(page).toHaveURL(/\/signin\?next=%2Flibrary/);
+  await page.getByRole("link", { name: "Open the phrasebank", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/signin\?next=%2Fphrasebank/);
 });

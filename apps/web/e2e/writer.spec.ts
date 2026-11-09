@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { authenticateCurator } from "./support/auth";
 
 const baseURL = process.env.WRITER_E2E_BASE_URL ?? "http://127.0.0.1:5173";
 
@@ -13,7 +14,8 @@ async function choose(page: Page, label: string, option: string) {
   await page.getByRole("option", { name: option, exact: true }).click();
 }
 
-test("writer uses PostgreSQL-backed search, render, validate and feedback", async ({ page, context }) => {
+test("writer uses PostgreSQL-backed search, render, validate and feedback", async ({ page, context, request: api }) => {
+  await authenticateCurator(page, api);
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const onlineCalls: string[] = [];
   page.on("request", (request) => {

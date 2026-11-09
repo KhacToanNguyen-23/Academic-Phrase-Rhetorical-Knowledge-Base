@@ -70,8 +70,8 @@ test.use({
 });
 
 async function authenticate(page: Page) {
-  await page.addInitScript(() => sessionStorage.setItem("aprkb-staff-session", "test-staff-key"));
-  await page.route("**/v1/auth/me", (route) => route.fulfill({
+  await page.addInitScript(() => sessionStorage.setItem("aprkb-web-session", "test-staff-key"));
+  await page.route("**/v1/auth/session/me", (route) => route.fulfill({
     status: 200, contentType: "application/json", body: JSON.stringify({ id: "test-id", name: "Test curator", role: "curator" }),
   }));
 }

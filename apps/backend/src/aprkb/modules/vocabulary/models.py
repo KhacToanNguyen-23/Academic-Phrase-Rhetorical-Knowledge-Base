@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ARRAY, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import ARRAY, CheckConstraint, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -61,6 +61,35 @@ class VocabLemmaDomainStat(EntityMixin, Base):
     relative_ratio: Mapped[float] = mapped_column(nullable=False)
 
     lemma: Mapped[VocabLemma] = relationship(back_populates="domain_stats")
+
+
+class VocabResearchGroup(Base):
+    """One field or subfield cohort in the active research vocabulary pilot."""
+
+    __tablename__ = "vocab_research_groups"
+    __table_args__ = (CheckConstraint("paper_count > 0", name="ck_vocab_research_group_count"),)
+
+    key: Mapped[str] = mapped_column(String(32), primary_key=True)
+    field_id: Mapped[str] = mapped_column(String(20))
+    field_name: Mapped[str] = mapped_column(String(255))
+    subfield_id: Mapped[str | None] = mapped_column(String(20))
+    subfield_name: Mapped[str | None] = mapped_column(String(255))
+    paper_count: Mapped[int]
+
+
+class VocabLemmaResearchStat(Base):
+    """Document frequency of an eligible lemma within a sampled research group."""
+
+    __tablename__ = "vocab_lemma_research_stats"
+    __table_args__ = (CheckConstraint("paper_count >= 2", name="ck_vocab_research_stat_count"),)
+
+    group_key: Mapped[str] = mapped_column(
+        ForeignKey("vocab_research_groups.key", ondelete="CASCADE"), primary_key=True
+    )
+    lemma_id: Mapped[UUID] = mapped_column(
+        ForeignKey("vocab_lemmas.id", ondelete="CASCADE"), primary_key=True
+    )
+    paper_count: Mapped[int]
 
 
 class VocabFamily(MutableEntityMixin, Base):

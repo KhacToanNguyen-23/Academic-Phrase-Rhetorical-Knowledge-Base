@@ -159,7 +159,8 @@ async def test_seed_is_idempotent_and_contains_required_reference_and_sample_dat
     second = await snapshot()
 
     assert second == first
-    assert len(first["phrase_patterns"]) == 9
+    # 9 AP-RKB patterns + 32 Academic Phrase Bank entries.
+    assert len(first["phrase_patterns"]) == 41
 
     async with session_factory() as session:
         licenses = await session.scalars(select(License))

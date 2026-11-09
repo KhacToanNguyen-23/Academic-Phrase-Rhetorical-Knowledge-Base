@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, func, literal_column, or_, select, tuple_
+from sqlalchemy import ColumnElement, Integer, any_, func, literal_column, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +20,8 @@ from aprkb.modules.vocabulary.models import (
     VocabImportRun,
     VocabLemma,
     VocabLemmaDomainStat,
+    VocabLemmaResearchStat,
+    VocabResearchGroup,
 )
 from aprkb.modules.vocabulary.parsers import DomainStatRow, FamilyRow, LemmaRow, MemberRow
 
@@ -280,8 +282,19 @@ def _prefix(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+@dataclass(frozen=True)
+class LemmaFilters:
+    core_only: bool = False
+    pos: str | None = None
+    status: str | None = None
+    band_min: int | None = None
+    band_max: int | None = None
+    domain: str | None = None
+    research_group: str | None = None
+
+
 def _lemma_filters(
-    *, q: str | None, letter: str | None, core_only: bool
+    filters: LemmaFilters, *, q: str | None = None, letter: str | None = None
 ) -> list[ColumnElement[bool]]:
     clauses: list[ColumnElement[bool]] = []
     if q:
@@ -292,8 +305,38 @@ def _lemma_filters(
         )
     elif letter:
         clauses.append(VocabLemma.word.like(f"{_prefix(letter.lower())}%", escape="\\"))
-    if core_only:
+    if filters.core_only:
         clauses.append(VocabLemma.is_core.is_(True))
+    if filters.pos is not None:
+        clauses.append(VocabLemma.pos == filters.pos)
+    if filters.status == "unknown":
+        clauses.append(or_(VocabLemma.status.is_(None), VocabLemma.status == ""))
+    elif filters.status is not None:
+        clauses.append(VocabLemma.status == filters.status)
+    if filters.band_min is not None:
+        clauses.append(VocabLemma.band >= filters.band_min)
+    if filters.band_max is not None:
+        clauses.append(VocabLemma.band <= filters.band_max)
+    if filters.domain is not None:
+        clauses.append(
+            or_(
+                any_(VocabLemma.domains) == filters.domain,
+                VocabLemma.domain_stats.any(
+                    (VocabLemmaDomainStat.domain == filters.domain)
+                    & (VocabLemmaDomainStat.relative_ratio > 1.0)
+                ),
+            )
+        )
+    if filters.research_group is not None:
+        clauses.append(
+            select(VocabLemmaResearchStat.lemma_id)
+            .where(
+                VocabLemmaResearchStat.lemma_id == VocabLemma.id,
+                VocabLemmaResearchStat.group_key == filters.research_group,
+            )
+            .correlate(VocabLemma)
+            .exists()
+        )
     return clauses
 
 
@@ -302,26 +345,55 @@ async def list_lemmas(
     *,
     q: str | None,
     letter: str | None,
-    core_only: bool,
+    filters: LemmaFilters,
     sort: str,
     limit: int,
     offset: int,
-) -> tuple[list[VocabLemma], int]:
-    clauses = _lemma_filters(q=q, letter=letter, core_only=core_only)
+) -> tuple[list[tuple[VocabLemma, int | None, int | None]], int]:
+    clauses = _lemma_filters(filters, q=q, letter=letter)
     total = int(
         await session.scalar(select(func.count()).select_from(VocabLemma).where(*clauses)) or 0
     )
-    ordering = (
-        (VocabLemma.rank.asc().nulls_last(), VocabLemma.word, VocabLemma.pos)
-        if sort == "rank"
-        else (VocabLemma.word, VocabLemma.pos)
+    ordering = {
+        "rank": (VocabLemma.rank.asc().nulls_last(),),
+        "academic_frequency": (VocabLemma.coca_acad.desc().nulls_last(),),
+    }.get(sort, ())
+    paper_count: ColumnElement[int] = literal_column("NULL", Integer)
+    sample_count: ColumnElement[int] = literal_column("NULL", Integer)
+    if filters.research_group is not None:
+        paper_count = (
+            select(VocabLemmaResearchStat.paper_count)
+            .where(
+                VocabLemmaResearchStat.lemma_id == VocabLemma.id,
+                VocabLemmaResearchStat.group_key == filters.research_group,
+            )
+            .scalar_subquery()
+        )
+        sample_count = (
+            select(VocabResearchGroup.paper_count)
+            .where(VocabResearchGroup.key == filters.research_group)
+            .scalar_subquery()
+        )
+    rows = await session.execute(
+        select(VocabLemma, paper_count, sample_count)
+        .where(*clauses)
+        .order_by(*ordering, VocabLemma.word, VocabLemma.pos)
+        .limit(limit)
+        .offset(offset)
     )
-    items = list(
+    return [(lemma, count, sample) for lemma, count, sample in rows], total
+
+
+async def list_research_groups(session: AsyncSession) -> list[VocabResearchGroup]:
+    return list(
         await session.scalars(
-            select(VocabLemma).where(*clauses).order_by(*ordering).limit(limit).offset(offset)
+            select(VocabResearchGroup).order_by(
+                VocabResearchGroup.field_name,
+                VocabResearchGroup.subfield_name.asc().nulls_first(),
+                VocabResearchGroup.key,
+            )
         )
     )
-    return items, total
 
 
 async def list_families(
@@ -350,8 +422,8 @@ async def list_families(
     return items, total
 
 
-async def letter_counts(session: AsyncSession, *, core_only: bool) -> dict[str, int]:
-    clauses = [VocabLemma.is_core.is_(True)] if core_only else []
+async def letter_counts(session: AsyncSession, filters: LemmaFilters) -> dict[str, int]:
+    clauses = _lemma_filters(filters)
     first_letter = func.lower(func.left(VocabLemma.word, literal_column("1")))
     rows = await session.execute(
         select(first_letter, func.count()).where(*clauses).group_by(first_letter)

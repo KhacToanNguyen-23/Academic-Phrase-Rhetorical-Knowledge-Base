@@ -20,12 +20,12 @@ const phrase = (id: number): Phrase => ({
 
 async function mockExtraction(page: Page, articles: ArticleRow[], initialPhrases: Phrase[] = []) {
   let phrases = initialPhrases;
-  await page.addInitScript(() => sessionStorage.setItem("aprkb-staff-session", "test-key"));
+  await page.addInitScript(() => sessionStorage.setItem("aprkb-web-session", "test-key"));
   await page.route("**/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
     let body: unknown;
-    if (path === "/v1/auth/me") {
+    if (path === "/v1/auth/session/me") {
       body = { id: "reviewer", name: "Test curator", role: "curator" };
     } else if (path === "/v1/admin/corpus/batches") {
       body = [{ batch_id: "batch-1", imported_at: "2026-11-06T00:00:00Z", articles: articles.length,

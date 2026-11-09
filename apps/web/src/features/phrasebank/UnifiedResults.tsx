@@ -188,11 +188,12 @@ type Props = {
   query: string;
   sectionCode: string;
   intentCode: string;
+  hasSlots?: boolean;
   apbFilters: APBFilterState;
   taxonomy?: TaxonomyTree;
 };
 
-export function UnifiedResults({ source, query, sectionCode, intentCode, apbFilters, taxonomy }: Props) {
+export function UnifiedResults({ source, query, sectionCode, intentCode, hasSlots, apbFilters, taxonomy }: Props) {
   const [page, setPage] = useState(1);
   // APB facets (function / stance / register / domain) exist only on APB entries, so an
   // active facet narrows the table to that source instead of silently ignoring it.
@@ -201,7 +202,7 @@ export function UnifiedResults({ source, query, sectionCode, intentCode, apbFilt
   const showReference = includes("manchester-reference");
   const showPatterns = includes("aprkb-patterns");
   const showAcademic = includes("academic-phrase-bank");
-  const filters = { sectionCode: sectionCode || undefined, intentCode: intentCode || undefined };
+  const filters = { sectionCode: sectionCode || undefined, intentCode: intentCode || undefined, hasSlots };
   const reference = PHRASEBANK_SOURCES["manchester-reference"];
 
   const categories = useQuery({
@@ -217,7 +218,7 @@ export function UnifiedResults({ source, query, sectionCode, intentCode, apbFilt
     retry: false,
   });
   const patterns = useQuery({
-    queryKey: ["phrasebank-pattern-search", query, sectionCode, intentCode],
+    queryKey: ["phrasebank-pattern-search", query, sectionCode, intentCode, hasSlots],
     queryFn: () => PHRASEBANK_SOURCES["aprkb-patterns"].search(query, filters),
     enabled: showPatterns,
     retry: false,
@@ -281,7 +282,7 @@ export function UnifiedResults({ source, query, sectionCode, intentCode, apbFilt
   const currentPage = Math.min(page, pageCount);
   const firstIndex = (currentPage - 1) * PAGE_SIZE;
   const shown = rows.slice(firstIndex, firstIndex + PAGE_SIZE);
-  const filterKey = [source, query, sectionCode, intentCode, JSON.stringify(apbFilters)].join("|");
+  const filterKey = [source, query, sectionCode, intentCode, hasSlots, JSON.stringify(apbFilters)].join("|");
   useEffect(() => setPage(1), [filterKey]);
   const title = source === "all" ? "All Phrasebank" : sourceLabel(source);
 

@@ -20,6 +20,7 @@ from aprkb.policies.schemas import (
     LeadInsPolicy,
     LicensePolicy,
     LicensesPolicy,
+    MeasurementPolicy,
     MiningFilterPolicy,
     PhraseStatsPolicy,
     RankingWeightsPolicy,
@@ -56,6 +57,7 @@ class PolicyBundle:
     hybrid_constructions: HybridConstructionsPolicy
     phrase_stats: PhraseStatsPolicy
     vocabulary_import: VocabularyImportPolicy
+    measurement: MeasurementPolicy
 
 
 def _load[PolicyModel: BaseModel](path: Path, model: type[PolicyModel]) -> PolicyModel:
@@ -97,4 +99,5 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
         hybrid_constructions=_load(root / "hybrid_constructions.yaml", HybridConstructionsPolicy),
         phrase_stats=_load(root / "phrase_stats.yaml", PhraseStatsPolicy),
         vocabulary_import=_load(root / "vocabulary_import.yaml", VocabularyImportPolicy),
+        measurement=_load(root / "measurement.yaml", MeasurementPolicy),
     )

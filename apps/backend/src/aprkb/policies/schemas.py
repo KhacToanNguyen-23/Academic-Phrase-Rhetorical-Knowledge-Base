@@ -1019,3 +1019,40 @@ class EpistemicMarkersPolicy(VersionedPolicy):
             strength: [*values, *self.mining_only_markers.get(strength, [])]
             for strength, values in self.markers.items()
         }
+
+
+MeasurementKind = Literal["metric", "method", "protocol"]
+
+
+class MeasurementRelationRule(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    from_kinds: list[MeasurementKind] = Field(alias="from", min_length=1)
+    to_kinds: list[MeasurementKind] = Field(alias="to", min_length=1)
+
+
+class MeasurementPolicy(VersionedPolicy):
+    """Vocabularies for the separate Metric & Measurement catalog (ADR-0015)."""
+
+    kinds: list[MeasurementKind] = Field(min_length=1)
+    relations: dict[str, MeasurementRelationRule] = Field(min_length=1)
+    link_statuses: list[Literal["proposed", "approved", "rejected"]] = Field(min_length=3)
+    max_import_bytes: int = Field(gt=0)
+    metric_check_min_term_length: int = Field(ge=1, le=20)
+
+    @model_validator(mode="after")
+    def consistent_vocabularies(self) -> "MeasurementPolicy":
+        if len(set(self.kinds)) != len(self.kinds):
+            raise ValueError("measurement kinds must be unique")
+        if set(self.link_statuses) != {"proposed", "approved", "rejected"}:
+            raise ValueError("link_statuses must be exactly proposed, approved, rejected")
+        for name, rule in self.relations.items():
+            if not re.fullmatch(r"[a-z][a-z_]{1,31}", name):
+                raise ValueError(f"invalid relation name: {name}")
+            if not set(rule.from_kinds + rule.to_kinds) <= set(self.kinds):
+                raise ValueError(f"relation {name} uses an undeclared kind")
+        return self
+
+    def relation_allowed(self, relation: str, from_kind: str, to_kind: str) -> bool:
+        rule = self.relations.get(relation)
+        return rule is not None and from_kind in rule.from_kinds and to_kind in rule.to_kinds

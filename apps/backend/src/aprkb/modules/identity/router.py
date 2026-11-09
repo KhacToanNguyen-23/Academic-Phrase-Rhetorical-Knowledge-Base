@@ -1,17 +1,20 @@
 """Identity and admin API-key HTTP endpoints."""
 
-from ipaddress import ip_address
+import secrets
+from asyncio import to_thread
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func, select, text
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy import delete, func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.core.deps import get_current_client, get_db_session
 from aprkb.core.security import require_role
 from aprkb.modules.audit.service import record_event
-from aprkb.modules.identity.models import ApiClient
+from aprkb.modules.identity.models import ApiClient, StaffSession
 from aprkb.modules.identity.schemas import (
     ApiKeyCreate,
     ApiKeyCreated,
@@ -19,11 +22,15 @@ from aprkb.modules.identity.schemas import (
     ApiKeySummary,
     AuthenticatedClient,
     DemoSession,
+    EmailLogin,
+    GoogleConfig,
+    GoogleLogin,
 )
 from aprkb.modules.identity.service import (
     ADMIN_LIFECYCLE_LOCK_ID,
     create_api_key,
-    initialize_local_demo_session,
+    hash_password,
+    verify_password,
 )
 
 router = APIRouter(tags=["identity"])
@@ -37,24 +44,6 @@ Authenticated = Annotated[ApiClient, Depends(get_current_client)]
 @router.get("/me", response_model=AuthenticatedClient)
 async def current_identity(client: Authenticated) -> AuthenticatedClient:
     return AuthenticatedClient(id=client.id, name=client.name, role=client.role)
-
-
-@router.post("/demo-session", response_model=DemoSession)
-async def create_local_demo_session(request: Request, session: DatabaseSession) -> DemoSession:
-    """Initialize local sample data and issue a local-only curator API key."""
-    host = request.client.host if request.client else ""
-    try:
-        loopback = ip_address(host).is_loopback
-    except ValueError:
-        loopback = False
-    local_hostname = request.url.hostname in {"localhost", "127.0.0.1", "::1"}
-    if request.app.state.settings.app_env != "local" or not loopback or not local_hostname:
-        raise HTTPException(status_code=404, detail="Demo login is unavailable")
-
-    client, plaintext = await initialize_local_demo_session(
-        session, request_id=request.state.request_id
-    )
-    return DemoSession(id=client.id, name=client.name, role=client.role, api_key=plaintext)
 
 
 @admin_router.post("/api-keys", response_model=ApiKeyCreated, status_code=status.HTTP_201_CREATED)
@@ -149,3 +138,169 @@ async def revoke_key(
         await session.rollback()
         raise
     return ApiKeyRevoked(id=client.id, is_active=client.is_active)
+
+
+@router.post("/setup", response_model=AuthenticatedClient)
+async def setup_email(
+    payload: EmailLogin,
+    client: Authenticated,
+    session: DatabaseSession,
+) -> AuthenticatedClient:
+    if client.role not in {"admin", "curator"}:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    locked = await session.scalar(
+        select(ApiClient)
+        .where(ApiClient.id == client.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if locked is None:
+        raise HTTPException(status_code=401, detail="Account unavailable")
+    if locked.email is not None:
+        raise HTTPException(
+            status_code=409, detail="This key is already linked to an email. Please sign in"
+        )
+    locked.email = payload.email
+    locked.password_hash = await to_thread(hash_password, payload.password)
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=409, detail="Email is already registered to another account"
+        ) from None
+    return AuthenticatedClient(id=client.id, name=client.name, role=client.role)
+
+
+@router.post("/login", response_model=DemoSession)
+async def email_login(payload: EmailLogin, session: DatabaseSession) -> DemoSession:
+    from aprkb.core.security import hash_api_key
+
+    client = await session.scalar(select(ApiClient).where(ApiClient.email == payload.email))
+    stored = client.password_hash if client and client.password_hash else DUMMY_PASSWORD_HASH
+    valid = await to_thread(verify_password, payload.password, stored)
+    if (
+        client is None
+        or not client.password_hash
+        or not valid
+        or not client.is_active
+        or client.role not in {"admin", "curator"}
+    ):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    token = "email_" + secrets.token_urlsafe(32)
+    session.add(
+        StaffSession(
+            client_id=client.id,
+            token_hash=hash_api_key(token),
+            expires_at=datetime.now(UTC) + timedelta(hours=8),
+        )
+    )
+    await session.commit()
+    return DemoSession(id=client.id, name=client.name, role=client.role, api_key=token)
+
+
+DUMMY_PASSWORD_HASH = hash_password(secrets.token_urlsafe(32))
+
+
+@router.post("/logout", status_code=204)
+async def logout(request: Request, client: Authenticated, session: DatabaseSession) -> None:
+    from aprkb.core.security import hash_api_key
+
+    token = request.headers.get("X-API-Key", "")
+    await session.execute(
+        delete(StaffSession).where(
+            StaffSession.client_id == client.id,
+            StaffSession.token_hash == hash_api_key(token),
+        )
+    )
+    await session.commit()
+
+
+@router.get("/google/config", response_model=GoogleConfig)
+async def google_config(request: Request, response: Response) -> GoogleConfig:
+    nonce = secrets.token_urlsafe(32)
+    response.set_cookie(
+        "aprkb-google-nonce",
+        nonce,
+        max_age=600,
+        httponly=True,
+        samesite="strict",
+        secure=request.app.state.settings.app_env not in {"local", "test"},
+        path="/v1/auth/google",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return GoogleConfig(client_id=request.app.state.settings.google_client_id or None, nonce=nonce)
+
+
+@router.post("/google", response_model=DemoSession)
+async def google_login(
+    payload: GoogleLogin,
+    request: Request,
+    response: Response,
+    session: DatabaseSession,
+) -> DemoSession:
+    from aprkb.modules.identity.google import google_session
+
+    client_id = request.app.state.settings.google_client_id
+    if not client_id:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured")
+    nonce = request.cookies.get("aprkb-google-nonce", "")
+    if not nonce:
+        raise HTTPException(status_code=401, detail="Sign-in expired. Reload and try again")
+    result = await google_session(
+        session,
+        credential=payload.credential,
+        client_id=client_id,
+        nonce=nonce,
+        setup_key=request.headers.get("X-API-Key"),
+    )
+    response.delete_cookie("aprkb-google-nonce", path="/v1/auth/google")
+    response.headers["Cache-Control"] = "no-store"
+    return result
+
+
+@router.get("/google/me", response_model=AuthenticatedClient)
+async def google_identity(request: Request, client: Authenticated) -> AuthenticatedClient:
+    if not request.headers.get("X-API-Key", "").startswith("google_") or not client.google_subject:
+        raise HTTPException(status_code=401, detail="Google sign-in required")
+    return AuthenticatedClient(id=client.id, name=client.name, role=client.role)
+
+
+@router.post("/register", status_code=201, response_model=AuthenticatedClient)
+async def register_email(payload: EmailLogin, session: DatabaseSession) -> AuthenticatedClient:
+    await session.execute(text("SELECT pg_advisory_xact_lock(280627590469)"))
+    existing = await session.scalar(select(ApiClient).where(ApiClient.email == payload.email))
+    # Curators registered before passwords existed set theirs by registering again.
+    legacy = (
+        existing is not None
+        and existing.role == "curator"
+        and not existing.password_hash
+        and not existing.google_subject
+    )
+    if existing is not None and not legacy:
+        raise HTTPException(status_code=409, detail="Email is already registered. Please sign in")
+    if existing is not None:
+        client = existing
+    else:
+        client, _ = await create_api_key(session, name=payload.email, role="curator")
+        client.email = payload.email
+    client.password_hash = await to_thread(hash_password, payload.password)
+    await session.commit()
+    # Registration never creates or returns a browser session.
+    return AuthenticatedClient(id=client.id, name=client.name, role=client.role)
+
+
+@router.get("/session/me", response_model=AuthenticatedClient)
+async def web_identity(request: Request, client: Authenticated) -> AuthenticatedClient:
+    token = request.headers.get("X-API-Key", "")
+    google = token.startswith("google_") and bool(client.google_subject)
+    email = (
+        token.startswith("email_")
+        and client.email is not None
+        and client.email.endswith("@hyperdatalab.org")
+    )
+    if not (google or email):
+        raise HTTPException(status_code=401, detail="Sign in with Google or organization email")
+    if client.role not in {"admin", "curator"}:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    return AuthenticatedClient(id=client.id, name=client.name, role=client.role)

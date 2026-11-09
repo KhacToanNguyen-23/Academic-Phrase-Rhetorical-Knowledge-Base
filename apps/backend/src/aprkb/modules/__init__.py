@@ -11,6 +11,7 @@ def load_models() -> None:
         "extraction",
         "identity",
         "journals",
+        "measurement",
         "mining",
         "patterns",
         "recommendation",

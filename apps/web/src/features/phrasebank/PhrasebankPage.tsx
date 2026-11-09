@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { MeasurementSlotSuggestions } from "@/features/measurement";
 import { ApiError } from "@/features/slr-import/api/client";
 import {
   PHRASEBANK_SOURCES,
@@ -887,6 +888,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
                   {metadata.label ? <p><span className="text-muted-foreground">Label:</span> {metadata.label}</p> : null}
                   {metadata.instruction ? <p><span className="text-muted-foreground">How to fill:</span> {metadata.instruction}</p> : null}
                   {metadata.example ? <p><span className="text-muted-foreground">Example:</span> {metadata.example}</p> : null}
+                  <MeasurementSlotSuggestions patternId={id} slot={name} />
                 </DetailField>
               );
             })}

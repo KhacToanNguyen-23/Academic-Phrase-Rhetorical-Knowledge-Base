@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     blob_dir: str = "./data/blobs"
     log_level: str = "INFO"
     reference_library_enabled: bool = False
+    # ADR-0015: separate Metric & Measurement catalog, off until the catalog is reviewed.
+    measurement_enabled: bool = False
     nlp_engine: Literal["regex", "spacy"] = "regex"
     nlp_model: str = "en_core_web_sm"
     mining_hybrid_enabled: bool = False

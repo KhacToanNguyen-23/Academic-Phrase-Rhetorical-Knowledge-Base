@@ -1,0 +1,11 @@
+version: 0.1.0
+# TODO(owner, Task-3): confirm the measurement vocabularies with the methods reviewer.
+kinds: [metric, method, protocol]
+relations:
+  # source kind -> relation -> allowed target kinds
+  uses_method: {from: [metric], to: [method]}
+  part_of: {from: [method], to: [protocol]}
+  variant_of: {from: [metric, method, protocol], to: [metric, method, protocol]}
+  related_to: {from: [metric, method, protocol], to: [metric, method, protocol]}
+link_statuses: [proposed, approved, rejected]
+max_import_bytes: 1048576

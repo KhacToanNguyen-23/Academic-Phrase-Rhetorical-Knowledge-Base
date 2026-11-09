@@ -24,6 +24,7 @@ import { PhrasebankCategory, PhrasebankHome, PhrasebankPatternDetail } from "@/f
 import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
 import { SlrImportPage } from "@/features/slr-import";
 import { VocabularyLemmaPage, VocabularyPage } from "@/features/vocabulary";
+import { MeasurementEntryPage, MeasurementPage } from "@/features/measurement";
 import { safeNext } from "@/shared/lib/safe-next";
 import { DataState } from "@/components/domain";
 
@@ -172,6 +173,22 @@ const vocabularyLemma = createRoute({
   validateSearch: vocabularySearch,
   component: VocabularyLemmaPage,
 });
+const measurementSearch = (s: Record<string, unknown>): { kind?: "metric" | "method" | "protocol"; q?: string } => ({
+  kind: s.kind === "metric" || s.kind === "method" || s.kind === "protocol" ? s.kind : undefined,
+  q: str(s.q),
+});
+const measurements = createRoute({
+  getParentRoute: () => guarded,
+  path: "/measurements",
+  validateSearch: measurementSearch,
+  component: MeasurementPage,
+});
+const measurementEntry = createRoute({
+  getParentRoute: () => guarded,
+  path: "/measurements/$code",
+  validateSearch: measurementSearch,
+  component: MeasurementEntryPage,
+});
 // ?batch=<id>[,<id>] preselects batches; the Import page links here when a run finishes.
 const extract = createRoute({
   getParentRoute: () => guarded,
@@ -226,6 +243,8 @@ export const router = createRouter({
         gold,
         vocabulary,
         vocabularyLemma,
+        measurements,
+        measurementEntry,
       ]),
     ]),
     ...(devUiRoute ? [devUiRoute] : []),

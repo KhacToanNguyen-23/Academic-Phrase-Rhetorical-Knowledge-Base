@@ -20,12 +20,12 @@ The handle and repository access were verified through the GitHub API on 2026-11
 ## Required check names (Phase 02, implemented 2026-11-04)
 
 These are the exact GitHub job names in `.github/workflows/ci.yml`. Configure branch
-protection with the first two; the other two exist and run on every push/PR but are
+protection with the first two; the other two exist and run on every PR (and on pushes to `dev`/`main`) but are
 **not required yet** pending the stability evidence Phase 02/03 call for.
 
 | Check name | Required? | Local equivalent | Owner |
 | --- | --- | --- | --- |
-| `CI / backend-quality-and-tests` | Yes | `make lint && bash scripts/ci/require-db-tests.sh && make test` (needs `TEST_DATABASE_URL=...aprkb_test`) | backend owner |
+| `CI / backend-quality-and-tests` | Yes | `make lint && bash scripts/ci/require-db-tests.sh && pytest --ignore=tests/integration` (integration runs once, in the script) (needs `TEST_DATABASE_URL=...aprkb_test`) | backend owner |
 | `CI / frontend-quality-and-build` | Yes | `pnpm --dir apps/web lint`, `pnpm --dir apps/web typecheck`, `pnpm --dir apps/web build` | frontend owner |
 | `CI / backend-image-contract` | Not yet — needs default-branch green runs + a disposable-PR ruleset test first | `make container-build && make container-audit`, then `make container-smoke-api`/`container-smoke-worker` on a shared Docker network aliased `pg` | delivery owner |
 | `CI / frontend-e2e-smoke` | Not yet — Stage A observability only (`continue-on-error: true`); promotes per the stability window in `plans/ci-cd-team-standard/phase-02-enforced-ci.md` | `pnpm --dir apps/web test:e2e` against a migrated+seeded `aprkb_test` and a running API | frontend owner |

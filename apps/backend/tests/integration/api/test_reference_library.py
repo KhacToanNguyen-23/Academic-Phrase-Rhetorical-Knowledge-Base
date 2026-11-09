@@ -499,6 +499,43 @@ async def test_phrasebank_init_imports_both_sources_and_filter_mappings(
     assert reference.json()["results"][0]["intent_code"] == "DISCUSSION_FINDING"
 
 
+async def test_phrasebank_init_manifest_loads_aprkb_and_apb_json_sources(session_factory, tmp_path):
+    repo_root = Path(__file__).resolve().parents[5]
+    (tmp_path / "patterns.json").write_bytes((repo_root / "data/seed/patterns.json").read_bytes())
+    (tmp_path / "academic_phrases.json").write_bytes(
+        (repo_root / "data/seed/academic_phrases.json").read_bytes()
+    )
+    path = tmp_path / "data_init.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": "1",
+                "pattern_seed": "patterns.json",
+                "academic_phrases": "academic_phrases.json",
+            }
+        ),
+        encoding="utf-8",
+    )
+    async with session_factory() as session:
+        await init_reference(session)
+        await session.commit()
+    async with session_factory() as session:
+        preview = await initialize_phrasebank(session, path, dry_run=True)
+        assert preview["patterns"] == {"patterns": 9, "versions": 9}
+        assert preview["academic_phrases"] == {"records": 32}
+    async with session_factory() as session:
+        assert await session.scalar(select(func.count()).select_from(PhrasePattern)) == 0
+    async with session_factory() as session:
+        applied = await initialize_phrasebank(session, path)
+        assert applied["patterns"] == {"patterns": 9, "versions": 9}
+        assert applied["academic_phrases"] == {"records": 32}
+    async with session_factory() as session:
+        assert await session.scalar(select(func.count()).select_from(PhrasePattern)) == 41
+        repeated = await initialize_phrasebank(session, path)
+        assert repeated["patterns"] == {"patterns": 0, "versions": 0}
+        assert repeated["academic_phrases"] == {"records": 32}
+
+
 @pytest.mark.parametrize("failure", ["mapping", "pack"])
 async def test_phrasebank_init_failure_rolls_back_all_sources(session_factory, tmp_path, failure):
     path = _write_phrasebank_init(

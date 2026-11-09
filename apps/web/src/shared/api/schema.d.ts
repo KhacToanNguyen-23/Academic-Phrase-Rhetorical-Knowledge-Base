@@ -2438,6 +2438,8 @@ export interface components {
             text: string;
             /** Unfilled Slots */
             unfilled_slots: string[];
+            /** Warnings */
+            warnings?: string[];
         };
         /** RenderValidationIssue */
         RenderValidationIssue: {
@@ -2793,6 +2795,8 @@ export interface components {
              * Format: uuid
              */
             validation_id: string;
+            /** Warnings */
+            warnings?: string[];
         };
         /** ValidationRuleResponse */
         ValidationRuleResponse: {

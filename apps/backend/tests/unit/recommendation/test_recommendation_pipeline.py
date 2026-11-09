@@ -282,6 +282,27 @@ def test_recommendation_ranks_the_whole_primary_tier_before_applying_limit(
     assert result.items[0].pattern.pattern_version_id == primary[1].pattern_version_id
 
 
+def test_recommendation_counts_patterns_tied_at_the_result_limit(
+    context, policy_bundle, evidence_policy
+):
+    candidates = [pattern(canonical_frame=f"Frame {index} {{topic}}.") for index in range(3)]
+    pipeline = RecommendationPipeline(
+        gates=build_gates(evidence_policy=evidence_policy),
+        scorers=build_scorers(
+            discipline_source=NullDisciplineSource(), evidence_policy=evidence_policy
+        ),
+        weights=policy_bundle.ranking_weights.weights,
+        tier_loader=FallbackTierLoader(
+            tiers=("generic_genre",), by_tier={"generic_genre": candidates}
+        ),
+    )
+
+    result = pipeline.recommend(replace(context, limit=1))
+
+    assert len(result.items) == 1
+    assert result.omitted_tied_count == 2
+
+
 def test_scaffold_diversifier_preserves_ranked_order():
     ranked = [pattern(), pattern()]
 

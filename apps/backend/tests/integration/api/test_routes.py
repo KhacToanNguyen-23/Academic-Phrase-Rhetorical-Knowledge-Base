@@ -317,10 +317,10 @@ async def test_recommendations_warn_when_intent_move_query_are_absent(
     )
     assert response.status_code == 200
     assert (
-        "Không có intent/move/query; kết quả là toàn bộ pattern được duyệt"
+        "No intent, move, or query was supplied; approved patterns are unfiltered"
         in response.json()["warnings"]
     )
-    assert "Section không được lọc" not in response.json()["warnings"]
+    assert "Section is not being used as a filter" not in response.json()["warnings"]
 
 
 async def test_recommendations_warn_when_section_absent_and_not_when_context_complete(
@@ -341,8 +341,61 @@ async def test_recommendations_warn_when_section_absent_and_not_when_context_com
         )
         assert response.status_code == 200
         warnings = response.json()["warnings"]
-        assert ("Section không được lọc" in warnings) is (not section)
-        assert "Không có intent/move/query; kết quả là toàn bộ pattern được duyệt" not in warnings
+        assert ("Section is not being used as a filter" in warnings) is (not section)
+        assert (
+            "No intent, move, or query was supplied; approved patterns are unfiltered"
+            not in warnings
+        )
+
+
+@pytest.mark.asyncio
+async def test_recommendations_explain_an_unknown_intent_code(api_client, session_factory):
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "unknown intent client")
+    response = await api_client.post(
+        "/v1/recommendations",
+        headers={"X-API-Key": key},
+        json={"intent": "INTENT_DOES_NOT_EXIST"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"] == []
+    assert "Intent code is not present in the published taxonomy" in body["warnings"]
+    assert "No approved phrases match the selected filters" not in body["warnings"]
+
+
+@pytest.mark.asyncio
+async def test_recommendations_explain_empty_query_and_claim_type_filters(
+    api_client, session_factory
+):
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "empty recommendation filters")
+    headers = {"X-API-Key": key}
+
+    query_response = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={"query": "unlikely-term-zzq"},
+    )
+    claim_response = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={"claim_type": "comparative"},
+    )
+
+    assert query_response.status_code == 200
+    assert query_response.json()["items"] == []
+    assert (
+        "No approved phrases match the query and other selected filters"
+        in query_response.json()["warnings"]
+    )
+    assert claim_response.status_code == 200
+    assert claim_response.json()["items"] == []
+    assert (
+        "No approved phrases match the selected claim type and other filters"
+        in claim_response.json()["warnings"]
+    )
 
 
 @pytest.mark.asyncio
@@ -1187,7 +1240,7 @@ async def test_validation_http_runs_v02_and_blocks_prove_with_single_study(
         "/v1/validate",
         headers={"X-API-Key": key},
         json={
-            "text": "This proves the intervention caused the outcome.",
+            "text": "This proves the intervention caused the {outcome}.",
             "claim_type": "causal",
             "evidence_level": "single_study",
             "epistemic_strength": "absolute",
@@ -1202,6 +1255,8 @@ async def test_validation_http_runs_v02_and_blocks_prove_with_single_study(
     assert "block" in serialized
     assert body["complete"] is False
     assert "V01" in body["checks_unavailable"]
+    assert any("Validation is incomplete" in warning for warning in body["warnings"])
+    assert any("{outcome}" in warning for warning in body["warnings"])
     v02 = next(rule for rule in body["rules"] if rule["code"] == "V02")
     assert v02["applied"] is True
     assert v02["recommended_action"]

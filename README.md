@@ -45,7 +45,14 @@ uv sync --directory apps/backend --extra spacy
 
 Do not install the model with `uv pip install`: a plain `uv sync` removes packages that are not in the lock file. Articles ingested earlier with `regex` have no stored tokens, so re-ingest them (`python -m aprkb.cli reingest --source slr`, replacing `slr` with the article source) before Tier 2 can produce frames. Without spaCy or the model, ingest fails with `NLP_ENGINE=spacy requires spaCy and model ...`; set `NLP_ENGINE=regex` and `MINING_HYBRID_ENABLED=false` for a setup without them. The production deployment (manual, from `main`, see `deploy/README.md` there) must set both variables in its own environment (`TODO(owner)`).
 
-For backend checks, set `TEST_DATABASE_URL` to a dedicated database named `aprkb_test`. The test fixture creates and removes isolated schemas there and never migrates the application's public schema. Use the same local password and host port as `DATABASE_URL`, then run `make check`.
+For PostgreSQL-backed backend checks, set `TEST_DATABASE_URL` in the current PowerShell process to a valid connection for the dedicated `aprkb_test` database, then run the PowerShell script below. For example:
+
+```powershell
+$env:TEST_DATABASE_URL = "postgresql+asyncpg://aprkb:<current-local-password>@localhost:5432/aprkb_test"
+.\scripts\test-backend.ps1
+```
+
+Replace the placeholder locally; do not paste credentials into source files or point this variable at `aprkb` or production. The script checks the database name before running pytest. The fixture creates and removes isolated schemas in `aprkb_test` and never migrates the application's public schema.
 
 Uploads require a curator API key and a seeded license. The sample `CC-BY` license permits mining; `PROPRIETARY` is rejected by the worker. In the internal `/writer` flow, an approved pattern with `PROPRIETARY` provenance can be shown with a `license_flag` marking it for internal use only. Missing license or provenance remains excluded. This policy must be changed before any public deployment.
 
@@ -86,6 +93,7 @@ CR-06 changed the current weights; they remain provisional pending owner review.
 | `make setup` | Start PostgreSQL, install backend dependencies, migrate, and seed |
 | `make dev` / `make be` | Start PostgreSQL, prepare backend, and run the API |
 | `make check` | Run lint and backend tests |
+| `.\scripts\test-backend.ps1` | Run backend tests after validating `TEST_DATABASE_URL` targets `aprkb_test` |
 | `make install` | Sync backend dependencies with `uv` |
 | `make migrate` | Apply the Alembic migration |
 | `make seed` | Idempotently load reference enums, taxonomy, and self-authored patterns |

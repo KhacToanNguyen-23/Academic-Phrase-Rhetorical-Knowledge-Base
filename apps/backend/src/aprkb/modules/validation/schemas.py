@@ -32,6 +32,7 @@ class ValidationResponse(BaseModel):
     complete: bool
     checks_unavailable: list[str]
     checks_not_applicable: list[str]
+    warnings: list[str] = Field(default_factory=list)
     rules: list[ValidationRuleResponse]
 
 

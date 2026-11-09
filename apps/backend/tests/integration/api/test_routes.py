@@ -35,15 +35,15 @@ from aprkb.modules.patterns.models import (
     ReviewDecision,
     UsageConstraint,
 )
-from aprkb.modules.patterns.repository import get_intent
 from aprkb.modules.patterns.read_model import load_current_patterns
+from aprkb.modules.patterns.repository import get_intent
 from aprkb.modules.recommendation import repository as recommendation_repository
 from aprkb.modules.recommendation.models import Feedback, RecommendationLog
 from aprkb.modules.taxonomy.models import Intent
 from aprkb.policies.loader import load_policy_bundle
 from aprkb.seeds.load import run_seed
-from tests.seed_data import seed_legacy_pattern_fixtures
 from aprkb.worker.handlers import _SessionCandidateRepository
+from tests.seed_data import seed_legacy_pattern_fixtures
 
 
 @pytest_asyncio.fixture

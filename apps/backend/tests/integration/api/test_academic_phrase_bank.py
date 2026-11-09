@@ -14,6 +14,7 @@ from aprkb.modules.identity.models import ApiClient
 from aprkb.modules.identity.service import create_api_key
 from aprkb.modules.patterns.models import PatternVersion, PhrasePattern
 from aprkb.seeds.load import run_seed
+from tests.seed_data import seed_legacy_pattern_fixtures
 
 
 @pytest_asyncio.fixture
@@ -50,6 +51,7 @@ async def _create_key(session_factory: async_sessionmaker, role: str) -> tuple[A
 async def _seed(session_factory: async_sessionmaker) -> None:
     async with session_factory() as session:
         await run_seed(session)
+        await seed_legacy_pattern_fixtures(session)
         await session.commit()
 
 

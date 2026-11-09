@@ -273,7 +273,7 @@ async def test_recommendations_default_to_approved_patterns_and_count_evidence_h
 async def test_recommendation_sql_filters_reduce_reads_without_changing_items(
     api_client, session_factory, monkeypatch
 ):
-    await run_seed_in_session(session_factory)
+    await run_seed_with_pattern_fixtures_in_session(session_factory)
     _, key = await create_key(session_factory, "client", "SQL retrieval regression")
     async with session_factory() as session:
         baseline = await load_current_patterns(session)
@@ -400,7 +400,7 @@ async def test_recommendations_explain_empty_query_and_claim_type_filters(
     query_response = await api_client.post(
         "/v1/recommendations",
         headers=headers,
-        json={"query": "unlikely-term-zzq"},
+        json={"query": "zzqvqx-31xk"},
     )
     claim_response = await api_client.post(
         "/v1/recommendations",

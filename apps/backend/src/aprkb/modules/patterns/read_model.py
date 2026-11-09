@@ -109,6 +109,7 @@ async def load_current_patterns(
     query: str | None = None,
     normalize_query: bool = False,
     browse_query: str | None = None,
+    has_slots: bool | None = None,
     move_code: str | None = None,
     claim_type: str | None = None,
     journal_id: UUID | None = None,
@@ -135,6 +136,9 @@ async def load_current_patterns(
         statement = statement.where(UsageConstraint.allowed_sections.contains([section_code]))
     if status:
         statement = statement.where(PhrasePattern.status == status)
+    if has_slots is not None:
+        empty_slots = PatternVersion.slots == {}
+        statement = statement.where(~empty_slots if has_slots else empty_slots)
     if genre_code:
         statement = statement.where(
             or_(

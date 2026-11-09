@@ -911,6 +911,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/vocabulary/filter-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vocabulary Filter Options */
+        get: operations["vocabulary_filter_options_v1_vocabulary_filter_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/vocabulary/lemmas": {
         parameters: {
             query?: never;
@@ -1786,6 +1803,7 @@ export interface components {
             rank: number | null;
             /** Ratio */
             ratio: number | null;
+            research_evidence?: components["schemas"]["LemmaResearchEvidence"] | null;
             /** Status */
             status: string | null;
             /** Status Label */
@@ -1800,10 +1818,19 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** LemmaResearchEvidence */
+        LemmaResearchEvidence: {
+            /** Paper Count */
+            paper_count: number;
+            /** Sample Count */
+            sample_count: number;
+        };
         /** LemmaSummary */
         LemmaSummary: {
             /** Band */
             band: number | null;
+            /** Coca Acad */
+            coca_acad: number | null;
             /**
              * Id
              * Format: uuid
@@ -1817,6 +1844,7 @@ export interface components {
             pos_label: string;
             /** Rank */
             rank: number | null;
+            research_evidence?: components["schemas"]["LemmaResearchEvidence"] | null;
             /** Status */
             status: string | null;
             /** Status Label */
@@ -2815,6 +2843,38 @@ export interface components {
                 number,
                 number
             ] | null;
+        };
+        /** VocabularyFilterOptions */
+        VocabularyFilterOptions: {
+            /** Domains */
+            domains: {
+                [key: string]: string;
+            };
+            /** Pos */
+            pos: {
+                [key: string]: string;
+            };
+            /** Research Groups */
+            research_groups?: components["schemas"]["VocabularyResearchGroup"][];
+            /** Status */
+            status: {
+                [key: string]: string;
+            };
+        };
+        /** VocabularyResearchGroup */
+        VocabularyResearchGroup: {
+            /** Field Id */
+            field_id: string;
+            /** Field Name */
+            field_name: string;
+            /** Key */
+            key: string;
+            /** Paper Count */
+            paper_count: number;
+            /** Subfield Id */
+            subfield_id: string | null;
+            /** Subfield Name */
+            subfield_name: string | null;
         };
     };
     responses: never;
@@ -4291,6 +4351,8 @@ export interface operations {
                 intent?: string | null;
                 section?: string | null;
                 q?: string | null;
+                /** @description Filter by whether fill-in fields are defined. */
+                has_slots?: boolean | null;
                 status?: string | null;
                 offset?: number;
                 limit?: number;
@@ -4862,15 +4924,52 @@ export interface operations {
             };
         };
     };
+    vocabulary_filter_options_v1_vocabulary_filter_options_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VocabularyFilterOptions"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     vocabulary_lemmas_v1_vocabulary_lemmas_get: {
         parameters: {
             query?: {
                 q?: string | null;
                 letter?: string | null;
-                core_only?: boolean;
-                sort?: "alpha" | "rank";
+                sort?: "alpha" | "rank" | "academic_frequency";
                 limit?: number;
                 offset?: number;
+                core_only?: boolean;
+                pos?: string | null;
+                status?: string | null;
+                band_min?: number | null;
+                band_max?: number | null;
+                domain?: string | null;
+                research_group?: string | null;
             };
             header?: {
                 "X-API-Key"?: string | null;
@@ -4937,6 +5036,12 @@ export interface operations {
         parameters: {
             query?: {
                 core_only?: boolean;
+                pos?: string | null;
+                status?: string | null;
+                band_min?: number | null;
+                band_max?: number | null;
+                domain?: string | null;
+                research_group?: string | null;
             };
             header?: {
                 "X-API-Key"?: string | null;

@@ -17,6 +17,7 @@ export type PatternDetail = components["schemas"]["PatternDetail"];
 export type TaxonomyTree = components["schemas"]["TaxonomyTree"];
 
 export type TaxonomyFilter = { sectionCode?: string; intentCode?: string };
+export type PatternFilter = TaxonomyFilter & { hasSlots?: boolean };
 
 export interface PhrasebankSource<TGroup, TSearch, TDetail> {
   id: SourceId;
@@ -72,9 +73,23 @@ export const phrasebankSources = {
     params: { query: { q, section: filter.sectionCode, intent: filter.intentCode, phrase_only: true, limit: 50 } },
   })),
   taxonomy: async () => unwrap(await client().GET("/v1/taxonomy")),
-  patterns: async (q?: string, filter: TaxonomyFilter = {}): Promise<PatternDetail[]> => {
+  patterns: async (
+    q?: string,
+    filter: PatternFilter = {},
+    { offset = 0, limit = 200 } = {},
+  ): Promise<PatternDetail[]> => {
     return unwrap(await client().GET("/v1/patterns", {
-      params: { query: { status: "approved", q: q || undefined, section: filter.sectionCode, intent: filter.intentCode, limit: 200 } },
+      params: {
+        query: {
+          status: "approved",
+          q: q || undefined,
+          section: filter.sectionCode,
+          intent: filter.intentCode,
+          has_slots: filter.hasSlots,
+          offset,
+          limit,
+        },
+      },
     }));
   },
   pattern: async (id: string): Promise<PatternDetail> => unwrap(await client().GET("/v1/patterns/{pattern_id}", {

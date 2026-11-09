@@ -52,6 +52,9 @@ async def list_patterns(
     intent: str | None = None,
     section: str | None = None,
     q: Annotated[str | None, Query(max_length=500)] = None,
+    has_slots: Annotated[
+        bool | None, Query(description="Filter by whether fill-in fields are defined.")
+    ] = None,
     pattern_status: Annotated[str | None, Query(alias="status")] = None,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
@@ -61,6 +64,7 @@ async def list_patterns(
         intent=intent,
         section=section,
         query=q,
+        has_slots=has_slots,
         status=pattern_status,
         offset=offset,
         limit=limit,

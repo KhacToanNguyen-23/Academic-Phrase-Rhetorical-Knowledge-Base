@@ -344,6 +344,93 @@ test("combined filters refetch both sources instead of searching their initial c
   await expect(page.getByRole("cell", { name: "Needle beyond the original reference cap" })).toHaveCount(0);
 });
 
+test("AP-RKB pagination reaches results beyond the old cap and resets for new filters", async ({ page }) => {
+  await authenticate(page);
+  await mockLibrary(page);
+  const catalog = Array.from({ length: 250 }, (_, index) => ({
+    ...patterns[0]!,
+    id: `page-pattern-${index + 1}`,
+    canonical_frame: `${index < 100 ? "Alpha" : "Beta"} pattern ${index + 1}`,
+    allowed_sections: [index < 50 ? "RESULTS" : "INTRO"],
+    slots: index % 2 === 0 ? patterns[0]!.slots : {},
+  }));
+  await page.route("**/v1/patterns?**", (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    const offset = Number(params.get("offset"));
+    const limit = Number(params.get("limit"));
+    const hasSlots = params.get("has_slots");
+    const matches = catalog.filter((item) =>
+      item.canonical_frame.toLowerCase().includes(params.get("q") ?? "")
+      && (!params.get("section") || item.allowed_sections.includes(params.get("section")!))
+      && (hasSlots === null || (Object.keys(item.slots).length > 0) === (hasSlots === "true")));
+    return route.fulfill({ json: matches.slice(offset, offset + limit) });
+  });
+
+  await page.goto("/phrasebank");
+  const pager = page.getByRole("navigation", { name: "AP-RKB pattern pages" });
+  const previous = pager.getByRole("link", { name: "Go to previous page" });
+  const next = pager.getByRole("link", { name: "Go to next page" });
+  const patternLinks = page.locator("details a").filter({ hasText: /^(Alpha|Beta) pattern \d+$/ });
+  await expect(previous).toBeDisabled();
+  await expect(patternLinks).toHaveCount(50);
+  for (let pageNumber = 2; pageNumber <= 5; pageNumber++) {
+    await next.click();
+    await expect(pager).toContainText(`Page ${pageNumber}`);
+  }
+  await expect(patternLinks.filter({ hasText: /^Beta pattern 250$/ })).toHaveCount(1);
+  await expect(next).toBeDisabled();
+  await previous.click();
+  await expect(pager).toContainText("Page 4");
+
+  await page.getByRole("searchbox", { name: "Search phrasebanks" }).fill("alpha");
+  await expect(pager).toContainText("Page 1");
+  await expect(patternLinks.filter({ hasText: /^Alpha pattern 1$/ })).toHaveCount(1);
+  await next.click();
+  await expect(patternLinks.filter({ hasText: /^Alpha pattern 100$/ })).toHaveCount(1);
+  await expect(next).toBeDisabled();
+
+  await selectFilter(page, "Fill-in fields", "Has fill-in fields");
+  await expect(patternLinks.filter({ hasText: /^Alpha pattern 1$/ })).toHaveCount(1);
+  await expect(patternLinks.filter({ hasText: /^Alpha pattern 2$/ })).toHaveCount(0);
+  await expect(patternLinks).toHaveCount(50);
+  await expect(pager).toHaveCount(0);
+  await selectFilter(page, "Fill-in fields", "No fill-in fields");
+  await expect(patternLinks.filter({ hasText: /^Alpha pattern 2$/ })).toHaveCount(1);
+  await expect(patternLinks.filter({ hasText: /^Alpha pattern 1$/ })).toHaveCount(0);
+  await selectFilter(page, "Fill-in fields", "All phrases");
+  await selectFilter(page, "Section filter", "Introduction");
+  await expect(patternLinks.filter({ hasText: /^Alpha pattern 51$/ })).toHaveCount(1);
+  await expect(patternLinks).toHaveCount(50);
+  await expect(pager).toHaveCount(0);
+});
+
+test("long selected intent stays within the filter card", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await authenticate(page);
+  await mockLibrary(page);
+  const longIntent = "Describing the process: participant tasks and the specific instructions given to participants in each study group";
+  const taxonomyWithLongIntent = JSON.parse(JSON.stringify(taxonomy)) as typeof taxonomy;
+  taxonomyWithLongIntent.sections[0]!.moves[0]!.steps[0]!.intents[0]!.name = longIntent;
+  await page.route("**/v1/taxonomy", (route) => route.fulfill({ json: taxonomyWithLongIntent }));
+
+  await page.goto("/phrasebank");
+  await selectFilter(page, "Intent filter", longIntent);
+  const intent = page.getByRole("combobox", { name: "Intent filter" });
+  await expect(intent).toHaveAttribute("title", longIntent);
+  const intentText = intent.getByText(longIntent, { exact: true });
+  const search = page.getByRole("searchbox", { name: "Search phrasebanks" });
+  for (const width of [1024, 1440]) {
+    await page.setViewportSize({ width, height: 768 });
+    const intentBox = (await intent.boundingBox())!;
+    const searchBox = (await search.boundingBox())!;
+    const cardBox = (await intent.locator("xpath=ancestor::div[@data-slot='card'][1]").boundingBox())!;
+    expect(intentBox.x + intentBox.width).toBeLessThanOrEqual(cardBox.x + cardBox.width);
+    expect(intentBox.y).toBeGreaterThanOrEqual(searchBox.y + searchBox.height);
+    await expect(intentText).toHaveCSS("text-overflow", "ellipsis");
+    expect(await intentText.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  }
+});
+
 test("an empty reference source after purge leaves the page and AP-RKB source available", async ({ page }) => {
   await authenticate(page);
   await page.route("**/v1/taxonomy", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(taxonomy) }));

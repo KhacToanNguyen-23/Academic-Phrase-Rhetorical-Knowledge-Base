@@ -1,6 +1,7 @@
 """Public vocabulary read API tests use invented rows only."""
 
 from collections.abc import AsyncIterator
+from uuid import UUID
 
 import pytest
 import pytest_asyncio
@@ -15,6 +16,8 @@ from aprkb.modules.vocabulary.models import (
     VocabFamilyMember,
     VocabLemma,
     VocabLemmaDomainStat,
+    VocabLemmaResearchStat,
+    VocabResearchGroup,
 )
 
 
@@ -55,9 +58,16 @@ async def _client_key(session_factory: async_sessionmaker) -> str:
 async def _seed_vocabulary(session_factory: async_sessionmaker) -> str:
     async with session_factory() as session:
         alpha = VocabLemma(
-            word="alpha", pos="n", rank=2, band=1, status="y", is_core=True, domains=["HIS"]
+            word="alpha",
+            pos="n",
+            rank=2,
+            band=1,
+            status="y",
+            is_core=True,
+            domains=["HIS"],
+            coca_acad=30,
         )
-        beta = VocabLemma(word="beta", pos="n", rank=1, band=2, status="x", is_core=False)
+        beta = VocabLemma(word="beta", pos="v", rank=1, band=2, status="x", coca_acad=10)
         numeric = VocabLemma(word="9lives", pos="n", rank=3, is_core=True)
         family = VocabFamily(headword="alpha", rank=1, family_freq=14)
         session.add_all([alpha, beta, numeric, family])
@@ -65,7 +75,7 @@ async def _seed_vocabulary(session_factory: async_sessionmaker) -> str:
         session.add_all(
             [
                 VocabLemmaDomainStat(lemma_id=alpha.id, domain="SCI", freq=3, relative_ratio=0.3),
-                VocabLemmaDomainStat(lemma_id=alpha.id, domain="HIS", freq=5, relative_ratio=0.5),
+                VocabLemmaDomainStat(lemma_id=alpha.id, domain="HIS", freq=5, relative_ratio=1.5),
                 VocabFamilyMember(
                     family_id=family.id,
                     lemma_id=alpha.id,
@@ -123,6 +133,37 @@ async def test_vocabulary_filters_pagination_and_detail(
     assert letters.status_code == 200
     assert next(item["count"] for item in letters.json() if item["letter"] == "#") == 1
 
+    options = await api_client.get("/v1/vocabulary/filter-options", headers=headers)
+    assert options.status_code == 200
+    assert options.json()["status"]["unknown"] == "Unknown"
+
+    cases = [
+        ({"pos": "v", "status": "x", "band_min": 2, "band_max": 2}, ["beta"]),
+        ({"band_max": 1, "domain": "HIS"}, ["alpha"]),
+        ({"domain": "SCI"}, []),
+        ({"status": "unknown"}, ["9lives"]),
+        ({"band_min": 2}, ["beta"]),
+        ({"sort": "academic_frequency"}, ["alpha", "beta", "9lives"]),
+    ]
+    for filters, expected_words in cases:
+        filtered = await api_client.get("/v1/vocabulary/lemmas", params=filters, headers=headers)
+        assert filtered.status_code == 200, filtered.text
+        assert filtered.json()["total"] == len(expected_words)
+        assert [item["word"] for item in filtered.json()["items"]] == expected_words
+
+    filtered_letters = await api_client.get(
+        "/v1/vocabulary/letters", params={"pos": "v", "band_min": 2}, headers=headers
+    )
+    assert filtered_letters.status_code == 200
+    assert [item for item in filtered_letters.json() if item["count"]] == [
+        {"letter": "b", "count": 1}
+    ]
+
+    invalid_range = await api_client.get(
+        "/v1/vocabulary/lemmas", params={"band_min": 2, "band_max": 1}, headers=headers
+    )
+    assert invalid_range.status_code == 422
+
     families = await api_client.get(
         "/v1/vocabulary/families", params={"q": "alpha"}, headers=headers
     )
@@ -140,3 +181,59 @@ async def test_vocabulary_filters_pagination_and_detail(
         "/v1/vocabulary/lemmas/00000000-0000-0000-0000-000000000000", headers=headers
     )
     assert missing.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_research_cohort_filters_and_returns_evidence(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    alpha_id = UUID(await _seed_vocabulary(session_factory))
+    key = await _client_key(session_factory)
+    headers = {"X-API-Key": key}
+    async with session_factory() as session:
+        session.add_all(
+            [
+                VocabResearchGroup(
+                    key="field:27", field_id="27", field_name="Medicine", paper_count=4
+                ),
+                VocabResearchGroup(
+                    key="subfield:2730",
+                    field_id="27",
+                    field_name="Medicine",
+                    subfield_id="2730",
+                    subfield_name="Oncology",
+                    paper_count=3,
+                ),
+            ]
+        )
+        await session.flush()
+        session.add_all(
+            [
+                VocabLemmaResearchStat(group_key=group, lemma_id=alpha_id, paper_count=count)
+                for group, count in [("field:27", 3), ("subfield:2730", 2)]
+            ]
+        )
+        await session.commit()
+
+    options = await api_client.get("/v1/vocabulary/filter-options", headers=headers)
+    assert options.status_code == 200
+    assert [item["key"] for item in options.json()["research_groups"]] == [
+        "field:27",
+        "subfield:2730",
+    ]
+
+    params = {"research_group": "subfield:2730", "pos": "n", "band_max": 1}
+    lemmas = await api_client.get("/v1/vocabulary/lemmas", params=params, headers=headers)
+    assert lemmas.status_code == 200, lemmas.text
+    assert lemmas.json()["total"] == 1
+    assert lemmas.json()["items"][0]["research_evidence"] == {"paper_count": 2, "sample_count": 3}
+
+    letters = await api_client.get("/v1/vocabulary/letters", params=params, headers=headers)
+    assert letters.status_code == 200
+    assert [item for item in letters.json() if item["count"]] == [{"letter": "a", "count": 1}]
+
+    missing = await api_client.get(
+        "/v1/vocabulary/lemmas", params={"research_group": "field:17"}, headers=headers
+    )
+    assert missing.status_code == 200
+    assert missing.json() == {"items": [], "total": 0}

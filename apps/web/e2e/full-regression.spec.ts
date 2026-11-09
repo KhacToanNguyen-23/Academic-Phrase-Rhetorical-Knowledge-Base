@@ -123,7 +123,9 @@ test("FULL-AUTH invalid saved session is removed and sign-in recovers", async ({
   await page.getByLabel("Organization email").fill("nobody@hyperdatalab.org");
   await page.getByLabel("Password", { exact: true }).fill("wrong-password");
   await submit.click();
-  await expect(page.getByRole("alert")).toContainText("Incorrect email or password");
+  await expect(
+    page.getByRole("alert").filter({ hasText: /^Incorrect/ }),
+  ).toContainText("Incorrect email or password");
   await expect(submit).toBeEnabled();
 });
 

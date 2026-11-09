@@ -29,6 +29,55 @@ related rows (domain statistics for `acad_core`, and families/lemmas/members for
 
 - `GET /v1/vocabulary/lemmas`
 - `GET /v1/vocabulary/letters`
+- `GET /v1/vocabulary/filter-options`
 - `GET /v1/vocabulary/lemmas/{lemma_id}`
 - `POST /v1/admin/vocabulary/imports`
 - `GET /v1/admin/vocabulary/imports`
+
+## Research field pilot
+
+The Lemmas tab can filter by research field and subfield once a sample has been built.
+This uses the OpenAlex classification of each sampled paper. The existing Discipline
+filter still uses the imported AVL domain ratios.
+
+1. Import the vocabulary and apply database migrations.
+2. Select two contrasting fields, such as Computer Science and Medicine. Use the SLR
+   import profiles to find papers and allow them to finish ingesting. Verify each
+   paper's primary field and optional subfield against its OpenAlex or SLR metadata.
+   Use comparable samples of English-language papers with mining permission.
+3. Make a local JSON manifest containing one entry for each sampled paper. Use the
+   local `articles.id` UUID and the numeric portions of the OpenAlex taxonomy IDs.
+   The SLR importer does not store the taxonomy assignments on local article rows.
+   Add at least two papers per group to make a match possible.
+
+   ```json
+   {
+     "papers": [
+       {
+         "article_id": "00000000-0000-0000-0000-000000000001",
+         "field_id": "17",
+         "field_name": "Computer Science",
+         "subfield_id": "1702",
+         "subfield_name": "Artificial Intelligence"
+       }
+     ]
+   }
+   ```
+
+4. Replace the example UUID, add the rest of the sample, and run this command from the
+   repository root against the pilot database.
+
+   ```powershell
+   uv run --directory apps/backend python -m aprkb.cli build-vocabulary-research C:/path/pilot.json
+   ```
+
+The builder takes at most 1,000 papers across at least two fields. A match means the
+exact, case-insensitive lemma spelling occurs in at least two papers in the group
+and in a larger share of that group's papers than of the remaining sampled papers.
+The builder skips spellings that have multiple part-of-speech entries. It counts
+documents once per lemma, and the UI shows the numerator and sample size. The result
+is specific to the supplied sample.
+
+Each successful run replaces the prior pilot in a single transaction. The snapshot
+contains group labels and aggregate counts. Keep the manifest locally for
+reproducibility. Vocabulary browsing reads the snapshot from PostgreSQL.

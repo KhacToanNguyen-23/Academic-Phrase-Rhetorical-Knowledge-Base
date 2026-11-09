@@ -1,6 +1,7 @@
 """Client validation endpoint using the shared evidence policy and V02."""
 
 import json
+import re
 from hashlib import sha256
 from typing import Annotated
 from uuid import uuid4
@@ -25,6 +26,7 @@ from aprkb.policies.evidence import EvidencePolicy
 router = APIRouter(tags=["validation"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 Client = Annotated[ApiClient, Depends(require_role("client"))]
+UNFILLED_SLOT = re.compile(r"\{([A-Za-z][A-Za-z0-9_]*)\}")
 
 
 @router.post("", response_model=ValidationResponse)
@@ -58,6 +60,18 @@ async def validate_text(
         source_values=tuple(value for value in (payload.context, *payload.slots.values()) if value),
     )
     result = pipeline.run(payload.text, context)
+    unavailable = [rule.code for rule in result.rules if rule.severity.value == "unavailable"]
+    warnings = []
+    if unavailable:
+        warnings.append(
+            "Validation is incomplete because checks are unavailable: " + ", ".join(unavailable)
+        )
+    unfilled_slots = sorted(set(UNFILLED_SLOT.findall(payload.text)))
+    if unfilled_slots:
+        warnings.append(
+            "Unfilled template placeholders remain: "
+            + ", ".join(f"{{{slot}}}" for slot in unfilled_slots)
+        )
     return ValidationResponse(
         validation_id=uuid4(),
         text_hash=sha256(payload.text.encode("utf-8")).hexdigest(),
@@ -71,12 +85,11 @@ async def validate_text(
         },
         severity=result.severity.value,
         complete=result.complete,
-        checks_unavailable=[
-            rule.code for rule in result.rules if rule.severity.value == "unavailable"
-        ],
+        checks_unavailable=unavailable,
         checks_not_applicable=[
             rule.code for rule in result.rules if rule.severity.value == "not_applicable"
         ],
+        warnings=warnings,
         rules=[
             ValidationRuleResponse(
                 code=rule.code,

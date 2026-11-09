@@ -2,7 +2,7 @@
 
 import pytest
 
-from aprkb.modules.composition.renderer import SlotValidationError, render_frame
+from aprkb.modules.composition.renderer import SlotValidationError, render_frame, render_warnings
 
 
 def test_missing_slot_remains_a_placeholder_and_values_are_literal() -> None:
@@ -45,6 +45,22 @@ def test_optional_empty_slot_remains_as_placeholder() -> None:
 
     assert text == "The role of models in {context}."
     assert unfilled == ["context"]
+
+
+def test_render_warnings_explain_repeated_slots_and_sentence_like_values() -> None:
+    warnings = render_warnings(
+        "{topic} is related to {topic} and {finding}.",
+        {"topic": "language models.", "finding": "the outcome"},
+    )
+
+    assert warnings == [
+        "Slot {topic} appears more than once; its value is repeated in the rendered text",
+        "Slot values ending with sentence punctuation may contain full sentences: topic",
+    ]
+
+
+def test_render_warnings_are_empty_for_single_fragment_slots() -> None:
+    assert render_warnings("{topic} relates to {outcome}.", {"topic": "sleep duration"}) == []
 
 
 @pytest.mark.parametrize(

@@ -198,17 +198,40 @@ async def recommend(
     taxonomy_release = await taxonomy_repository.published_release(session)
     versions["taxonomy_release"] = taxonomy_release.version if taxonomy_release else "unpublished"
     warnings = []
+    known_intent = True
+    if payload.intent:
+        if taxonomy_release is None:
+            warnings.append("Intent could not be checked because no taxonomy is published")
+        else:
+            known_intent = await taxonomy_repository.intent_exists_in_release(
+                session,
+                release_id=taxonomy_release.id,
+                code=payload.intent,
+            )
+            if not known_intent:
+                warnings.append("Intent code is not present in the published taxonomy")
     if not payload.intent and not payload.move and not query:
-        warnings.append("Không có intent/move/query; kết quả là toàn bộ pattern được duyệt")
+        warnings.append("No intent, move, or query was supplied; approved patterns are unfiltered")
     if not payload.section:
-        warnings.append("Section không được lọc")
+        warnings.append("Section is not being used as a filter")
     if (payload.intent or payload.move) and policy_bundle.ranking_weights.weights["intent"] == 0:
         warnings.append("Intent matching is currently not used for ranking")
 
     if payload.evidence_level is None:
         warnings.append("Evidence level not selected; candidate strength was not filtered")
-    if payload.journal_id is not None and not rows:
-        warnings.append("No approved journal-linked phrases match these search criteria")
+    if not rows and known_intent:
+        if payload.journal_id is not None:
+            warnings.append("No approved journal-linked phrases match these search criteria")
+        elif query:
+            warnings.append("No approved phrases match the query and other selected filters")
+        elif payload.claim_type:
+            warnings.append("No approved phrases match the selected claim type and other filters")
+        elif payload.intent or payload.move:
+            warnings.append("No approved phrases match the selected intent or move")
+        else:
+            warnings.append("No approved phrases match the selected filters")
+    if rows and not result.items:
+        warnings.append("No candidate passed the recommendation gates; see excluded counts")
     if payload.discipline:
         warnings.append("Discipline affinity is unavailable and was not used for ranking")
     if payload.journal_id is not None and guideline_policy.has_mandatory_rules(payload.journal_id):
@@ -220,6 +243,11 @@ async def recommend(
         warnings.append(
             "Available signals do not separate these patterns; tied results use "
             "deterministic text order"
+        )
+    if result.omitted_tied_count:
+        noun = "pattern" if result.omitted_tied_count == 1 else "patterns"
+        warnings.append(
+            f"{result.omitted_tied_count} additional {noun} tied at the result limit were omitted"
         )
     items = [
         {

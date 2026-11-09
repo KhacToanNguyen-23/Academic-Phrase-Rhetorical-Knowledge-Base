@@ -186,6 +186,66 @@ def test_v03_does_not_treat_a_larger_number_as_support_for_a_smaller_number(
     assert result.severity.value == "block"
 
 
+def _v03_rule(evidence_policy, policy_bundle):
+    rules = build_rules(
+        evidence_policy=evidence_policy,
+        lexicon=policy_bundle.epistemic_markers,
+        policy=policy_bundle.validation_rules,
+    )
+    return next(rule for rule in rules if rule.code == "V03")
+
+
+def _context(*source_values: str) -> ValidationContext:
+    return ValidationContext(
+        claim_type="descriptive", evidence_level="single_study", source_values=source_values
+    )
+
+
+def test_v03_checks_a_number_that_ends_the_sentence(evidence_policy, policy_bundle):
+    v03 = _v03_rule(evidence_policy, policy_bundle)
+    context = _context("Recall gain 0.111.")
+
+    assert v03.evaluate("The gain was 0.0111.", context).severity.value == "block"
+    assert v03.evaluate("The study used 7 models.", context).severity.value == "block"
+    assert v03.evaluate("The gain was 0.111.", context).severity.value == "pass"
+
+
+def test_v03_accepts_supplied_numbers_followed_by_a_period_inside_the_context(
+    evidence_policy, policy_bundle
+):
+    v03 = _v03_rule(evidence_policy, policy_bundle)
+    context = _context("Recall gain 0.111. Upper bound 0.129. Lower bound 0.092. Next topic.")
+
+    result = v03.evaluate("Recall rose by 0.111 (CI 0.092 to 0.129).", context)
+
+    assert result.severity.value == "pass"
+
+
+def test_v03_does_not_let_a_decimal_point_hide_a_different_number(evidence_policy, policy_bundle):
+    v03 = _v03_rule(evidence_policy, policy_bundle)
+    context = _context("Recall gain 0.111.")
+
+    assert v03.evaluate("The interval included 0.", context).severity.value == "block"
+    assert v03.evaluate("The interval included 0.11.", context).severity.value == "block"
+
+
+def test_v03_matches_a_percent_that_is_followed_by_a_word_in_the_context(
+    evidence_policy, policy_bundle
+):
+    v03 = _v03_rule(evidence_policy, policy_bundle)
+    context = _context("The 95% CI was used.")
+
+    assert v03.evaluate("The interval level was 95% in all analyses.", context).severity.value == (
+        "pass"
+    )
+    assert v03.evaluate("The interval level was 90% in all analyses.", context).severity.value == (
+        "block"
+    )
+    assert v03.evaluate("The rate was 45 %.", _context("The rate was 45%.")).severity.value == (
+        "pass"
+    )
+
+
 def test_v06_warns_on_configured_informal_style_phrase(evidence_policy, policy_bundle):
     rules = build_rules(
         evidence_policy=evidence_policy,

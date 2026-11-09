@@ -13,6 +13,7 @@ def load_models() -> None:
         "journals",
         "mining",
         "patterns",
+        "academic_phrase_bank",
         "recommendation",
         "reference_library",
         "taxonomy",

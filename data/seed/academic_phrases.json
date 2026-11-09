@@ -1,0 +1,186 @@
+{
+    "schema_version":  "1",
+    "source":  "user_authored",
+    "section_mappings":  [
+                             {
+                                 "label":  "Describing Methods",
+                                 "section_code":  "METHODS"
+                             }
+                         ],
+    "category_mappings":  [
+                              {
+                                  "section":  "Describing Methods",
+                                  "category":  "Describing questionnaire design",
+                                  "function_code":  "DESCRIBE_QUESTIONNAIRE_DESIGN",
+                                  "intent_code":  "METHODS_QUESTIONNAIRE_DESIGN"
+                              },
+                              {
+                                  "section":  "Describing Methods",
+                                  "category":  "Describing the process: statistical procedures",
+                                  "function_code":  "DESCRIBE_STATISTICAL_PROCEDURES",
+                                  "intent_code":  "METHODS_STATISTICAL_PROCEDURES"
+                              }
+                          ],
+    "records":  [
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "The final question asked participants to describe …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "The final question asked participants to reflect on …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "The final question asked participants to choose between …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "The final question asked participants to indicate whether …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "The final question asked participants to rate how much they liked …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Question 2 asked participants to indicate whether …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Question 2 asked participants to indicate which of three …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Question 2 asked participants to indicate where and when …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Question 2 asked participants to indicate the extent to which they …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Question 2 asked participants to indicate what they liked best about …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Question 2 asked participants to indicate how often they think about …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Question 2 asked participants to indicate what their preferred X is for …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Question 2 asked participants to indicate what percentage of the time …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Q2 asked participants to rate themselves as … on a 5-point Likert scale."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Q2 asked participants to rate the intensity of … on a 5-point Likert scale."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Q2 asked participants to rate their interest in … on a 5-point Likert scale."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Q2 asked participants to rate the importance of … on a 5-point Likert scale."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Q2 asked participants to rate their perception of … on a 5-point Likert scale."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Q2 asked participants to rate the extent to which … on a 5-point Likert scale."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Q2 asked participants to rate how frequently they … on a 5-point Likert scale."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Q2 asked participants to rate their level of agreement with … on a 5-point Likert scale."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing questionnaire design",
+                        "Phrase":  "Q2 asked participants to rate how strongly they agreed with the statement … on a 5-point Likert scale."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing the process: statistical procedures",
+                        "Phrase":  "The data were normalised using ..."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing the process: statistical procedures",
+                        "Phrase":  "A p value \u003c0.05 was considered significant."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing the process: statistical procedures",
+                        "Phrase":  "Descriptive data were generated for all variables."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing the process: statistical procedures",
+                        "Phrase":  "Reliability was calculated using Cronbach’s alpha."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing the process: statistical procedures",
+                        "Phrase":  "All analyses were carried out using SPSS, version 20."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing the process: statistical procedures",
+                        "Phrase":  "Non-parametric tests were used to compare the number of …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing the process: statistical procedures",
+                        "Phrase":  "Independent sample t-tests were carried out to assess whether …"
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing the process: statistical procedures",
+                        "Phrase":  "Statistical analysis was performed using SPSS software (version 20)."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing the process: statistical procedures",
+                        "Phrase":  "Significance levels were set at the 1% level using the student t-test."
+                    },
+                    {
+                        "Section":  "Describing Methods",
+                        "Category":  "Describing the process: statistical procedures",
+                        "Phrase":  "Data management and analysis were performed using SPSS 16.0 (2010)."
+                    }
+                ]
+}

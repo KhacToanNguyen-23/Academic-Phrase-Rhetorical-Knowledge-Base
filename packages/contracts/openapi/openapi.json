@@ -1,6 +1,416 @@
 {
   "components": {
     "schemas": {
+      "AcademicPhraseMetadataCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "caveats": {
+            "items": {
+              "$ref": "#/components/schemas/PhraseCaveatCreate"
+            },
+            "title": "Caveats",
+            "type": "array"
+          },
+          "examples": {
+            "items": {
+              "$ref": "#/components/schemas/PhraseExampleCreate"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "function_codes": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Function Codes",
+            "type": "array"
+          },
+          "function_version": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function Version"
+          },
+          "move_links": {
+            "items": {
+              "$ref": "#/components/schemas/MoveLinkCreate"
+            },
+            "title": "Move Links",
+            "type": "array"
+          },
+          "pragmatic_tags": {
+            "items": {
+              "$ref": "#/components/schemas/PragmaticTagCreate"
+            },
+            "title": "Pragmatic Tags",
+            "type": "array"
+          },
+          "step_links": {
+            "items": {
+              "$ref": "#/components/schemas/StepLinkCreate"
+            },
+            "title": "Step Links",
+            "type": "array"
+          },
+          "usage_profiles": {
+            "items": {
+              "$ref": "#/components/schemas/UsageProfileCreate"
+            },
+            "title": "Usage Profiles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "function_codes"
+        ],
+        "title": "AcademicPhraseMetadataCreate",
+        "type": "object"
+      },
+      "AcademicPhrasePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicPhraseRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AcademicPhrasePage",
+        "type": "object"
+      },
+      "AcademicPhraseRead": {
+        "properties": {
+          "allowed_genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Genres",
+            "type": "array"
+          },
+          "allowed_sections": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Sections",
+            "type": "array"
+          },
+          "article_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Id"
+          },
+          "canonical_frame": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Frame"
+          },
+          "caveats": {
+            "items": {
+              "$ref": "#/components/schemas/PhraseCaveatRead"
+            },
+            "title": "Caveats",
+            "type": "array"
+          },
+          "claim_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Type"
+          },
+          "claim_type_labelled": {
+            "title": "Claim Type Labelled",
+            "type": "boolean"
+          },
+          "communicative_functions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Communicative Functions",
+            "type": "array"
+          },
+          "current_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Version Id"
+          },
+          "discipline_affinities": {
+            "items": {
+              "$ref": "#/components/schemas/PatternDisciplineAffinityRead"
+            },
+            "title": "Discipline Affinities",
+            "type": "array"
+          },
+          "epistemic_strength": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epistemic Strength"
+          },
+          "epistemic_strength_labelled": {
+            "title": "Epistemic Strength Labelled",
+            "type": "boolean"
+          },
+          "evidence_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Min"
+          },
+          "examples": {
+            "items": {
+              "$ref": "#/components/schemas/PhraseExampleRead"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "forbidden_contexts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Forbidden Contexts",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "intent_code": {
+            "title": "Intent Code",
+            "type": "string"
+          },
+          "intent_name": {
+            "title": "Intent Name",
+            "type": "string"
+          },
+          "license_allows_display": {
+            "title": "License Allows Display",
+            "type": "boolean"
+          },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "license_flag": {
+            "title": "License Flag",
+            "type": "boolean"
+          },
+          "license_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Name"
+          },
+          "move_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move Code"
+          },
+          "move_links": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Move Links",
+            "type": "array"
+          },
+          "pragmatic_tags": {
+            "items": {
+              "$ref": "#/components/schemas/PragmaticTagRead"
+            },
+            "title": "Pragmatic Tags",
+            "type": "array"
+          },
+          "slots": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PatternSlotDefinition"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slots"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_sentence_count": {
+            "title": "Source Sentence Count",
+            "type": "integer"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "step_links": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Step Links",
+            "type": "array"
+          },
+          "usage_profiles": {
+            "items": {
+              "$ref": "#/components/schemas/UsageProfileRead"
+            },
+            "title": "Usage Profiles",
+            "type": "array"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/PatternVariantRead"
+            },
+            "title": "Variants",
+            "type": "array"
+          },
+          "version_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version No"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "intent_code",
+          "intent_name",
+          "canonical_frame",
+          "version_no",
+          "current_version_id",
+          "slots",
+          "epistemic_strength",
+          "epistemic_strength_labelled",
+          "claim_type",
+          "claim_type_labelled",
+          "variants",
+          "evidence_min",
+          "forbidden_contexts",
+          "allowed_sections",
+          "allowed_genres",
+          "source_type",
+          "license_code",
+          "license_name",
+          "license_allows_display",
+          "license_flag",
+          "article_id",
+          "source_reference",
+          "source_sentence_count",
+          "discipline_affinities"
+        ],
+        "title": "AcademicPhraseRead",
+        "type": "object"
+      },
       "ApiKeyCreate": {
         "properties": {
           "name": {
@@ -683,6 +1093,45 @@
         "title": "DemoSession",
         "type": "object"
       },
+      "DomainCatalog": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DomainOption"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DomainCatalog",
+        "type": "object"
+      },
+      "DomainOption": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "version"
+        ],
+        "title": "DomainOption",
+        "type": "object"
+      },
       "DomainStatRead": {
         "properties": {
           "domain": {
@@ -932,6 +1381,65 @@
           "context_hash"
         ],
         "title": "FeedbackMetadata",
+        "type": "object"
+      },
+      "FunctionCatalog": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FunctionOption"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "FunctionCatalog",
+        "type": "object"
+      },
+      "FunctionOption": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "family_code": {
+            "title": "Family Code",
+            "type": "string"
+          },
+          "family_label": {
+            "title": "Family Label",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "purpose",
+          "version",
+          "status",
+          "family_code",
+          "family_label"
+        ],
+        "title": "FunctionOption",
         "type": "object"
       },
       "GoldItemDetail": {
@@ -2463,6 +2971,34 @@
         "title": "MineResult",
         "type": "object"
       },
+      "MoveLinkCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "move_code": {
+            "title": "Move Code",
+            "type": "string"
+          },
+          "relation": {
+            "default": "REALIZES_MOVE",
+            "enum": [
+              "REALIZES_MOVE",
+              "SUPPORTS_MOVE"
+            ],
+            "title": "Relation",
+            "type": "string"
+          },
+          "section_code": {
+            "title": "Section Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_code",
+          "move_code"
+        ],
+        "title": "MoveLinkCreate",
+        "type": "object"
+      },
       "PatternCreate": {
         "properties": {
           "allowed_genres": {
@@ -3302,6 +3838,62 @@
         "title": "PatternVersionRead",
         "type": "object"
       },
+      "PhraseCaveatCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "severity": {
+            "default": "info",
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "PhraseCaveatCreate",
+        "type": "object"
+      },
+      "PhraseCaveatRead": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message"
+        ],
+        "title": "PhraseCaveatRead",
+        "type": "object"
+      },
       "PhraseCounts": {
         "properties": {
           "accepted": {
@@ -3382,6 +3974,164 @@
           "approved_phrase_id"
         ],
         "title": "PhraseDecisionResult",
+        "type": "object"
+      },
+      "PhraseExampleCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "kind": {
+            "enum": [
+              "positive",
+              "negative",
+              "revised"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "origin_kind": {
+            "enum": [
+              "internal_original",
+              "illustrative_synthetic",
+              "licensed"
+            ],
+            "title": "Origin Kind",
+            "type": "string"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ref"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "origin_kind"
+        ],
+        "title": "PhraseExampleCreate",
+        "type": "object"
+      },
+      "PhraseExampleRead": {
+        "properties": {
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "kind": {
+            "enum": [
+              "positive",
+              "negative",
+              "revised"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "license_allows_display": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Allows Display"
+          },
+          "license_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Code"
+          },
+          "license_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Id"
+          },
+          "origin_kind": {
+            "title": "Origin Kind",
+            "type": "string"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ref"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "explanation",
+          "origin_kind",
+          "source_ref",
+          "license_id",
+          "license_code",
+          "license_allows_display"
+        ],
+        "title": "PhraseExampleRead",
         "type": "object"
       },
       "PhrasePage": {
@@ -3539,6 +4289,162 @@
           "slot_spans"
         ],
         "title": "PhraseSource",
+        "type": "object"
+      },
+      "PragmaticCatalog": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PragmaticFeatureOption"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PragmaticCatalog",
+        "type": "object"
+      },
+      "PragmaticFeatureOption": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "facet": {
+            "title": "Facet",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "facet",
+          "label",
+          "description",
+          "version",
+          "status"
+        ],
+        "title": "PragmaticFeatureOption",
+        "type": "object"
+      },
+      "PragmaticTagCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "context_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Note"
+          },
+          "strength_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strength Note"
+          },
+          "version": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "version"
+        ],
+        "title": "PragmaticTagCreate",
+        "type": "object"
+      },
+      "PragmaticTagRead": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "context_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Note"
+          },
+          "facet": {
+            "title": "Facet",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "strength_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strength Note"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "version",
+          "facet",
+          "label",
+          "strength_note",
+          "context_note"
+        ],
+        "title": "PragmaticTagRead",
         "type": "object"
       },
       "ProtectedSignal": {
@@ -5095,6 +6001,39 @@
         "title": "SourceNotice",
         "type": "object"
       },
+      "StepLinkCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "move_code": {
+            "title": "Move Code",
+            "type": "string"
+          },
+          "relation": {
+            "default": "REALIZES_STEP",
+            "enum": [
+              "REALIZES_STEP",
+              "SUPPORTS_STEP"
+            ],
+            "title": "Relation",
+            "type": "string"
+          },
+          "section_code": {
+            "title": "Section Code",
+            "type": "string"
+          },
+          "step_code": {
+            "title": "Step Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_code",
+          "move_code",
+          "step_code"
+        ],
+        "title": "StepLinkCreate",
+        "type": "object"
+      },
       "TaxonomyIntent": {
         "properties": {
           "code": {
@@ -5276,6 +6215,211 @@
           "article_genres"
         ],
         "title": "TaxonomyTree",
+        "type": "object"
+      },
+      "UsageProfileCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "audience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audience"
+          },
+          "discipline_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discipline Code"
+          },
+          "genre_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre Code"
+          },
+          "language_code": {
+            "default": "en",
+            "maxLength": 16,
+            "minLength": 2,
+            "title": "Language Code",
+            "type": "string"
+          },
+          "preferred_usage": {
+            "anyOf": [
+              {
+                "enum": [
+                  "general",
+                  "domain_constrained",
+                  "venue_constrained"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Usage"
+          },
+          "register_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Code"
+          },
+          "register_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Version"
+          },
+          "section_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Code"
+          }
+        },
+        "title": "UsageProfileCreate",
+        "type": "object"
+      },
+      "UsageProfileRead": {
+        "properties": {
+          "audience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audience"
+          },
+          "discipline_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discipline Code"
+          },
+          "genre_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre Code"
+          },
+          "language_code": {
+            "title": "Language Code",
+            "type": "string"
+          },
+          "preferred_usage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Usage"
+          },
+          "register_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Code"
+          },
+          "register_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Register Version"
+          },
+          "section_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Code"
+          },
+          "section_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Label"
+          }
+        },
+        "required": [
+          "section_code",
+          "section_label",
+          "genre_code",
+          "language_code",
+          "register_code",
+          "register_version",
+          "discipline_code",
+          "audience",
+          "preferred_usage"
+        ],
+        "title": "UsageProfileRead",
         "type": "object"
       },
       "ValidationError": {
@@ -5514,6 +6658,608 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/academic-phrases": {
+      "get": {
+        "operationId": "list_phrases_v1_academic_phrases_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "function",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Function"
+            }
+          },
+          {
+            "in": "query",
+            "name": "function_version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Function Version"
+            }
+          },
+          {
+            "in": "query",
+            "name": "section",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Section"
+            }
+          },
+          {
+            "in": "query",
+            "name": "move",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Move"
+            }
+          },
+          {
+            "in": "query",
+            "name": "step",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Step"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "genre",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Genre"
+            }
+          },
+          {
+            "in": "query",
+            "name": "register",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Register"
+            }
+          },
+          {
+            "in": "query",
+            "name": "register_version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Register Version"
+            }
+          },
+          {
+            "in": "query",
+            "name": "domain",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Domain"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stance",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stance"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stance_version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stance Version"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pragmatic",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pragmatic"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pragmatic_version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pragmatic Version"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicPhrasePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Phrases",
+        "tags": [
+          "academic phrase bank"
+        ]
+      }
+    },
+    "/v1/academic-phrases/domains": {
+      "get": {
+        "operationId": "list_domains_v1_academic_phrases_domains_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Domains",
+        "tags": [
+          "academic phrase bank"
+        ]
+      }
+    },
+    "/v1/academic-phrases/functions": {
+      "get": {
+        "operationId": "list_functions_v1_academic_phrases_functions_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Functions",
+        "tags": [
+          "academic phrase bank"
+        ]
+      }
+    },
+    "/v1/academic-phrases/pragmatic-features": {
+      "get": {
+        "operationId": "list_pragmatic_features_v1_academic_phrases_pragmatic_features_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PragmaticCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Pragmatic Features",
+        "tags": [
+          "academic phrase bank"
+        ]
+      }
+    },
+    "/v1/academic-phrases/{pattern_id}": {
+      "get": {
+        "operationId": "get_phrase_v1_academic_phrases__pattern_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pattern_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pattern Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicPhraseRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Phrase",
+        "tags": [
+          "academic phrase bank"
+        ]
+      }
+    },
+    "/v1/admin/academic-phrases/versions/{version_id}/metadata": {
+      "post": {
+        "operationId": "add_phrase_metadata_v1_admin_academic_phrases_versions__version_id__metadata_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcademicPhraseMetadataCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicPhraseRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Phrase Metadata",
+        "tags": [
+          "admin academic phrase bank"
+        ]
+      }
+    },
     "/v1/admin/api-keys": {
       "delete": {
         "operationId": "revoke_key_v1_admin_api_keys_delete",

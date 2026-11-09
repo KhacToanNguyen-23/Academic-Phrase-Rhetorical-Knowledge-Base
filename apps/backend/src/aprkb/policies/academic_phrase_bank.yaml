@@ -1,0 +1,94 @@
+version: 1.0.0
+function_families:
+  - code: ESTABLISHING_CONTEXT
+    label: Establishing context
+    functions:
+      - [INTRODUCE_TOPIC, Introduce topic, Present the topic or research context.]
+      - [STATE_IMPORTANCE, State importance, Explain why the topic matters.]
+      - [REVIEW_WORK, Review prior work, Summarize relevant prior work.]
+  - code: IDENTIFYING_NICHE
+    label: Identifying niche
+    functions:
+      - [INDICATE_GAP, Indicate gap, Identify an unresolved research area.]
+      - [STATE_UNRESOLVED_ISSUE, State unresolved issue, Describe an unresolved issue.]
+      - [CRITIQUE_PRIOR, Critique prior work, Identify a limitation in prior work.]
+  - code: POSITIONING_STUDY
+    label: Positioning study
+    functions:
+      - [STATE_OBJECTIVE, State objective, State the objective of the study.]
+      - [STATE_RQ, State research question, State the research question.]
+      - [ANNOUNCE_CONTRIBUTION, Announce contribution, Describe the study contribution.]
+  - code: DESCRIBING_METHOD
+    label: Describing method
+    functions:
+      - [DESCRIBE_DESIGN, Describe design, Describe the research design.]
+      - [
+          DESCRIBE_QUESTIONNAIRE_DESIGN,
+          Describing questionnaire design,
+          Describe questionnaire design choices.
+        ]
+      - [DESCRIBE_PROCEDURE, Describe procedure, Describe a research procedure.]
+      - [
+          DESCRIBE_STATISTICAL_PROCEDURES,
+          "Describing the process: statistical procedures",
+          Describe statistical procedures used in an analysis.
+        ]
+      - [DEFINE_METRIC, Define metric, Identify how a metric is defined or measured.]
+      - [STATE_PROTOCOL, State protocol, Describe an evaluation protocol.]
+  - code: REPORTING_RESULTS
+    label: Reporting results
+    functions:
+      - [REPORT_RESULT, Report result, Report an observed result.]
+      - [COMPARE_BASELINE, Compare baseline, Compare a result with a baseline.]
+      - [DESCRIBE_VARIANCE, Describe variance, Describe variation in observed results.]
+      - [REFER_TO_FIGURE, Refer to figure, Direct the reader to a figure or table.]
+  - code: INTERPRETING_FINDINGS
+    label: Interpreting findings
+    functions:
+      - [INTERPRET_RESULT, Interpret result, Explain the meaning of a result.]
+      - [EXPLAIN_MECHANISM, Explain mechanism, Offer an evidence-bounded explanation.]
+      - [DISCUSS_ANOMALY, Discuss anomaly, Discuss an unexpected result.]
+  - code: REASONING_QUALIFICATION
+    label: Reasoning and qualification
+    functions:
+      - [HEDGE_CLAIM, Hedge claim, Qualify the strength of a claim.]
+      - [STATE_ASSUMPTION, State assumption, Make an assumption explicit.]
+      - [LIMIT_GENERALIZATION, Limit generalization, Bound the scope of a generalization.]
+      - [COUNTERARGUE, Counterargue, Present a counterargument.]
+  - code: TEXT_ORGANIZATION
+    label: Text organization
+    functions:
+      - [TRANSITION, Transition, Connect adjacent ideas or sections.]
+      - [SUMMARIZE, Summarize, Summarize a set of points or findings.]
+      - [CLASSIFY, Classify, Organize items into categories.]
+      - [ENUMERATE, Enumerate, Present items in an ordered list.]
+  - code: CLOSING_OUTLOOK
+    label: Closing and outlook
+    functions:
+      - [STATE_LIMITATION, State limitation, Describe a limitation of the study.]
+      - [STATE_IMPLICATION, State implication, Describe an implication supported by the study.]
+      - [SUGGEST_FUTURE_WORK, Suggest future work, Identify a suitable direction for future work.]
+
+pragmatic_features:
+  - [STANCE_NEUTRAL, stance_type, Neutral, Neutral stance.]
+  - [STANCE_EVALUATIVE, stance_type, Evaluative, Evaluative stance.]
+  - [STANCE_EPISTEMIC, stance_type, Epistemic, Epistemic stance.]
+  - [STANCE_ATTITUDE, stance_type, Attitude, Attitudinal stance.]
+  - [STRENGTH_TENTATIVE, epistemic_strength, Tentative, Tentative epistemic strength.]
+  - [STRENGTH_CAUTIOUS, epistemic_strength, Cautious, Cautious epistemic strength.]
+  - [STRENGTH_MODERATE, epistemic_strength, Moderate, Moderate epistemic strength.]
+  - [STRENGTH_STRONG, epistemic_strength, Strong, Strong epistemic strength.]
+  - [ENGAGEMENT_NONE, engagement_type, None, No explicit reader engagement.]
+  - [ENGAGEMENT_READER_GUIDANCE, engagement_type, Reader guidance, Guides the reader.]
+  - [ENGAGEMENT_DIRECTIVE, engagement_type, Directive, Directs the reader.]
+  - [ENGAGEMENT_QUESTION, engagement_type, Question, Uses a question to engage the reader.]
+  - [RELATION_ADDITION, rhetorical_relation, Addition, Adds related information.]
+  - [RELATION_CONTRAST, rhetorical_relation, Contrast, Marks a contrast.]
+  - [RELATION_CAUSE, rhetorical_relation, Cause, Marks a causal relation.]
+  - [RELATION_CONCESSION, rhetorical_relation, Concession, Marks a concession.]
+  - [RELATION_EXAMPLE, rhetorical_relation, Example, Introduces an example.]
+  - [RELATION_CONCLUSION, rhetorical_relation, Conclusion, Marks a concluding relation.]
+  - [REGISTER_FORMAL_ACADEMIC, register, Formal academic, Formal academic register.]
+  - [REGISTER_STANDARD_ACADEMIC, register, Standard academic, Standard academic register.]
+  - [REGISTER_TECHNICAL, register, Technical, Technical register.]
+  - [REGISTER_INAPPROPRIATE_COLLOQUIAL, register, Inappropriate colloquial, Colloquial register for negative examples only.]

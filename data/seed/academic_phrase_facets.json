@@ -1,0 +1,15 @@
+{
+  "_note": "DEV MOCK facet labels so the Phrasebank More filters (stance, register, domain) have data to filter. Assigned by rotation per category, NOT reviewed. TODO(owner): replace with curated labels (APB-FACETS) before any production release.",
+  "by_category": {
+    "Describing questionnaire design": {
+      "register": "REGISTER_FORMAL_ACADEMIC",
+      "stances": ["STANCE_NEUTRAL", "STANCE_NEUTRAL", "STANCE_EVALUATIVE", "STANCE_EPISTEMIC"],
+      "domains": ["SOC", "EDU", "MED"]
+    },
+    "Describing the process: statistical procedures": {
+      "register": "REGISTER_TECHNICAL",
+      "stances": ["STANCE_NEUTRAL", "STANCE_EPISTEMIC"],
+      "domains": ["SCI", "MED", "SOC"]
+    }
+  }
+}

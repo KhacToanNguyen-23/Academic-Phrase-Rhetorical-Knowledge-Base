@@ -1,4 +1,4 @@
-﻿.PHONY: up down install migrate seed run worker test lint bootstrap-key
+.PHONY: up down install migrate seed run worker test lint bootstrap-key
 
 UV ?= uv
 BACKEND_IMAGE ?= aprkb-backend:ci
@@ -20,6 +20,8 @@ migrate:
 
 seed:
 	$(UV) run --directory apps/backend python -m aprkb.seeds.load
+
+
 
 run:
 	$(UV) run --directory apps/backend uvicorn aprkb.api.main:app --reload

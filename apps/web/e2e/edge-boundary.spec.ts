@@ -31,11 +31,11 @@ for (const width of [767, 768, 769]) {
 }
 
 for (const width of [1279, 1280, 1281]) {
-  test(`EDGE-B02 library layout breakpoint ${width}px`, async ({ page, request }) => {
+  test(`EDGE-B02 phrasebank layout breakpoint ${width}px`, async ({ page, request }) => {
     await page.setViewportSize({ width, height: 812 });
     await staff(page, request);
-    await page.getByRole("link", { name: "Library", exact: true }).first().click();
-    await expect(page.getByRole("heading", { name: "Pattern library", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Phrasebank", exact: true }).first().click();
+    await expect(page.getByRole("heading", { name: "Phrasebank", exact: true })).toBeVisible();
     await page.waitForLoadState("networkidle");
     await page.evaluate(() => document.fonts.ready);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);

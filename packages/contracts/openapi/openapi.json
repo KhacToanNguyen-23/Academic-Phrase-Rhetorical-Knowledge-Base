@@ -711,6 +711,28 @@
         "title": "DomainStatRead",
         "type": "object"
       },
+      "EmailLogin": {
+        "properties": {
+          "email": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "EmailLogin",
+        "type": "object"
+      },
       "ExplanationDetail": {
         "properties": {
           "available": {
@@ -1235,6 +1257,46 @@
           "field_edits"
         ],
         "title": "GoldStats",
+        "type": "object"
+      },
+      "GoogleConfig": {
+        "properties": {
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "nonce": {
+            "title": "Nonce",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "nonce"
+        ],
+        "title": "GoogleConfig",
+        "type": "object"
+      },
+      "GoogleLogin": {
+        "properties": {
+          "credential": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Credential",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential"
+        ],
+        "title": "GoogleLogin",
         "type": "object"
       },
       "GuidelineCreate": {
@@ -8021,10 +8083,19 @@
         ]
       }
     },
-    "/v1/auth/demo-session": {
+    "/v1/auth/google": {
       "post": {
-        "description": "Initialize local sample data and issue a local-only curator API key.",
-        "operationId": "create_local_demo_session_v1_auth_demo_session_post",
+        "operationId": "google_login_v1_auth_google_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLogin"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -8035,9 +8106,172 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Create Local Demo Session",
+        "summary": "Google Login",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/auth/google/config": {
+      "get": {
+        "operationId": "google_config_v1_auth_google_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Google Config",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/auth/google/me": {
+      "get": {
+        "operationId": "google_identity_v1_auth_google_me_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedClient"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Google Identity",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "email_login_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailLogin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Email Login",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "logout_v1_auth_logout_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Logout",
         "tags": [
           "identity"
         ]
@@ -8087,6 +8321,155 @@
           }
         },
         "summary": "Current Identity",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "register_email_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailLogin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedClient"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Email",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/auth/session/me": {
+      "get": {
+        "operationId": "web_identity_v1_auth_session_me_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedClient"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Web Identity",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/auth/setup": {
+      "post": {
+        "operationId": "setup_email_v1_auth_setup_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailLogin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedClient"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup Email",
         "tags": [
           "identity"
         ]

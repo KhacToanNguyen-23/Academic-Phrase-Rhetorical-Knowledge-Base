@@ -32,7 +32,7 @@ function client() {
   const api = createBackendClient(import.meta.env.VITE_API_BASE_URL ?? "");
   api.use({
     onRequest({ request }) {
-      const key = sessionStorage.getItem("aprkb-api-key");
+      const key = sessionStorage.getItem("aprkb-web-session");
       if (key) request.headers.set("X-API-Key", key);
       return request;
     },

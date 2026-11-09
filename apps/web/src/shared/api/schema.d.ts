@@ -520,7 +520,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/auth/demo-session": {
+    "/v1/auth/google": {
         parameters: {
             query?: never;
             header?: never;
@@ -529,11 +529,76 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Create Local Demo Session
-         * @description Initialize local sample data and issue a local-only curator API key.
-         */
-        post: operations["create_local_demo_session_v1_auth_demo_session_post"];
+        /** Google Login */
+        post: operations["google_login_v1_auth_google_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/google/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Google Config */
+        get: operations["google_config_v1_auth_google_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/google/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Google Identity */
+        get: operations["google_identity_v1_auth_google_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email Login */
+        post: operations["email_login_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_v1_auth_logout_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -551,6 +616,57 @@ export interface paths {
         get: operations["current_identity_v1_auth_me_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register Email */
+        post: operations["register_email_v1_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/session/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Web Identity */
+        get: operations["web_identity_v1_auth_session_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Setup Email */
+        post: operations["setup_email_v1_auth_setup_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1220,6 +1336,13 @@ export interface components {
             /** Relative Ratio */
             relative_ratio: number;
         };
+        /** EmailLogin */
+        EmailLogin: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
         /** ExplanationDetail */
         ExplanationDetail: {
             /** Available */
@@ -1439,6 +1562,18 @@ export interface components {
             };
             /** Total */
             total: number;
+        };
+        /** GoogleConfig */
+        GoogleConfig: {
+            /** Client Id */
+            client_id: string | null;
+            /** Nonce */
+            nonce: string;
+        };
+        /** GoogleLogin */
+        GoogleLogin: {
+            /** Credential */
+            credential: string;
         };
         /** GuidelineCreate */
         GuidelineCreate: {
@@ -4076,7 +4211,40 @@ export interface operations {
             };
         };
     };
-    create_local_demo_session_v1_auth_demo_session_post: {
+    google_login_v1_auth_google_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoogleLogin"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoSession"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    google_config_v1_auth_google_config_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -4091,7 +4259,100 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["GoogleConfig"];
+                };
+            };
+        };
+    };
+    google_identity_v1_auth_google_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthenticatedClient"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    email_login_v1_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailLogin"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["DemoSession"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4106,6 +4367,105 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthenticatedClient"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_email_v1_auth_register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailLogin"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthenticatedClient"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    web_identity_v1_auth_session_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthenticatedClient"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setup_email_v1_auth_setup_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailLogin"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

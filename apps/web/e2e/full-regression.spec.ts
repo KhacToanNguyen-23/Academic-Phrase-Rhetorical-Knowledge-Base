@@ -3,7 +3,7 @@ import { expect, test, type Page, type APIRequestContext } from "@playwright/tes
 test.skip(process.env.ONLINE_RANKING_LIVE !== "1", "Requires isolated seeded live API");
 
 const screens = [
-  ["/app", "Workspace"], ["/library", "Pattern library"],
+  ["/app", "Workspace"],
   ["/phrasebank", "Phrasebank"], ["/vocabulary", "Academic vocabulary"],
   ["/journals", "Journal profiles"], ["/inbox", "Inbox"],
   ["/gold", "Gold review"], ["/extract", "Phrase extraction"],
@@ -111,9 +111,9 @@ for (const next of ["https://example.test/", "//example.test/", "/\\example.test
 
 test("FULL-AUTH preserves safe next with query", async ({ page, request }) => {
   await staff(page, request);
-  await page.goto("/signin?next=%2Flibrary%3Fp%3Dmissing");
-  await expect(page).toHaveURL(/\/library\?p=missing$/);
-  await expect(page.getByRole("heading", { name: "Pattern library" })).toBeVisible();
+  await page.goto("/signin?next=%2Fvocabulary%3Fq%3Dmissing");
+  await expect(page).toHaveURL(/\/vocabulary\?q=missing/);
+  await expect(page.getByRole("heading", { name: "Academic vocabulary" })).toBeVisible();
 });
 
 test("FULL-AUTH invalid saved session is removed and sign-in recovers", async ({ page }) => {

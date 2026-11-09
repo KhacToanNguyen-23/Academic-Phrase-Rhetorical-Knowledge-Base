@@ -664,7 +664,7 @@ function DataOut({ logs, clients }: { logs: RequestLog[]; clients: ApiClient[] }
                 <TableRow key={id}>
                   <TableCell>
                     <Button asChild variant="link" className="h-auto p-0 text-xs">
-                      <Link to="/library" search={{ p: id.replace(/-v\d+$/, "") }}>
+                      <Link to="/phrasebank/pattern/$id" params={{ id: id.replace(/-v\d+$/, "") }}>
                         <code className="font-mono">{id}</code>
                       </Link>
                     </Button>

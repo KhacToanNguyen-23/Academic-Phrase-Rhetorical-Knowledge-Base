@@ -52,8 +52,8 @@ test("MENU mobile nested menu dismisses before the sidebar", async ({ page, requ
 test("MENU icon sidebar keeps tooltips and anchors account menu", async ({ page, request }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await login(page, request, true);
-  await page.getByRole("link", { name: "Library", exact: true }).hover();
-  await expect(page.getByRole("tooltip")).toContainText("Library");
+  await page.getByRole("link", { name: "Phrasebank", exact: true }).hover();
+  await expect(page.getByRole("tooltip")).toContainText("Phrasebank");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("tooltip")).toHaveCount(0);
   await page.locator('[data-sidebar="footer"] button').first().click();

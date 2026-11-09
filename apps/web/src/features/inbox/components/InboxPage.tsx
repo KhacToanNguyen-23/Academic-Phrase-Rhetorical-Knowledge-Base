@@ -262,7 +262,7 @@ function SubmissionDetail({ submission, intent, client }: { submission: Submissi
           <Alert>
             <AlertTitle>Similar pattern found</AlertTitle>
             <AlertDescription>
-              <Link to="/library" search={{ p: submission.near_duplicate.pattern_id }}>
+              <Link to="/phrasebank/pattern/$id" params={{ id: submission.near_duplicate.pattern_id }}>
                 {submission.near_duplicate.pattern_id}
               </Link>{" "}
               is {pct(submission.near_duplicate.similarity)} similar. Consider adding a variant instead.

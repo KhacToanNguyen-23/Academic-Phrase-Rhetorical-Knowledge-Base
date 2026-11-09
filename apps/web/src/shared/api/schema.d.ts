@@ -2048,6 +2048,23 @@ export interface components {
             /** Name */
             name: string;
         };
+        /**
+         * MetricWarning
+         * @description FR-08.2 report-only note; never changes severity or completeness.
+         */
+        MetricWarning: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Name */
+            name: string;
+            /** Span */
+            span: [
+                number,
+                number
+            ];
+        };
         /** MineRequest */
         MineRequest: {
             /** Article Ids */
@@ -3109,6 +3126,8 @@ export interface components {
             complete: boolean;
             /** Context Hash */
             context_hash: string;
+            /** Metric Warnings */
+            metric_warnings?: components["schemas"]["MetricWarning"][];
             /** Policy Versions */
             policy_versions: {
                 [key: string]: string;

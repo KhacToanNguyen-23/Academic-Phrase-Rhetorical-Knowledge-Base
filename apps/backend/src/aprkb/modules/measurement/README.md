@@ -12,4 +12,8 @@ protocols, imported from the self-authored `data/seed/measurement_catalog.json`.
 - Slot links bind an entry to `(pattern, slot)`. A proposed link is hidden. An approved link appears
   only as a suggestion via `/v1/measurements/slot-suggestions`; render never auto-fills it.
 - Kinds, relation rules and link statuses live in `policies/measurement.yaml` (`TODO(owner, Task-3)`).
-- Not implemented: mining measurement mentions from METHODS sections and an FR-08.2 validator rule.
+- `metric_check.py`: a pure FR-08.2 check, used by `/v1/validate` only while the flag is on.
+  It is report-only: it lists catalog metrics named in the text but not in the supplied
+  slots or context.
+- `purge_catalog` / `measurement-purge` remove all catalog data in one audited transaction.
+- Not implemented: mining measurement mentions from METHODS sections.

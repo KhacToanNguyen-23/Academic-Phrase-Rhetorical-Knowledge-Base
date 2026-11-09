@@ -16,6 +16,7 @@ from aprkb.modules.measurement.models import (
     MeasurementEntry,
     MeasurementImportRun,
     MeasurementRelation,
+    MeasurementSlotLink,
 )
 from aprkb.policies.schemas import MeasurementPolicy
 
@@ -238,3 +239,26 @@ async def import_catalog(
         "relations": len(catalog.relations),
         "missing_codes": missing,
     }
+
+
+async def purge_catalog(session: AsyncSession, *, request_id: str) -> dict[str, int]:
+    """Remove every catalog row, slot link and import run in one audited transaction."""
+    counts: dict[str, int] = {}
+    for name, model in (
+        ("slot_links", MeasurementSlotLink),
+        ("relations", MeasurementRelation),
+        ("entries", MeasurementEntry),
+        ("import_runs", MeasurementImportRun),
+    ):
+        result = await session.execute(delete(model))
+        counts[name] = int(getattr(result, "rowcount", 0) or 0)
+    await record_event(
+        session,
+        actor_id=None,
+        action="measurement.catalog_purged",
+        entity_type="measurement_catalog",
+        after=counts,
+        request_id=request_id,
+    )
+    await session.commit()
+    return counts

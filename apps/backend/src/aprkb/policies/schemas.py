@@ -1038,6 +1038,7 @@ class MeasurementPolicy(VersionedPolicy):
     relations: dict[str, MeasurementRelationRule] = Field(min_length=1)
     link_statuses: list[Literal["proposed", "approved", "rejected"]] = Field(min_length=3)
     max_import_bytes: int = Field(gt=0)
+    metric_check_min_term_length: int = Field(ge=1, le=20)
 
     @model_validator(mode="after")
     def consistent_vocabularies(self) -> "MeasurementPolicy":

@@ -1,4 +1,4 @@
-version: 0.1.0
+version: 0.2.0
 # TODO(owner, Task-3): confirm the measurement vocabularies with the methods reviewer.
 kinds: [metric, method, protocol]
 relations:
@@ -9,3 +9,6 @@ relations:
   related_to: {from: [metric, method, protocol], to: [metric, method, protocol]}
 link_statuses: [proposed, approved, rejected]
 max_import_bytes: 1048576
+# FR-08.2 report-only check in /v1/validate: ignore catalog terms shorter than this,
+# e.g. the alias "M", to avoid matching initials. TODO(owner, FR-08.2): review.
+metric_check_min_term_length: 2

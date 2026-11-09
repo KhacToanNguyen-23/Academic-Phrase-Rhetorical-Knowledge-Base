@@ -742,5 +742,7 @@ Task 3 adds a separate, self-authored catalog of metrics, measurement methods an
 answering "how to measure" alongside the phrase core's "how to write". It is off by default
 (`MEASUREMENT_ENABLED`). It adds `/v1/measurements` read routes, curator import and slot-link
 review under `/v1/admin/measurements`, and a `/measurements` page. Approved slot links only
-suggest values for a pattern slot (FR-07.5/AT-08: never auto-filled). It does not change
-ranking, render, validate or pack export, and it adds no NLP extractor. See ADR-0015.
+suggest values for a pattern slot (FR-07.5/AT-08: never auto-filled). While enabled,
+`/v1/validate` adds report-only `metric_warnings` (FR-08.2) without changing severity. It does
+not change ranking, render or pack export, and it adds no NLP extractor. `measurement-purge`
+removes the catalog. See ADR-0015.

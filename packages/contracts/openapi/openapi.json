@@ -2714,6 +2714,45 @@
         "title": "MeasurementSummary",
         "type": "object"
       },
+      "MetricWarning": {
+        "description": "FR-08.2 report-only note; never changes severity or completeness.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "span": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Span",
+            "type": "array"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "span",
+          "message"
+        ],
+        "title": "MetricWarning",
+        "type": "object"
+      },
       "MineRequest": {
         "properties": {
           "article_ids": {
@@ -5985,6 +6024,13 @@
           "context_hash": {
             "title": "Context Hash",
             "type": "string"
+          },
+          "metric_warnings": {
+            "items": {
+              "$ref": "#/components/schemas/MetricWarning"
+            },
+            "title": "Metric Warnings",
+            "type": "array"
           },
           "policy_versions": {
             "additionalProperties": {

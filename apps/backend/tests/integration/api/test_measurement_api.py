@@ -261,3 +261,83 @@ async def test_measurement_migration_round_trip(postgres_test_engine):
         assert not await table_exists()
         await connection.run_sync(migrate, "head", up=True)
         assert await table_exists()
+
+
+async def _validate(client: AsyncClient, headers: dict[str, str], text: str, **extra):
+    return await client.post(
+        "/v1/validate",
+        headers=headers,
+        json={
+            "text": text,
+            "claim_type": "descriptive",
+            "evidence_level": "multiple_consistent",
+            **extra,
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_validate_reports_undeclared_catalog_metric_without_changing_severity(
+    api_client, session_factory, monkeypatch
+):
+    curator = await _key(session_factory, "curator")
+    client = await _key(session_factory, "client")
+    await _import_seed(api_client, curator)
+    text = "Agreement was assessed with Cohen's kappa."
+
+    monkeypatch.setattr(settings, "measurement_enabled", False)
+    baseline = await _validate(api_client, client, text)
+    assert baseline.status_code == 200
+    assert baseline.json()["metric_warnings"] == []
+    assert "measurement" not in baseline.json()["policy_versions"]
+
+    monkeypatch.setattr(settings, "measurement_enabled", True)
+    flagged = await _validate(api_client, client, text)
+    body = flagged.json()
+    assert [(w["code"], tuple(w["span"])) for w in body["metric_warnings"]] == [
+        ("cohens_kappa", (28, 41))
+    ]
+    assert any("Cohen's kappa" in warning for warning in body["warnings"])
+    assert body["policy_versions"]["measurement"] == "0.2.0"
+    # Report-only: the rule outcomes, severity and completeness match the flag-off run.
+    for field in ("severity", "complete", "rules", "checks_unavailable"):
+        assert body[field] == baseline.json()[field]
+
+    declared = await _validate(
+        api_client, client, text, context="Two raters; agreement reported as kappa."
+    )
+    assert declared.json()["metric_warnings"] == []
+
+
+@pytest.mark.asyncio
+async def test_purge_removes_catalog_links_and_runs_with_audit(api_client, session_factory):
+    from aprkb.modules.measurement.importer import purge_catalog
+    from aprkb.modules.measurement.models import MeasurementImportRun, MeasurementSlotLink
+
+    curator = await _key(session_factory, "curator")
+    await _import_seed(api_client, curator)
+    pattern_id, slot = await _pattern_with_slot(session_factory)
+    await api_client.post(
+        "/v1/admin/measurements/slot-links",
+        headers=curator,
+        json={"entry_code": "accuracy", "pattern_id": pattern_id, "slot_name": slot},
+    )
+
+    async with session_factory() as session:
+        counts = await purge_catalog(session, request_id="test-purge")
+    assert counts["entries"] >= 20 and counts["slot_links"] == 1 and counts["import_runs"] == 1
+
+    async with session_factory() as session:
+        for model in (MeasurementEntry, MeasurementRelation, MeasurementSlotLink):
+            assert await session.scalar(select(func.count()).select_from(model)) == 0
+        assert await session.scalar(select(func.count()).select_from(MeasurementImportRun)) == 0
+        audit = await session.scalar(
+            select(AuditEvent).where(AuditEvent.action == "measurement.catalog_purged")
+        )
+        patterns = await session.scalar(select(func.count()).select_from(PhrasePattern))
+    assert audit is not None and audit.after["entries"] == counts["entries"]
+    assert patterns > 0
+
+    # A purge resets idempotency: the same file imports again.
+    again = await _import_seed(api_client, curator)
+    assert again.json()["status"] == "imported"

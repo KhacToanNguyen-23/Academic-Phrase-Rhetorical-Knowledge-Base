@@ -6,6 +6,7 @@ from sqlalchemy import String, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from aprkb.modules.measurement.metric_check import MetricTerms
 from aprkb.modules.measurement.models import (
     MeasurementEntry,
     MeasurementImportRun,
@@ -131,3 +132,15 @@ async def find_link(
             MeasurementSlotLink.slot_name == slot_name,
         )
     )
+
+
+async def metric_terms(session: AsyncSession) -> list[MetricTerms]:
+    """Names and aliases of catalog metrics, for the FR-08.2 report-only check."""
+    rows = await session.scalars(
+        select(MeasurementEntry)
+        .where(MeasurementEntry.kind == "metric")
+        .order_by(MeasurementEntry.code)
+    )
+    return [
+        MetricTerms(code=entry.code, name=entry.name, terms=tuple(entry.aliases)) for entry in rows
+    ]

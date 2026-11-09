@@ -186,7 +186,11 @@ suggestions; a slot is never filled automatically (FR-07.5, AT-08). To enable th
 3. Import the catalog: `uv run python -m aprkb.cli measurement-import --file ../../data/seed/measurement_catalog.json`.
 
 Re-importing the same file is a no-op. Codes that disappear from a new catalog are reported, not
-deleted. See ADR-0015.
+deleted. Remove everything with `uv run python -m aprkb.cli measurement-purge`.
+
+While the flag is on, `/v1/validate` also returns report-only `metric_warnings` (FR-08.2):
+catalog metrics that the sentence names but the writer's slots or context do not. They never
+change the validation severity. See ADR-0015.
 
 ## Offline-to-Online data packs
 

@@ -21,7 +21,8 @@ requirements:
 ## Decision
 
 1. The new `measurement` module is a separate domain. Its tables never enter
-   `phrase_patterns`, ranking, recommendations, render, validate or pack export.
+   `phrase_patterns`, ranking, recommendations, render or pack export. Validate only
+   reads it for the report-only FR-08.2 check (decision 6).
 2. The catalog is self-authored JSON (`data/seed/measurement_catalog.json`) with
    definitions written for this project. Nothing is copied from textbooks or
    standards.
@@ -33,14 +34,20 @@ requirements:
 4. Vocabularies (kinds, relations, link statuses) live in versioned
    `policies/measurement.yaml`, marked `TODO(owner)`.
 5. Read routes require a client key. Import and link review require the curator role.
-   All routes return 404 when the feature flag is off.
+   All routes return 404 when the feature flag is off. `measurement-purge` (CLI only)
+   removes all catalog rows, slot links and import runs in one audited transaction.
+6. FR-08.2, report-only: while the flag is on, `/v1/validate` lists catalog metrics that
+   the sentence names (by name or alias) but the writer's slots or context do not. They
+   appear in `metric_warnings` and `warnings`. They never change rule outcomes, severity
+   or `complete`, and nothing is generated. Acronyms match case-sensitively; terms shorter
+   than `metric_check_min_term_length` are ignored. It cannot detect metrics missing from
+   the catalog, and common-word names such as "precision" can raise false warnings.
 
 ## Deferred
 
 - Mining measurement mentions from `METHODS` sections. If added later, it must be
   rule-based, run in shadow mode, be license-gated before blob reads, and produce
   draft provenance only. There is no provenance table until that producer exists.
-- A report-only FR-08.2 validator rule for metrics a manuscript does not declare.
 - Discipline-specific catalogs.
 
 ## Consequences

@@ -340,6 +340,28 @@ async def _import_measurement_catalog(*, file_path: Path) -> None:
         await engine.dispose()
 
 
+async def _purge_measurement_catalog() -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.measurement.importer import purge_catalog
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                counts = await purge_catalog(session, request_id="cli-measurement-purge")
+            except Exception:
+                await session.rollback()
+                raise
+        print(
+            f"Purged measurement catalog: {counts['entries']} entries, "
+            f"{counts['relations']} relations, {counts['slot_links']} slot links, "
+            f"{counts['import_runs']} import runs."
+        )
+    finally:
+        await engine.dispose()
+
+
 async def _purge_reference_library() -> None:
     from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
     from aprkb.modules.reference_library.importer import purge_library
@@ -708,6 +730,9 @@ def main() -> None:
     )
     measurement_import.add_argument("--file", type=Path, required=True)
     commands.add_parser(
+        "measurement-purge", help="Remove the measurement catalog and its slot links"
+    )
+    commands.add_parser(
         "export-reference-mapping-template",
         help="Print an empty reference-to-taxonomy mapping template",
     )
@@ -770,6 +795,8 @@ def main() -> None:
         asyncio.run(_import_reference_library(file_path=args.file))
     elif args.command == "measurement-import":
         asyncio.run(_import_measurement_catalog(file_path=args.file))
+    elif args.command == "measurement-purge":
+        asyncio.run(_purge_measurement_catalog())
     elif args.command == "purge-reference-library":
         asyncio.run(_purge_reference_library())
     elif args.command == "export-reference-mapping-template":

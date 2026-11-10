@@ -10,8 +10,10 @@ Registration does not issue a session or navigate into the app. The user must si
 A curator created before passwords existed sets one by registering the same email again.
 
 Google sign-in verifies Google's signed ID token, audience, expiry, verified email
-and browser-bound nonce. Set GOOGLE_CLIENT_ID in .env and allow
-http://127.0.0.1:5173 and http://localhost:5173 in Google Cloud JavaScript origins.
+and browser-bound nonce. The project's public OAuth client ID is the default in
+`aprkb.core.config`; set GOOGLE_CLIENT_ID only to use a different client. Every origin
+that serves the web app (http://127.0.0.1:5173, http://localhost:5173 and each deployed
+URL) must be listed under Authorized JavaScript origins in Google Cloud.
 An existing active curator email can also sign in through Google under the same account.
 
 Admin API key setup happens once. Create the key with `make bootstrap-key`, open

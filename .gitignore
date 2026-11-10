@@ -137,3 +137,4 @@ scripts/collect_manchester_demo.py
 
 # Local scratch output (pytest runs, throwaway venvs)
 tmp/
+eval/sections/gold/

@@ -53,3 +53,35 @@ def test_markdown_without_headings_keeps_a_single_untitled_section() -> None:
     assert len(document.sections) == 1
     assert document.sections[0].heading is None
     assert document.raw_text == "Plain prose only.\n\nSecond paragraph."
+
+
+def test_markdown_splits_merged_parent_child_heading() -> None:
+    document = MarkdownParser().parse(
+        b"## 2 BACKGROUND AND MODEL 2.1 Stochastic Gradient Descent\n\nDetails follow."
+    )
+
+    assert [section.heading for section in document.sections] == [
+        "2 BACKGROUND AND MODEL",
+        "2.1 Stochastic Gradient Descent",
+    ]
+    assert document.sections[0].text == ""
+    assert document.sections[1].text == "Details follow."
+
+
+def test_markdown_splits_plausible_sibling_but_not_arbitrary_heading_numbers() -> None:
+    sibling = MarkdownParser().parse(b"## 3.1 First 3.2 Second\n\nBody.")
+    lowercase_title = MarkdownParser().parse(b"## 2 Model 2.1 problem definition\n\nBody.")
+    arbitrary = MarkdownParser().parse(b"## 2 Model 2024 Results\n\nBody.")
+
+    assert [section.heading for section in sibling.sections] == ["3.1 First", "3.2 Second"]
+    assert [section.heading for section in lowercase_title.sections] == [
+        "2 Model",
+        "2.1 problem definition",
+    ]
+    assert [section.heading for section in arbitrary.sections] == ["2 Model 2024 Results"]
+
+
+def test_markdown_does_not_guess_a_title_for_number_only_heading() -> None:
+    document = MarkdownParser().parse(b"## 1.3\n\nDetails follow.")
+
+    assert [section.heading for section in document.sections] == ["1.3"]

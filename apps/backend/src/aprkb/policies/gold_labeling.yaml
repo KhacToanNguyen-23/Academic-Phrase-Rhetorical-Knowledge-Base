@@ -13,4 +13,4 @@ sentences_per_request: 1
 max_concurrency: 1
 requests_per_minute: 30
 prompt_version: v1
-guideline_version: v1
+guideline_version: v2

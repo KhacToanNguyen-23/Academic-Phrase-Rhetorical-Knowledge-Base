@@ -16,7 +16,7 @@ from aprkb.modules.audit.models import AuditEvent
 from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
 from aprkb.modules.extraction.models import ApprovedPhrase
 from aprkb.modules.identity.service import create_api_key
-from aprkb.modules.mining.models import Candidate, Job
+from aprkb.modules.mining.models import Candidate, CandidateLabel, Job
 from aprkb.seeds.load import run_seed
 
 SENTENCE = "Our data report that it works."
@@ -136,6 +136,7 @@ async def test_roles_gate_every_endpoint(
         "/v1/admin/corpus/articles",
         f"/v1/admin/corpus/articles/{seeded.article_id}/text",
         "/v1/admin/extraction/phrases",
+        "/v1/admin/mining/frames",
     ):
         assert (await api_client.get(path, headers=client_headers)).status_code == 403, path
         assert (await api_client.get(path)).status_code in {401, 403}, path
@@ -147,6 +148,12 @@ async def test_roles_gate_every_endpoint(
     # Reviewers can read and decide but cannot start mining jobs.
     assert (
         await api_client.post("/v1/admin/corpus/mine", headers=reviewer, json=mine)
+    ).status_code == 403
+    assert (
+        await api_client.post("/v1/admin/mining/frames/label", headers=client_headers)
+    ).status_code == 403
+    assert (
+        await api_client.post("/v1/admin/mining/frames/label", headers=reviewer)
     ).status_code == 403
     decision = {"decision": "reject"}
     assert (
@@ -269,6 +276,34 @@ async def test_phrase_listing_returns_sources_with_sentence_relative_slot_spans(
 ) -> None:
     seeded = await _seed(session_factory)
     other = await _seed(session_factory)
+    async with session_factory() as session:
+        session.add_all(
+            [
+                CandidateLabel(
+                    candidate_id=seeded.candidate_id,
+                    label_code="intent",
+                    value="report_finding",
+                    status="proposed",
+                    source="ai:2pass",
+                    confidence=0.7,
+                    options=[],
+                    needs_attention=False,
+                    agreement="both_agree",
+                ),
+                CandidateLabel(
+                    candidate_id=seeded.candidate_id,
+                    label_code="claim_type",
+                    value="result",
+                    status="confirmed",
+                    source="human",
+                    confidence=0.8,
+                    options=[],
+                    needs_attention=False,
+                    agreement="both_agree",
+                ),
+            ]
+        )
+        await session.commit()
     headers = await _key(session_factory, "reviewer")
 
     page = (
@@ -283,6 +318,14 @@ async def test_phrase_listing_returns_sources_with_sentence_relative_slot_spans(
     assert item["id"] == str(seeded.candidate_id)
     assert item["blocked"] is False
     assert item["canonical_frame"] == "[X] report that [Y]."
+    assert item["labels"]["provenance"]["status"] == "derived"
+    assert item["labels"]["provenance"]["value"]["source_sentence_count"] == 1
+    assert item["labels"]["license_status"]["value"] == "allowed"
+    assert item["labels"]["observed_sections"]["value"]["dominant"] == "INTRO"
+    assert item["labels"]["section_scope"]["status"] == "unassigned"
+    assert item["labels"]["intent"]["status"] == "proposed"
+    assert item["labels"]["claim_type"]["status"] == "confirmed"
+    assert item["labels"]["register"]["status"] == "unassigned"
     source = item["sources"][0]
     assert source["text"] == SENTENCE
     assert source["section"] == "INTRO"

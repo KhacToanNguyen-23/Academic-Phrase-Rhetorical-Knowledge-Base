@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aprkb.modules.corpus.models import Article, ArticleSection, License, Sentence
 from aprkb.modules.journals.models import JournalProfile
 from aprkb.modules.mining.models import Candidate, Job
+from aprkb.modules.taxonomy.models import ArticleGenre
 
 MINE_JOB_TYPE = "mine_article"
 
@@ -24,6 +25,9 @@ class SourceRow:
     article_title: str | None
     journal: str | None
     allows_mining: bool
+    license_code: str
+    allows_display: bool
+    genre_code: str | None
     journal_id: UUID | None
 
 
@@ -210,7 +214,7 @@ async def list_phrases(
     offset: int,
 ) -> tuple[list[Candidate], int]:
     clauses = phrase_filter(status, scope)
-    total = await session.scalar(select(func.count()).select_from(Candidate).where(*clauses))
+    total = await count_phrases(session, status=status, scope=scope)
     items = list(
         await session.scalars(
             select(Candidate)
@@ -221,6 +225,15 @@ async def list_phrases(
         )
     )
     return items, int(total or 0)
+
+
+async def count_phrases(
+    session: AsyncSession, *, status: str, scope: ColumnElement[bool] | None
+) -> int:
+    total = await session.scalar(
+        select(func.count()).select_from(Candidate).where(*phrase_filter(status, scope))
+    )
+    return int(total or 0)
 
 
 async def source_rows(session: AsyncSession, sentence_ids: list[UUID]) -> dict[UUID, SourceRow]:
@@ -236,12 +249,16 @@ async def source_rows(session: AsyncSession, sentence_ids: list[UUID]) -> dict[U
                 Article.title,
                 JournalProfile.name,
                 License.allows_mining,
+                License.code,
+                License.allows_display,
+                ArticleGenre.code,
                 Article.journal_id,
             )
             .join(Article, Article.id == Sentence.article_id)
             .join(License, License.id == Article.license_id)
             .outerjoin(ArticleSection, ArticleSection.id == Sentence.article_section_id)
             .outerjoin(JournalProfile, JournalProfile.id == Article.journal_id)
+            .outerjoin(ArticleGenre, ArticleGenre.id == Article.genre_id)
             .where(Sentence.id.in_(sentence_ids))
         )
     ).all()
@@ -254,7 +271,33 @@ async def source_rows(session: AsyncSession, sentence_ids: list[UUID]) -> dict[U
             article_title=row[4],
             journal=row[5],
             allows_mining=bool(row[6]),
-            journal_id=row[7],
+            license_code=row[7],
+            allows_display=bool(row[8]),
+            genre_code=row[9],
+            journal_id=row[10],
         )
         for row in rows
     }
+
+
+async def candidate_section_sources(
+    session: AsyncSession, candidate_ids: list[UUID]
+) -> dict[UUID, list[tuple[UUID, str | None]]]:
+    """Read allowed source article IDs and section codes without selecting sentence text."""
+    if not candidate_ids:
+        return {}
+    rows = (
+        await session.execute(
+            select(Candidate.id, Article.id, ArticleSection.section_code)
+            .join(Sentence, Sentence.id == any_(Candidate.source_sentence_ids))
+            .join(Article, Article.id == Sentence.article_id)
+            .join(License, License.id == Article.license_id)
+            .outerjoin(ArticleSection, ArticleSection.id == Sentence.article_section_id)
+            .where(Candidate.id.in_(candidate_ids), License.allows_mining.is_(True))
+            .order_by(Candidate.id, Article.id, Sentence.id)
+        )
+    ).all()
+    sources: defaultdict[UUID, list[tuple[UUID, str | None]]] = defaultdict(list)
+    for candidate_id, article_id, section_code in rows:
+        sources[candidate_id].append((article_id, section_code))
+    return dict(sources)

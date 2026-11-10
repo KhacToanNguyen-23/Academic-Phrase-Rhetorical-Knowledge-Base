@@ -10,18 +10,27 @@ FROM python:3.12-slim@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da52
 COPY --from=ghcr.io/astral-sh/uv@sha256:0ac957607303916420297a4c9c213bb33fbd3c888f9cd7f4f7273596ebf42b85 /uv /usr/local/bin/uv
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_PROJECT_ENVIRONMENT=/app/.venv
+ARG INSTALL_NLP=false
 
 # Install locked, non-dev dependencies before copying source so dependency layers
 # only rebuild when pyproject.toml/uv.lock change. The root build context includes
 # only the taxonomy/reference seed assets needed by the production initializer.
 COPY apps/backend/pyproject.toml apps/backend/uv.lock ./
-RUN uv sync --locked --no-install-project --no-dev --extra spacy
+RUN if [ "$INSTALL_NLP" = "true" ]; then \
+      uv sync --locked --no-install-project --no-dev --extra nlp; \
+    else \
+      uv sync --locked --no-install-project --no-dev; \
+    fi
 
 COPY apps/backend/src ./src
 COPY apps/backend/alembic.ini ./alembic.ini
 COPY apps/backend/migrations ./migrations
 COPY data/seed/taxonomy.json data/seed/reference_enums.json ./data/seed/
-RUN uv sync --locked --no-dev --extra spacy
+RUN if [ "$INSTALL_NLP" = "true" ]; then \
+      uv sync --locked --no-dev --extra nlp; \
+    else \
+      uv sync --locked --no-dev; \
+    fi
 
 FROM python:3.12-slim@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30 AS runtime
 WORKDIR /app

@@ -1,0 +1,113 @@
+version: 0.1.0
+requirement_id: FR-01
+# TODO(owner, FR-01): review every list, hierarchy, definition, and allowed value.
+# TODO(owner, FR-01): review the seven function-group codes and names.
+function_groups:
+  - {code: INTRODUCING_WORK, name: Establishing the study context}
+  - {code: REFERRING_TO_SOURCES, name: Referring to prior sources}
+  - {code: DESCRIBING_METHODS, name: Describing research procedures}
+  - {code: REPORTING_RESULTS, name: Reporting observed outcomes}
+  - {code: DISCUSSING_FINDINGS, name: Interpreting outcomes}
+  - {code: WRITING_CONCLUSIONS, name: Closing the argument}
+  - {code: GENERAL_FUNCTIONS, name: General scholarly functions}
+  - {code: unclear, name: The function cannot be determined}
+  - {code: none_of_these, name: No listed function fits}
+# TODO(owner, FR-01): review move names and group parents.
+moves:
+  - {code: establish_context, name: Establish study context, parent: INTRODUCING_WORK}
+  - {code: refer_to_prior_work, name: Refer to prior work, parent: REFERRING_TO_SOURCES}
+  - {code: explain_approach, name: Explain an approach, parent: DESCRIBING_METHODS}
+  - {code: present_outcomes, name: Present outcomes, parent: REPORTING_RESULTS}
+  - {code: interpret_outcomes, name: Interpret outcomes, parent: DISCUSSING_FINDINGS}
+  - {code: close_argument, name: Close the argument, parent: WRITING_CONCLUSIONS}
+  - {code: clarify_concepts, name: Clarify concepts or relations, parent: GENERAL_FUNCTIONS}
+  - {code: unclear, name: The move cannot be determined, parent: null}
+  - {code: none_of_these, name: No listed move fits, parent: null}
+# TODO(owner, FR-01): review step names and move parents.
+steps:
+  - {code: situate_study, name: Situate the study, parent: establish_context}
+  - {code: summarize_source, name: Summarize a source, parent: refer_to_prior_work}
+  - {code: describe_process, name: Describe a process, parent: explain_approach}
+  - {code: state_evidence, name: State evidence, parent: present_outcomes}
+  - {code: explain_significance, name: Explain significance, parent: interpret_outcomes}
+  - {code: indicate_implication, name: Indicate an implication, parent: close_argument}
+  - {code: clarify_relation, name: Clarify a relation, parent: clarify_concepts}
+  - {code: unclear, name: The step cannot be determined, parent: null}
+  - {code: none_of_these, name: No listed step fits, parent: null}
+# TODO(owner, FR-01): review intent names, definitions, and step parents.
+intents:
+  - {code: situate_topic, name: Situate a topic, definition: Names the broad subject needed to understand the study, parent: situate_study}
+  - {code: define_scope, name: Define scope, definition: States which part of a subject the study addresses, parent: situate_study}
+  - {code: state_objective, name: State an objective, definition: Identifies what the study sets out to accomplish, parent: situate_study}
+  - {code: pose_question, name: Pose a question, definition: States a question the study investigates, parent: situate_study}
+  - {code: identify_source, name: Identify a source, definition: Names a prior source relevant to the claim, parent: summarize_source}
+  - {code: report_prior_finding, name: Report a prior finding, definition: Attributes an earlier result to its source, parent: summarize_source}
+  - {code: compare_prior_work, name: Compare prior work, definition: Relates two or more earlier approaches or results, parent: summarize_source}
+  - {code: describe_prior_consensus, name: Describe prior consensus, definition: Summarizes a shared position across sources, parent: summarize_source}
+  - {code: introduce_method, name: Introduce a method, definition: Names the approach used to address the study objective, parent: describe_process}
+  - {code: describe_data, name: Describe data, definition: Identifies the data used in the study, parent: describe_process}
+  - {code: explain_procedure, name: Explain a procedure, definition: States how an operation or analysis was carried out, parent: describe_process}
+  - {code: specify_measurement, name: Specify measurement, definition: Identifies a measure or evaluation setup, parent: describe_process}
+  - {code: report_finding, name: Report a finding, definition: States an outcome observed in the study, parent: state_evidence}
+  - {code: quantify_outcome, name: Quantify an outcome, definition: Gives a numeric value for an observed outcome, parent: state_evidence}
+  - {code: compare_performance, name: Compare performance, definition: Compares measured outcomes across methods or conditions, parent: state_evidence}
+  - {code: report_validation, name: Report validation, definition: States evidence from a check of the proposed approach, parent: state_evidence}
+  - {code: interpret_result, name: Interpret a result, definition: Explains what an observed outcome indicates, parent: explain_significance}
+  - {code: explain_reason, name: Explain a reason, definition: Connects an outcome to a proposed cause or condition, parent: explain_significance}
+  - {code: acknowledge_limitation, name: Acknowledge a limitation, definition: States a boundary that restricts the findings, parent: explain_significance}
+  - {code: relate_to_literature, name: Relate to literature, definition: Places a current result alongside prior work, parent: explain_significance}
+  - {code: summarize_contribution, name: Summarize a contribution, definition: Restates the principal contribution of the study, parent: indicate_implication}
+  - {code: state_implication, name: State an implication, definition: Describes a consequence suggested by the findings, parent: indicate_implication}
+  - {code: suggest_future_work, name: Suggest future work, definition: Identifies a useful direction for later research, parent: indicate_implication}
+  - {code: make_recommendation, name: Make a recommendation, definition: Recommends an action based on the discussion, parent: indicate_implication}
+  - {code: defining_classifying, name: Define or classify, definition: Gives a category or meaning for a concept, parent: clarify_relation}
+  - {code: explain_relationship, name: Explain a relationship, definition: States how two entities or concepts are related, parent: clarify_relation}
+  - {code: state_condition, name: State a condition, definition: Specifies a condition under which a claim applies, parent: clarify_relation}
+  - {code: express_contrast, name: Express a contrast, definition: Distinguishes between alternatives or positions, parent: clarify_relation}
+  - {code: unclear, name: The intent cannot be determined, definition: The available frame does not support a specific intent, parent: null}
+  - {code: none_of_these, name: No listed intent fits, definition: The frame has an intent outside this draft vocabulary, parent: null}
+# TODO(owner, FR-01): review the claim-type list.
+claim_types:
+  - {code: background, name: Background}
+  - {code: gap, name: Research gap}
+  - {code: method, name: Method}
+  - {code: result, name: Result}
+  - {code: implication, name: Implication}
+  - {code: comparison, name: Comparison}
+  - {code: limitation, name: Limitation}
+  - {code: definition, name: Definition}
+  - {code: unclear, name: The claim type cannot be determined}
+  - {code: none_of_these, name: No listed claim type fits}
+# TODO(owner, FR-01): review the register list.
+registers:
+  - {code: formal, name: Formal}
+  - {code: neutral, name: Neutral}
+  - {code: informal, name: Informal}
+  - {code: unclear, name: The register cannot be determined}
+  - {code: none_of_these, name: No listed register fits}
+# TODO(owner, FR-01): review allowed section codes.
+allowed_sections:
+  - {code: ABSTRACT, name: Abstract}
+  - {code: INTRO, name: Introduction}
+  - {code: RELATED_WORK, name: Related work}
+  - {code: METHODS, name: Methods}
+  - {code: RESULTS, name: Results}
+  - {code: DISCUSSION, name: Discussion}
+  - {code: CONCLUSION, name: Conclusion}
+  - {code: unclear, name: The section cannot be determined}
+  - {code: none_of_these, name: No listed section fits}
+# TODO(owner, FR-01): review general-function suggestions.
+general_functions:
+  - {code: defining_classifying, name: Defining or classifying}
+  - {code: explain_relationship, name: Explaining a relationship}
+  - {code: state_condition, name: Stating a condition}
+  - {code: express_contrast, name: Expressing a contrast}
+  - {code: unclear, name: The general function cannot be determined}
+  - {code: none_of_these, name: No listed general function fits}
+# TODO(owner, FR-01): confirm the design-document source-class values.
+source_classes:
+  - {code: authored, name: Authored for the project}
+  - {code: adapted-permission, name: Adapted with permission}
+  - {code: corpus-inferred, name: Inferred from corpus evidence}
+  - {code: unclear, name: The source class cannot be determined}
+  - {code: none_of_these, name: No listed source class fits}

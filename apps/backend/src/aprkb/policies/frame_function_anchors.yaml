@@ -1,0 +1,48 @@
+version: 0.1.0
+requirement_id: FR-02
+# TODO(owner, FR-02): review the self-defined group vocabulary and four proposal-only anchors.
+function_groups:
+  - INTRODUCING_WORK
+  - REFERRING_TO_SOURCES
+  - DESCRIBING_METHODS
+  - REPORTING_RESULTS
+  - DISCUSSING_FINDINGS
+  - WRITING_CONCLUSIONS
+  - GENERAL_FUNCTIONS
+anchors:
+  - id: comparison_superiority
+    lemmas: [outperform, surpass]
+    forms:
+      outperform: [outperform, outperforms, outperformed, outperforming]
+      surpass: [surpass, surpasses, surpassed, surpassing]
+    function_group: REPORTING_RESULTS
+    intent_hint: compare_performance
+    confidence: high
+  - id: acknowledging_limitations
+    lemmas: [suffer from, limitation, drawback, fail to]
+    forms:
+      suffer from: [suffer from, suffers from, suffered from, suffering from]
+      limitation: [limitation, limitations]
+      drawback: [drawback, drawbacks]
+      fail to: [fail to, fails to, failed to, failing to]
+    function_group: DISCUSSING_FINDINGS
+    intent_hint: acknowledge_limitation
+    confidence: high
+  - id: future_work
+    lemmas: [future work, further investigation]
+    forms:
+      future work: [future work]
+      further investigation: [further investigation, further investigations]
+    function_group: WRITING_CONCLUSIONS
+    intent_hint: suggest_future_work
+    confidence: high
+  - id: defining_classifying
+    lemmas: [be define as, refer to, be categorize into, be classify into]
+    forms:
+      be define as: [is defined as, are defined as, was defined as, were defined as, be defined as]
+      refer to: [refers to, refer to, referred to]
+      be categorize into: [is categorized into, are categorized into, was categorized into, were categorized into]
+      be classify into: [is classified into, are classified into, was classified into, were classified into]
+    function_group: GENERAL_FUNCTIONS
+    intent_hint: defining_classifying
+    confidence: high

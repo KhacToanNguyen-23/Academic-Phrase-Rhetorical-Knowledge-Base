@@ -272,8 +272,13 @@ async def _build_vocabulary_research(*, path: Path) -> None:
 async def _reingest(*, source: str) -> None:
     from aprkb.api.main import app as _app  # noqa: F401
     from aprkb.modules.corpus.models import Article
-    from aprkb.worker.handlers import local_blob_store, reingest_article
+    from aprkb.worker.handlers import (
+        initialize_worker_nlp_runtime,
+        local_blob_store,
+        reingest_article,
+    )
 
+    nlp_runtime = initialize_worker_nlp_runtime()
     engine = create_async_engine(settings.database_url, pool_pre_ping=True)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     blob_store = local_blob_store()
@@ -291,7 +296,9 @@ async def _reingest(*, source: str) -> None:
                 if article is None:
                     continue
                 try:
-                    result = await reingest_article(session, article, blob_store)
+                    result = await reingest_article(
+                        session, article, blob_store, nlp_runtime=nlp_runtime
+                    )
                     await record_event(
                         session,
                         actor_id=None,

@@ -1,0 +1,12 @@
+version: 0.1.0
+requirement_id: FR-01
+# TODO(owner, FR-01): approve provider, rate, prompt, and batch settings before any external run.
+provider: groq
+model: openai/gpt-oss-120b
+temperature: 0.0
+batch_size: 20
+requests_per_minute: 20
+max_tokens: 8000
+max_rate_limit_wait_seconds: 30
+prompt_version_a: v0.1.0-a
+prompt_version_b: v0.1.0-b

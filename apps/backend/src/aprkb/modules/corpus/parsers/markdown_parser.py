@@ -5,6 +5,8 @@ import re
 from aprkb.modules.corpus.parsers.base import DocumentParser, ParsedDocument, ParsedSection
 
 _HEADING = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$")
+_HEADING_NUMBER = re.compile(r"^\s*(?P<number>\d+(?:\.\d+)*)(?:\.)?\s+(?=\S)")
+_EMBEDDED_HEADING_NUMBER = re.compile(r"(?<![\w.])(?P<number>\d+(?:\.\d+)*)(?:\.)?\s+(?=[A-Za-z])")
 _FENCE = re.compile(r"^ {0,3}(```|~~~)")
 _RULE = re.compile(r"^ {0,3}([-*_])(?:\s*\1){2,}\s*$")
 _TABLE_ROW = re.compile(r"^\s*\|")
@@ -37,21 +39,24 @@ class MarkdownParser(DocumentParser):
                 continue
             heading_match = _HEADING.match(line)
             if heading_match:
-                drafts.append((_inline(heading_match.group(2)) or None, []))
+                heading = _inline(heading_match.group(2))
+                drafts.extend((part, []) for part in _split_merged_heading(heading))
                 continue
             drafts[-1][1].append(line)
 
         sections: list[ParsedSection] = []
         raw_parts: list[str] = []
         offset = 0
-        for heading, lines in drafts:
+        for section_heading, lines in drafts:
             body = _paragraphs(lines)
-            if not body and heading is None:
+            if not body and section_heading is None:
                 continue
             if raw_parts:
                 offset += 2
             sections.append(
-                ParsedSection(heading=heading, text=body, order=len(sections), char_start=offset)
+                ParsedSection(
+                    heading=section_heading, text=body, order=len(sections), char_start=offset
+                )
             )
             raw_parts.append(body)
             offset += len(body)
@@ -64,6 +69,27 @@ def _strip_front_matter(text: str) -> str:
         if end:
             return text[3 + end.end() :]
     return text
+
+
+def _split_merged_heading(heading: str) -> list[str | None]:
+    """Split only adjacent numbered headings with a plausible parent/child sequence."""
+    first = _HEADING_NUMBER.match(heading)
+    if first is None:
+        return [heading or None]
+    first_number = tuple(int(part) for part in first.group("number").split("."))
+    for second in _EMBEDDED_HEADING_NUMBER.finditer(heading, first.end()):
+        second_number = tuple(int(part) for part in second.group("number").split("."))
+        child = len(second_number) == len(first_number) + 1 and second_number[:-1] == first_number
+        sibling = (
+            len(second_number) == len(first_number)
+            and second_number[:-1] == first_number[:-1]
+            and second_number[-1] == first_number[-1] + 1
+        )
+        parent_text = heading[: second.start()].strip()
+        child_text = heading[second.start() :].strip()
+        if (child or sibling) and parent_text and child_text:
+            return [parent_text, child_text]
+    return [heading or None]
 
 
 def _paragraphs(lines: list[str]) -> str:

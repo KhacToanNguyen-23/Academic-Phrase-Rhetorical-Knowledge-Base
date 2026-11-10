@@ -4,25 +4,64 @@
 # Rhetorical codes must exist in data/seed/taxonomy.json; codes listed in
 # non_rhetorical are stored on article_sections but never mined.
 # Provisional patterns; TODO(owner, FR-07): review against more disciplines.
-version: 0.1.0
+version: 0.6.0
+# Provisional thresholds; TODO(owner): review against a labeled corpus.
+max_top_number_gap: 3
+max_heading_length: 120
+# TODO(owner, FR-07): review sentence and code indicators.
+sentence_ending_punctuation: ['.', ';', ',']
+code_keywords: ['return', 'if', 'then', 'else', 'while', 'for', 'def', 'class']
+# The matcher checks codes in YAML order. Keep METHODS before RESULTS so specific
+# benchmark/evaluation/experiment setup phrases take precedence over generic results headings.
 sections:
   ABSTRACT: ['^abstract$', '^summary$']
   INTRO: ['^introduction\b', '^motivation$']
   RELATED_WORK: ['^related work', '^literature review', '^background\b', '^prior work', '^preliminar']
+  # New narrow survey patterns; TODO(owner, FR-07): review before relying on these labels.
   METHODS: ['^method', '^materials and methods', '^methodolog', '^experimental (setup|design|protocol)',
+    '^benchmark(?:ing|s)?\b.*\b(metrics?|tools?|suites?|module|setup|settings?|protocol|environment)\b',
+    '^evaluation\w*\b.*\b(metrics?|tools?|suites?|module|setup|settings?|protocol|environment)\b',
+    '^experiments?\b.*\b(metrics?|tools?|suites?|module|setup|settings?|protocol|environment)\b',
+    '^experimental\b.*\b(metrics?|tools?|suites?|module|setup|settings?|protocol|environment)\b',
     '^problem (formulation|statement|setting)', '^system model', '^proposed\b', '^approach\b',
-    '\bexperimental protocol$', '^study design', '^data and methods']
+    '\bexperimental protocol$', '^study design', '^data and methods', '^system design', '^architecture$',
+    '^algorithms? design', '^design of\b', '^model design', '^threat model', '^framework design']
+  # New narrow survey patterns; TODO(owner, FR-07): review before relying on these labels.
   RESULTS: ['^results?\b', '^experiments?\b', '^experimental (results|evaluation)', '^evaluation\b',
-    '^performance evaluation', '^empirical\b', '^findings$']
-  DISCUSSION: ['^discussion', '^limitations\b', '^implications\b']
-  CONCLUSION: ['^conclusions?\b', '^concluding remarks', '^summary and conclusions?']
+    '^performance evaluation', '^empirical\b', '^findings$', '^benchmark', '^ablation', '^numerical results',
+    '^experimental (results|analysis)', '^case stud']
+  # Additions are provisional; TODO(owner, FR-07): review against more disciplines.
+  # New narrow survey patterns; TODO(owner, FR-07): review before relying on these labels.
+  DISCUSSION: ['^discussion', '^limitations\b', '^implications\b', '^lessons learned', '^threats to validity']
+  # New narrow survey patterns; TODO(owner, FR-07): review before relying on these labels.
+  CONCLUSION: ['^conclusions?\b', '^concluding remarks', '^summary and conclusions?',
+    '^conclusion and future work', '^future work', '^summary and outlook']
+  # Additions are provisional; TODO(owner, FR-07): review against more disciplines.
+# TODO(owner, FR-07): review the narrow METHODS override when a labeled parent exists.
+long_methods_parent_override:
+  - '^benchmark(?:ing|s)?\b.*\b(metrics?|tools?|suites?|module|setup|settings?|protocol|environment)\b'
+  - '^evaluation\w*\b.*\b(metrics?|tools?|suites?|module|setup|settings?|protocol|environment)\b'
+  - '^experiments?\b.*\b(metrics?|tools?|suites?|module|setup|settings?|protocol|environment)\b'
+  - '^experimental\b.*\b(metrics?|tools?|suites?|module|setup|settings?|protocol|environment)\b'
 non_rhetorical:
+  # Additions are provisional; TODO(owner, FR-07): review against more disciplines.
   REFERENCES: ['^references$', '^bibliography$', '^works cited$']
   BACK_MATTER: ['^back matter$', '^acknowledge?ments?$', '^funding$', '^data availability',
+    '^reproducibility statement',
     '^declaration', '^credit authorship', '^author contributions', '^conflicts? of interest',
     '^competing interests?']
   FIGURES_TABLES: ['^figures and tables$']
-  APPENDIX: ['^append(ix|ices)\b', '^supplementary']
+  APPENDIX: ['^append(ix|ices)\b', '^supplementary', '^artifact appendix', '^checklist']
+# Named mathematical/formal environments are excluded from rhetorical mining.
+# Definition and assumption may inherit METHODS only when configured below.
+# TODO(owner, FR-07): review these environment names and the inheritance decision.
+formal_blocks:
+  DEFINITION_ASSUMPTION: ['^definitions?\b', '^assumptions?\b']
+  APPENDIX: ['^theorems?\b', '^lemmas?\b', '^proofs?\b', '^remarks?\b', '^corollaries?\b',
+    '^propositions?\b', '^claims?\b']
+formal_block_policy: exclude
+# Lettered appendix headings and nested C.1 / C.2.3 forms; TODO(owner, FR-07): review.
+appendix_patterns: ['^[A-Z](?:\.\d+)+\.?\s+(?=\S)']
 # Headings that only group content (no section of their own); they reset the
 # inherited code so following unnumbered headings do not inherit a stale code.
 reset: ['^full text$']

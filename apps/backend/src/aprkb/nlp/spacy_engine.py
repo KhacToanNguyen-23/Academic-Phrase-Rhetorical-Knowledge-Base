@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 from importlib.metadata import version as _distribution_version
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from aprkb.modules.corpus.sentence_splitter import (
     BoundaryDecision,
@@ -18,6 +18,9 @@ from aprkb.nlp.features import (
 )
 from aprkb.policies.loader import load_policy_bundle
 from aprkb.policies.schemas import SentenceRulesPolicy
+
+if TYPE_CHECKING:
+    from spacy.tokens import Doc
 
 _COMPONENT_NAME = "aprkb_sentence_rules"
 
@@ -69,6 +72,10 @@ class SpacyEngine:
     def analyze(self, text: str) -> list[SentenceAnalysis]:
         doc = self._nlp(text)
         return self._analyses(doc)
+
+    def parse(self, text: str) -> Doc:
+        """Return an ephemeral parsed Doc for consumers that need dependency tokens."""
+        return self._nlp(text)
 
     def analyze_many(self, texts: Iterable[str]) -> Iterator[list[SentenceAnalysis]]:
         for doc in self._nlp.pipe(texts):

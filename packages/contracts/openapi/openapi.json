@@ -907,6 +907,43 @@
         "title": "BulkDecisionResult",
         "type": "object"
       },
+      "BulkFrameLabelReviewCreate": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/FrameLabelDecision"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Decisions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "decisions"
+        ],
+        "title": "BulkFrameLabelReviewCreate",
+        "type": "object"
+      },
+      "BulkFrameLabelReviewResult": {
+        "properties": {
+          "decisions_applied": {
+            "title": "Decisions Applied",
+            "type": "integer"
+          },
+          "reviewed_at": {
+            "format": "date-time",
+            "title": "Reviewed At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decisions_applied",
+          "reviewed_at"
+        ],
+        "title": "BulkFrameLabelReviewResult",
+        "type": "object"
+      },
       "CandidateIntentUpdate": {
         "additionalProperties": false,
         "description": "Human intent assignment, completed before either approval is recorded.",
@@ -921,6 +958,131 @@
           "intent_id"
         ],
         "title": "CandidateIntentUpdate",
+        "type": "object"
+      },
+      "CandidateLabelRead": {
+        "properties": {
+          "agreement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "label_code": {
+            "title": "Label Code",
+            "type": "string"
+          },
+          "needs_attention": {
+            "title": "Needs Attention",
+            "type": "boolean"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "reviewer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewer Id"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "proposed",
+              "confirmed",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "label_code",
+          "value",
+          "status",
+          "source",
+          "confidence",
+          "options",
+          "evidence",
+          "needs_attention",
+          "agreement",
+          "reviewer_id",
+          "reviewed_at"
+        ],
+        "title": "CandidateLabelRead",
         "type": "object"
       },
       "CandidateSummary": {
@@ -1417,6 +1579,352 @@
           "context_hash"
         ],
         "title": "FeedbackMetadata",
+        "type": "object"
+      },
+      "FrameLabel": {
+        "additionalProperties": false,
+        "properties": {
+          "agreement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "needs_attention": {
+            "default": false,
+            "title": "Needs Attention",
+            "type": "boolean"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "derived",
+              "proposed",
+              "unassigned",
+              "confirmed",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "status",
+          "source"
+        ],
+        "title": "FrameLabel",
+        "type": "object"
+      },
+      "FrameLabelDecision": {
+        "properties": {
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "edit",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "label_code": {
+            "title": "Label Code",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "label_code",
+          "decision"
+        ],
+        "title": "FrameLabelDecision",
+        "type": "object"
+      },
+      "FrameLabelJobQueued": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status"
+        ],
+        "title": "FrameLabelJobQueued",
+        "type": "object"
+      },
+      "FrameLabelReviewPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FrameLabelReviewRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "FrameLabelReviewPage",
+        "type": "object"
+      },
+      "FrameLabelReviewRead": {
+        "properties": {
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "canonical_frame": {
+            "title": "Canonical Frame",
+            "type": "string"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "labels": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateLabelRead"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "paper_count": {
+            "title": "Paper Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "canonical_frame",
+          "family",
+          "paper_count",
+          "labels"
+        ],
+        "title": "FrameLabelReviewRead",
+        "type": "object"
+      },
+      "FrameLabels": {
+        "additionalProperties": false,
+        "properties": {
+          "article_genres": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "claim_type": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "constraints": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "epistemic_strength": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "function_group": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "general_function": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "intent": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "license_status": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "move": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "observed_sections": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "register": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "review_status": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "section_scope": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "sequence_hint": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "slots": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "source_class": {
+            "$ref": "#/components/schemas/FrameLabel"
+          },
+          "step": {
+            "$ref": "#/components/schemas/FrameLabel"
+          }
+        },
+        "required": [
+          "section_scope",
+          "observed_sections",
+          "article_genres",
+          "provenance",
+          "license_status",
+          "source_class",
+          "slots",
+          "epistemic_strength",
+          "function_group",
+          "intent",
+          "move",
+          "step",
+          "claim_type",
+          "register",
+          "general_function",
+          "sequence_hint",
+          "constraints",
+          "review_status"
+        ],
+        "title": "FrameLabels",
+        "type": "object"
+      },
+      "FrameSectionDistribution": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "dominant_code": {
+            "title": "Dominant Code",
+            "type": "string"
+          },
+          "dominant_share": {
+            "title": "Dominant Share",
+            "type": "number"
+          },
+          "is_unknown": {
+            "title": "Is Unknown",
+            "type": "boolean"
+          },
+          "known_count": {
+            "title": "Known Count",
+            "type": "integer"
+          },
+          "paper_count": {
+            "title": "Paper Count",
+            "type": "integer"
+          },
+          "shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Shares",
+            "type": "object"
+          },
+          "unknown_count": {
+            "title": "Unknown Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "counts",
+          "shares",
+          "paper_count",
+          "known_count",
+          "unknown_count",
+          "dominant_code",
+          "dominant_share",
+          "is_unknown"
+        ],
+        "title": "FrameSectionDistribution",
         "type": "object"
       },
       "FunctionCatalog": {
@@ -4566,6 +5074,13 @@
       },
       "PhrasePage": {
         "properties": {
+          "filtered_reason_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Filtered Reason Counts",
+            "type": "object"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/PhraseRead"
@@ -4611,6 +5126,12 @@
             "title": "Id",
             "type": "string"
           },
+          "labels": {
+            "$ref": "#/components/schemas/FrameLabels"
+          },
+          "section_distribution": {
+            "$ref": "#/components/schemas/FrameSectionDistribution"
+          },
           "slots": {
             "additionalProperties": {
               "$ref": "#/components/schemas/SlotDefinition"
@@ -4637,6 +5158,8 @@
           "epistemic_strength",
           "status",
           "blocked",
+          "section_distribution",
+          "labels",
           "sources"
         ],
         "title": "PhraseRead",
@@ -10523,6 +11046,269 @@
         "summary": "Review Slot Link",
         "tags": [
           "measurement"
+        ]
+      }
+    },
+    "/v1/admin/mining/frames": {
+      "get": {
+        "operationId": "get_frame_label_reviews_v1_admin_mining_frames_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "label_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Label Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_confidence",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Confidence"
+            }
+          },
+          {
+            "in": "query",
+            "name": "needs_attention",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Needs Attention"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agreement",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agreement"
+            }
+          },
+          {
+            "in": "query",
+            "name": "paper_count",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Paper Count"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FrameLabelReviewPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Frame Label Reviews",
+        "tags": [
+          "frame labels"
+        ]
+      }
+    },
+    "/v1/admin/mining/frames/decisions": {
+      "post": {
+        "operationId": "post_frame_label_decisions_v1_admin_mining_frames_decisions_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkFrameLabelReviewCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkFrameLabelReviewResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Frame Label Decisions",
+        "tags": [
+          "frame labels"
+        ]
+      }
+    },
+    "/v1/admin/mining/frames/label": {
+      "post": {
+        "operationId": "queue_frame_label_job_v1_admin_mining_frames_label_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FrameLabelJobQueued"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Queue Frame Label Job",
+        "tags": [
+          "frame labels"
         ]
       }
     },

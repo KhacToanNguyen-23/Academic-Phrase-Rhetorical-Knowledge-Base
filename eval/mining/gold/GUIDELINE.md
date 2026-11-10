@@ -1,4 +1,4 @@
-# Gold development labeling guideline v1
+# Gold development labeling guideline v2
 
 The AI proposes labels for each unchanged source sentence; one human reviewer accepts or edits the proposal and makes the final decision. Only human-reviewed final labels count as gold. All examples below are self-written and illustrate the rules only; they are not gold items and not expected system output. Source article sentences remain in the local database.
 
@@ -32,15 +32,20 @@ Copy the section code supplied with the sentence. Use `OTHER` when it is `OTHER`
 
 The strength of the claim the author makes, read from explicit marker words only. Use the first matching level; if the sentence has markers of two different levels, choose the level of the marker nearest the main verb. Ignore a marker that is negated (`does not show` carries no `high`).
 
-| Level | Marker words (mirrors `epistemic_markers.yaml` v0.1.0, a draft list) |
+| Level | Marker words (mirrors `epistemic_markers.yaml` v0.2.0, a draft list) |
 |---|---|
 | `low` | may, might, could, possibly, appears to |
 | `moderate` | suggest, suggests, suggested, indicate, indicates, indicated, is likely |
-| `high` | show, shows, showed, demonstrate, demonstrates, demonstrated, confirm, confirms, confirmed |
+| `high` | demonstrate, demonstrates, demonstrated, confirm, confirms, confirmed, establish, establishes, established |
 | `absolute` | prove, proves, proved, proven, establish beyond doubt, always |
 | `none` | no marker word is present |
 
-Do not infer strength from the topic or tone. `We propose a new filter.` is `none`. Words outside the table (for example `argue`, `likely`, `clearly`) are not markers in v1: label `none` and say so in `notes` so the lexicon owner can review.
+The neutral reporting forms `show/shows/showed/shown`, `find/finds/found`,
+`observe/observes/observed`, `note/notes/noted`, and `assume/assumes/assumed` carry no
+epistemic strength. `assume` remains provisional as a reporting-class member (`TODO(owner,
+FR-06.2)`).
+
+Do not infer strength from the topic or tone. `We propose a new filter.` is `none`. Words outside the table (for example `argue`, `likely`, `clearly`) are not markers in v2: label `none` and say so in `notes` so the lexicon owner can review.
 
 ## 4. `tense`
 
@@ -80,4 +85,4 @@ Worked examples (self-written):
 
 A short reviewer note, optional. Mention an uncertain choice or an out-of-list marker word. Never put personal information here.
 
-`intent` is not labeled in v1. This development workflow does not satisfy FR-06.6's separate two-editor validation requirement.
+`intent` is not labeled in v2. This development workflow does not satisfy FR-06.6's separate two-editor validation requirement.

@@ -588,6 +588,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/mining/frames": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Frame Label Reviews */
+        get: operations["get_frame_label_reviews_v1_admin_mining_frames_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/mining/frames/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Frame Label Decisions */
+        post: operations["post_frame_label_decisions_v1_admin_mining_frames_decisions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/mining/frames/label": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue Frame Label Job */
+        post: operations["queue_frame_label_job_v1_admin_mining_frames_label_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/releases/{release_id}/publish": {
         parameters: {
             query?: never;
@@ -1609,6 +1660,21 @@ export interface components {
             /** Results */
             results: components["schemas"]["PhraseDecisionResult"][];
         };
+        /** BulkFrameLabelReviewCreate */
+        BulkFrameLabelReviewCreate: {
+            /** Decisions */
+            decisions: components["schemas"]["FrameLabelDecision"][];
+        };
+        /** BulkFrameLabelReviewResult */
+        BulkFrameLabelReviewResult: {
+            /** Decisions Applied */
+            decisions_applied: number;
+            /**
+             * Reviewed At
+             * Format: date-time
+             */
+            reviewed_at: string;
+        };
         /**
          * CandidateIntentUpdate
          * @description Human intent assignment, completed before either approval is recorded.
@@ -1619,6 +1685,38 @@ export interface components {
              * Format: uuid
              */
             intent_id: string;
+        };
+        /** CandidateLabelRead */
+        CandidateLabelRead: {
+            /** Agreement */
+            agreement: string | null;
+            /** Confidence */
+            confidence: number | null;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Label Code */
+            label_code: string;
+            /** Needs Attention */
+            needs_attention: boolean;
+            /** Options */
+            options: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Reviewed At */
+            reviewed_at: string | null;
+            /** Reviewer Id */
+            reviewer_id: string | null;
+            /** Source */
+            source: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "proposed" | "confirmed" | "rejected";
+            /** Value */
+            value: unknown | null;
         };
         /** CandidateSummary */
         CandidateSummary: {
@@ -1799,6 +1897,129 @@ export interface components {
         FeedbackMetadata: {
             /** Context Hash */
             context_hash: string;
+        };
+        /** FrameLabel */
+        FrameLabel: {
+            /** Agreement */
+            agreement?: string | null;
+            /** Confidence */
+            confidence?: string | number | null;
+            /** Evidence */
+            evidence?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Needs Attention
+             * @default false
+             */
+            needs_attention: boolean;
+            /** Options */
+            options?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Source */
+            source: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "derived" | "proposed" | "unassigned" | "confirmed" | "rejected";
+            /** Value */
+            value: unknown | null;
+        };
+        /** FrameLabelDecision */
+        FrameLabelDecision: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "edit" | "reject";
+            /** Label Code */
+            label_code: string;
+            /** Value */
+            value?: string | null;
+        };
+        /** FrameLabelJobQueued */
+        FrameLabelJobQueued: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Status */
+            status: string;
+        };
+        /** FrameLabelReviewPage */
+        FrameLabelReviewPage: {
+            /** Items */
+            items: components["schemas"]["FrameLabelReviewRead"][];
+            /** Total */
+            total: number;
+        };
+        /** FrameLabelReviewRead */
+        FrameLabelReviewRead: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Canonical Frame */
+            canonical_frame: string;
+            /** Family */
+            family: string;
+            /** Labels */
+            labels: components["schemas"]["CandidateLabelRead"][];
+            /** Paper Count */
+            paper_count: number;
+        };
+        /** FrameLabels */
+        FrameLabels: {
+            article_genres: components["schemas"]["FrameLabel"];
+            claim_type: components["schemas"]["FrameLabel"];
+            constraints: components["schemas"]["FrameLabel"];
+            epistemic_strength: components["schemas"]["FrameLabel"];
+            function_group: components["schemas"]["FrameLabel"];
+            general_function: components["schemas"]["FrameLabel"];
+            intent: components["schemas"]["FrameLabel"];
+            license_status: components["schemas"]["FrameLabel"];
+            move: components["schemas"]["FrameLabel"];
+            observed_sections: components["schemas"]["FrameLabel"];
+            provenance: components["schemas"]["FrameLabel"];
+            register: components["schemas"]["FrameLabel"];
+            review_status: components["schemas"]["FrameLabel"];
+            section_scope: components["schemas"]["FrameLabel"];
+            sequence_hint: components["schemas"]["FrameLabel"];
+            slots: components["schemas"]["FrameLabel"];
+            source_class: components["schemas"]["FrameLabel"];
+            step: components["schemas"]["FrameLabel"];
+        };
+        /** FrameSectionDistribution */
+        FrameSectionDistribution: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Dominant Code */
+            dominant_code: string;
+            /** Dominant Share */
+            dominant_share: number;
+            /** Is Unknown */
+            is_unknown: boolean;
+            /** Known Count */
+            known_count: number;
+            /** Paper Count */
+            paper_count: number;
+            /** Shares */
+            shares: {
+                [key: string]: number;
+            };
+            /** Unknown Count */
+            unknown_count: number;
         };
         /** FunctionCatalog */
         FunctionCatalog: {
@@ -2861,6 +3082,10 @@ export interface components {
         };
         /** PhrasePage */
         PhrasePage: {
+            /** Filtered Reason Counts */
+            filtered_reason_counts?: {
+                [key: string]: number;
+            };
             /** Items */
             items: components["schemas"]["PhraseRead"][];
             /** Total */
@@ -2879,6 +3104,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            labels: components["schemas"]["FrameLabels"];
+            section_distribution: components["schemas"]["FrameSectionDistribution"];
             /** Slots */
             slots: {
                 [key: string]: components["schemas"]["SlotDefinition"];
@@ -5209,6 +5436,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SlotLinkRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_frame_label_reviews_v1_admin_mining_frames_get: {
+        parameters: {
+            query?: {
+                label_code?: string | null;
+                min_confidence?: number | null;
+                needs_attention?: boolean | null;
+                agreement?: string | null;
+                paper_count?: number | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FrameLabelReviewPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_frame_label_decisions_v1_admin_mining_frames_decisions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkFrameLabelReviewCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkFrameLabelReviewResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    queue_frame_label_job_v1_admin_mining_frames_label_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FrameLabelJobQueued"];
                 };
             };
             /** @description Validation Error */

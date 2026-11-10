@@ -1,5 +1,9 @@
 # Provisional values; TODO(owner, PRD-6.3): approve sentence length bounds for production.
-version: 0.4.0
+version: 0.6.0
+# TODO(owner): review filter behavior against adjudicated frame-section labels.
+unknown_single_paper_filter: true
+# TODO(owner, FR-07): tune on reviewed frame-section distributions.
+frame_section_dominant_share_threshold: 0.6
 sentence_filter:
   min_words: 5
   max_words: 60

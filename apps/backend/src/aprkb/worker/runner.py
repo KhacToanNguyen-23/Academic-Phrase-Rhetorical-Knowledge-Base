@@ -18,7 +18,13 @@ from aprkb.modules.corpus.models import Article
 from aprkb.modules.mining.models import Job
 from aprkb.modules.mining.operations import finish_attempt
 from aprkb.modules.mining.queue import claim_next, execution_lock
-from aprkb.worker.handlers import ArticleSourceFactory, handle_job, local_blob_store
+from aprkb.worker.handlers import (
+    ArticleSourceFactory,
+    WorkerNlpRuntime,
+    handle_job,
+    initialize_worker_nlp_runtime,
+    local_blob_store,
+)
 from aprkb.worker.progress import LeaseLost, make_reporter, reporter
 from aprkb.worker.retry import classify_failure, retry_delay
 
@@ -167,6 +173,7 @@ async def run_once(
     *,
     blob_store: BlobStore | None = None,
     article_source_factory: ArticleSourceFactory | None = None,
+    nlp_runtime: WorkerNlpRuntime | None = None,
 ) -> bool:
     """Claim one due attempt; commit output and success atomically under ownership."""
     async with session_factory() as session:
@@ -192,11 +199,21 @@ async def run_once(
             if job is None or job.status != "processing" or job.lock_token != token:
                 return True
             async with asyncio.timeout(settings.job_timeout_seconds):
-                if article_source_factory is None:
+                if article_source_factory is None and nlp_runtime is None:
                     error = await handle_job(session, job, store)
-                else:
+                elif article_source_factory is None:
+                    error = await handle_job(session, job, store, nlp_runtime=nlp_runtime)
+                elif nlp_runtime is None:
                     error = await handle_job(
                         session, job, store, article_source_factory=article_source_factory
+                    )
+                else:
+                    error = await handle_job(
+                        session,
+                        job,
+                        store,
+                        article_source_factory=article_source_factory,
+                        nlp_runtime=nlp_runtime,
                     )
             # Check without autoflush: a stale attempt must never publish even
             # its pending ORM result. The advisory lock excludes compliant reclaimers.
@@ -257,6 +274,7 @@ async def run_once(
 async def run_forever() -> None:
     engine = create_async_engine(settings.database_url, pool_pre_ping=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    nlp_runtime = initialize_worker_nlp_runtime()
     logger.info(
         "Worker started env=%s article_source=%s", settings.app_env, settings.article_source
     )
@@ -269,7 +287,7 @@ async def run_forever() -> None:
             loop.add_signal_handler(sig, stop.set)
     try:
         while not stop.is_set():
-            if not await run_once(session_factory):
+            if not await run_once(session_factory, nlp_runtime=nlp_runtime):
                 with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(stop.wait(), timeout=0.5)
     finally:

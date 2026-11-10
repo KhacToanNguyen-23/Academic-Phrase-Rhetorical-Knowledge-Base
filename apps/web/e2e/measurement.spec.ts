@@ -13,6 +13,11 @@ const entries = [
   { code: "pre_post_test", kind: "protocol", name: "Pre-test/post-test design", aliases: [], definition: "Measure before and after." },
 ];
 
+async function choose(page: Page, label: string, option: string) {
+  await page.getByRole("combobox", { name: label, exact: true }).click();
+  await page.getByRole("option", { name: option, exact: true }).click();
+}
+
 async function mockCatalog(page: Page) {
   await page.route("**/v1/measurements?**", (route) => {
     const params = new URL(route.request().url()).searchParams;
@@ -155,6 +160,10 @@ test.describe("writer", () => {
     });
 
     await page.goto("/writer");
+    // Narrow the search the way writer.spec.ts does, so the two-slot fixture frame is listed.
+    await choose(page, "Manuscript section", "Introduction");
+    await choose(page, "Rhetorical intent", "Indicate a research gap");
+    await page.getByLabel("Search keywords", { exact: true }).fill("role");
     await page.getByRole("button", { name: "Find patterns" }).click();
     await page.getByRole("radio", { name: "Select The role of {topic} in {context} remains underexplored." }).click();
 

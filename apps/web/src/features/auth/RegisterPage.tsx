@@ -3,15 +3,15 @@ import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import {
   AuthShell,
   FormError,
   GoogleSignIn,
-  ORG_EMAIL_PATTERN,
   OrDivider,
+  OrgEmailField,
   PASSWORD_MIN,
   PasswordInput,
+  isOrgEmail,
   readError,
   rememberRegistration,
 } from "./shared";
@@ -28,10 +28,13 @@ export function RegisterPage({ next }: { next?: string }) {
 
   const tooShort = password.length > 0 && password.length < PASSWORD_MIN;
   const mismatch = confirm.length > 0 && confirm !== password;
-  const ready = email.trim() && password.length >= PASSWORD_MIN && confirm === password;
+  const [submitted, setSubmitted] = useState(false);
+  // Email/password registration is restricted to @hyperdatalab.org (Google sign-up is separate).
+  const ready = isOrgEmail(email) && password.length >= PASSWORD_MIN && confirm === password;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitted(true);
     if (!ready) return;
     setBusy(true);
     setError("");
@@ -68,25 +71,17 @@ export function RegisterPage({ next }: { next?: string }) {
         </span>
       }
     >
-      <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
-        <Field>
-          <FieldLabel htmlFor="register-email">Organization email</FieldLabel>
-          <Input
-            id="register-email"
-            type="email"
-            autoComplete="email"
-            required
-            pattern={ORG_EMAIL_PATTERN}
-            title="Use your @hyperdatalab.org email address"
-            placeholder="you@hyperdatalab.org"
-            maxLength={255}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            disabled={busy}
-            autoFocus
-          />
-          <FieldDescription>Only @hyperdatalab.org addresses can register.</FieldDescription>
-        </Field>
+      <form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
+        <OrgEmailField
+          id="register-email"
+          autoComplete="email"
+          value={email}
+          onChange={setEmail}
+          disabled={busy}
+          autoFocus
+          submitted={submitted}
+          hint="Only @hyperdatalab.org addresses can register with email."
+        />
         <Field data-invalid={tooShort || undefined}>
           <FieldLabel htmlFor="register-password">Password</FieldLabel>
           <PasswordInput
@@ -130,7 +125,7 @@ export function RegisterPage({ next }: { next?: string }) {
             )}
           </FormError>
         )}
-        <Button type="submit" disabled={busy || !ready}>
+        <Button type="submit" className="h-10" disabled={busy || !email.trim() || !password || !confirm}>
           {busy ? "Creating account…" : "Create account"}
         </Button>
       </form>

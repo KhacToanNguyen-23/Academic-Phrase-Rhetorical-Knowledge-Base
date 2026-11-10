@@ -2,7 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronsUpDown, LogIn, LogOut, Moon, Sun } from "lucide-react";
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -108,7 +115,6 @@ export function AppSidebar({ pathname, theme, onToggleTheme }: Props) {
         <SidebarMenu>
           {isAdmin && <NavLink item={ADMIN_ITEM} pathname={pathname} />}
           {client ? (
-            <>
             <SidebarMenuItem>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -124,25 +130,23 @@ export function AppSidebar({ pathname, theme, onToggleTheme }: Props) {
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="start" className="min-w-56">
+                  <DropdownMenuLabel className="flex flex-col gap-0.5 font-normal">
+                    <span className="text-xs text-muted-foreground">Signed in as</span>
+                    <span className="truncate text-sm font-medium">{client.name}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={onToggleTheme}>
                     <ThemeIcon strokeWidth={1.5} />
                     {themeLabel}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={signOut}>
+                  <DropdownMenuItem variant="destructive" onSelect={signOut}>
                     <LogOut strokeWidth={1.5} />
                     Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={signOut} tooltip="Sign out">
-                <LogOut strokeWidth={1.5} />
-                <span>Sign out</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            </>
           ) : (
             <>
               <SidebarMenuItem>

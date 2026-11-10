@@ -9,10 +9,11 @@ import {
   AuthShell,
   FormError,
   GoogleSignIn,
-  ORG_EMAIL_PATTERN,
   OrDivider,
+  OrgEmailField,
   PASSWORD_MIN,
   PasswordInput,
+  isOrgEmail,
   readError,
 } from "./shared";
 
@@ -26,8 +27,12 @@ export function AdminSetupPage() {
   const [busy, setBusy] = useState(false);
   const requireKey = useCallback(() => (apiKey.trim() ? null : "Enter the admin setup key first."), [apiKey]);
 
+  const [submitted, setSubmitted] = useState(false);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitted(true);
+    if (!isOrgEmail(email)) return;
     setBusy(true);
     setError("");
     try {
@@ -51,19 +56,15 @@ export function AdminSetupPage() {
       description="Link the bootstrap admin API key to your email or Google account once. Later sign-ins do not need the key."
       footer={<Link to="/signin" className="font-medium text-foreground underline-offset-4 hover:underline">Back to sign in</Link>}
     >
-      <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
+      <form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
         <Field>
           <FieldLabel htmlFor="admin-setup-key">Admin API key</FieldLabel>
           <Input id="admin-setup-key" type="password" autoComplete="off" required value={apiKey}
             onChange={(event) => setApiKey(event.target.value)} disabled={busy} autoFocus />
           <FieldDescription>Created with <code>make bootstrap-key</code>.</FieldDescription>
         </Field>
-        <Field>
-          <FieldLabel htmlFor="admin-setup-email">Organization email</FieldLabel>
-          <Input id="admin-setup-email" type="email" autoComplete="email" required pattern={ORG_EMAIL_PATTERN}
-            title="Use your @hyperdatalab.org email address" placeholder="you@hyperdatalab.org" maxLength={255}
-            value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} />
-        </Field>
+        <OrgEmailField id="admin-setup-email" autoComplete="email" value={email} onChange={setEmail}
+          disabled={busy} submitted={submitted} />
         <Field>
           <FieldLabel htmlFor="admin-setup-password">Password</FieldLabel>
           <PasswordInput id="admin-setup-password" autoComplete="new-password" value={password}
@@ -71,7 +72,7 @@ export function AdminSetupPage() {
           <FieldDescription id="admin-setup-password-hint">At least {PASSWORD_MIN} characters.</FieldDescription>
         </Field>
         {error && <FormError>{error}</FormError>}
-        <Button type="submit" disabled={busy || !apiKey.trim() || !email.trim() || password.length < PASSWORD_MIN}>
+        <Button type="submit" className="h-10" disabled={busy || !apiKey.trim() || !email.trim() || password.length < PASSWORD_MIN}>
           {busy ? "Linking…" : "Link admin key and sign in"}
         </Button>
       </form>

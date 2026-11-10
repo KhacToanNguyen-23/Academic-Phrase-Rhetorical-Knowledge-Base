@@ -3,7 +3,7 @@
 // Phrase frames themselves (frames.ts) are academic English content and stay the same in every locale.
 
 export type MoveId = "gap" | "method" | "finding" | "limitation";
-export type Screen = "/library" | "/phrasebank" | "/vocabulary" | "/journals" | "/writer" | "/inbox";
+export type Screen = "/phrasebank" | "/phrasebank" | "/vocabulary" | "/journals" | "/writer" | "/inbox";
 
 export interface LandingCopy {
   lang: string;
@@ -79,12 +79,12 @@ export const copyEn: LandingCopy = {
     strengths: { hedged: "Hedged", neutral: "Neutral" },
     action: "Open the phrasebank",
     preview: {
-      label: "Sample library entry",
+      label: "Sample phrasebank entry",
       crumb: {
-        gap: "Library / Introduction / Gap",
-        method: "Library / Methods / Method",
-        finding: "Library / Results / Finding",
-        limitation: "Library / Discussion / Limitation",
+        gap: "Phrasebank / Introduction / Gap",
+        method: "Phrasebank / Methods / Method",
+        finding: "Phrasebank / Results / Finding",
+        limitation: "Phrasebank / Discussion / Limitation",
       },
       status: "Approved",
       slotsLabel: "Slots",
@@ -96,7 +96,7 @@ export const copyEn: LandingCopy = {
         limitation: "Use when the sample or the setting limits the result.",
       },
       provenance: "Authored",
-      caption: "A sample entry. Library entries carry the same fields.",
+      caption: "A sample entry. Phrasebank entries carry the same fields.",
     },
   },
   intro: {
@@ -143,7 +143,7 @@ export const copyEn: LandingCopy = {
     text: "Each screen holds one kind of material. Staff screens ask you to sign in first.",
     tableLabel: "Screens",
     rows: [
-      { name: "Library", text: "Approved patterns with their slots, usage contract and provenance", to: "/library", linkLabel: "Open the library" },
+      { name: "Phrasebank", text: "Approved patterns with their slots, usage contract and provenance", to: "/phrasebank", linkLabel: "Open phrasebank" },
       { name: "Phrasebank", text: "A browsable reference collection, kept apart from the bank", to: "/phrasebank", linkLabel: "Open the phrasebank" },
       { name: "Vocabulary", text: "Academic words by lemma, word family and rank", to: "/vocabulary", linkLabel: "Open the vocabulary list" },
       { name: "Journals", text: "Verified guidelines apart from phrasing observed in the corpus", to: "/journals", linkLabel: "Open the journal profiles" },

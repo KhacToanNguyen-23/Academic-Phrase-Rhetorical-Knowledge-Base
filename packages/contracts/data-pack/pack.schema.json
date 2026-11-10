@@ -1,5 +1,430 @@
 {
   "$defs": {
+    "APBCaveat": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "severity": {
+          "default": "info",
+          "enum": [
+            "info",
+            "warning",
+            "critical"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "APBCaveat",
+      "type": "object"
+    },
+    "APBExample": {
+      "additionalProperties": false,
+      "properties": {
+        "explanation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explanation"
+        },
+        "kind": {
+          "enum": [
+            "positive",
+            "negative",
+            "revised"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "license_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "License Code"
+        },
+        "origin_kind": {
+          "enum": [
+            "internal_original",
+            "illustrative_synthetic",
+            "licensed"
+          ],
+          "title": "Origin Kind",
+          "type": "string"
+        },
+        "source_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Ref"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "text",
+        "origin_kind"
+      ],
+      "title": "APBExample",
+      "type": "object"
+    },
+    "APBFunction": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "context_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Note"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "version"
+      ],
+      "title": "APBFunction",
+      "type": "object"
+    },
+    "APBMetadata": {
+      "additionalProperties": false,
+      "description": "Candidate annotations produced offline; never imply curator approval.",
+      "properties": {
+        "caveats": {
+          "items": {
+            "$ref": "#/$defs/APBCaveat"
+          },
+          "title": "Caveats",
+          "type": "array"
+        },
+        "domain_catalog_version": {
+          "minLength": 1,
+          "title": "Domain Catalog Version",
+          "type": "string"
+        },
+        "examples": {
+          "items": {
+            "$ref": "#/$defs/APBExample"
+          },
+          "title": "Examples",
+          "type": "array"
+        },
+        "function_catalog_version": {
+          "minLength": 1,
+          "title": "Function Catalog Version",
+          "type": "string"
+        },
+        "functions": {
+          "items": {
+            "$ref": "#/$defs/APBFunction"
+          },
+          "title": "Functions",
+          "type": "array"
+        },
+        "move_links": {
+          "items": {
+            "$ref": "#/$defs/APBMoveLink"
+          },
+          "title": "Move Links",
+          "type": "array"
+        },
+        "pragmatic_tags": {
+          "items": {
+            "$ref": "#/$defs/APBPragmaticTag"
+          },
+          "title": "Pragmatic Tags",
+          "type": "array"
+        },
+        "status": {
+          "const": "proposed",
+          "default": "proposed",
+          "title": "Status",
+          "type": "string"
+        },
+        "step_links": {
+          "items": {
+            "$ref": "#/$defs/APBStepLink"
+          },
+          "title": "Step Links",
+          "type": "array"
+        },
+        "usage_profiles": {
+          "items": {
+            "$ref": "#/$defs/APBUsageProfile"
+          },
+          "title": "Usage Profiles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "function_catalog_version",
+        "domain_catalog_version"
+      ],
+      "title": "APBMetadata",
+      "type": "object"
+    },
+    "APBMoveLink": {
+      "additionalProperties": false,
+      "properties": {
+        "move_code": {
+          "minLength": 1,
+          "title": "Move Code",
+          "type": "string"
+        },
+        "relation": {
+          "default": "REALIZES_MOVE",
+          "enum": [
+            "REALIZES_MOVE",
+            "SUPPORTS_MOVE"
+          ],
+          "title": "Relation",
+          "type": "string"
+        },
+        "section_code": {
+          "minLength": 1,
+          "title": "Section Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "section_code",
+        "move_code"
+      ],
+      "title": "APBMoveLink",
+      "type": "object"
+    },
+    "APBPragmaticTag": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "context_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Note"
+        },
+        "strength_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Strength Note"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "version"
+      ],
+      "title": "APBPragmaticTag",
+      "type": "object"
+    },
+    "APBStepLink": {
+      "additionalProperties": false,
+      "properties": {
+        "move_code": {
+          "minLength": 1,
+          "title": "Move Code",
+          "type": "string"
+        },
+        "relation": {
+          "default": "REALIZES_STEP",
+          "enum": [
+            "REALIZES_STEP",
+            "SUPPORTS_STEP"
+          ],
+          "title": "Relation",
+          "type": "string"
+        },
+        "section_code": {
+          "minLength": 1,
+          "title": "Section Code",
+          "type": "string"
+        },
+        "step_code": {
+          "minLength": 1,
+          "title": "Step Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "section_code",
+        "move_code",
+        "step_code"
+      ],
+      "title": "APBStepLink",
+      "type": "object"
+    },
+    "APBUsageProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "audience": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audience"
+        },
+        "discipline_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Discipline Code"
+        },
+        "genre_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Genre Code"
+        },
+        "language_code": {
+          "default": "en",
+          "title": "Language Code",
+          "type": "string"
+        },
+        "preferred_usage": {
+          "anyOf": [
+            {
+              "enum": [
+                "general",
+                "domain_constrained",
+                "venue_constrained"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preferred Usage"
+        },
+        "register_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Register Code"
+        },
+        "register_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Register Version"
+        },
+        "section_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section Code"
+        }
+      },
+      "title": "APBUsageProfile",
+      "type": "object"
+    },
     "ArticleKey": {
       "additionalProperties": false,
       "properties": {
@@ -46,6 +471,19 @@
     "Counts": {
       "additionalProperties": false,
       "properties": {
+        "apb_proposals": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Apb Proposals"
+        },
         "patterns": {
           "minimum": 0,
           "title": "Patterns",
@@ -140,7 +578,10 @@
           "type": "array"
         },
         "pack_version": {
-          "const": "0.1",
+          "enum": [
+            "0.1",
+            "0.2"
+          ],
           "title": "Pack Version",
           "type": "string"
         },
@@ -485,6 +926,17 @@
     "Version": {
       "additionalProperties": false,
       "properties": {
+        "apb": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/APBMetadata"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "canonical_frame": {
           "minLength": 1,
           "title": "Canonical Frame",
@@ -563,6 +1015,91 @@
     }
   },
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "manifest": {
+            "properties": {
+              "pack_version": {
+                "const": "0.1"
+              }
+            },
+            "required": [
+              "pack_version"
+            ]
+          }
+        },
+        "required": [
+          "manifest"
+        ]
+      },
+      "then": {
+        "properties": {
+          "manifest": {
+            "properties": {
+              "counts": {
+                "properties": {
+                  "apb_proposals": false
+                }
+              }
+            }
+          },
+          "patterns": {
+            "items": {
+              "properties": {
+                "versions": {
+                  "items": {
+                    "properties": {
+                      "apb": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "manifest": {
+            "properties": {
+              "pack_version": {
+                "const": "0.2"
+              }
+            },
+            "required": [
+              "pack_version"
+            ]
+          }
+        },
+        "required": [
+          "manifest"
+        ]
+      },
+      "then": {
+        "properties": {
+          "manifest": {
+            "properties": {
+              "counts": {
+                "properties": {
+                  "apb_proposals": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "apb_proposals"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "description": "Combined schema exported for implementers; files are separately validated.",
   "properties": {
     "manifest": {

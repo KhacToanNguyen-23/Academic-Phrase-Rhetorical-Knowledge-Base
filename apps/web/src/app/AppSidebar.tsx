@@ -2,7 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronsUpDown, LogIn, LogOut, Moon, Sun } from "lucide-react";
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -53,6 +60,10 @@ export function AppSidebar({ pathname, theme, onToggleTheme }: Props) {
   const inboxCount = submissions.data?.filter((s) => s.status === "pending").length;
   const ThemeIcon = theme === "dark" ? Sun : Moon;
   const themeLabel = theme === "dark" ? "Light theme" : "Dark theme";
+  const signOut = () => {
+    auth.logout();
+    void navigate({ to: "/" });
+  };
 
   return (
     <Sidebar collapsible="icon" aria-label="Main navigation">
@@ -119,17 +130,17 @@ export function AppSidebar({ pathname, theme, onToggleTheme }: Props) {
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="start" className="min-w-56">
+                  <DropdownMenuLabel className="flex flex-col gap-0.5 font-normal">
+                    <span className="text-xs text-muted-foreground">Signed in as</span>
+                    <span className="truncate text-sm font-medium">{client.name}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={onToggleTheme}>
                     <ThemeIcon strokeWidth={1.5} />
                     {themeLabel}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      auth.logout();
-                      void navigate({ to: "/" });
-                    }}
-                  >
+                  <DropdownMenuItem variant="destructive" onSelect={signOut}>
                     <LogOut strokeWidth={1.5} />
                     Sign out
                   </DropdownMenuItem>

@@ -5,6 +5,10 @@ import re
 from aprkb.modules.validation.context import ValidationContext
 from aprkb.modules.validation.rules.base import RuleResult, Severity, ValidationRule
 
+# A number ends at a word character or at a decimal point that is followed by a digit.
+# A sentence-final period ("was 0.0111.") must not hide the number from the check.
+NUMBER_END = r"(?!\w)(?!\.\d)"
+
 DETAIL_PATTERNS = (
     ("DOI", re.compile(r"\b10\.\d{4,9}/[-._;()/:A-Z0-9]+", re.IGNORECASE)),
     (
@@ -14,7 +18,7 @@ DETAIL_PATTERNS = (
     (
         "numeric claim",
         re.compile(
-            r"(?<![\w.])(?:p\s*[<=>]\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*%|\d+(?:\.\d+)?)(?![\w.])",
+            r"(?<![\w.])(?:p\s*[<=>]\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*%|\d+(?:\.\d+)?)" + NUMBER_END,
             re.IGNORECASE,
         ),
     ),
@@ -58,7 +62,10 @@ class V03GroundingRule(ValidationRule):
 
     @staticmethod
     def _normalize(value: str) -> str:
-        compact = re.sub(r"\s*([<=>%])\s*", r"\1", value)
+        # Remove space around comparators and before "%", but keep the space after "%"
+        # so that "95% CI" does not collapse into "95%ci" and hide the "95%".
+        compact = re.sub(r"\s*([<=>])\s*", r"\1", value)
+        compact = re.sub(r"\s*%", "%", compact)
         return re.sub(r"\s+", " ", compact).strip().rstrip(".,;:").casefold()
 
     @classmethod
@@ -66,7 +73,8 @@ class V03GroundingRule(ValidationRule):
         normalized_source = cls._normalize(supplied)
         if kind == "numeric claim":
             return (
-                re.search(rf"(?<![\w.]){re.escape(value)}(?![\w.])", normalized_source) is not None
+                re.search(rf"(?<![\w.]){re.escape(value)}{NUMBER_END}", normalized_source)
+                is not None
             )
         return (
             re.search(rf"(?<![A-Za-z0-9]){re.escape(value)}(?![A-Za-z0-9])", normalized_source)

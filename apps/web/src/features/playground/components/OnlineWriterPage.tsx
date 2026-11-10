@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { DataState, PageHeader } from "@/components/domain";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { liveApi, type RecommendationRequest } from "../live/api";
 import { WriterComposer } from "./WriterComposer";
 import { WriterContextForm, blankContext, type WriterContext } from "./WriterContextForm";
@@ -11,7 +12,7 @@ import { WriterValidation } from "./WriterValidation";
 
 export function OnlineWriterPage({ initialContext = {} }: { initialContext?: Partial<WriterContext> }) {
   // Online Writer: FR-07 search → FR-07.5 render → FR-08 validation → FR-07.7 feedback.
-  const apiKey = "";
+  const apiKey = useAuth().apiKey ?? "";
   const [context, setContext] = useState<WriterContext>(() => ({ ...blankContext, ...initialContext }));
   const [supportingContext, setSupportingContext] = useState("");
   const [picked, setPicked] = useState("");

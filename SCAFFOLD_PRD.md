@@ -754,3 +754,13 @@ chưa có gold set. `candidate_labels` tách proposal khỏi nhãn đã xác nh�
 loạt qua `POST /v1/admin/mining/frames/decisions`. Chỉ nhãn `derived` và `confirmed` được dùng
 cho recommendation. Từ vựng và luật còn provisional (`TODO(owner, FR-01)`); cấm gửi ví dụ câu
 nguồn tới AI, ví dụ trong workbook tắt theo mặc định (`TODO(owner, FR-01)`).
+## Metric & Measurement extension (2026-11-09)
+
+Task 3 adds a separate, self-authored catalog of metrics, measurement methods and protocols,
+answering "how to measure" alongside the phrase core's "how to write". It is off by default
+(`MEASUREMENT_ENABLED`). It adds `/v1/measurements` read routes, curator import and slot-link
+review under `/v1/admin/measurements`, and a `/measurements` page. Approved slot links only
+suggest values for a pattern slot (FR-07.5/AT-08: never auto-filled). While enabled,
+`/v1/validate` adds report-only `metric_warnings` (FR-08.2) without changing severity. It does
+not change ranking, render or pack export, and it adds no NLP extractor. `measurement-purge`
+removes the catalog. See ADR-0015.

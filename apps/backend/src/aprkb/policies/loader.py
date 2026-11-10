@@ -24,6 +24,7 @@ from aprkb.policies.schemas import (
     LeadInsPolicy,
     LicensePolicy,
     LicensesPolicy,
+    MeasurementPolicy,
     MiningFilterPolicy,
     PhraseStatsPolicy,
     RankingWeightsPolicy,
@@ -64,6 +65,7 @@ class PolicyBundle:
     frame_label_vocabulary: FrameLabelVocabularyPolicy
     frame_labeling: FrameLabelingPolicy
     vocabulary_import: VocabularyImportPolicy
+    measurement: MeasurementPolicy
 
 
 def _load[PolicyModel: BaseModel](path: Path, model: type[PolicyModel]) -> PolicyModel:
@@ -113,6 +115,7 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
         ),
         frame_labeling=_load(root / "frame_labeling.yaml", FrameLabelingPolicy),
         vocabulary_import=_load(root / "vocabulary_import.yaml", VocabularyImportPolicy),
+        measurement=_load(root / "measurement.yaml", MeasurementPolicy),
     )
     intent_groups = {
         anchor.intent_hint: anchor.function_group

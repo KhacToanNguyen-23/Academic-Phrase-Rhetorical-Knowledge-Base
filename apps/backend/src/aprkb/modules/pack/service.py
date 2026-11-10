@@ -12,6 +12,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aprkb.modules.academic_phrase_bank.models import (
+    CommunicativeFunction,
+    PatternVersionAPBProposal,
+    PragmaticFeature,
+)
 from aprkb.modules.audit.service import record_event
 from aprkb.modules.corpus.models import Article, License
 from aprkb.modules.identity.models import ApiClient
@@ -21,6 +26,7 @@ from aprkb.modules.pack.validator import (
     Finding,
     References,
     ValidationReport,
+    load_references,
     validate_pack,
     validate_pattern,
 )
@@ -67,6 +73,24 @@ async def database_references(
     enums: dict[str, set[str]] = {}
     for row in enum_rows:
         enums.setdefault(row.group, set()).add(row.code)
+    seed_refs = load_references()
+    move_rows = (
+        await session.execute(
+            select(TaxonomyRelease.version, Section.code, Move.code)
+            .join(Section, Section.release_id == TaxonomyRelease.id)
+            .join(Move, Move.section_id == Section.id)
+        )
+    ).all()
+    step_rows = (
+        await session.execute(
+            select(TaxonomyRelease.version, Section.code, Move.code, Step.code)
+            .join(Section, Section.release_id == TaxonomyRelease.id)
+            .join(Move, Move.section_id == Section.id)
+            .join(Step, Step.move_id == Move.id)
+        )
+    ).all()
+    function_rows = list(await session.scalars(select(CommunicativeFunction)))
+    pragmatic_rows = list(await session.scalars(select(PragmaticFeature)))
     refs = References(
         taxonomy_version=versions[-1] if versions else "",
         intent_paths=frozenset(intent_ids),
@@ -74,6 +98,16 @@ async def database_references(
         genres=frozenset(code for code, _ in genre_rows),
         enums={key: frozenset(values) for key, values in enums.items()},
         licenses={row.code: row.allows_mining for row in license_rows},
+        display_licenses={row.code: row.allows_display for row in license_rows},
+        move_paths=frozenset((row[0], row[1], row[2]) for row in move_rows),
+        step_paths=frozenset((row[0], row[1], row[2], row[3]) for row in step_rows),
+        apb_functions=frozenset((row.code, row.version) for row in function_rows),
+        apb_pragmatic_features=frozenset(
+            (row.code, row.version, row.facet) for row in pragmatic_rows
+        ),
+        apb_function_catalog_version=seed_refs.apb_function_catalog_version,
+        domain_version=seed_refs.domain_version,
+        domains=seed_refs.domains,
     )
     return refs, intent_ids, dict(section_rows), {row.code: row.id for row in license_rows}
 
@@ -183,6 +217,11 @@ async def _stored_version(session: AsyncSession, version: PatternVersion) -> dic
                 **({"comment": match.group(3)} if match and match.group(3) else {}),
             }
         )
+    apb_proposal = await session.scalar(
+        select(PatternVersionAPBProposal).where(
+            PatternVersionAPBProposal.pattern_version_id == version.id
+        )
+    )
     return {
         "version_id": str(version.id),
         "version_no": version.version_no,
@@ -208,11 +247,34 @@ async def _stored_version(session: AsyncSession, version: PatternVersion) -> dic
         ],
         "provenance": provenance,
         "reviews": review_data,
+        **({"apb": _canonical_apb(apb_proposal.payload)} if apb_proposal else {}),
     }
 
 
 def _canonical_version(version: Version) -> dict[str, Any]:
-    return version.model_dump(mode="json", exclude_none=True)
+    value = version.model_dump(mode="json", exclude_none=True)
+    if "apb" in value:
+        value["apb"] = _canonical_apb(value["apb"])
+    return value
+
+
+def _canonical_apb(value: dict[str, Any]) -> dict[str, Any]:
+    """Sort APB proposal lists so equivalent inputs produce byte-stable packs."""
+    result = dict(value)
+    for field in (
+        "functions",
+        "move_links",
+        "step_links",
+        "usage_profiles",
+        "pragmatic_tags",
+        "examples",
+        "caveats",
+    ):
+        result[field] = sorted(
+            result.get(field, []),
+            key=lambda item: json.dumps(item, ensure_ascii=False, sort_keys=True),
+        )
+    return result
 
 
 async def check_import(session: AsyncSession, path: Path) -> ValidationReport:
@@ -241,8 +303,13 @@ async def check_import(session: AsyncSession, path: Path) -> ValidationReport:
             if stored is None:
                 continue
             try:
+                stored_value = await _stored_version(session, stored)
+                incoming_value = _canonical_version(version)
+                if report.manifest and report.manifest.pack_version == "0.1":
+                    # Legacy packs do not describe APB proposal metadata added later.
+                    stored_value.pop("apb", None)
                 equal = stored.pattern_id == pattern.pattern_id and _stored_equivalent(
-                    await _stored_version(session, stored), _canonical_version(version)
+                    stored_value, incoming_value
                 )
             except ValueError:
                 equal = False
@@ -322,6 +389,10 @@ async def import_pack(
     """Validate first, then add missing rows in one caller-controlled transaction."""
     report = await check_import(session, path)
     counts = {"patterns": 0, "versions": 0}
+    if report.patterns and any(
+        version.apb is not None for p in report.patterns for version in p.versions
+    ):
+        counts["apb_proposals"] = 0
     if report.has_errors or report.patterns is None:
         return report, counts
     refs, intent_ids, _, license_ids = await database_references(session)
@@ -332,6 +403,8 @@ async def import_pack(
         for version in pattern.versions:
             if await session.get(PatternVersion, version.version_id) is None:
                 counts["versions"] += 1
+                if version.apb is not None:
+                    counts["apb_proposals"] = counts.get("apb_proposals", 0) + 1
     if dry_run or not any(counts.values()):
         return report, counts
     actor = await _actor(session)
@@ -374,6 +447,17 @@ async def import_pack(
             )
             session.add(row)
             await session.flush()
+            if version.apb is not None:
+                session.add(
+                    PatternVersionAPBProposal(
+                        pattern_version_id=row.id,
+                        status="proposed",
+                        payload=_canonical_apb(
+                            version.apb.model_dump(mode="json", exclude_none=True)
+                        ),
+                        created_by=actor.id,
+                    )
+                )
             session.add(
                 UsageConstraint(
                     pattern_version_id=row.id,
@@ -440,6 +524,7 @@ async def import_pack(
             "producer": report.manifest.producer if report.manifest else "",
             "patterns": counts["patterns"],
             "versions": counts["versions"],
+            "apb_proposals": counts.get("apb_proposals", 0),
             "actor": "pack-importer",
         },
         request_id="cli-pack-import",
@@ -519,7 +604,8 @@ async def export_pack(
             "current_version_no": current.version_no if current else 0,
             "versions": versions,
         }
-        _, findings = validate_pattern(graph, refs)
+        pack_version = "0.2" if any(version.get("apb") for version in versions) else "0.1"
+        _, findings = validate_pattern(graph, refs, pack_version=pack_version)
         errors = [finding.as_dict() for finding in findings if finding.severity == "error"]
         if errors:
             excluded.append({"pattern_id": str(pattern.id), "findings": errors})
@@ -532,8 +618,16 @@ async def export_pack(
         "patterns": len(patterns),
         "versions": sum(len(row["versions"]) for row in patterns),
     }
+    apb_proposal_count = sum(
+        1
+        for pattern in patterns
+        for version in pattern["versions"]
+        if version.get("apb") is not None
+    )
+    if apb_proposal_count:
+        counts["apb_proposals"] = apb_proposal_count
     manifest = {
-        "pack_version": "0.1",
+        "pack_version": "0.2" if apb_proposal_count else "0.1",
         "taxonomy_version": refs.taxonomy_version,
         "producer": "aprkb-export",
         "created_at": (created_at or datetime(1970, 1, 1, tzinfo=UTC))

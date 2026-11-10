@@ -15,6 +15,11 @@ def _find_root_env_file() -> Path | None:
 
 _ROOT_ENV_FILE = _find_root_env_file()
 DEV_APP_ENVS = frozenset({"local", "test"})
+# Public OAuth web client ID (not a secret: every browser receives it). GOOGLE_CLIENT_ID
+# overrides it; each origin serving the web app must be an authorized JavaScript origin.
+DEFAULT_GOOGLE_CLIENT_ID = (
+    "669298541726-qma0h92u20kkaomionj7d62ibn6u2v46.apps.googleusercontent.com"
+)
 
 
 class Settings(BaseSettings):
@@ -22,12 +27,21 @@ class Settings(BaseSettings):
 
     app_env: str = "local"
     app_secret_key: str = "change-me"
+    google_client_id: str = DEFAULT_GOOGLE_CLIENT_ID
     api_cors_origins: list[str] = ["http://localhost:5173"]
+
+    @field_validator("google_client_id", mode="before")
+    @classmethod
+    def blank_google_client_id_uses_default(cls, value: object) -> object:
+        # An empty GOOGLE_CLIENT_ID= line in a deploy .env must not disable Google sign-in.
+        return DEFAULT_GOOGLE_CLIENT_ID if value is None or str(value).strip() == "" else value
 
     database_url: str = "postgresql+asyncpg://aprkb:aprkb@localhost:5432/aprkb"
     blob_dir: str = "./data/blobs"
     log_level: str = "INFO"
     reference_library_enabled: bool = False
+    # ADR-0015: separate Metric & Measurement catalog, off until the catalog is reviewed.
+    measurement_enabled: bool = False
     nlp_engine: Literal["regex", "spacy"] = "regex"
     nlp_model: str = "en_core_web_sm"
     mining_hybrid_enabled: bool = False

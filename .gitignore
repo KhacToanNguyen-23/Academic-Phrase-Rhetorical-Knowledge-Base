@@ -6,6 +6,7 @@
 .env.local
 .env.*.local
 !.env.example
+runtime.conf
 !apps/web/.env.inspect
 *.pem
 *.key

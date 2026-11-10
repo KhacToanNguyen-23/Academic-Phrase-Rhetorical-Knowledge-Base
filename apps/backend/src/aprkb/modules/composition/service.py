@@ -5,7 +5,11 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aprkb.modules.composition.renderer import SlotValidationError, render_frame
+from aprkb.modules.composition.renderer import (
+    SlotValidationError,
+    render_frame,
+    render_warnings,
+)
 from aprkb.modules.patterns import service as pattern_service
 from aprkb.modules.recommendation import service as recommendation_service
 
@@ -39,4 +43,5 @@ async def render_pattern(
         "pattern_version_id": pattern_version_id,
         "text": text,
         "unfilled_slots": unfilled,
+        "warnings": render_warnings(version.canonical_frame, slots),
     }

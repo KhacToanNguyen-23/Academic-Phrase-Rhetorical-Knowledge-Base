@@ -77,7 +77,7 @@ export function WriterResults({
         )}
         {recommendation.items.length > 0 && (
           <RadioGroup value={picked} onValueChange={onSelect} aria-label="Recommended patterns">
-            <Table>
+            <Table aria-label="Recommended patterns">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">

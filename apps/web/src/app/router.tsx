@@ -12,18 +12,21 @@ import {
 import { JobsPage } from "@/features/jobs/JobsPage";
 import { AdminPage } from "@/features/admin";
 import { useAuth, type AuthContextValue } from "@/features/auth/AuthProvider";
+import { AdminSetupPage } from "@/features/auth/AdminSetupPage";
+import { RegisterPage } from "@/features/auth/RegisterPage";
 import { SigninPage } from "@/features/auth/SigninPage";
 import { InboxPage } from "@/features/inbox";
 import { GoldPage } from "@/features/gold";
 import { JournalProfilePage } from "@/features/journal-profile";
-import { LibraryPage } from "@/features/library";
 import { OverviewPage } from "@/features/overview";
 import { ExtractPage } from "@/features/phrase-extraction";
 import { PlaygroundPage } from "@/features/playground";
 import { PhrasebankCategory, PhrasebankHome, PhrasebankPatternDetail } from "@/features/phrasebank/PhrasebankPage";
+import { AcademicPhraseBankDetail } from "@/features/phrasebank/AcademicPhraseBank";
 import { OnlineWriterPage } from "@/features/playground/components/OnlineWriterPage";
 import { SlrImportPage } from "@/features/slr-import";
 import { VocabularyLemmaPage, VocabularyPage } from "@/features/vocabulary";
+import { MeasurementEntryPage, MeasurementPage } from "@/features/measurement";
 import { safeNext } from "@/shared/lib/safe-next";
 import { DataState } from "@/components/domain";
 
@@ -65,7 +68,28 @@ const signin = createRoute({
   beforeLoad: ({ context, search }) => {
     if (context.auth.client) throw redirect({ href: search.next ?? "/app", replace: true });
   },
-  component: SigninPage,
+  component: function SigninRoute() {
+    return <SigninPage next={getRouteApi("/public/signin").useSearch().next} />;
+  },
+});
+const register = createRoute({
+  getParentRoute: () => publicLayout,
+  path: "/register",
+  validateSearch: (s: Record<string, unknown>): { next?: string } => ({ next: safeNext(s.next) }),
+  beforeLoad: ({ context, search }) => {
+    if (context.auth.client) throw redirect({ href: search.next ?? "/app", replace: true });
+  },
+  component: function RegisterRoute() {
+    return <RegisterPage next={getRouteApi("/public/register").useSearch().next} />;
+  },
+});
+const setup = createRoute({
+  getParentRoute: () => publicLayout,
+  path: "/setup",
+  beforeLoad: ({ context }) => {
+    if (context.auth.client) throw redirect({ to: "/app", replace: true });
+  },
+  component: AdminSetupPage,
 });
 
 // App shell. /writer is open to guests; every other route sits under `guarded`.
@@ -90,7 +114,7 @@ const library = createRoute({
   getParentRoute: () => guarded,
   path: "/library",
   validateSearch: (s: Record<string, unknown>): { p?: string } => ({ p: str(s.p) }),
-  component: () => <LibraryPage selectedId={getRouteApi("/shell/guarded/library").useSearch().p} />,
+  beforeLoad: () => { throw redirect({ to: "/phrasebank", replace: true }); },
 });
 
 const phrasebank = createRoute({ getParentRoute: () => guarded, path: "/phrasebank", component: PhrasebankHome });
@@ -103,6 +127,11 @@ const phrasebankPattern = createRoute({
   getParentRoute: () => guarded,
   path: "/phrasebank/pattern/$id",
   component: () => <PhrasebankPatternDetail id={getRouteApi("/shell/guarded/phrasebank/pattern/$id").useParams().id} />,
+});
+const phrasebankApb = createRoute({
+  getParentRoute: () => guarded,
+  path: "/phrasebank/apb/$id",
+  component: () => <AcademicPhraseBankDetail id={getRouteApi("/shell/guarded/phrasebank/apb/$id").useParams().id} />,
 });
 
 const playground = createRoute({
@@ -120,7 +149,7 @@ function JobsRoute() {
 const jobs = createRoute({ getParentRoute: () => guarded, path: "/jobs", validateSearch: (s: Record<string, unknown>): { job?: string } => ({ job: str(s.job) }), component: JobsRoute });
 
 function WriterRoute() {
-  const search = getRouteApi("/shell/writer").useSearch();
+  const search = getRouteApi("/shell/guarded/writer").useSearch();
   const initialContext = {
     section: search.section ?? "", move: search.move ?? "", intent: search.intent ?? "",
     genre: search.genre ?? "", query: search.query ?? "",
@@ -128,7 +157,7 @@ function WriterRoute() {
   return <OnlineWriterPage key={JSON.stringify(initialContext)} initialContext={initialContext} />;
 }
 const writer = createRoute({
-  getParentRoute: () => appLayout,
+  getParentRoute: () => guarded,
   path: "/writer",
   validateSearch: (s: Record<string, unknown>): { section?: string; move?: string; intent?: string; genre?: string; query?: string } => ({
     section: str(s.section), move: str(s.move), intent: str(s.intent), genre: str(s.genre), query: str(s.query),
@@ -140,12 +169,22 @@ const inbox = createRoute({ getParentRoute: () => guarded, path: "/inbox", compo
 const admin = createRoute({ getParentRoute: () => guarded, path: "/admin", component: AdminPage });
 const slrImport = createRoute({ getParentRoute: () => guarded, path: "/import", component: SlrImportPage });
 const gold = createRoute({ getParentRoute: () => guarded, path: "/gold", component: GoldPage });
+const vocabularyBand = (value: unknown) => {
+  const band = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
+  return Number.isInteger(band) && band >= 1 && band <= 2147483647 ? band : undefined;
+};
+const vocabularySort = (value: unknown): "alpha" | "rank" | "academic_frequency" | undefined =>
+  value === "rank" || value === "alpha" || value === "academic_frequency" ? value : undefined;
 const vocabularySearch = (s: Record<string, unknown>) => ({
   view: s.view === "families" ? ("families" as const) : s.view === "lemmas" ? ("lemmas" as const) : undefined,
   letter: str(s.letter),
   q: str(s.q),
-  coreOnly: typeof s.coreOnly === "boolean" ? s.coreOnly : s.coreOnly === "true" ? true : undefined,
-  sort: s.sort === "rank" ? ("rank" as const) : s.sort === "alpha" ? ("alpha" as const) : undefined,
+  pos: str(s.pos),
+  status: str(s.status),
+  bandMin: vocabularyBand(s.bandMin),
+  bandMax: vocabularyBand(s.bandMax),
+  domain: str(s.domain),
+  sort: vocabularySort(s.sort),
   offset: typeof s.offset === "number" ? s.offset : Number.isFinite(Number(s.offset)) ? Number(s.offset) : undefined,
 });
 const vocabulary = createRoute({
@@ -159,6 +198,22 @@ const vocabularyLemma = createRoute({
   path: "/vocabulary/$lemmaId",
   validateSearch: vocabularySearch,
   component: VocabularyLemmaPage,
+});
+const measurementSearch = (s: Record<string, unknown>): { kind?: "metric" | "method" | "protocol"; q?: string } => ({
+  kind: s.kind === "metric" || s.kind === "method" || s.kind === "protocol" ? s.kind : undefined,
+  q: str(s.q),
+});
+const measurements = createRoute({
+  getParentRoute: () => guarded,
+  path: "/measurements",
+  validateSearch: measurementSearch,
+  component: MeasurementPage,
+});
+const measurementEntry = createRoute({
+  getParentRoute: () => guarded,
+  path: "/measurements/$code",
+  validateSearch: measurementSearch,
+  component: MeasurementEntryPage,
 });
 // ?batch=<id>[,<id>] preselects batches; the Import page links here when a run finishes.
 const extract = createRoute({
@@ -194,15 +249,16 @@ const devUiRoute =
 
 export const router = createRouter({
   routeTree: root.addChildren([
-    publicLayout.addChildren([home, signin]),
+    publicLayout.addChildren([home, signin, register, setup]),
     appLayout.addChildren([
-      writer,
       guarded.addChildren([
+        writer,
         overview,
         library,
         phrasebank,
         phrasebankCategory,
         phrasebankPattern,
+        phrasebankApb,
         playground,
         inbox,
         journals,
@@ -214,6 +270,8 @@ export const router = createRouter({
         gold,
         vocabulary,
         vocabularyLemma,
+        measurements,
+        measurementEntry,
       ]),
     ]),
     ...(devUiRoute ? [devUiRoute] : []),

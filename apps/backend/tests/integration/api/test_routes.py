@@ -36,12 +36,14 @@ from aprkb.modules.patterns.models import (
     UsageConstraint,
 )
 from aprkb.modules.patterns.read_model import load_current_patterns
+from aprkb.modules.patterns.repository import get_intent
 from aprkb.modules.recommendation import repository as recommendation_repository
 from aprkb.modules.recommendation.models import Feedback, RecommendationLog
 from aprkb.modules.taxonomy.models import Intent
 from aprkb.policies.loader import load_policy_bundle
 from aprkb.seeds.load import run_seed
 from aprkb.worker.handlers import _SessionCandidateRepository
+from tests.seed_data import seed_legacy_pattern_fixtures
 
 
 @pytest_asyncio.fixture
@@ -92,11 +94,24 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
     expected = {
         ("/v1/health", "get"),
         ("/v1/auth/me", "get"),
-        ("/v1/auth/demo-session", "post"),
+        ("/v1/auth/session/me", "get"),
+        ("/v1/auth/register", "post"),
+        ("/v1/auth/login", "post"),
+        ("/v1/auth/logout", "post"),
+        ("/v1/auth/setup", "post"),
+        ("/v1/auth/google", "post"),
+        ("/v1/auth/google/config", "get"),
+        ("/v1/auth/google/me", "get"),
         ("/v1/taxonomy", "get"),
         ("/v1/taxonomy/releases", "get"),
         ("/v1/taxonomy/reference-options", "get"),
         ("/v1/patterns", "get"),
+        ("/v1/academic-phrases/functions", "get"),
+        ("/v1/academic-phrases/pragmatic-features", "get"),
+        ("/v1/academic-phrases/domains", "get"),
+        ("/v1/academic-phrases", "get"),
+        ("/v1/academic-phrases/{id}", "get"),
+        ("/v1/admin/academic-phrases/versions/{id}/metadata", "post"),
         ("/v1/patterns/versions/{id}", "get"),
         ("/v1/patterns/{id}", "get"),
         ("/v1/patterns/{id}/versions", "get"),
@@ -152,16 +167,25 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/admin/api-keys", "delete"),
         ("/v1/admin/releases/{id}/publish", "post"),
         ("/v1/vocabulary/families", "get"),
+        ("/v1/vocabulary/filter-options", "get"),
         ("/v1/vocabulary/lemmas", "get"),
         ("/v1/vocabulary/letters", "get"),
         ("/v1/vocabulary/lemmas/{id}", "get"),
         ("/v1/admin/vocabulary/imports", "get"),
         ("/v1/admin/vocabulary/imports", "post"),
+        # ADR-0015 Metric & Measurement catalog (off unless MEASUREMENT_ENABLED).
+        ("/v1/measurements", "get"),
+        ("/v1/measurements/slot-suggestions", "get"),
+        ("/v1/measurements/{id}", "get"),
+        ("/v1/admin/measurements/imports", "post"),
+        ("/v1/admin/measurements/slot-links", "get"),
+        ("/v1/admin/measurements/slot-links", "post"),
+        ("/v1/admin/measurements/slot-links/{id}/review", "post"),
     }
 
     assert actual == expected
     for path, operations in paths.items():
-        if "/versions" in path:
+        if path.startswith("/v1/patterns") and "/versions" in path:
             assert set(operations) <= {"get", "post"}
             assert path.rstrip("/").count("/") == 4
 
@@ -220,7 +244,7 @@ async def test_genre_section_relationship_rejects_mismatch_and_keeps_empty_resul
 async def test_recommendations_default_to_approved_patterns_and_count_evidence_hidden(
     api_client: AsyncClient, session_factory: async_sessionmaker
 ) -> None:
-    await run_seed_in_session(session_factory)
+    await run_seed_with_pattern_fixtures_in_session(session_factory)
     _, key = await create_key(session_factory, "client", "writer table client")
     headers = {"X-API-Key": key}
 
@@ -252,7 +276,7 @@ async def test_recommendations_default_to_approved_patterns_and_count_evidence_h
 async def test_recommendation_sql_filters_reduce_reads_without_changing_items(
     api_client, session_factory, monkeypatch
 ):
-    await run_seed_in_session(session_factory)
+    await run_seed_with_pattern_fixtures_in_session(session_factory)
     _, key = await create_key(session_factory, "client", "SQL retrieval regression")
     async with session_factory() as session:
         baseline = await load_current_patterns(session)
@@ -320,10 +344,10 @@ async def test_recommendations_warn_when_intent_move_query_are_absent(
     )
     assert response.status_code == 200
     assert (
-        "Không có intent/move/query; kết quả là toàn bộ pattern được duyệt"
+        "No intent, move, or query was supplied; approved patterns are unfiltered"
         in response.json()["warnings"]
     )
-    assert "Section không được lọc" not in response.json()["warnings"]
+    assert "Section is not being used as a filter" not in response.json()["warnings"]
 
 
 async def test_recommendations_warn_when_section_absent_and_not_when_context_complete(
@@ -344,8 +368,91 @@ async def test_recommendations_warn_when_section_absent_and_not_when_context_com
         )
         assert response.status_code == 200
         warnings = response.json()["warnings"]
-        assert ("Section không được lọc" in warnings) is (not section)
-        assert "Không có intent/move/query; kết quả là toàn bộ pattern được duyệt" not in warnings
+        assert ("Section is not being used as a filter" in warnings) is (not section)
+        assert (
+            "No intent, move, or query was supplied; approved patterns are unfiltered"
+            not in warnings
+        )
+
+
+@pytest.mark.asyncio
+async def test_recommendations_explain_an_unknown_intent_code(api_client, session_factory):
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "unknown intent client")
+    response = await api_client.post(
+        "/v1/recommendations",
+        headers={"X-API-Key": key},
+        json={"intent": "INTENT_DOES_NOT_EXIST"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"] == []
+    assert "Intent code is not present in the published taxonomy" in body["warnings"]
+    assert "No approved phrases match the selected filters" not in body["warnings"]
+
+
+@pytest.mark.asyncio
+async def test_recommendations_explain_empty_query_and_claim_type_filters(
+    api_client, session_factory
+):
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "empty recommendation filters")
+    headers = {"X-API-Key": key}
+
+    query_response = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={"query": "zzqvqx-31xk"},
+    )
+    claim_response = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={"claim_type": "comparative"},
+    )
+
+    assert query_response.status_code == 200
+    assert query_response.json()["items"] == []
+    assert (
+        "No approved phrases match the query and other selected filters"
+        in query_response.json()["warnings"]
+    )
+    assert claim_response.status_code == 200
+    assert claim_response.json()["items"] == []
+    assert (
+        "No approved phrases match the selected claim type and other filters"
+        in claim_response.json()["warnings"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_lab_phrasebank_basic_is_listed_and_recommended_from_seeded_db(
+    api_client: AsyncClient, session_factory: async_sessionmaker
+) -> None:
+    await run_seed_in_session(session_factory)
+    _, key = await create_key(session_factory, "client", "phrasebank basic client")
+    headers = {"X-API-Key": key}
+    intent = "METHODS_DESCRIBING_PREVIOUSLY_USED_METHODS"
+    expected_frame = "Many researchers have utilised {x} to measure {details}"
+
+    listed = await api_client.get(
+        "/v1/patterns",
+        params={"section": "METHODS", "intent": intent, "status": "approved", "limit": 200},
+        headers=headers,
+    )
+    assert listed.status_code == 200
+    match = next(item for item in listed.json() if item["canonical_frame"] == expected_frame)
+    assert set(match["slots"]) == {"x", "details"}
+    assert match["intent_name"] == "Describing previously used methods"
+    assert match["source_type"] == "authored"
+
+    recommended = await api_client.post(
+        "/v1/recommendations",
+        headers=headers,
+        json={"section": "METHODS", "intent": intent, "genre": "RESEARCH_ARTICLE", "limit": 10},
+    )
+    assert recommended.status_code == 200
+    assert expected_frame in {item["canonical_frame"] for item in recommended.json()["items"]}
 
 
 @pytest.mark.asyncio
@@ -462,7 +569,7 @@ async def test_patterns_list_detail_history_create_and_append_version(api_client
 async def test_client_pattern_reads_hide_drafts_and_restricted_provenance(
     api_client, session_factory
 ):
-    await run_seed_in_session(session_factory)
+    await run_seed_with_pattern_fixtures_in_session(session_factory)
     async with session_factory() as session:
         draft = await session.scalar(select(PhrasePattern).where(PhrasePattern.status == "draft"))
         restricted = await session.scalar(
@@ -591,7 +698,7 @@ async def test_journal_list_detail_and_guideline_write_are_persisted_and_audited
 async def test_feedback_is_persisted_and_override_is_unavailable_in_mvp(
     api_client, session_factory
 ):
-    await run_seed_in_session(session_factory)
+    await run_seed_with_pattern_fixtures_in_session(session_factory)
     client, key = await create_key(session_factory, "client", "feedback client")
     headers = {"X-API-Key": key}
     recommendation = await api_client.post(
@@ -784,7 +891,8 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
 ) -> None:
     async with session_factory() as session:
         await run_seed(session)
-        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        await seed_legacy_pattern_fixtures(session)
+        intent = await get_intent(session, "INTRO_GAP_INDICATE")
         assert intent is not None
         unprovenanced = PhrasePattern(intent_id=intent.id, status="approved")
         session.add(unprovenanced)
@@ -904,7 +1012,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         "evidence_matrix": "0.1.0",
         "validation_rules": "0.2.0",
         "epistemic_markers": "0.3.0",
-        "taxonomy_release": "0.1.0",
+        "taxonomy_release": "0.2.0",
     }
 
     async with session_factory() as session:
@@ -920,7 +1028,8 @@ async def test_proprietary_recommendation_is_flagged_for_internal_use(
 ) -> None:
     async with session_factory() as session:
         await run_seed(session)
-        intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
+        await seed_legacy_pattern_fixtures(session)
+        intent = await get_intent(session, "INTRO_GAP_INDICATE")
         license_row = await session.scalar(select(License).where(License.code == "PROPRIETARY"))
         assert intent is not None and license_row is not None
         pattern = PhrasePattern(intent_id=intent.id, status="approved")
@@ -964,16 +1073,21 @@ async def test_proprietary_recommendation_is_flagged_for_internal_use(
             "genre": "RESEARCH_ARTICLE",
             "claim_type": "descriptive",
             "evidence_level": "multiple_consistent",
+            "query": "proprietary fixture",
             "limit": 10,
         },
     )
 
     assert response.status_code == 200
     item = next(
-        item
-        for item in response.json()["items"]
-        if item["canonical_frame"] == "The proprietary fixture suggests {topic}."
+        (
+            item
+            for item in response.json()["items"]
+            if item["canonical_frame"] == "The proprietary fixture suggests {topic}."
+        ),
+        None,
     )
+    assert item is not None, response.json()
     assert item["license_code"] == "PROPRIETARY"
     assert item["license_flag"] is True
 
@@ -985,7 +1099,7 @@ async def test_proprietary_recommendation_is_flagged_for_internal_use(
     ):
         detail = await api_client.get(path, headers=headers)
         assert detail.status_code == 200, detail.text
-    listed = await api_client.get("/v1/patterns", headers=headers)
+    listed = await api_client.get("/v1/patterns", params={"limit": 200}, headers=headers)
     assert listed.status_code == 200
     metadata = next(row for row in listed.json() if row["id"] == str(pattern.id))
     assert metadata["license_allows_display"] is False
@@ -1031,7 +1145,13 @@ async def test_pattern_browsing_filters_keyword_and_taxonomy_before_old_200_cap(
         intent = await session.scalar(select(Intent).where(Intent.code == "INTRO_GAP_INDICATE"))
         assert intent is not None
         final_pattern_id = None
+        plain_pattern_id = None
         for index in range(201):
+            frame = "Ordinary phrase"
+            if index == 199:
+                frame = "Plain needle phrase"
+            elif index == 200:
+                frame = "Late needle phrase {topic}"
             pattern = PhrasePattern(
                 intent_id=intent.id,
                 status="approved",
@@ -1042,8 +1162,8 @@ async def test_pattern_browsing_filters_keyword_and_taxonomy_before_old_200_cap(
             version = PatternVersion(
                 pattern_id=pattern.id,
                 version_no=1,
-                canonical_frame="Late needle phrase" if index == 200 else "Ordinary phrase",
-                slots={},
+                canonical_frame=frame,
+                slots={"topic": {"type": "text"}} if index == 200 else {},
                 epistemic_strength="low",
                 claim_type="descriptive",
             )
@@ -1061,14 +1181,23 @@ async def test_pattern_browsing_filters_keyword_and_taxonomy_before_old_200_cap(
                 ]
             )
             final_pattern_id = pattern.id
+            if index == 199:
+                plain_pattern_id = pattern.id
         await session.commit()
-    response = await api_client.get(
-        "/v1/patterns",
-        headers={"X-API-Key": key},
-        params={"q": "NEEDLE", "section": "INTRO", "intent": "INTRO_GAP_INDICATE", "limit": 1},
-    )
-    assert response.status_code == 200, response.text
-    assert [row["id"] for row in response.json()] == [str(final_pattern_id)]
+    for has_slots, expected_id in [("true", final_pattern_id), ("false", plain_pattern_id)]:
+        response = await api_client.get(
+            "/v1/patterns",
+            headers={"X-API-Key": key},
+            params={
+                "q": "NEEDLE",
+                "section": "INTRO",
+                "intent": "INTRO_GAP_INDICATE",
+                "has_slots": has_slots,
+                "limit": 1,
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert [row["id"] for row in response.json()] == [str(expected_id)]
 
 
 @pytest.mark.asyncio
@@ -1077,6 +1206,7 @@ async def test_recommendation_search_uses_only_the_selected_journal_phrasebank(
 ) -> None:
     async with session_factory() as session:
         await run_seed(session)
+        await seed_legacy_pattern_fixtures(session)
         journal = JournalProfile(name="Search phrasebank journal", issn="2049-3631")
         other_journal = JournalProfile(name="Other phrasebank journal", issn="2049-3632")
         empty_journal = JournalProfile(name="Empty phrasebank journal", issn="2049-3633")
@@ -1190,7 +1320,7 @@ async def test_validation_http_runs_v02_and_blocks_prove_with_single_study(
         "/v1/validate",
         headers={"X-API-Key": key},
         json={
-            "text": "This proves the intervention caused the outcome.",
+            "text": "This proves the intervention caused the {outcome}.",
             "claim_type": "causal",
             "evidence_level": "single_study",
             "epistemic_strength": "absolute",
@@ -1205,6 +1335,8 @@ async def test_validation_http_runs_v02_and_blocks_prove_with_single_study(
     assert "block" in serialized
     assert body["complete"] is False
     assert "V01" in body["checks_unavailable"]
+    assert any("Validation is incomplete" in warning for warning in body["warnings"])
+    assert any("{outcome}" in warning for warning in body["warnings"])
     v02 = next(rule for rule in body["rules"] if rule["code"] == "V02")
     assert v02["applied"] is True
     assert v02["recommended_action"]
@@ -1214,7 +1346,7 @@ async def test_validation_http_runs_v02_and_blocks_prove_with_single_study(
 async def test_render_uses_approved_version_and_validates_slots(
     api_client: AsyncClient, session_factory: async_sessionmaker
 ) -> None:
-    await run_seed_in_session(session_factory)
+    await run_seed_with_pattern_fixtures_in_session(session_factory)
     _, key = await create_key(session_factory, "client", "render client")
     async with session_factory() as session:
         approved = await session.scalar(
@@ -1666,6 +1798,15 @@ async def test_concurrent_approvals_create_at_most_one_promotion_after_two_round
 async def run_seed_in_session(session_factory: async_sessionmaker) -> None:
     async with session_factory() as session:
         await run_seed(session)
+        await session.commit()
+
+
+async def run_seed_with_pattern_fixtures_in_session(
+    session_factory: async_sessionmaker,
+) -> None:
+    async with session_factory() as session:
+        await run_seed(session)
+        await seed_legacy_pattern_fixtures(session)
         await session.commit()
 
 

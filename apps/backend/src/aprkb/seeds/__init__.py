@@ -1,1 +1,1 @@
-"""Idempotent development seed data loaders."""
+"""Idempotent Online reference and Phrasebank Basic seed loaders."""

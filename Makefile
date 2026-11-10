@@ -1,4 +1,4 @@
-﻿.PHONY: up down install migrate seed run worker test lint bootstrap-key
+.PHONY: up down install migrate seed run worker test lint bootstrap-key
 
 UV ?= uv
 BACKEND_IMAGE ?= aprkb-backend:ci
@@ -13,13 +13,15 @@ down:
 	docker compose down
 
 install:
-	$(UV) sync --directory apps/backend
+	$(UV) sync --directory apps/backend --extra spacy
 
 migrate:
 	$(UV) run --directory apps/backend alembic -c alembic.ini upgrade head
 
 seed:
 	$(UV) run --directory apps/backend python -m aprkb.seeds.load
+
+
 
 run:
 	$(UV) run --directory apps/backend uvicorn aprkb.api.main:app --reload

@@ -76,6 +76,7 @@ async def isolated_lifespan(application):
             session.add(
                 UsageConstraint(
                     pattern_version_id=version.id,
+                    evidence_min="multiple_consistent",
                     allowed_sections=["INTRO"],
                     allowed_genres=["RESEARCH_ARTICLE"],
                 )

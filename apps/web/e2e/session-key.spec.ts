@@ -1,8 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Regression: a staff login stores the key under one sessionStorage name, but /writer sent
-// no key at all and /phrasebank read a different name, so production returned 401 /
-// "API key required" even for a signed-in admin. Every API client must send the session key.
+// Regression: protected API clients must send the current signed-in session key.
 const baseURL = process.env.WRITER_E2E_BASE_URL ?? "http://127.0.0.1:5173";
 const SESSION_KEY = "e2e-session-key";
 
@@ -14,12 +12,16 @@ test.use({
 
 async function signInAndRecordKeys(page: Page) {
   const keysByPath = new Map<string, Set<string | undefined>>();
-  await page.addInitScript((key) => sessionStorage.setItem("aprkb-staff-session", key), SESSION_KEY);
+  await page.addInitScript((key) => sessionStorage.setItem("aprkb-web-session", key), SESSION_KEY);
   await page.route("**/v1/**", (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
-    if (path === "/v1/auth/me") {
+    if (path === "/v1/auth/session/me") {
       return route.fulfill({ json: { id: "e2e", name: "E2E admin", role: "admin" } });
+    }
+    if (path === "/v1/auth/google/config") {
+      // Google sign-in configuration is public and intentionally has no API key.
+      return route.fulfill({ json: { enabled: false, client_id: null } });
     }
     const seen = keysByPath.get(path) ?? new Set();
     seen.add(request.headers()["x-api-key"]);

@@ -5,11 +5,15 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BrandMark } from "@/app/BrandMark";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { useAuth } from "./AuthProvider";
 
 /** Client-side mirror of the backend rule: only @hyperdatalab.org mailboxes. */
-export const ORG_EMAIL_PATTERN = "[^@\\s]+@[hH][yY][pP][eE][rR][dD][aA][tT][aA][lL][aA][bB]\\.org";
+const ORG_EMAIL = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@hyperdatalab\.org$/i;
+export const isOrgEmail = (value: string) => ORG_EMAIL.test(value.trim());
+export const ORG_EMAIL_HINT = "Use your @hyperdatalab.org email address.";
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 128;
 /**
@@ -119,6 +123,60 @@ export function PasswordInput({
   );
 }
 
+/**
+ * Organization email input with an inline, readable error instead of the browser's
+ * localized "match the requested format" bubble. Shows the error after blur or once
+ * the parent reports a submit attempt.
+ */
+export function OrgEmailField({
+  id,
+  value,
+  onChange,
+  disabled,
+  autoFocus,
+  autoComplete,
+  submitted,
+  hint,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  autoComplete: "username" | "email";
+  submitted: boolean;
+  hint?: string;
+}) {
+  const [touched, setTouched] = useState(false);
+  const invalid = (touched || submitted) && value.trim() !== "" && !isOrgEmail(value);
+  const describedBy = invalid ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  return (
+    <Field data-invalid={invalid || undefined}>
+      <FieldLabel htmlFor={id}>Organization email</FieldLabel>
+      <Input
+        id={id}
+        type="email"
+        inputMode="email"
+        autoComplete={autoComplete}
+        placeholder="you@hyperdatalab.org"
+        maxLength={255}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={() => setTouched(true)}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
+      />
+      {invalid ? (
+        <FieldDescription id={`${id}-error`} className="text-destructive">{ORG_EMAIL_HINT}</FieldDescription>
+      ) : (
+        hint && <FieldDescription id={`${id}-hint`}>{hint}</FieldDescription>
+      )}
+    </Field>
+  );
+}
+
 export function FormError({ id, children }: { id?: string; children: ReactNode }) {
   return (
     <Alert variant="destructive" role="alert" id={id}>
@@ -139,8 +197,13 @@ export function OrDivider({ label }: { label: string }) {
 
 type GoogleIdentity = {
   initialize: (options: { client_id: string; nonce: string; callback: (result: { credential: string }) => void }) => void;
-  renderButton: (element: HTMLElement, options: { theme: string; size: string; text: string; width?: number }) => void;
+  renderButton: (
+    element: HTMLElement,
+    options: { theme: string; size: string; text: string; shape?: string; logo_alignment?: string; width?: number },
+  ) => void;
 };
+/** Google renders its button at a fixed pixel width between 200 and 400. */
+const googleButtonWidth = (element: HTMLElement) => Math.round(Math.min(400, Math.max(200, element.clientWidth)));
 declare global { interface Window { google?: { accounts: { id: GoogleIdentity } } } }
 
 /**
@@ -202,7 +265,14 @@ export function GoogleSignIn({
               .finally(() => setBusy(false));
           },
         });
-        window.google.accounts.id.renderButton(button.current, { theme: "outline", size: "large", text });
+        window.google.accounts.id.renderButton(button.current, {
+          theme: "outline",
+          size: "large",
+          shape: "rectangular",
+          logo_alignment: "center",
+          text,
+          width: googleButtonWidth(button.current),
+        });
       } catch (reason) {
         if (!disposed && !controller.signal.aborted) {
           setError(reason instanceof Error ? reason.message : "Could not load Google sign-in.");
@@ -214,12 +284,19 @@ export function GoogleSignIn({
   }, [text]);
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      {configured === null && !error && <p role="status" className="text-sm text-muted-foreground">Loading Google sign-in…</p>}
+    <div className="flex w-full flex-col items-stretch gap-3">
+      {configured === null && !error && (
+        <p role="status" className="text-center text-sm text-muted-foreground">Loading Google sign-in…</p>
+      )}
       {configured === false && (
         <p className="text-center text-sm text-muted-foreground">Google sign-in is awaiting administrator configuration.</p>
       )}
-      <div ref={button} aria-busy={busy} className={busy ? "pointer-events-none opacity-60" : ""} />
+      {/* Full-width host; Google's iframe is sized to it and centered. */}
+      <div
+        ref={button}
+        aria-busy={busy}
+        className={`flex w-full justify-center [&>div]:mx-auto ${configured ? "min-h-10" : ""} ${busy ? "pointer-events-none opacity-60" : ""}`}
+      />
       {busy && <p role="status" className="text-sm">Signing in with Google…</p>}
       {error && <FormError>{error}</FormError>}
     </div>

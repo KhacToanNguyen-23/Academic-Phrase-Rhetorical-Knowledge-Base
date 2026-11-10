@@ -1,19 +1,20 @@
 import { Link } from "@tanstack/react-router";
+import { CircleCheck } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "./AuthProvider";
 import {
   AuthShell,
   FormError,
   GoogleSignIn,
-  ORG_EMAIL_PATTERN,
   OrDivider,
+  OrgEmailField,
   PasswordInput,
   forgetRegistration,
+  isOrgEmail,
   recentRegistration,
 } from "./shared";
 
@@ -25,9 +26,12 @@ export function SigninPage({ next }: { next?: string }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitted(true);
+    if (!isOrgEmail(email)) return;
     setBusy(true);
     setError("");
     try {
@@ -55,27 +59,20 @@ export function SigninPage({ next }: { next?: string }) {
     >
       {registered && (
         <Alert role="status">
+          <CircleCheck strokeWidth={1.5} className="text-emerald-600!" />
           <AlertDescription>Account created. Sign in with the password you just chose.</AlertDescription>
         </Alert>
       )}
-      <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
-        <Field>
-          <FieldLabel htmlFor="organization-email">Organization email</FieldLabel>
-          <Input
-            id="organization-email"
-            type="email"
-            autoComplete="username"
-            required
-            pattern={ORG_EMAIL_PATTERN}
-            title="Use your @hyperdatalab.org email address"
-            placeholder="you@hyperdatalab.org"
-            maxLength={255}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            disabled={busy}
-            autoFocus={!registered}
-          />
-        </Field>
+      <form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
+        <OrgEmailField
+          id="organization-email"
+          autoComplete="username"
+          value={email}
+          onChange={setEmail}
+          disabled={busy}
+          autoFocus={!registered}
+          submitted={submitted}
+        />
         <Field>
           <FieldLabel htmlFor="organization-password">Password</FieldLabel>
           <PasswordInput
@@ -90,7 +87,7 @@ export function SigninPage({ next }: { next?: string }) {
           />
         </Field>
         {error && <FormError id="signin-error">{error}</FormError>}
-        <Button type="submit" disabled={busy || !email.trim() || !password}>
+        <Button type="submit" className="h-10" disabled={busy || !email.trim() || !password}>
           {busy ? "Signing in…" : "Sign in with email"}
         </Button>
       </form>

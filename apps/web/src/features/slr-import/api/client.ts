@@ -1,15 +1,8 @@
+import { withSessionApiKey } from "@/features/auth/session";
 import { createBackendClient } from "@/shared/api/contract-client";
 
 export function slrImportClient() {
-  const client = createBackendClient(import.meta.env.VITE_API_BASE_URL ?? "");
-  client.use({
-    onRequest({ request }) {
-      const key = sessionStorage.getItem("aprkb-web-session");
-      if (key) request.headers.set("X-API-Key", key);
-      return request;
-    },
-  });
-  return client;
+  return withSessionApiKey(createBackendClient(import.meta.env.VITE_API_BASE_URL ?? ""));
 }
 
 type ErrorBody = { error?: { message?: string; details?: { errors?: { loc: (string | number)[]; msg: string }[] } } };

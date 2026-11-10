@@ -12,6 +12,8 @@ import {
 import { JobsPage } from "@/features/jobs/JobsPage";
 import { AdminPage } from "@/features/admin";
 import { useAuth, type AuthContextValue } from "@/features/auth/AuthProvider";
+import { AdminSetupPage } from "@/features/auth/AdminSetupPage";
+import { RegisterPage } from "@/features/auth/RegisterPage";
 import { SigninPage } from "@/features/auth/SigninPage";
 import { InboxPage } from "@/features/inbox";
 import { GoldPage } from "@/features/gold";
@@ -66,7 +68,28 @@ const signin = createRoute({
   beforeLoad: ({ context, search }) => {
     if (context.auth.client) throw redirect({ href: search.next ?? "/app", replace: true });
   },
-  component: SigninPage,
+  component: function SigninRoute() {
+    return <SigninPage next={getRouteApi("/public/signin").useSearch().next} />;
+  },
+});
+const register = createRoute({
+  getParentRoute: () => publicLayout,
+  path: "/register",
+  validateSearch: (s: Record<string, unknown>): { next?: string } => ({ next: safeNext(s.next) }),
+  beforeLoad: ({ context, search }) => {
+    if (context.auth.client) throw redirect({ href: search.next ?? "/app", replace: true });
+  },
+  component: function RegisterRoute() {
+    return <RegisterPage next={getRouteApi("/public/register").useSearch().next} />;
+  },
+});
+const setup = createRoute({
+  getParentRoute: () => publicLayout,
+  path: "/setup",
+  beforeLoad: ({ context }) => {
+    if (context.auth.client) throw redirect({ to: "/app", replace: true });
+  },
+  component: AdminSetupPage,
 });
 
 // App shell. /writer is open to guests; every other route sits under `guarded`.
@@ -226,7 +249,7 @@ const devUiRoute =
 
 export const router = createRouter({
   routeTree: root.addChildren([
-    publicLayout.addChildren([home, signin]),
+    publicLayout.addChildren([home, signin, register, setup]),
     appLayout.addChildren([
       guarded.addChildren([
         writer,

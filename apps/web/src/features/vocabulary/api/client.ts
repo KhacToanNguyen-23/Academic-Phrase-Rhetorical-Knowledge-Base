@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { withSessionApiKey } from "@/features/auth/session";
 import { createBackendClient } from "@/shared/api/contract-client";
 import type { components, paths } from "@/shared/api/schema";
 import { unwrap } from "@/features/slr-import/api/client";
@@ -12,16 +13,7 @@ type LemmaQuery = NonNullable<paths["/v1/vocabulary/lemmas"]["get"]["parameters"
 type LetterQuery = NonNullable<paths["/v1/vocabulary/letters"]["get"]["parameters"]["query"]>;
 
 export function vocabularyClient() {
-  const client = createBackendClient(import.meta.env.VITE_API_BASE_URL ?? "");
-  client.use({
-    onRequest({ request }) {
-      const key =
-        sessionStorage.getItem("aprkb-web-session");
-      if (key) request.headers.set("X-API-Key", key);
-      return request;
-    },
-  });
-  return client;
+  return withSessionApiKey(createBackendClient(import.meta.env.VITE_API_BASE_URL ?? ""));
 }
 
 export function useLemmas(params: LemmaQuery, enabled = true) {

@@ -12,13 +12,13 @@
                                   "section":  "Describing Methods",
                                   "category":  "Describing questionnaire design",
                                   "function_code":  "DESCRIBE_QUESTIONNAIRE_DESIGN",
-                                  "intent_code":  "METHODS_QUESTIONNAIRE_DESIGN"
+                                  "intent_code":  "METHODS_DESCRIBING_QUESTIONNAIRE_DESIGN"
                               },
                               {
                                   "section":  "Describing Methods",
                                   "category":  "Describing the process: statistical procedures",
                                   "function_code":  "DESCRIBE_STATISTICAL_PROCEDURES",
-                                  "intent_code":  "METHODS_STATISTICAL_PROCEDURES"
+                                  "intent_code":  "METHODS_DESCRIBING_THE_PROCESS_STATISTICAL_PROCEDURES"
                               }
                           ],
     "records":  [

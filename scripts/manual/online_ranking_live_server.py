@@ -67,7 +67,7 @@ async def isolated_lifespan(application):
                 version_no=1,
                 canonical_frame="We suggest {topic}.",
                 slots={"topic": "noun_phrase"},
-                epistemic_strength="low",
+                epistemic_strength="absolute",
                 claim_type="descriptive",
             )
             session.add(version)
@@ -83,6 +83,52 @@ async def isolated_lifespan(application):
             session.add(
                 EvidenceProvenance(
                     pattern_version_id=version.id,
+                    source_type="authored",
+                    sentence_ids=[],
+                )
+            )
+
+            writer_pattern = PhrasePattern(intent_id=intent.id, status="approved")
+            session.add(writer_pattern)
+            await session.flush()
+            writer_version = PatternVersion(
+                pattern_id=writer_pattern.id,
+                version_no=1,
+                canonical_frame="The role of {topic} in {context} remains underexplored.",
+                slots={
+                    "topic": {
+                        "type": "noun_phrase",
+                        "label": "Research topic",
+                        "instruction": "Name the specific topic discussed in your evidence.",
+                        "example": "language models",
+                        "required": True,
+                        "min_length": 3,
+                    },
+                    "context": {
+                        "type": "noun_phrase",
+                        "label": "Context",
+                        "instruction": "Describe the study or setting relevant to the topic.",
+                        "example": "higher education",
+                        "required": True,
+                        "min_length": 3,
+                    },
+                },
+                epistemic_strength="low",
+                claim_type="descriptive",
+            )
+            session.add(writer_version)
+            await session.flush()
+            writer_pattern.current_version_id = writer_version.id
+            session.add(
+                UsageConstraint(
+                    pattern_version_id=writer_version.id,
+                    allowed_sections=["INTRO", "DISCUSSION"],
+                    allowed_genres=["RESEARCH_ARTICLE"],
+                )
+            )
+            session.add(
+                EvidenceProvenance(
+                    pattern_version_id=writer_version.id,
                     source_type="authored",
                     sentence_ids=[],
                 )

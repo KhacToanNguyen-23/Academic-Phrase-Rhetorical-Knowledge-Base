@@ -25,6 +25,29 @@ class UndeclaredMetric:
     span: tuple[int, int]
 
 
+# Typographic variants folded to ASCII one-for-one, so spans in the folded text are the
+# same as in the original: "Cronbach’s" matches "Cronbach's", "Mann–Whitney" "Mann-Whitney".
+_FOLD = str.maketrans(
+    {
+        "‘": "'",
+        "’": "'",
+        "ʼ": "'",
+        "′": "'",
+        "‐": "-",
+        "‑": "-",
+        "‒": "-",
+        "–": "-",
+        "—": "-",
+        "−": "-",
+        " ": " ",
+    }
+)
+
+
+def _fold(value: str) -> str:
+    return value.translate(_FOLD)
+
+
 def _pattern(term: str) -> re.Pattern[str]:
     # Acronyms such as "ACC" or "RMSE" match case-sensitively so ordinary words do not.
     flags = 0 if term.isupper() else re.IGNORECASE
@@ -32,7 +55,7 @@ def _pattern(term: str) -> re.Pattern[str]:
 
 
 def _usable(terms: tuple[str, ...], min_length: int) -> list[re.Pattern[str]]:
-    unique = {term.strip() for term in terms if len(term.strip()) >= min_length}
+    unique = {_fold(term.strip()) for term in terms if len(term.strip()) >= min_length}
     return [_pattern(term) for term in sorted(unique)]
 
 
@@ -40,6 +63,7 @@ def find_mentions(
     text: str, entries: list[MetricTerms], *, min_term_length: int
 ) -> list[UndeclaredMetric]:
     """Return each entry whose name or alias occurs in ``text``, with its first span."""
+    text = _fold(text)
     found: list[UndeclaredMetric] = []
     for entry in entries:
         patterns = _usable((entry.name, *entry.terms), min_term_length)

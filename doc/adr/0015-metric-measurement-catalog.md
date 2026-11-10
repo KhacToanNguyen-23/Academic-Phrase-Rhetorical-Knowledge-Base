@@ -55,15 +55,19 @@ requirements:
    `origin="term_match"`. Nothing is public until a curator approves it, on the entry page
    or through the admin API. An existing link, including a rejected one, is never
    recreated. The run writes one content-free audit event.
+9. Term matching folds typographic apostrophes, dashes and non-breaking spaces to ASCII
+   one character at a time, so "Cronbach’s alpha" matches "Cronbach's alpha" and spans
+   still point into the original text.
+10. The public Writer shows approved slot suggestions under each slot in "Complete the
+    pattern" as plain text (no catalog link, never filled in). The e2e spec
+    `apps/web/e2e/measurement.spec.ts` covers the catalog, curator review, the
+    switched-off state, the APB context card and the Writer suggestions.
 
 ## Deferred
 
 - Mining measurement mentions from corpus `METHODS` sections. If added later, it must be
   rule-based, run in shadow mode, be license-gated before blob reads, and produce
   draft provenance only. There is no provenance table until that producer exists.
-- Repairing the APB seed text. Some records carry U+FFFD replacement characters
-  (e.g. "Cronbach�s alpha"), so their terms cannot match until the APB owner
-  fixes the seed.
 - Discipline-specific catalogs.
 
 ## Consequences

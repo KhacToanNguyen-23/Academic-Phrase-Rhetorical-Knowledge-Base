@@ -95,7 +95,24 @@ async def isolated_lifespan(application):
                 pattern_id=writer_pattern.id,
                 version_no=1,
                 canonical_frame="The role of {topic} in {context} remains underexplored.",
-                slots={"topic": "noun_phrase", "context": "noun_phrase"},
+                slots={
+                    "topic": {
+                        "type": "noun_phrase",
+                        "label": "Research topic",
+                        "instruction": "Name the specific topic discussed in your evidence.",
+                        "example": "language models",
+                        "required": True,
+                        "min_length": 3,
+                    },
+                    "context": {
+                        "type": "noun_phrase",
+                        "label": "Context",
+                        "instruction": "Describe the study or setting relevant to the topic.",
+                        "example": "higher education",
+                        "required": True,
+                        "min_length": 3,
+                    },
+                },
                 epistemic_strength="low",
                 claim_type="descriptive",
             )

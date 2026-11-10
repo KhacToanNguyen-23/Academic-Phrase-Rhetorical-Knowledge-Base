@@ -20,7 +20,7 @@ RUN uv sync --locked --no-install-project --no-dev --extra spacy
 COPY apps/backend/src ./src
 COPY apps/backend/alembic.ini ./alembic.ini
 COPY apps/backend/migrations ./migrations
-COPY data/seed/taxonomy.json data/seed/reference_enums.json ./data/seed/
+COPY data/seed/taxonomy.json data/seed/reference_enums.json data/seed/measurement_catalog.json      data/seed/academic_phrases.json data/seed/academic_phrase_facets.json ./data/seed/
 RUN uv sync --locked --no-dev --extra spacy
 
 FROM python:3.12-slim@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30 AS runtime

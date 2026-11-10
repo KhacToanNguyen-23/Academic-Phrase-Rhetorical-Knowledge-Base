@@ -178,16 +178,16 @@ For local or deployed Online initialization, apply migrations and run `python -m
 kinds of entry: metrics (for example accuracy and Cohen's kappa), measurement methods (for example
 a 5-point Likert questionnaire) and data-collection protocols (for example a pre-test/post-test
 design). It complements the phrase core, which answers "how to write". The catalog lives in its own
-`measurement_*` tables and never enters ranking, render, validate or pack export. The API and UI
-are off by default (`MEASUREMENT_ENABLED=false`).
+`measurement_*` tables and never enters ranking, render or pack export. The code default for
+`MEASUREMENT_ENABLED` is off, but `.env.example` and `docker-compose.prod.yml` turn it on.
 
 The link to phrases is a curator-reviewed slot link, for example `likert_5_point` for the
 `{instrument}` slot of a Methods pattern. Only approved links are shown, and only as
-suggestions; a slot is never filled automatically (FR-07.5, AT-08). To enable the catalog locally:
-
-1. Set `MEASUREMENT_ENABLED=true`.
-2. Run `uv run alembic -c alembic.ini upgrade head` from `apps/backend`.
-3. Import the catalog: `uv run python -m aprkb.cli measurement-import --file ../../data/seed/measurement_catalog.json`.
+suggestions; a slot is never filled automatically (FR-07.5, AT-08). `make migrate` creates the
+tables. `make seed` (`python -m aprkb.seeds.load`, also the deploy initializer) imports
+`data/seed/measurement_catalog.json` and proposes APB links. To import a catalog file by hand, run
+`uv run python -m aprkb.cli measurement-import --file ../../data/seed/measurement_catalog.json`.
+For production, see `deploy/README.md`.
 
 Re-importing the same file is a no-op. Codes that disappear from a new catalog are reported, not
 deleted. Remove everything with `uv run python -m aprkb.cli measurement-purge`.

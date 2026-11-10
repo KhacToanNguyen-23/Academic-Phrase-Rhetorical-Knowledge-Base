@@ -29,3 +29,6 @@ data/*
 data/seed/*
 !data/seed/taxonomy.json
 !data/seed/reference_enums.json
+!data/seed/measurement_catalog.json
+!data/seed/academic_phrases.json
+!data/seed/academic_phrase_facets.json

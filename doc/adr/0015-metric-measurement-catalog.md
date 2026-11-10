@@ -1,6 +1,6 @@
 # ADR-0015: Metric & Measurement catalog
 
-Status: proposed; implemented locally behind `MEASUREMENT_ENABLED` (default off).
+Status: accepted for deployment. The code default for `MEASUREMENT_ENABLED` is off, but `docker-compose.prod.yml` and `.env.example` turn it on.
 
 ## Context
 
@@ -69,6 +69,11 @@ requirements:
     500. `measurement-propose-links` inserts with `ON CONFLICT DO NOTHING`, so parallel
     runs or a parallel manual proposal never duplicate a link or fail. Catalog search
     applies the same typographic folding as term matching.
+
+12. Deployment: the backend image ships `data/seed/measurement_catalog.json`, and
+    `python -m aprkb.seeds.load` (the existing deploy step) imports it idempotently and
+    proposes APB Methods links. Tests call `run_seed` and therefore stay unaffected.
+    See `deploy/README.md`.
 
 ## Deferred
 

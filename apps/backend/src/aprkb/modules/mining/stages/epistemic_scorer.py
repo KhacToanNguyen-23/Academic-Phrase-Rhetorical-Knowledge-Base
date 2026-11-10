@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 from aprkb.policies.schemas import EpistemicScoringPolicy
 
@@ -202,14 +202,14 @@ def _parsed_root(parsed: Doc | Span) -> tuple[_Token, set[int]]:
         tokens = list(parsed)
         if not tokens:
             raise ValueError("EpistemicScorer requires a non-empty parsed span")
-        return parsed.root, {token.i for token in tokens}
+        return cast(_Token, parsed.root), {token.i for token in tokens}
     sentences = list(parsed.sents)
     if len(sentences) != 1:
         raise ValueError("EpistemicScorer requires a Doc containing exactly one sentence")
     tokens = list(sentences[0])
     if not tokens:
         raise ValueError("EpistemicScorer requires a non-empty parsed sentence")
-    return sentences[0].root, {token.i for token in tokens}
+    return cast(_Token, sentences[0].root), {token.i for token in tokens}
 
 
 def _dependency_scope(root: _Token, input_tokens: set[int]) -> list[_Token]:

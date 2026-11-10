@@ -12,9 +12,9 @@ from aprkb.modules.gold.router import router as gold
 from aprkb.modules.identity.router import admin_router as identity_admin
 from aprkb.modules.identity.router import router as identity
 from aprkb.modules.journals.router import router as journals
-from aprkb.modules.mining.router import router as frame_labels
 from aprkb.modules.measurement.router import admin_router as measurement_admin
 from aprkb.modules.measurement.router import router as measurement
+from aprkb.modules.mining.router import router as frame_labels
 from aprkb.modules.patterns.router import router as patterns
 from aprkb.modules.recommendation.router import router as recommendation
 from aprkb.modules.reference_library.router import router as reference_library

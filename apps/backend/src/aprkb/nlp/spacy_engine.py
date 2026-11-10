@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from importlib.metadata import version as _distribution_version
 from typing import TYPE_CHECKING, Any
 
 from aprkb.modules.corpus.sentence_splitter import (

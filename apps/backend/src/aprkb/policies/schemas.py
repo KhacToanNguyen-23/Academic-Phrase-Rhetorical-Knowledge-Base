@@ -1319,6 +1319,8 @@ class EpistemicScoringPolicy(VersionedPolicy):
             if any(not value for value in normalized) or len(normalized) != len(set(normalized)):
                 raise ValueError("scoring lexicons must contain unique, non-empty entries")
         return self
+
+
 MeasurementKind = Literal["metric", "method", "protocol"]
 
 

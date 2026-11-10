@@ -52,42 +52,7 @@
       "code": "METHODS",
       "name": "Methods",
       "order": 4,
-      "moves": [
-        {
-          "code": "METHODS_STATE_DESIGN",
-          "name": "State research design",
-          "steps": [
-            {
-              "code": "METHODS_QUESTIONNAIRE_DESIGN",
-              "name": "Describe questionnaire design",
-              "intents": [
-                {
-                  "code": "METHODS_QUESTIONNAIRE_DESIGN",
-                  "name": "Describe questionnaire design",
-                  "description": "Describe the design and content of questionnaires or survey items."
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "code": "METHODS_ANALYSIS",
-          "name": "Reproducibility and analysis method",
-          "steps": [
-            {
-              "code": "METHODS_STATISTICAL_PROCEDURES",
-              "name": "Describe statistical procedures",
-              "intents": [
-                {
-                  "code": "METHODS_STATISTICAL_PROCEDURES",
-                  "name": "Describe statistical procedures",
-                  "description": "State statistical procedures, tests, or analysis software used."
-                }
-              ]
-            }
-          ]
-        }
-      ],
+      "moves": [],
       "compatible_genres": [
         "RESEARCH_ARTICLE"
       ]

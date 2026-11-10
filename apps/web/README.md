@@ -12,7 +12,7 @@ src/
     domain/     PhraseFrame, DataState, PageHeader, StatusBadge, SelectField...
   features/     mỗi màn hình một thư mục (components/ + api/); landing/ is the public page
   shared/       api (client sinh tự động), lib
-e2e/            Playwright — not updated for the redesign (switched off)
+e2e/            Playwright — lab Phrasebank and PostgreSQL-backed Writer smoke tests
 ```
 
 Routes: `/` public landing, `/signin`, `/app` staff workspace; every other screen keeps its path and is
@@ -61,8 +61,8 @@ pnpm dev
 ```
 
 Open `http://localhost:5173/writer` after starting the backend and PostgreSQL.
-Enter a client API key; the Writer page keeps it only in memory. `src/features/playground/live/api.ts`
-uses OpenAPI types and the real `/v1` endpoints, with no mock fallback. The form
+`src/features/playground/live/api.ts` uses OpenAPI types and the real `/v1`
+endpoints, with no mock fallback. The form
 loads taxonomy and reference options from the DB. Journal-specific ranking and
 full V01–V08 validation are shown as unavailable until reviewed data/rules exist.
 

@@ -134,6 +134,12 @@ Academic Phrase Bank metadata is stored alongside immutable pattern versions and
 
 The `/v1/reference-library` GET routes serve a quarantined external reference collection from its own tables. They return 404 unless `REFERENCE_LIBRARY_ENABLED=true`. Import and purge are CLI-only (`uv run python -m aprkb.cli import-reference-library --file <path>` and `uv run python -m aprkb.cli purge-reference-library`). Import replacement and its content-free audit event commit together. Imported entries are disconnected from patterns, recommendations, render, and validation. Keep the source notice in the UI and do not treat these entries as approved or redistributable patterns.
 
+## Online Phrasebank Basic
+
+`src/aprkb/seeds/phrasebank_basic.json` is the canonical phrase content source for Online display and recommendations. Its `section_title` names the Methods move/step, each category maps to a taxonomy intent in release `taxonomy_version` (`0.2.0`), and each example maps to `PatternVersion.canonical_frame` and `slots`. The base `0.1.0` taxonomy remains unchanged for Offline packs. The seed also fills `PhrasePattern.intent_id`, `UsageConstraint.allowed_sections`/`allowed_genres`, and authored `EvidenceProvenance`. X/Y/Z become named text slots, ellipses become a completion slot, and illustrative author/year references become citation slots. The scaffold labels these procedural frames `claim_type=descriptive` and `epistemic_strength=low`; evidence minimum remains unset because the examples are templates, not study evidence. Stable IDs and append-only version numbers make reseeding idempotent while preserving prior versions. Bump `taxonomy_version` when category or taxonomy labels change.
+
+The Online initializer does not read the old `data/seed/patterns.json`; all Phrasebank Basic examples come from the packaged JSON in every environment. The deployment runbook runs the initializer after migrations so the JSON is available inside the backend image.
+
 ## Bounded worker retry
 
 Import, ingestion and mining jobs now schedule bounded retries for transient failures.

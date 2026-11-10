@@ -58,10 +58,14 @@ test("move-only request, normalized retrieval, explanations and render use the l
 
 test("phrasebank carries AP-RKB context to Writer and obtains a fresh recommendation", async ({ page, request }) => {
   const key = await authenticateCurator(page, request);
-  const patternsResponse = await request.get("/v1/patterns?status=approved", { headers: { "X-API-Key": key } });
+  const patternsResponse = await request.get(
+    "/v1/patterns?status=approved&q=We%20suggest",
+    { headers: { "X-API-Key": key } },
+  );
   expect(patternsResponse.ok()).toBeTruthy();
   const patterns = await patternsResponse.json();
   const pattern = patterns.find((p: { canonical_frame: string }) => p.canonical_frame === "We suggest {topic}.");
+  expect(pattern, "the live fixture should expose the We suggest frame").toBeDefined();
   await page.goto(`/phrasebank/pattern/${pattern.id}`);
   await expect(page.getByText("We suggest {topic}.", { exact: true })).toBeVisible();
   const pending = page.waitForResponse((response) => response.url().endsWith("/v1/recommendations") && response.request().method() === "POST");

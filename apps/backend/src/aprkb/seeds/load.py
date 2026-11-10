@@ -3,8 +3,9 @@
 import argparse
 import asyncio
 import json
+import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 import yaml  # type: ignore[import-untyped]
@@ -33,7 +34,7 @@ from aprkb.shared.models import RefEnum
 
 
 def _find_seed_dir() -> Path | None:
-    """Locate reference assets in either the checkout or the packaged runtime."""
+    """Locate the local or packaged reference seed assets directory."""
     parents = Path(__file__).resolve().parents
     for parent in parents:
         candidate = parent / "data" / "seed"
@@ -43,6 +44,8 @@ def _find_seed_dir() -> Path | None:
 
 
 SEED_DIR = _find_seed_dir()
+
+
 POLICY_DIR = Path(__file__).resolve().parents[1] / "policies"
 
 
@@ -56,12 +59,10 @@ def _read_json(name: str) -> Any:
         return json.load(seed_file)
 
 
-def _read_academic_phrase_policy() -> dict[str, Any]:
-    with (POLICY_DIR / "academic_phrase_bank.yaml").open(encoding="utf-8") as policy_file:
-        payload = yaml.safe_load(policy_file)
-    if not isinstance(payload, dict):
-        raise ValueError("Invalid academic phrase bank policy")
-    return payload
+def _read_phrasebank_basic() -> dict[str, Any]:
+    """Read the packaged Online Phrasebank Basic source in local and deployed builds."""
+    path = Path(__file__).with_name("phrasebank_basic.json")
+    return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
 
 
 def _stable_id(kind: str, key: str) -> UUID:
@@ -105,9 +106,35 @@ async def _seed_reference_enums(session: AsyncSession, *, include_dev_license: b
     await session.flush()
 
 
-async def _seed_taxonomy(session: AsyncSession) -> dict[str, Any]:
+async def _seed_taxonomy(
+    session: AsyncSession, *, include_phrasebank_basic: bool = True
+) -> dict[str, Any]:
     payload = _read_json("taxonomy.json")
-    version = payload["version"]
+    basic = _read_phrasebank_basic() if include_phrasebank_basic else None
+    if basic is not None:
+        payload["version"] = basic["taxonomy_version"]
+        methods = next(section for section in payload["sections"] if section["code"] == "METHODS")
+        move_data: dict[str, Any] = {
+            "code": "METHODS_DESCRIBE",
+            "name": basic["section_title"],
+            "steps": [{"code": "METHODS_BASIC", "name": basic["section_title"], "intents": []}],
+        }
+        for category in basic["categories"]:
+            slug = re.sub(r"[^A-Z0-9]+", "_", category["category_name"].upper()).strip("_")
+            move_data["steps"][0]["intents"].append(
+                {
+                    "code": f"METHODS_{slug}"[:64],
+                    "name": category["category_name"],
+                    "description": basic["description"],
+                }
+            )
+        existing_move = next(
+            (item for item in methods["moves"] if item["code"] == move_data["code"]), None
+        )
+        if existing_move is None:
+            methods["moves"].append(move_data)
+        else:
+            existing_move.update(move_data)
     release = await session.scalar(
         select(TaxonomyRelease).where(TaxonomyRelease.version == payload["version"])
     )
@@ -132,7 +159,7 @@ async def _seed_taxonomy(session: AsyncSession) -> dict[str, Any]:
         )
         if section is None:
             section = Section(
-                id=_stable_id("section", f"{version}:{section_data['code']}"),
+                id=_stable_id("section", f"{payload['version']}:{section_data['code']}"),
                 code=section_data["code"],
                 name=section_data["name"],
                 order=section_data["order"],
@@ -151,7 +178,7 @@ async def _seed_taxonomy(session: AsyncSession) -> dict[str, Any]:
             )
             if move is None:
                 move = Move(
-                    id=_stable_id("move", f"{version}:{section_data['code']}:{move_data['code']}"),
+                    id=_stable_id("move", f"{payload['version']}:{move_data['code']}"),
                     code=move_data["code"],
                     name=move_data["name"],
                     section_id=section.id,
@@ -164,10 +191,7 @@ async def _seed_taxonomy(session: AsyncSession) -> dict[str, Any]:
                 )
                 if step is None:
                     step = Step(
-                        id=_stable_id(
-                            "step",
-                            f"{version}:{section_data['code']}:{move_data['code']}:{step_data['code']}",
-                        ),
+                        id=_stable_id("step", f"{payload['version']}:{step_data['code']}"),
                         code=step_data["code"],
                         name=step_data["name"],
                         move_id=move.id,
@@ -183,10 +207,7 @@ async def _seed_taxonomy(session: AsyncSession) -> dict[str, Any]:
                     )
                     if intent is None:
                         intent = Intent(
-                            id=_stable_id(
-                                "intent",
-                                f"{version}:{section_data['code']}:{move_data['code']}:{step_data['code']}:{intent_data['code']}",
-                            ),
+                            id=_stable_id("intent", f"{payload['version']}:{intent_data['code']}"),
                             code=intent_data["code"],
                             name=intent_data["name"],
                             description=intent_data.get("description"),
@@ -208,6 +229,167 @@ async def _seed_taxonomy(session: AsyncSession) -> dict[str, Any]:
             )
     await session.flush()
     return intents
+
+
+def _phrasebank_frame(example: str) -> tuple[str, dict[str, dict[str, Any]]]:
+    """Convert generic placeholders into the PatternVersion frame/slot contract."""
+    frame = example.replace("X-ray", "\x00RAY\x00")
+    slots: dict[str, dict[str, Any]] = {}
+
+    def replace(
+        pattern: str,
+        name: str,
+        label: str,
+        instruction: str,
+        slot_type: str = "text",
+    ) -> None:
+        nonlocal frame
+        if re.search(pattern, frame, flags=re.IGNORECASE):
+            frame = re.sub(pattern, f"{{{name}}}", frame, flags=re.IGNORECASE)
+            slots[name] = {
+                "type": slot_type,
+                "label": label,
+                "instruction": instruction,
+                "required": True,
+                "min_length": 1,
+            }
+
+    replace(r"(?<![A-Za-z])X(?=s\b)", "x", "X", "Replace X with a method, measure, or topic.")
+    replace(r"(?<![A-Za-z])X(?![A-Za-z])", "x", "X", "Replace X with a method, measure, or topic.")
+    replace(r"(?<![A-Za-z])Y(?![A-Za-z])", "y", "Y", "Replace Y with an outcome or variable.")
+    replace(r"(?<![A-Za-z])Z(?![A-Za-z])", "z", "Z", "Replace Z with an outcome or variable.")
+    replace(
+        r"(?:…|\.{3,})",
+        "details",
+        "Completion",
+        "Complete with details supported by your study.",
+        "clause",
+    )
+    replace(
+        r"\b(?:Smith|Jones)\b",
+        "author",
+        "Author",
+        "Enter the author named in the source you cite.",
+        "citation",
+    )
+    replace(r"\(\d{4}\)", "year", "Year", "Enter the source publication year.")
+    return frame.replace("\x00RAY\x00", "X-ray"), slots
+
+
+async def _seed_phrasebank_basic(session: AsyncSession, intents: dict[str, Intent]) -> None:
+    """Seed the team-authored Phrasebank Basic into the Online pattern tables."""
+    payload = _read_phrasebank_basic()
+    desired_ids = {
+        _stable_id("phrase-pattern", f"phrasebank-basic:{slug}:{index:03d}")
+        for category in payload["categories"]
+        for slug in [re.sub(r"[^a-z0-9]+", "-", category["category_name"].casefold()).strip("-")]
+        for index, _ in enumerate(category["examples"], start=1)
+    }
+    existing_basic = await session.scalars(
+        select(PhrasePattern)
+        .join(PatternVersion, PatternVersion.id == PhrasePattern.current_version_id)
+        .where(PatternVersion.change_note.like("%Phrasebank Basic v%"))
+    )
+    for existing_pattern in existing_basic:
+        if existing_pattern.id not in desired_ids:
+            existing_pattern.status = "retired"
+
+    for category in payload["categories"]:
+        slug = re.sub(r"[^a-z0-9]+", "-", category["category_name"].casefold()).strip("-")
+        intent_code = "METHODS_" + re.sub(
+            r"[^A-Z0-9]+", "_", category["category_name"].upper()
+        ).strip("_")
+        intent = intents[intent_code[:64]]
+        for index, example in enumerate(category["examples"], start=1):
+            seed_key = f"phrasebank-basic:{slug}:{index:03d}"
+            pattern_id = _stable_id("phrase-pattern", seed_key)
+            pattern = await session.get(PhrasePattern, pattern_id)
+            if pattern is None:
+                pattern = PhrasePattern(id=pattern_id, intent_id=intent.id, status="approved")
+                session.add(pattern)
+            else:
+                pattern.intent_id = intent.id
+                pattern.status = "approved"
+            await session.flush()
+
+            frame, slots = _phrasebank_frame(example)
+            version = await session.scalar(
+                select(PatternVersion)
+                .where(PatternVersion.pattern_id == pattern.id)
+                .order_by(PatternVersion.version_no.desc())
+                .limit(1)
+            )
+            if version is None or (
+                version.canonical_frame != frame
+                or version.slots != slots
+                or version.claim_type != "descriptive"
+                or version.epistemic_strength != "low"
+            ):
+                version_no = 1 if version is None else version.version_no + 1
+                version = PatternVersion(
+                    id=_stable_id("pattern-version", f"{seed_key}:v{version_no}"),
+                    pattern_id=pattern.id,
+                    version_no=version_no,
+                    canonical_frame=frame,
+                    slots=slots,
+                    epistemic_strength="low",
+                    claim_type="descriptive",
+                    change_note=(
+                        f"{payload['source']['name']} Phrasebank Basic v"
+                        f"{payload['content_version']}; internal use."
+                    ),
+                )
+                session.add(version)
+                await session.flush()
+            pattern.current_version_id = version.id
+
+            usage = await session.scalar(
+                select(UsageConstraint).where(UsageConstraint.pattern_version_id == version.id)
+            )
+            if usage is None:
+                session.add(
+                    UsageConstraint(
+                        pattern_version_id=version.id,
+                        allowed_sections=["METHODS"],
+                        allowed_genres=["RESEARCH_ARTICLE"],
+                    )
+                )
+            provenance = await session.scalar(
+                select(EvidenceProvenance).where(
+                    EvidenceProvenance.pattern_version_id == version.id
+                )
+            )
+            if provenance is None:
+                session.add(
+                    EvidenceProvenance(
+                        pattern_version_id=version.id,
+                        source_type=payload["source"]["type"],
+                        sentence_ids=[],
+                    )
+                )
+    await session.flush()
+
+
+async def _retire_legacy_online_patterns(session: AsyncSession) -> None:
+    """Hide prior development fixtures that were superseded by the canonical JSON."""
+    legacy = await session.scalars(
+        select(PhrasePattern)
+        .join(PatternVersion, PatternVersion.id == PhrasePattern.current_version_id)
+        .where(
+            PatternVersion.change_note
+            == "Self-authored development seed; TODO(owner, PRD-9): replace with approved examples."
+        )
+    )
+    for pattern in legacy:
+        pattern.status = "retired"
+
+
+def _read_academic_phrase_policy() -> dict[str, Any]:
+    with (POLICY_DIR / "academic_phrase_bank.yaml").open(encoding="utf-8") as policy_file:
+        payload = yaml.safe_load(policy_file)
+    if not isinstance(payload, dict):
+        raise ValueError("Invalid academic phrase bank policy")
+    return payload
 
 
 async def _seed_academic_phrase_reference(session: AsyncSession) -> None:
@@ -375,7 +557,7 @@ async def _seed_academic_phrases(
         (row["section"], row["category"]): row["intent_code"]
         for row in payload["category_mappings"]
     }
-    taxonomy = _read_json("taxonomy.json")
+    taxonomy = {"version": _read_phrasebank_basic()["taxonomy_version"]}
     release = await session.scalar(
         select(TaxonomyRelease).where(TaxonomyRelease.version == taxonomy["version"])
     )
@@ -542,7 +724,9 @@ async def import_academic_phrases(session: AsyncSession, path: Path) -> int:
 
 
 async def _taxonomy_intent_map(session: AsyncSession) -> dict[str, tuple[Intent, str]]:
-    taxonomy = _read_json("taxonomy.json")
+    # Idempotent: guarantees the Online taxonomy release (structure only, no phrases) exists.
+    await _seed_taxonomy(session)
+    taxonomy = {"version": _read_phrasebank_basic()["taxonomy_version"]}
     release = await session.scalar(
         select(TaxonomyRelease).where(TaxonomyRelease.version == taxonomy["version"])
     )
@@ -572,36 +756,22 @@ async def import_pattern_seed(session: AsyncSession, path: Path) -> dict[str, in
 
 
 async def run_seed(session: AsyncSession) -> None:
-    """Seed reference data in the PRD order; caller controls commit/rollback."""
-    await _seed_reference_enums(session)
+    """Seed Online reference data and lab-authored Phrasebank Basic content."""
+    await _seed_reference_enums(session, include_dev_license=settings.app_env in {"local", "test"})
+    await _seed_taxonomy(session, include_phrasebank_basic=False)
     intents = await _seed_taxonomy(session)
+    await _retire_legacy_online_patterns(session)
+    await _seed_phrasebank_basic(session, intents)
+    # Academic Phrase Bank: option catalogs, then the authored APB phrases (draft, unreviewed).
     await _seed_academic_phrase_reference(session)
-    await _seed_patterns(session, intents)
-    taxonomy = _read_json("taxonomy.json")
-    release = await session.scalar(
-        select(TaxonomyRelease).where(TaxonomyRelease.version == taxonomy["version"])
-    )
-    if release is None:
-        raise ValueError(f"Taxonomy release {taxonomy['version']} is not initialized")
-    intent_paths = (
-        await session.execute(
-            select(Intent, Section.code)
-            .join(Step, Step.id == Intent.step_id)
-            .join(Move, Move.id == Step.move_id)
-            .join(Section, Section.id == Move.section_id)
-            .where(Section.release_id == release.id)
-        )
-    ).all()
-    taxonomy_intents = {
-        intent.code: (intent, section_code) for intent, section_code in intent_paths
-    }
+    taxonomy_intents = await _taxonomy_intent_map(session)
     await _seed_academic_phrases(session, taxonomy_intents=taxonomy_intents)
 
 
 async def init_reference(session: AsyncSession) -> None:
     """Production reference profile: no content or development-only license."""
     await _seed_reference_enums(session, include_dev_license=False)
-    await _seed_taxonomy(session)
+    await _seed_taxonomy(session, include_phrasebank_basic=False)
     await _seed_academic_phrase_reference(session)
 
 

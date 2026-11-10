@@ -112,6 +112,10 @@ CR-06 changed the current weights; they remain provisional pending owner review.
 | `make web-install` / `make web` / `make fe` | Install frontend dependencies / start the frontend dev server |
 | `.\dev.ps1 be` / `fe` / `worker` / `down` | PowerShell shortcuts for the local development workflow |
 
+## Deployment
+
+Production uses Docker Compose for the API, worker, and web app, with persistent PostgreSQL and blob volumes and manually applied migrations. It does not run the development data initializer. Follow the [manual Docker Compose deployment runbook](deploy/README.md) before starting services on the server.
+
 ## Continuous integration
 
 GitHub Actions runs on pushes and pull requests, with superseded runs on the same branch cancelled automatically (except `dev`). Third-party actions are pinned to reviewed commit SHAs. Jobs:
@@ -162,11 +166,11 @@ The original acceptance cases that depend on excluded product behavior remain sk
 
 Each AP-RKB pattern opens a WB-02 detail view for frame, slots, variants, usage, evidence, provenance, and version. The list uses the full read contract without an extra request per pattern.
 
-Phrasebank applies keyword, section, and intent filters on the backend before limiting results to 200 AP-RKB patterns or 50 Manchester phrases. These are capped matching lists, not total counts. Manchester search resolves heading and category taxonomy mappings before filtering and limiting; its ordinary API search retains notes unless `phrase_only=true` is requested.
+Phrasebank applies keyword, section, and intent filters on the backend before limiting results to 200 patterns. The Online Phrasebank Basic source is `apps/backend/src/aprkb/seeds/phrasebank_basic.json`: the seed loader maps its categories to METHODS taxonomy intents in release `0.2.0` and each example to an approved `PhrasePattern`/`PatternVersion`, with typed slots for X/Y/Z, continuations, and citation placeholders. The base `0.1.0` taxonomy stays available for Offline packs. The same approved DB rows feed Phrasebank display and `/v1/recommendations`; the frontend does not maintain a second phrase list for this flow.
 
-`/phrasebank` is a source-aware browser for Manchester reference material and AP-RKB's existing approved patterns. The Manchester collection is stored only in the separate `reference_sources`, `reference_categories`, and `reference_entries` tables; it never enters `phrase_patterns`, recommendations, render, or validate. Its API and UI are off by default (`REFERENCE_LIBRARY_ENABLED=false`). Manchester items always show the notice that reuse rights are unverified and the material must not be redistributed. Treat this as an internal, removable reference collection, not approved patterns. The AP-RKB group reads approved client-visible patterns through `/v1/patterns`; taxonomy sections are not mapped to Manchester categories (`TODO(owner)`).
+`/phrasebank` reads the lab-authored Phrasebank Basic patterns from `/v1/patterns`, the same approved records used by recommendation and rendering. Category headings are represented as intents under the METHODS section; example text is stored as a canonical frame, slots, and authored provenance. The former external reference-library backend remains isolated and disabled; it is not a source for this Online flow.
 
-To enable the local reference browser, set `REFERENCE_LIBRARY_ENABLED=true`, apply migrations from `apps/backend` with `uv run alembic -c alembic.ini upgrade head`, then import the external file with `uv run python -m aprkb.cli import-reference-library --file "D:\Project\FptProject\Academic-Phrase-Rhetorical-Knowledge-Base\data\raw\manchester-diverse\collection.json"`. The input file remains outside git. Remove the imported reference data with `uv run python -m aprkb.cli purge-reference-library`; disable API access again by setting the flag to false.
+For local or deployed Online initialization, apply migrations and run `python -m aprkb.seeds.load`. Every environment loads Phrasebank Basic from the packaged JSON plus taxonomy and reference options; Online initialization does not read legacy `data/seed/patterns.json` fixtures.
 
 ## Metric & Measurement catalog
 

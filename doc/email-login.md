@@ -1,5 +1,9 @@
 # Parallel Google and organization-email sign-in
 
+Pages: `/signin` (email + password, Google), `/register` (email, password, confirm
+password, Google sign-up) and `/setup` (one-time admin key link). A successful
+registration returns to `/signin` with the email filled in and a confirmation notice.
+
 The sign-in page offers two independent flows. Email and password accepts only
 @hyperdatalab.org. Google sign-in accepts any verified Google account, and a new
 Google account becomes a curator. Email registration validates the domain and adds

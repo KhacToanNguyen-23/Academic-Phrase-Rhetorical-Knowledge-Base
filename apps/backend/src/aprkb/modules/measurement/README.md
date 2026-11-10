@@ -16,4 +16,7 @@ protocols, imported from the self-authored `data/seed/measurement_catalog.json`.
   It is report-only: it lists catalog metrics named in the text but not in the supplied
   slots or context.
 - `purge_catalog` / `measurement-purge` remove all catalog data in one audited transaction.
-- Not implemented: mining measurement mentions from METHODS sections.
+- Links may omit `slot_name` (pattern-level), for slot-less APB Methods templates.
+  `link_proposer.py` / `measurement-propose-links` create *proposed* `term_match` links
+  only; a curator must approve each one.
+- Not implemented: mining measurement mentions from corpus METHODS sections.

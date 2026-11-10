@@ -40,8 +40,9 @@ class Settings(BaseSettings):
     blob_dir: str = "./data/blobs"
     log_level: str = "INFO"
     reference_library_enabled: bool = False
-    # ADR-0015: separate Metric & Measurement catalog, off until the catalog is reviewed.
-    measurement_enabled: bool = False
+    # ADR-0015: separate Metric & Measurement catalog. On by default so a fresh checkout can
+    # test it after `make migrate seed`; set MEASUREMENT_ENABLED=false to hide it.
+    measurement_enabled: bool = True
     nlp_engine: Literal["regex", "spacy"] = "regex"
     nlp_model: str = "en_core_web_sm"
     mining_hybrid_enabled: bool = False
@@ -86,6 +87,12 @@ class Settings(BaseSettings):
     @classmethod
     def empty_value_is_missing(cls, value: object) -> object:
         return None if value == "" else value
+
+    @field_validator("measurement_enabled", mode="before")
+    @classmethod
+    def blank_measurement_flag_uses_default(cls, value: object) -> object:
+        # An empty MEASUREMENT_ENABLED= line (old .env copies) keeps the feature on.
+        return True if value is None or str(value).strip() == "" else value
 
     @model_validator(mode="after")
     def dev_license_fallback_only_in_development(self) -> "Settings":

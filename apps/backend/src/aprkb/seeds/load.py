@@ -775,6 +775,31 @@ async def init_reference(session: AsyncSession) -> None:
     await _seed_academic_phrase_reference(session)
 
 
+async def seed_measurement_catalog(session: AsyncSession) -> dict[str, Any] | None:
+    """Import the self-authored measurement catalog and propose APB Methods links (ADR-0015).
+
+    Both steps are idempotent: an unchanged catalog is a no-op and existing links are kept.
+    Proposals stay hidden until a curator approves them. Returns None when the packaged
+    catalog is absent (standalone backend build without seed data).
+    """
+    from aprkb.modules import load_models
+    from aprkb.modules.measurement.importer import import_catalog, load_catalog
+    from aprkb.modules.measurement.link_proposer import propose_links
+
+    # A bare `python -m aprkb.seeds.load` process has not imported every model; the import
+    # run and audit rows reference api_clients, so register all tables first.
+    load_models()
+    path = SEED_DIR / "measurement_catalog.json" if SEED_DIR is not None else None
+    if path is None or not path.is_file():
+        return None
+    policy = load_policy_bundle().measurement
+    imported = await import_catalog(
+        session, load_catalog(path, policy), actor_id=None, request_id="seed-measurement"
+    )
+    proposed = await propose_links(session, policy, request_id="seed-measurement-links")
+    return {"import": imported, "links": proposed}
+
+
 async def _main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--reference-only", action="store_true")
@@ -788,6 +813,16 @@ async def _main() -> None:
             else:
                 await run_seed(session)
             await session.commit()
+            # Reference data for the measurement catalog, in both profiles (ADR-0015).
+            measurement = await seed_measurement_catalog(session)
+        if measurement is None:
+            print("Measurement catalog: seed file not found; skipped.")
+        else:
+            result, links = measurement["import"], measurement["links"]
+            print(
+                f"Measurement catalog {result['catalog_version']}: {result['status']}; "
+                f"{links['created']} new link proposal(s) awaiting curator review."
+            )
     finally:
         await engine.dispose()
 

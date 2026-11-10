@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MeasurementSlotSuggestions } from "@/features/measurement";
 import { SlotValidationApiError, type Render, type SlotDefinition, type Version } from "../live/api";
 import { ErrorText } from "./WriterStatus";
 
@@ -73,6 +74,7 @@ export function WriterComposer({
                       onChange={(event) => onSlot(name, event.target.value)}
                     />
                     {hint && <FieldDescription>{hint}</FieldDescription>}
+                    <MeasurementSlotSuggestions patternId={version.pattern_id} slot={name} linkToCatalog={false} />
                     {fieldErrors[name] && (
                       <FieldError id={`${name}-error`} role="alert">
                         {fieldErrors[name]}

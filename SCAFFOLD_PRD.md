@@ -757,10 +757,11 @@ nguồn tới AI, ví dụ trong workbook tắt theo mặc định (`TODO(owner,
 ## Metric & Measurement extension (2026-11-09)
 
 Task 3 adds a separate, self-authored catalog of metrics, measurement methods and protocols,
-answering "how to measure" alongside the phrase core's "how to write". It is off by default
-(`MEASUREMENT_ENABLED`). It adds `/v1/measurements` read routes, curator import and slot-link
+answering "how to measure" alongside the phrase core's "how to write". It is behind
+`MEASUREMENT_ENABLED`, which is on by default (code and production compose); the seed initializer imports it. It adds `/v1/measurements` read routes, curator import and slot-link
 review under `/v1/admin/measurements`, and a `/measurements` page. Approved slot links only
 suggest values for a pattern slot (FR-07.5/AT-08: never auto-filled). While enabled,
 `/v1/validate` adds report-only `metric_warnings` (FR-08.2) without changing severity. It does
 not change ranking, render or pack export, and it adds no NLP extractor. `measurement-purge`
-removes the catalog. See ADR-0015.
+removes the catalog. Pattern-level links connect slot-less APB Methods templates;
+`measurement-propose-links` only proposes them for curator review. See ADR-0015.

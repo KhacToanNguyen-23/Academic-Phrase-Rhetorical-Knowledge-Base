@@ -25,7 +25,8 @@ RUN if [ "$INSTALL_NLP" = "true" ]; then \
 COPY apps/backend/src ./src
 COPY apps/backend/alembic.ini ./alembic.ini
 COPY apps/backend/migrations ./migrations
-COPY data/seed/taxonomy.json data/seed/reference_enums.json ./data/seed/
+COPY data/seed/taxonomy.json data/seed/reference_enums.json data/seed/measurement_catalog.json \
+     data/seed/academic_phrases.json data/seed/academic_phrase_facets.json ./data/seed/
 RUN if [ "$INSTALL_NLP" = "true" ]; then \
       uv sync --locked --no-dev --extra nlp; \
     else \

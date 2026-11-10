@@ -35,6 +35,23 @@ Confirm the server's SSH user and Tailscale address. Do not paste credentials in
 
 8. Check service health and logs. Verify `http://127.0.0.1:18080/v1/health` locally on the host and `http://<tailscale-ip>:18081/` from a Tailnet client. The web app sends `/v1/` requests through its Nginx proxy. Do not expose either port on a public interface.
 
+## Metric & Measurement catalog (ADR-0015)
+
+The steps above deploy the catalog. There is no extra command to run.
+
+- `docker-compose.prod.yml` sets `MEASUREMENT_ENABLED=true` for the API. To hide the
+  `/measurements` pages and `/v1/measurements` API, put `MEASUREMENT_ENABLED=false` in
+  `runtime.conf` and recreate the `api` container.
+- Step 6's `alembic upgrade head` creates the `measurement_*` tables.
+- Step 6's `python -m aprkb.seeds.load` imports the packaged
+  `data/seed/measurement_catalog.json` and prints `Measurement catalog <version>: imported`
+  (later runs print `unchanged`). It then proposes catalog links for the Academic Phrase Bank
+  Methods templates. Proposals stay hidden until a curator approves them on
+  `/measurements/<code>` ("Proposed links to review"). Re-running the initializer never
+  duplicates links or re-creates rejected ones.
+- Check with a curator key that `GET /v1/measurements?limit=1` returns the expected `catalog_version`.
+- Rollback: an older image ignores the catalog tables. Do not drop them.
+
 ## Updates and rollback
 
 Before each update, confirm the current volume and take another verified database backup. Deploy an immutable commit SHA as `IMAGE_TAG`, apply migrations, run the idempotent initializer again so new Phrasebank Basic JSON versions reach the database, and check API health and worker status. For an application rollback, redeploy the previous image tag. Do not downgrade the schema or remove the PostgreSQL/blob volumes as part of rollback. Review migration compatibility before rolling back application code.

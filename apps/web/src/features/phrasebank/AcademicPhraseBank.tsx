@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AcademicPhraseFilter, AcademicPhrase as AcademicPhraseType, DomainOption, FunctionOption, PragmaticFeatureOption, phrasebankSources } from "./source-registry";
+import { MeasurementPatternContext } from "@/features/measurement";
 
 export type APBFacetSelection = { code: string; version: string };
 export type APBFilterState = {
@@ -378,6 +379,7 @@ function AcademicPhraseDetail({ item }: { item: AcademicPhraseType }) {
           <p className="font-serif text-xl leading-8">{item.canonical_frame ?? "Phrase frame unavailable"}</p>
         </CardContent>
       </Card>
+      <MeasurementPatternContext patternId={item.id} />
       <Card>
         <CardHeader><CardTitle>Taxonomy and applicability</CardTitle></CardHeader>
         <CardContent><dl>

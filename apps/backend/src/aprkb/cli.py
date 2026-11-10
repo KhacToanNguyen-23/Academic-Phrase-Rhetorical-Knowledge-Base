@@ -419,6 +419,33 @@ async def _purge_measurement_catalog() -> None:
         await engine.dispose()
 
 
+async def _propose_measurement_links(*, dry_run: bool) -> None:
+    from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
+    from aprkb.modules.measurement.link_proposer import propose_links
+    from aprkb.policies.loader import load_policy_bundle
+
+    policy = load_policy_bundle().measurement
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            try:
+                counts = await propose_links(
+                    session, policy, request_id="cli-measurement-propose", dry_run=dry_run
+                )
+            except Exception:
+                await session.rollback()
+                raise
+        prefix = "Would propose" if dry_run else "Proposed"
+        print(
+            f"{prefix} {counts['created']} pattern link(s) from {counts['matches']} match(es) "
+            f"in {counts['patterns_scanned']} Methods pattern(s); "
+            f"{counts['already_linked']} already linked. Curator approval is still required."
+        )
+    finally:
+        await engine.dispose()
+
+
 async def _purge_reference_library() -> None:
     from aprkb.api.main import app as _app  # noqa: F401 - load all ORM models
     from aprkb.modules.reference_library.importer import purge_library
@@ -789,6 +816,11 @@ def main() -> None:
     commands.add_parser(
         "measurement-purge", help="Remove the measurement catalog and its slot links"
     )
+    propose = commands.add_parser(
+        "measurement-propose-links",
+        help="Propose catalog links for APB Methods patterns (curator review required)",
+    )
+    propose.add_argument("--dry-run", action="store_true")
     commands.add_parser(
         "export-reference-mapping-template",
         help="Print an empty reference-to-taxonomy mapping template",
@@ -854,6 +886,8 @@ def main() -> None:
         asyncio.run(_import_measurement_catalog(file_path=args.file))
     elif args.command == "measurement-purge":
         asyncio.run(_purge_measurement_catalog())
+    elif args.command == "measurement-propose-links":
+        asyncio.run(_propose_measurement_links(dry_run=args.dry_run))
     elif args.command == "purge-reference-library":
         asyncio.run(_purge_reference_library())
     elif args.command == "export-reference-mapping-template":

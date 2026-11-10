@@ -145,3 +145,11 @@ def test_relation_rules_follow_direction():
     assert POLICY.relation_allowed("uses_method", "metric", "method")
     assert not POLICY.relation_allowed("uses_method", "method", "metric")
     assert not POLICY.relation_allowed("unknown", "metric", "method")
+
+
+@pytest.mark.parametrize("codes", [[], ["DEFINE_METRIC", "DEFINE_METRIC"], ["define_metric"]])
+def test_invalid_link_proposal_function_codes_are_rejected(codes):
+    base = POLICY.model_dump(by_alias=True)
+    base["link_proposal_function_codes"] = codes
+    with pytest.raises(ValidationError):
+        MeasurementPolicy.model_validate(base)

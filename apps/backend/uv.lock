@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -100,6 +100,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.14" },
     { name = "asyncpg", specifier = ">=0.30" },
     { name = "en-core-web-sm", marker = "extra == 'nlp'", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" },
+    { name = "en-core-web-sm", marker = "extra == 'spacy'", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "google-auth", extras = ["requests"], specifier = ">=2.40" },
     { name = "httpx", specifier = ">=0.28" },
@@ -112,6 +113,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "sentence-transformers", marker = "extra == 'nlp'", specifier = ">=3.3" },
     { name = "spacy", marker = "extra == 'nlp'", specifier = ">=3.8,<3.9" },
+    { name = "spacy", marker = "extra == 'spacy'", specifier = ">=3.8" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "structlog", specifier = ">=24.4" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },

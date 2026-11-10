@@ -35,7 +35,6 @@ export function SigninPage({ next }: { next?: string }) {
       forgetRegistration();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Email sign-in failed.");
-      setPassword("");
     } finally {
       setBusy(false);
     }

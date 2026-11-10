@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
+from aprkb.modules.mining.frame_labels import FrameLabels
+from aprkb.modules.mining.frame_sections import FrameSectionDistribution
 from aprkb.modules.mining.schemas import SlotDefinition
 
 MiningStatus = Literal["not_started", "queued", "processing", "succeeded", "failed"]
@@ -93,12 +95,15 @@ class PhraseRead(BaseModel):
     status: str
     # True when provenance, licence or slot schema is not safe to accept (reject stays possible).
     blocked: bool
+    section_distribution: FrameSectionDistribution
+    labels: FrameLabels
     sources: list[PhraseSource]
 
 
 class PhrasePage(BaseModel):
     items: list[PhraseRead]
     total: int
+    filtered_reason_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class PhraseDecisionCreate(BaseModel):

@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     # TODO(owner, BR-10): bỏ trước khi lên production; app không khởi động nếu đặt ngoài local/test.
     slr_dev_fallback_license: str | None = None
     gold_labeler: str = "null"
+    frame_labeler: str = "null"
     groq_api_key: SecretStr | None = None
     groq_allow_external_processing: bool = False
 
@@ -86,6 +87,14 @@ class Settings(BaseSettings):
             raise ValueError("GOLD_LABELER must be null or groq")
         if self.gold_labeler == "groq" and self.app_env not in DEV_APP_ENVS:
             raise ValueError("GOLD_LABELER=groq is only allowed in local or test")
+        return self
+
+    @model_validator(mode="after")
+    def frame_labeler_dev_only(self) -> "Settings":
+        if self.frame_labeler not in {"null", "groq"}:
+            raise ValueError("FRAME_LABELER must be null or groq")
+        if self.frame_labeler == "groq" and self.app_env not in DEV_APP_ENVS:
+            raise ValueError("FRAME_LABELER=groq is only allowed in local or test")
         return self
 
     grobid_url: str = "http://localhost:8070"

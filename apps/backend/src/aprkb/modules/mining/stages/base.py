@@ -1,12 +1,18 @@
 """Pure batch stage interface for the mining pipeline."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 from uuid import UUID
 
 from aprkb.modules.mining.schemas import Ownership, SlotDefinition, Tense
+from aprkb.modules.mining.stages.epistemic_scorer import NO_SPACY_PROVENANCE
 from aprkb.nlp.features import TokenFeature
+
+if TYPE_CHECKING:
+    from spacy.tokens import Doc, Span
 
 
 @dataclass(frozen=True)
@@ -34,7 +40,11 @@ class MiningItem:
     modality: str | None = None
     ownership: Ownership = Ownership.UNCLEAR
     epistemic_strength: str | None = None
-    epistemic_status: Literal["assigned", "neutral", "ambiguous", "unknown"] = "unknown"
+    epistemic_status: Literal["assigned", "refuted", "neutral", "ambiguous", "unknown"] = "unknown"
+    epistemic_doc: Doc | Span | None = None
+    epistemic_score: float | None = None
+    epistemic_provenance: str = NO_SPACY_PROVENANCE
+    epistemic_modifiers: list[dict[str, object]] = field(default_factory=list)
     cluster_key: str | None = None
     confidence: float | None = None
     construction_id: str | None = None

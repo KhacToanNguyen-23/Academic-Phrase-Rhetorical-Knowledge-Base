@@ -58,6 +58,7 @@ def test_mining_filter_thresholds_come_from_validated_policy():
     policy = MiningFilterPolicy.model_validate(
         {
             "version": "0.1.0",
+            "frame_section_dominant_share_threshold": 0.6,
             "sentence_filter": {"min_words": 1, "max_words": 10},
             "noise_filter": {
                 "excluded_sections": [],

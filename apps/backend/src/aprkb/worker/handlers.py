@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import case, cast, delete, func, select
@@ -25,6 +26,11 @@ from aprkb.modules.mining.models import Candidate, Job
 from aprkb.modules.mining.pipeline import MiningPipeline
 from aprkb.modules.mining.stages import build_stages
 from aprkb.modules.mining.stages.base import MiningItem
+from aprkb.modules.mining.stages.epistemic_scorer import (
+    NO_SPACY_PROVENANCE,
+    SCORER_PROVENANCE,
+    EpistemicScorer,
+)
 from aprkb.nlp import NlpEngineInfo, SentenceAnalysis, SpacyEngine
 from aprkb.nlp.syntax import usable_tokens
 from aprkb.policies.loader import PolicyBundle, load_policy_bundle
@@ -33,6 +39,31 @@ from aprkb.worker.progress import report_progress
 ArticleSourceFactory = Callable[[str], ArticleSource]
 logger = get_logger(__name__)
 _SPACY_ENGINES: dict[str, SpacyEngine] = {}
+
+
+@dataclass(frozen=True)
+class WorkerNlpRuntime:
+    """spaCy model and scorer loaded once for the lifetime of one worker process."""
+
+    spacy_engine: SpacyEngine | None
+    epistemic_scorer: EpistemicScorer
+
+
+def initialize_worker_nlp_runtime(
+    policies: PolicyBundle | None = None,
+) -> WorkerNlpRuntime:
+    """Load optional spaCy resources once, keeping ordinary mining available on failure."""
+    policy_bundle = policies or load_policy_bundle()
+    scorer = EpistemicScorer(policy_bundle.epistemic_scoring)
+    try:
+        engine = _get_spacy_engine(settings.nlp_model)
+    except Exception as error:
+        logger.warning(
+            "spaCy unavailable; epistemic scoring disabled reason=%s",
+            type(error).__name__,
+        )
+        engine = None
+    return WorkerNlpRuntime(spacy_engine=engine, epistemic_scorer=scorer)
 
 
 def worker_article_source(name: str) -> ArticleSource:
@@ -104,6 +135,7 @@ async def handle_job(
     blob_store: BlobStore,
     *,
     article_source_factory: ArticleSourceFactory = worker_article_source,
+    nlp_runtime: WorkerNlpRuntime | None = None,
 ) -> str | None:
     await report_progress("checking_input")
     if job.type == IMPORT_JOB_TYPE:
@@ -128,6 +160,15 @@ async def handle_job(
             # worker's ownership lock early. Gold is not auto-retried.
             return "Gold labeling request failed"
         return None
+    if job.type == "label_frames":
+        from aprkb.modules.mining.labeling_service import label_candidate_frames
+
+        job.result = await label_candidate_frames(
+            session,
+            job_payload=job.payload,
+            request_id=str(job.id),
+        )
+        return None
     article_value = job.payload.get("article_id")
     if not isinstance(article_value, str):
         return "Job payload is missing article_id"
@@ -140,9 +181,9 @@ async def handle_job(
     if article is None:
         return "Article not found"
     if job.type == "ingest_article":
-        return await _ingest(session, article, blob_store)
+        return await _ingest(session, article, blob_store, nlp_runtime=nlp_runtime)
     if job.type == "mine_article":
-        return await _mine(session, article)
+        return await _mine(session, article, nlp_runtime=nlp_runtime)
     return "Unknown job type"
 
 
@@ -230,7 +271,13 @@ async def _import(
     return None
 
 
-async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore) -> str | None:
+async def _ingest(
+    session: AsyncSession,
+    article: Article,
+    blob_store: BlobStore,
+    *,
+    nlp_runtime: WorkerNlpRuntime | None = None,
+) -> str | None:
     await report_progress("checking_rights")
     license_row = await session.scalar(
         select(License).where(License.id == article.license_id).with_for_update()
@@ -253,7 +300,7 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
     await report_progress("parsing_document")
     policies = load_policy_bundle()
     try:
-        nlp_info, section_analyser = _build_section_analyser(policies)
+        nlp_info, section_analyser = _build_section_analyser(policies, nlp_runtime)
     except RuntimeError as error:
         article.ingest_status = "failed"
         return str(error)
@@ -295,11 +342,14 @@ async def _ingest(session: AsyncSession, article: Article, blob_store: BlobStore
 
 def _build_section_analyser(
     policies: PolicyBundle,
+    nlp_runtime: WorkerNlpRuntime | None = None,
 ) -> tuple[
     NlpEngineInfo,
     Callable[[str], list[tuple[str, int, int, dict[str, object] | None, str]]],
 ]:
-    if settings.nlp_engine == "regex":
+    if settings.nlp_engine == "regex" or (
+        nlp_runtime is not None and nlp_runtime.spacy_engine is None
+    ):
         info = NlpEngineInfo(
             engine="regex",
             spacy_version="",
@@ -321,7 +371,13 @@ def _build_section_analyser(
 
     if settings.nlp_engine != "spacy":
         raise RuntimeError(f"Unsupported NLP_ENGINE={settings.nlp_engine!r}")
-    engine = _get_spacy_engine(settings.nlp_model)
+    engine = (
+        nlp_runtime.spacy_engine
+        if nlp_runtime is not None
+        else _get_spacy_engine(settings.nlp_model)
+    )
+    if engine is None:
+        raise RuntimeError("NLP_ENGINE=spacy but spaCy model is unavailable")
 
     def spacy_analyse(text: str) -> list[tuple[str, int, int, dict[str, object] | None, str]]:
         return [
@@ -363,7 +419,11 @@ class ReingestResult:
 
 
 async def reingest_article(
-    session: AsyncSession, article: Article, blob_store: BlobStore
+    session: AsyncSession,
+    article: Article,
+    blob_store: BlobStore,
+    *,
+    nlp_runtime: WorkerNlpRuntime | None = None,
 ) -> ReingestResult:
     """Replace an article's sections and sentences after splitter or detector changes.
 
@@ -408,7 +468,7 @@ async def reingest_article(
     await session.execute(delete(ArticleSection).where(ArticleSection.article_id == article.id))
     await session.flush()
     article.ingest_status = "pending"
-    error = await _ingest(session, article, blob_store)
+    error = await _ingest(session, article, blob_store, nlp_runtime=nlp_runtime)
     await session.flush()
     after = len(
         list(await session.scalars(select(Sentence.id).where(Sentence.article_id == article.id)))
@@ -422,7 +482,12 @@ async def reingest_article(
     )
 
 
-async def _mine(session: AsyncSession, article: Article) -> str | None:
+async def _mine(
+    session: AsyncSession,
+    article: Article,
+    *,
+    nlp_runtime: WorkerNlpRuntime | None = None,
+) -> str | None:
     if article.ingest_status != "ready":
         return "Article ingestion is not ready"
     # Rights must be rechecked before querying any source sentence text.
@@ -445,7 +510,11 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
         return "Article has no parsed sentences"
     policies = load_policy_bundle()
     pipeline = MiningPipeline(
-        stages=build_stages(policy_bundle=policies, hybrid_enabled=settings.mining_hybrid_enabled)
+        stages=build_stages(
+            policy_bundle=policies,
+            hybrid_enabled=settings.mining_hybrid_enabled,
+            epistemic_scorer=(nlp_runtime.epistemic_scorer if nlp_runtime else None),
+        )
     )
     mining_rows: list[MiningItem] = []
     locator = _syntax_locator(article)
@@ -459,6 +528,27 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
                 tokens = usable_tokens(SentenceAnalysis.from_json(sentence.nlp_features))
             except ValueError:
                 tokens = None
+        epistemic_strength = None
+        epistemic_score = None
+        epistemic_status: Literal["assigned", "refuted", "neutral", "ambiguous", "unknown"] = (
+            "unknown"
+        )
+        epistemic_provenance = NO_SPACY_PROVENANCE
+        epistemic_modifiers: list[dict[str, object]] = []
+        if nlp_runtime is not None and nlp_runtime.spacy_engine is not None:
+            try:
+                parsed_doc = nlp_runtime.spacy_engine.parse(sentence.text)
+                result = nlp_runtime.epistemic_scorer.score(parsed_doc)
+                epistemic_strength = None if result.label == "negative_refuted" else result.label
+                epistemic_score = result.score
+                epistemic_status = "refuted" if result.label == "negative_refuted" else "assigned"
+                epistemic_provenance = SCORER_PROVENANCE
+                epistemic_modifiers = result.detected_modifiers
+            except Exception as error:
+                logger.warning(
+                    "Sentence parse failed; epistemic scoring skipped reason=%s",
+                    type(error).__name__,
+                )
         mining_rows.append(
             MiningItem(
                 text=sentence.text,
@@ -468,6 +558,11 @@ async def _mine(session: AsyncSession, article: Article) -> str | None:
                 previous_text=context,
                 tokens=tokens,
                 locator=locator if tokens is not None else None,
+                epistemic_strength=epistemic_strength,
+                epistemic_score=epistemic_score,
+                epistemic_status=epistemic_status,
+                epistemic_provenance=epistemic_provenance,
+                epistemic_modifiers=epistemic_modifiers,
             )
         )
         previous_text = sentence.text

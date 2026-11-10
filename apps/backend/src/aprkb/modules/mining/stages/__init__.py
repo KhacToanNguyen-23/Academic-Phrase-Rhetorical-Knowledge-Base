@@ -6,6 +6,7 @@ from aprkb.modules.mining.stages.construction_matcher import (
     ConstructionMatcher,
     ReportingWithConstruction,
 )
+from aprkb.modules.mining.stages.epistemic_scorer import EpistemicScorer
 from aprkb.modules.mining.stages.epistemic_tagger import EpistemicTagger
 from aprkb.modules.mining.stages.frame_normalizer import FrameNormalizer
 from aprkb.modules.mining.stages.hybrid_slot_engine import HybridSlotEngine
@@ -15,7 +16,12 @@ from aprkb.modules.mining.stages.todo import TodoMiningStage
 from aprkb.policies.loader import PolicyBundle
 
 
-def build_stages(*, policy_bundle: PolicyBundle, hybrid_enabled: bool = False) -> list[MiningStage]:
+def build_stages(
+    *,
+    policy_bundle: PolicyBundle,
+    hybrid_enabled: bool = False,
+    epistemic_scorer: EpistemicScorer | None = None,
+) -> list[MiningStage]:
     filter_policy = policy_bundle.mining_filter
     return [
         SentenceFilter(
@@ -45,7 +51,7 @@ def build_stages(*, policy_bundle: PolicyBundle, hybrid_enabled: bool = False) -
             if hybrid_enabled
             else None,
         ),
-        EpistemicTagger(policy_bundle.epistemic_markers),
+        EpistemicTagger(policy_bundle.epistemic_scoring, epistemic_scorer),
         FrameNormalizer(),
         Clusterer(policy_bundle),
         TodoMiningStage("dedup_matcher", "FR-06.2"),

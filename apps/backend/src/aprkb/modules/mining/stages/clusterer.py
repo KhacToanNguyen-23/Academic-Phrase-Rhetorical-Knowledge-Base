@@ -7,7 +7,7 @@ from dataclasses import replace
 from aprkb.modules.mining.stages.base import MiningItem, MiningStage
 from aprkb.policies.loader import PolicyBundle
 
-_REGEX_POLICY_VERSION = "0.2.0:0.2.0:0.2.0:0.1.0"
+_REGEX_POLICY_VERSION = "0.2.0:0.2.0:0.2.0:epistemic-score-0.1.0"
 
 
 class Clusterer(MiningStage):
@@ -20,7 +20,7 @@ class Clusterer(MiningStage):
                 policy.mining_filter.version,
                 policy.reporting_verbs.version,
                 policy.slot_abstraction.version,
-                policy.epistemic_markers.version,
+                policy.epistemic_scoring.version,
             )
         )
         self._class_patterns = [

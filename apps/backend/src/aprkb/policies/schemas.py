@@ -13,6 +13,205 @@ class VersionedPolicy(BaseModel):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
 
 
+class FrameFunctionAnchor(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]+$")
+    lemmas: list[str] = Field(min_length=1)
+    forms: dict[str, list[str]] = Field(min_length=1)
+    function_group: Literal[
+        "INTRODUCING_WORK",
+        "REFERRING_TO_SOURCES",
+        "DESCRIBING_METHODS",
+        "REPORTING_RESULTS",
+        "DISCUSSING_FINDINGS",
+        "WRITING_CONCLUSIONS",
+        "GENERAL_FUNCTIONS",
+    ]
+    intent_hint: str = Field(min_length=1)
+    confidence: Literal["high"] = "high"
+
+    @model_validator(mode="after")
+    def validate_forms(self) -> "FrameFunctionAnchor":
+        if set(self.forms) != set(self.lemmas) or any(
+            not values or any(not value.strip() for value in values)
+            for values in self.forms.values()
+        ):
+            raise ValueError("anchor forms must enumerate non-empty variants for each lemma")
+        variants = [form.casefold() for values in self.forms.values() for form in values]
+        if len(variants) != len(set(variants)):
+            raise ValueError("anchor forms must be unique within the anchor family")
+        return self
+
+
+class FrameFunctionAnchorsPolicy(VersionedPolicy):
+    requirement_id: Literal["FR-02"]
+    function_groups: list[
+        Literal[
+            "INTRODUCING_WORK",
+            "REFERRING_TO_SOURCES",
+            "DESCRIBING_METHODS",
+            "REPORTING_RESULTS",
+            "DISCUSSING_FINDINGS",
+            "WRITING_CONCLUSIONS",
+            "GENERAL_FUNCTIONS",
+        ]
+    ] = Field(min_length=1)
+    anchors: list[FrameFunctionAnchor] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_anchors(self) -> "FrameFunctionAnchorsPolicy":
+        ids = [anchor.id for anchor in self.anchors]
+        if len(ids) != len(set(ids)):
+            raise ValueError("frame function anchor ids must be unique")
+        groups = {anchor.function_group for anchor in self.anchors}
+        if len(self.function_groups) != len(set(self.function_groups)) or not groups <= set(
+            self.function_groups
+        ):
+            raise ValueError("frame function groups must be unique and include every anchor group")
+        if len(self.function_groups) != 7:
+            raise ValueError("frame function policy must enumerate all seven groups")
+        return self
+
+
+class FrameVocabularyEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")
+    name: str = Field(min_length=1)
+
+
+class FrameVocabularyParentEntry(FrameVocabularyEntry):
+    parent: str | None
+
+
+class FrameIntentEntry(FrameVocabularyParentEntry):
+    definition: str = Field(min_length=1)
+
+
+class FrameLabelVocabularyPolicy(VersionedPolicy):
+    requirement_id: Literal["FR-01"]
+    function_groups: list[FrameVocabularyEntry] = Field(min_length=3)
+    moves: list[FrameVocabularyParentEntry] = Field(min_length=3)
+    steps: list[FrameVocabularyParentEntry] = Field(min_length=3)
+    intents: list[FrameIntentEntry] = Field(min_length=3)
+    claim_types: list[FrameVocabularyEntry] = Field(min_length=3)
+    registers: list[FrameVocabularyEntry] = Field(min_length=3)
+    allowed_sections: list[FrameVocabularyEntry] = Field(min_length=3)
+    general_functions: list[FrameVocabularyEntry] = Field(min_length=3)
+    source_classes: list[FrameVocabularyEntry] = Field(min_length=5)
+
+    @model_validator(mode="after")
+    def validate_vocabulary(self) -> "FrameLabelVocabularyPolicy":
+        groups = [entry.code for entry in self.function_groups]
+        moves = [entry.code for entry in self.moves]
+        steps = [entry.code for entry in self.steps]
+        intents = [entry.code for entry in self.intents]
+        sentinels = {"unclear", "none_of_these"}
+        for field_name in (
+            "function_groups",
+            "moves",
+            "steps",
+            "intents",
+            "claim_types",
+            "registers",
+            "allowed_sections",
+            "general_functions",
+            "source_classes",
+        ):
+            entries = getattr(self, field_name)
+            codes = [entry.code for entry in entries]
+            if len(codes) != len(set(codes)):
+                raise ValueError(f"{field_name} codes must be unique")
+            if not sentinels <= set(codes):
+                raise ValueError(f"{field_name} must include unclear and none_of_these")
+
+        if set(groups) - sentinels != {
+            "INTRODUCING_WORK",
+            "REFERRING_TO_SOURCES",
+            "DESCRIBING_METHODS",
+            "REPORTING_RESULTS",
+            "DISCUSSING_FINDINGS",
+            "WRITING_CONCLUSIONS",
+            "GENERAL_FUNCTIONS",
+        }:
+            raise ValueError("function_groups must define the seven approved self-named groups")
+        if any(
+            entry.parent not in set(groups) - sentinels
+            for entry in self.moves
+            if entry.code not in sentinels
+        ):
+            raise ValueError("move parents must reference function groups")
+        if any(
+            entry.parent not in set(moves) - sentinels
+            for entry in self.steps
+            if entry.code not in sentinels
+        ):
+            raise ValueError("step parents must reference moves")
+        if any(
+            entry.parent not in set(steps) - sentinels
+            for entry in self.intents
+            if entry.code not in sentinels
+        ):
+            raise ValueError("intent parents must reference steps")
+
+        parent_by_code = {
+            entry.code: entry.parent
+            for entry in [*self.moves, *self.steps, *self.intents]
+            if entry.code not in sentinels
+        }
+        for code in parent_by_code:
+            visited: set[str] = set()
+            cursor: str | None = code
+            while cursor is not None:
+                if cursor in visited:
+                    raise ValueError("frame-label vocabulary hierarchy contains a cycle")
+                visited.add(cursor)
+                cursor = parent_by_code.get(cursor)
+        if not 25 <= len(set(intents) - sentinels) <= 40:
+            raise ValueError("vocabulary must define between 25 and 40 intent codes")
+        if {entry.code for entry in self.allowed_sections} - sentinels != {
+            "ABSTRACT",
+            "INTRO",
+            "RELATED_WORK",
+            "METHODS",
+            "RESULTS",
+            "DISCUSSION",
+            "CONCLUSION",
+        }:
+            raise ValueError("allowed_sections must define the existing IMRaD section codes")
+        if {entry.code for entry in self.source_classes} - sentinels != {
+            "authored",
+            "adapted-permission",
+            "corpus-inferred",
+        }:
+            raise ValueError(
+                "source_classes must define authored, adapted_permission, corpus_inferred"
+            )
+        return self
+
+    def function_group_for_intent(self, intent_code: str) -> str | None:
+        intents = {entry.code: entry.parent for entry in self.intents}
+        steps = {entry.code: entry.parent for entry in self.steps}
+        moves = {entry.code: entry.parent for entry in self.moves}
+        step_code = intents.get(intent_code)
+        move_code = steps.get(step_code or "")
+        return moves.get(move_code or "")
+
+
+class FrameLabelingPolicy(VersionedPolicy):
+    requirement_id: Literal["FR-01"]
+    provider: Literal["null", "groq"]
+    model: str = Field(min_length=1)
+    temperature: float = Field(ge=0, le=2)
+    batch_size: int = Field(ge=1, le=100)
+    requests_per_minute: int = Field(ge=1)
+    max_tokens: int = Field(ge=1)
+    max_rate_limit_wait_seconds: float = Field(ge=0)
+    prompt_version_a: str = Field(min_length=1)
+    prompt_version_b: str = Field(min_length=1)
+
+
 class VocabularySourceProfile(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -208,6 +407,8 @@ class NoiseFilterSettings(BaseModel):
 
 
 class MiningFilterPolicy(VersionedPolicy):
+    unknown_single_paper_filter: bool = True
+    frame_section_dominant_share_threshold: float = Field(gt=0, le=1)
     sentence_filter: SentenceFilterSettings
     syntax_filter: SyntaxFilterSettings = Field(default_factory=SyntaxFilterSettings)
     noise_filter: NoiseFilterSettings
@@ -854,10 +1055,18 @@ def _validate_pattern_map(patterns: dict[str, list[str]]) -> dict[str, list[str]
 
 class SectionHeadingsPolicy(VersionedPolicy):
     sections: dict[str, list[str]] = Field(min_length=1)
+    long_methods_parent_override: list[str] = Field(default_factory=list)
     non_rhetorical: dict[str, list[str]]
+    formal_blocks: dict[str, list[str]]
+    formal_block_policy: Literal["exclude", "inherit"] = "exclude"
+    appendix_patterns: list[str] = Field(default_factory=list)
     reset: list[str]
+    max_top_number_gap: int = Field(ge=1)
+    max_heading_length: int = Field(gt=0)
+    sentence_ending_punctuation: list[str]
+    code_keywords: list[str]
 
-    @field_validator("sections", "non_rhetorical")
+    @field_validator("sections", "non_rhetorical", "formal_blocks")
     @classmethod
     def validate_patterns(cls, patterns: dict[str, list[str]]) -> dict[str, list[str]]:
         return _validate_pattern_map(patterns)
@@ -867,6 +1076,26 @@ class SectionHeadingsPolicy(VersionedPolicy):
     def validate_reset(cls, patterns: list[str]) -> list[str]:
         _validate_pattern_map({"RESET": patterns} if patterns else {})
         return patterns
+
+    @field_validator("appendix_patterns")
+    @classmethod
+    def validate_appendix_patterns(cls, patterns: list[str]) -> list[str]:
+        _validate_pattern_map({"APPENDIX": patterns} if patterns else {})
+        return patterns
+
+    @field_validator("long_methods_parent_override")
+    @classmethod
+    def validate_long_methods_parent_override(cls, patterns: list[str]) -> list[str]:
+        _validate_pattern_map({"METHODS": patterns} if patterns else {})
+        return patterns
+
+    @field_validator("sentence_ending_punctuation", "code_keywords")
+    @classmethod
+    def validate_heading_guards(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().casefold() for value in values]
+        if any(not value for value in normalized) or len(normalized) != len(set(normalized)):
+            raise ValueError("heading guard lists must contain unique non-empty entries")
+        return values
 
     @model_validator(mode="after")
     def validate_disjoint_codes(self) -> "SectionHeadingsPolicy":
@@ -1019,3 +1248,74 @@ class EpistemicMarkersPolicy(VersionedPolicy):
             strength: [*values, *self.mining_only_markers.get(strength, [])]
             for strength, values in self.markers.items()
         }
+
+
+class EpistemicScoringPolicy(VersionedPolicy):
+    """Offline compositional scoring lexicons, weights, and category thresholds."""
+
+    baseline_terms: dict[Literal["low", "moderate", "high", "absolute"], list[str]]
+    baseline_scores: dict[Literal["low", "moderate", "high", "absolute"], float]
+    default_score: float = 0.5
+    thresholds: dict[Literal["moderate", "high", "absolute"], float]
+    modal_terms: dict[Literal["possibility", "assertive", "conditional"], list[str]]
+    modal_deltas: dict[Literal["possibility", "assertive", "conditional"], float]
+    possibility_modal_cap: float = 0.8
+    adverb_terms: dict[Literal["maximal", "strong", "downtoner"], list[str]]
+    adverb_deltas: dict[Literal["maximal", "strong", "downtoner"], float]
+    negation_terms: list[str]
+    negative_control_lemmas: list[str]
+    doubt_quantifiers: list[str]
+    doubt_context_delta: float = 2.5
+    evidence_downtoners: list[str]
+    evidence_context_delta: float = -1.5
+    strong_evidence_adjectives: list[str]
+
+    @model_validator(mode="after")
+    def validate_scoring_policy(self) -> "EpistemicScoringPolicy":
+        strength_tiers = {"low", "moderate", "high", "absolute"}
+        if (
+            set(self.baseline_terms) != strength_tiers
+            or set(self.baseline_scores) != strength_tiers
+        ):
+            raise ValueError("baseline terms and scores must define all four strength tiers")
+        if set(self.thresholds) != {"moderate", "high", "absolute"}:
+            raise ValueError("thresholds must define moderate, high, and absolute")
+        if set(self.modal_terms) != set(self.modal_deltas) or set(self.modal_terms) != {
+            "possibility",
+            "assertive",
+            "conditional",
+        }:
+            raise ValueError("modal terms and deltas must define all three modal groups")
+        if set(self.adverb_terms) != set(self.adverb_deltas) or set(self.adverb_terms) != {
+            "maximal",
+            "strong",
+            "downtoner",
+        }:
+            raise ValueError("adverb terms and deltas must define all three modifier groups")
+        if not (
+            0 < self.thresholds["moderate"] < self.thresholds["high"] < self.thresholds["absolute"]
+        ):
+            raise ValueError("strength thresholds must be positive and strictly increasing")
+        if any(
+            not values
+            for values in (
+                *self.baseline_terms.values(),
+                *self.modal_terms.values(),
+                *self.adverb_terms.values(),
+            )
+        ):
+            raise ValueError("scoring lexicon groups must not be empty")
+        for values in (
+            *self.baseline_terms.values(),
+            *self.modal_terms.values(),
+            *self.adverb_terms.values(),
+            self.negation_terms,
+            self.negative_control_lemmas,
+            self.doubt_quantifiers,
+            self.evidence_downtoners,
+            self.strong_evidence_adjectives,
+        ):
+            normalized = [value.strip().casefold() for value in values]
+            if any(not value for value in normalized) or len(normalized) != len(set(normalized)):
+                raise ValueError("scoring lexicons must contain unique, non-empty entries")
+        return self

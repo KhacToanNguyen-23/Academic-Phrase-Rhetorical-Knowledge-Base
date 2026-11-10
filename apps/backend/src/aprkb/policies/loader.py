@@ -12,8 +12,12 @@ from aprkb.policies.schemas import (
     ConstructionVerbGroupPolicy,
     DiversityPolicy,
     EpistemicMarkersPolicy,
+    EpistemicScoringPolicy,
     EvidenceMatrixPolicy,
     FallbackTiersPolicy,
+    FrameFunctionAnchorsPolicy,
+    FrameLabelingPolicy,
+    FrameLabelVocabularyPolicy,
     GoldLabelingPolicy,
     GoldSamplingPolicy,
     HybridConstructionsPolicy,
@@ -55,6 +59,10 @@ class PolicyBundle:
     construction_verb_groups: ConstructionVerbGroupPolicy
     hybrid_constructions: HybridConstructionsPolicy
     phrase_stats: PhraseStatsPolicy
+    epistemic_scoring: EpistemicScoringPolicy
+    frame_function_anchors: FrameFunctionAnchorsPolicy
+    frame_label_vocabulary: FrameLabelVocabularyPolicy
+    frame_labeling: FrameLabelingPolicy
     vocabulary_import: VocabularyImportPolicy
 
 
@@ -70,7 +78,7 @@ def _load[PolicyModel: BaseModel](path: Path, model: type[PolicyModel]) -> Polic
 def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
     """Load all policy files, failing startup on missing or invalid policy data."""
     root = Path(policy_dir) if policy_dir is not None else Path(__file__).parent
-    return PolicyBundle(
+    bundle = PolicyBundle(
         diversity=_load(root / "diversity.yaml", DiversityPolicy),
         licenses=_load(root / "licenses.yaml", LicensesPolicy),
         ranking_weights=_load(root / "ranking_weights.yaml", RankingWeightsPolicy),
@@ -82,6 +90,7 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
             root / "lexicon" / "epistemic_markers.yaml", EpistemicMarkersPolicy
         ),
         mining_filter=_load(root / "mining_filter.yaml", MiningFilterPolicy),
+        epistemic_scoring=_load(root / "epistemic_scoring.yaml", EpistemicScoringPolicy),
         abbreviations=_load(root / "lexicon" / "abbreviations.yaml", AbbreviationsPolicy),
         section_headings=_load(root / "section_headings.yaml", SectionHeadingsPolicy),
         gold_sampling=_load(root / "gold_sampling.yaml", GoldSamplingPolicy),
@@ -96,5 +105,20 @@ def load_policy_bundle(policy_dir: Path | str | None = None) -> PolicyBundle:
         ),
         hybrid_constructions=_load(root / "hybrid_constructions.yaml", HybridConstructionsPolicy),
         phrase_stats=_load(root / "phrase_stats.yaml", PhraseStatsPolicy),
+        frame_function_anchors=_load(
+            root / "frame_function_anchors.yaml", FrameFunctionAnchorsPolicy
+        ),
+        frame_label_vocabulary=_load(
+            root / "frame_label_vocabulary.yaml", FrameLabelVocabularyPolicy
+        ),
+        frame_labeling=_load(root / "frame_labeling.yaml", FrameLabelingPolicy),
         vocabulary_import=_load(root / "vocabulary_import.yaml", VocabularyImportPolicy),
     )
+    intent_groups = {
+        anchor.intent_hint: anchor.function_group
+        for anchor in bundle.frame_function_anchors.anchors
+    }
+    for intent_code, function_group in intent_groups.items():
+        if bundle.frame_label_vocabulary.function_group_for_intent(intent_code) != function_group:
+            raise ValueError(f"Anchor intent {intent_code!r} does not map to its function group")
+    return bundle

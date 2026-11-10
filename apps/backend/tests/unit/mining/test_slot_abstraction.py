@@ -65,7 +65,7 @@ def test_tense_strength_and_ownership_are_separate_cluster_keys():
     assert len(results) == 4
     assert results[0].tense == "present"
     assert results[1].tense == "past"
-    assert results[2].epistemic_strength == "absolute"
+    assert results[2].epistemic_strength is None
     assert results[3].ownership == "prior"
     assert len({result.cluster_key for result in results}) == 4
 

@@ -5,6 +5,7 @@ needs no intent and does not feed recommendations. Provenance and licence are re
 decision time (fail closed), and no article text is written to the audit trail.
 """
 
+from collections import Counter
 from typing import Any
 from uuid import UUID
 
@@ -36,7 +37,15 @@ from aprkb.modules.extraction.schemas import (
     SentenceText,
 )
 from aprkb.modules.identity.models import ApiClient
+from aprkb.modules.mining import candidate_label_repository
+from aprkb.modules.mining.frame_labels import (
+    FrameSourceLabelData,
+    build_frame_labels,
+    overlay_candidate_labels,
+)
+from aprkb.modules.mining.frame_sections import FrameSectionDistribution, summarize_frame_sections
 from aprkb.modules.mining.models import Candidate
+from aprkb.modules.mining.read_filter import unknown_single_paper_reason
 from aprkb.modules.mining.schemas import SlotDefinition, is_safe_masked_frame
 from aprkb.modules.review.repository import lock_candidate
 from aprkb.policies.loader import load_policy_bundle
@@ -44,6 +53,7 @@ from aprkb.policies.schemas import is_safe_construction_frame, is_safe_hybrid_fr
 
 logger = get_logger(__name__)
 _POLICIES = load_policy_bundle()
+_SECTION_SCAN_SIZE = 250
 _REPORTING_FORMS = _POLICIES.reporting_verbs.all_forms
 _LEAD_INS = _POLICIES.lead_ins.lead_ins
 
@@ -116,12 +126,78 @@ async def list_phrases(
     limit: int,
     offset: int,
 ) -> PhrasePage:
-    candidates, total = await repository.list_phrases(
-        session, status=status, scope=scope, limit=limit, offset=offset
-    )
+    policy = _POLICIES.mining_filter
+    threshold = policy.frame_section_dominant_share_threshold
+    filter_enabled = policy.unknown_single_paper_filter
+    filtered_reasons: Counter[str] = Counter()
+    distributions: dict[UUID, FrameSectionDistribution] = {}
+    if filter_enabled:
+        candidates: list[Candidate] = []
+        eligible_page: list[Candidate] = []
+        total_unfiltered = await repository.count_phrases(session, status=status, scope=scope)
+        scanned = eligible_count = 0
+        while scanned < total_unfiltered:
+            batch, _ = await repository.list_phrases(
+                session,
+                status=status,
+                scope=scope,
+                limit=_SECTION_SCAN_SIZE,
+                offset=scanned,
+            )
+            if not batch:
+                break
+            sources_by_candidate = await repository.candidate_section_sources(
+                session, [candidate.id for candidate in batch]
+            )
+            for candidate in batch:
+                distribution = summarize_frame_sections(
+                    sources_by_candidate.get(candidate.id, []),
+                    dominant_share_threshold=threshold,
+                )
+                reason = unknown_single_paper_reason(distribution, enabled=True)
+                if reason is not None:
+                    filtered_reasons[reason] += 1
+                    continue
+                distributions[candidate.id] = distribution
+                if offset <= eligible_count < offset + limit:
+                    eligible_page.append(candidate)
+                eligible_count += 1
+            scanned += len(batch)
+        candidates = eligible_page
+        total = eligible_count
+    else:
+        candidates, total = await repository.list_phrases(
+            session, status=status, scope=scope, limit=limit, offset=offset
+        )
+        sources_by_candidate = await repository.candidate_section_sources(
+            session, [candidate.id for candidate in candidates]
+        )
+        distributions = {
+            candidate.id: summarize_frame_sections(
+                sources_by_candidate.get(candidate.id, []),
+                dominant_share_threshold=threshold,
+            )
+            for candidate in candidates
+        }
     sentence_ids = sorted({sid for item in candidates for sid in item.source_sentence_ids})
     rows = await repository.source_rows(session, sentence_ids)
-    return PhrasePage(items=[_to_phrase(item, rows) for item in candidates], total=total)
+    labels_by_candidate = await candidate_label_repository.labels_for_candidates(
+        session, [candidate.id for candidate in candidates]
+    )
+    return PhrasePage(
+        items=[
+            _to_phrase(
+                item,
+                rows,
+                distributions[item.id],
+                threshold=threshold,
+                candidate_labels=labels_by_candidate.get(item.id, []),
+            )
+            for item in candidates
+        ],
+        total=total,
+        filtered_reason_counts=dict(sorted(filtered_reasons.items())),
+    )
 
 
 def _required(scope: ColumnElement[bool] | None) -> ColumnElement[bool]:
@@ -173,7 +249,14 @@ def _relative_spans(candidate: Candidate, sentence_id: UUID) -> dict[str, tuple[
     return {}
 
 
-def _to_phrase(candidate: Candidate, rows: dict[UUID, repository.SourceRow]) -> PhraseRead:
+def _to_phrase(
+    candidate: Candidate,
+    rows: dict[UUID, repository.SourceRow],
+    distribution: FrameSectionDistribution,
+    *,
+    threshold: float,
+    candidate_labels: list[dict[str, Any]],
+) -> PhraseRead:
     sources: list[PhraseSource] = []
     blocked = not candidate.source_sentence_ids or not _is_safe(candidate)
     for sentence_id in candidate.source_sentence_ids:
@@ -192,6 +275,35 @@ def _to_phrase(candidate: Candidate, rows: dict[UUID, repository.SourceRow]) -> 
                 slot_spans=_relative_spans(candidate, sentence_id),
             )
         )
+    label_sources = [
+        FrameSourceLabelData(
+            article_id=str(row.article_id),
+            genre_code=row.genre_code,
+            license_code=row.license_code,
+            allows_mining=row.allows_mining,
+            allows_display=row.allows_display,
+        )
+        for sentence_id in candidate.source_sentence_ids
+        if (row := rows.get(sentence_id)) is not None
+    ]
+    label_sources.extend(
+        FrameSourceLabelData(article_id="unknown")
+        for sentence_id in candidate.source_sentence_ids
+        if sentence_id not in rows
+    )
+    typed_slots = _typed_slots(candidate) or {}
+    labels = build_frame_labels(
+        canonical_frame=candidate.canonical_frame,
+        slot_types={name: slot.type.value for name, slot in typed_slots.items()},
+        epistemic_strength=candidate.epistemic_strength,
+        source_sentence_count=len(candidate.source_sentence_ids),
+        cluster_key=candidate.cluster_key,
+        sources=label_sources,
+        section_distribution=distribution,
+        dominant_share_threshold=threshold,
+        anchor_policy=_POLICIES.frame_function_anchors,
+    )
+    labels = overlay_candidate_labels(labels, candidate_labels)
     return PhraseRead(
         id=candidate.id,
         canonical_frame=candidate.canonical_frame,
@@ -199,6 +311,8 @@ def _to_phrase(candidate: Candidate, rows: dict[UUID, repository.SourceRow]) -> 
         epistemic_strength=candidate.epistemic_strength,
         status=candidate.status,
         blocked=blocked,
+        section_distribution=distribution,
+        labels=labels,
         sources=sources,
     )
 

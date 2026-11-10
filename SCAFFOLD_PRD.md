@@ -735,3 +735,22 @@ curator/admin manual retry, per-attempt error history, live stage progress and i
 repeated-failure alerts. See ADR-0013 and ADR-0014. This adds `/jobs` and the documented
 admin job APIs; it does not introduce Redis/Celery, bypass license checks, change
 Extract/Publication review rules or automatically send external notifications.
+
+**Cập nhật scaffold (2026-11-08):** theo quyết định owner, scaffold bổ sung record nhãn frame
+chỉ đọc và đề xuất lexical anchor cho một số frame (`FR-01`, `FR-02`). Mọi giá trị có status;
+anchor chỉ tạo `proposed`, chưa xác nhận hay tham gia recommendation. Classifier tổng quát cho
+nhãn group-3 (intent, move, step, claim type, register, general function) vẫn ngoài phạm vi;
+curation import chưa được triển khai (`TODO(owner, FR-01)`). Epistemic strength chỉ được đo bằng
+tagger hiện có, không thay lexicon hay thuật toán (`TODO(owner, FR-06)`).
+
+**Cập nhật quyết định nhãn frame AI (2026-11-08, FR-01/FR-02):** nhãn judgment được đề xuất
+qua hai lượt độc lập trong job PostgreSQL `label_frames`; API, extraction và recommendation
+không gọi LLM đồng bộ. `FRAME_LABELER=null` là mặc định; Groq chỉ được bật trong `local` hoặc
+`test`, khi `GROQ_ALLOW_EXTERNAL_PROCESSING=true` và khóa chỉ có trong `.env` cục bộ. Worker
+kiểm tra quyền mining và display của mọi nguồn trước khi gửi frame đã che slot cùng metadata
+được phép; không gửi câu nguồn hay văn bản bài báo. Lượt hai so độ ổn định, không phải độ đúng;
+chưa có gold set. `candidate_labels` tách proposal khỏi nhãn đã xác nhận; curator xếp job tại
+`POST /v1/admin/mining/frames/label`, reviewer xem `GET /v1/admin/mining/frames` và duyệt hàng
+loạt qua `POST /v1/admin/mining/frames/decisions`. Chỉ nhãn `derived` và `confirmed` được dùng
+cho recommendation. Từ vựng và luật còn provisional (`TODO(owner, FR-01)`); cấm gửi ví dụ câu
+nguồn tới AI, ví dụ trong workbook tắt theo mặc định (`TODO(owner, FR-01)`).

@@ -1,79 +1,61 @@
 """Deterministic epistemic strength tagging from the reviewed marker policy."""
 
-import re
+from __future__ import annotations
+
 from dataclasses import replace
-from typing import Literal
+from typing import TYPE_CHECKING
 
 from aprkb.modules.mining.stages.base import MiningItem, MiningStage
-from aprkb.policies.schemas import EpistemicMarkersPolicy
+from aprkb.modules.mining.stages.epistemic_scorer import (
+    NO_SPACY_PROVENANCE,
+    SCORER_PROVENANCE,
+    EpistemicScorer,
+)
+
+if TYPE_CHECKING:
+    from aprkb.policies.schemas import EpistemicScoringPolicy
 
 
 class EpistemicTagger(MiningStage):
     name = "epistemic_tagger"
     requirement_id = "FR-06.2"
 
-    def __init__(self, policy: EpistemicMarkersPolicy) -> None:
-        markers_by_strength = policy.mining_markers
-        irregular_strength = {
-            base.casefold(): strength
-            for strength, markers in markers_by_strength.items()
-            for base in markers
-        }
-        self._markers = {
-            strength: tuple(
-                re.compile(rf"(?<!\w){re.escape(marker)}(?!\w)", re.IGNORECASE)
-                for marker in sorted(
-                    [
-                        *values,
-                        *(
-                            form
-                            for base, forms in policy.irregular_forms.items()
-                            if irregular_strength.get(base.casefold()) == strength
-                            for form in forms
-                        ),
-                    ],
-                    key=len,
-                    reverse=True,
-                )
-            )
-            for strength, values in markers_by_strength.items()
-        }
-        self._neutral = tuple(
-            re.compile(rf"(?<!\w){re.escape(verb)}(?!\w)", re.IGNORECASE)
-            for verb in sorted(policy.neutral_verbs, key=len, reverse=True)
-        )
+    def __init__(
+        self, policy: EpistemicScoringPolicy, scorer: EpistemicScorer | None = None
+    ) -> None:
+        self._scorer = scorer or EpistemicScorer(policy)
 
     def process(self, batch: list[MiningItem]) -> list[MiningItem]:
         tagged = []
         for item in batch:
-            strength, status = self._tags(item.text)
-            tagged.append(replace(item, epistemic_strength=strength, epistemic_status=status))
+            if item.epistemic_provenance == SCORER_PROVENANCE:
+                tagged.append(item)
+                continue
+            if item.epistemic_doc is None:
+                tagged.append(
+                    replace(
+                        item,
+                        epistemic_strength=None,
+                        epistemic_status="unknown",
+                        epistemic_score=None,
+                        epistemic_provenance=NO_SPACY_PROVENANCE,
+                        epistemic_modifiers=[],
+                    )
+                )
+                continue
+            result = self._scorer.score(item.epistemic_doc)
+            tagged.append(
+                replace(
+                    item,
+                    epistemic_strength=(
+                        None if result.label == "negative_refuted" else result.label
+                    ),
+                    epistemic_status=(
+                        "refuted" if result.label == "negative_refuted" else "assigned"
+                    ),
+                    epistemic_score=result.score,
+                    epistemic_provenance=SCORER_PROVENANCE,
+                    epistemic_modifiers=result.detected_modifiers,
+                )
+            )
         return tagged
-
-    def _tags(
-        self, text: str
-    ) -> tuple[str | None, Literal["assigned", "neutral", "ambiguous", "unknown"]]:
-        strengths = self._strengths(text)
-        if len(strengths) == 1:
-            return next(iter(strengths)), "assigned"
-        if len(strengths) > 1:
-            return None, "ambiguous"
-        if any(pattern.search(text) for pattern in self._neutral):
-            return None, "neutral"
-        return None, "unknown"
-
-    def _strength(self, text: str) -> str | None:
-        found = self._strengths(text)
-        return next(iter(found)) if len(found) == 1 else None
-
-    def _strengths(self, text: str) -> set[str]:
-        found: set[str] = set()
-        for strength, patterns in self._markers.items():
-            for pattern in patterns:
-                for match in pattern.finditer(text):
-                    prefix = text[: match.start()]
-                    if re.search(r"\b(?:not|never|no)\b(?:\W+\w+){0,2}\W*$", prefix, re.I):
-                        continue
-                    found.add(strength)
-                    break
-        return found

@@ -188,6 +188,12 @@ suggestions; a slot is never filled automatically (FR-07.5, AT-08). To enable th
 Re-importing the same file is a no-op. Codes that disappear from a new catalog are reported, not
 deleted. Remove everything with `uv run python -m aprkb.cli measurement-purge`.
 
+Academic Phrase Bank Methods templates have no slots, so they use pattern-level links.
+`uv run python -m aprkb.cli measurement-propose-links [--dry-run]` proposes them from catalog
+terms found in the frames of APB Methods functions. A curator approves or rejects each
+proposal on the measurement entry page. Approved links show as "Measurement context" on the
+pattern page.
+
 While the flag is on, `/v1/validate` also returns report-only `metric_warnings` (FR-08.2):
 catalog metrics that the sentence names but the writer's slots or context do not. They never
 change the validation severity. See ADR-0015.

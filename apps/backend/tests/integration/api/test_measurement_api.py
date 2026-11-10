@@ -1,5 +1,6 @@
 """PostgreSQL tests for the separate Metric & Measurement catalog (ADR-0015)."""
 
+import json
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from aprkb.modules.audit.models import AuditEvent
 from aprkb.modules.identity.service import create_api_key
 from aprkb.modules.measurement.models import MeasurementEntry, MeasurementRelation
 from aprkb.modules.patterns.models import PatternVersion, PhrasePattern
+from aprkb.policies.loader import load_policy_bundle
 from aprkb.seeds.load import run_seed
 
 SEED = Path(__file__).resolve().parents[5] / "data/seed/measurement_catalog.json"
@@ -113,7 +115,9 @@ async def test_import_is_idempotent_and_read_api_filters(api_client, session_fac
     metrics = await api_client.get("/v1/measurements?kind=metric", headers=client)
     assert metrics.status_code == 200
     body = metrics.json()
-    assert body["catalog_version"] == "0.1.0"
+    assert (
+        body["catalog_version"] == json.loads(SEED.read_text(encoding="utf-8"))["catalog_version"]
+    )
     assert body["items"] and {item["kind"] for item in body["items"]} == {"metric"}
 
     by_alias = await api_client.get("/v1/measurements?q=five-point", headers=client)
@@ -298,7 +302,7 @@ async def test_validate_reports_undeclared_catalog_metric_without_changing_sever
         ("cohens_kappa", (28, 41))
     ]
     assert any("Cohen's kappa" in warning for warning in body["warnings"])
-    assert body["policy_versions"]["measurement"] == "0.2.0"
+    assert body["policy_versions"]["measurement"] == load_policy_bundle().measurement.version
     # Report-only: the rule outcomes, severity and completeness match the flag-off run.
     for field in ("severity", "complete", "rules", "checks_unavailable"):
         assert body[field] == baseline.json()[field]
@@ -341,3 +345,124 @@ async def test_purge_removes_catalog_links_and_runs_with_audit(api_client, sessi
     # A purge resets idempotency: the same file imports again.
     again = await _import_seed(api_client, curator)
     assert again.json()["status"] == "imported"
+
+
+@pytest.mark.asyncio
+async def test_pattern_level_links_and_pattern_measurements(api_client, session_factory):
+    curator = await _key(session_factory, "curator")
+    client = await _key(session_factory, "client")
+    await _import_seed(api_client, curator)
+    pattern_id, _ = await _pattern_with_slot(session_factory)
+    url = "/v1/admin/measurements/slot-links"
+
+    created = await api_client.post(
+        url, headers=curator, json={"entry_code": "likert_5_point", "pattern_id": pattern_id}
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["slot_name"] is None
+    assert created.json()["origin"] == "manual"
+    duplicate = await api_client.post(
+        url, headers=curator, json={"entry_code": "likert_5_point", "pattern_id": pattern_id}
+    )
+    assert duplicate.status_code == 409
+
+    context_url = f"/v1/measurements/pattern-measurements?pattern_id={pattern_id}"
+    assert (await api_client.get(context_url, headers=client)).json()["items"] == []
+    await api_client.post(
+        f"{url}/{created.json()['id']}/review", headers=curator, json={"decision": "approved"}
+    )
+    items = (await api_client.get(context_url, headers=client)).json()["items"]
+    assert [(item["code"], item["slot_name"]) for item in items] == [("likert_5_point", None)]
+    detail = await api_client.get("/v1/measurements/likert_5_point", headers=client)
+    assert [link["slot_name"] for link in detail.json()["slot_links"]] == [None]
+
+
+@pytest.mark.asyncio
+async def test_propose_links_matches_apb_methods_patterns_once(api_client, session_factory):
+    from aprkb.modules.measurement.link_proposer import propose_links
+    from aprkb.modules.measurement.models import MeasurementSlotLink
+    from aprkb.policies.loader import load_policy_bundle
+
+    curator = await _key(session_factory, "curator")
+    await _import_seed(api_client, curator)
+    policy = load_policy_bundle().measurement
+
+    async with session_factory() as session:
+        dry = await propose_links(session, policy, request_id="t-dry", dry_run=True)
+    async with session_factory() as session:
+        assert await session.scalar(select(func.count()).select_from(MeasurementSlotLink)) == 0
+    assert dry["patterns_scanned"] > 0 and dry["created"] > 0
+
+    async with session_factory() as session:
+        first = await propose_links(session, policy, request_id="t-1")
+    assert first["created"] == dry["created"]
+    async with session_factory() as session:
+        links = (await session.scalars(select(MeasurementSlotLink))).all()
+        codes = {
+            code
+            for (code,) in (
+                await session.execute(
+                    select(MeasurementEntry.code).join(
+                        MeasurementSlotLink, MeasurementSlotLink.entry_id == MeasurementEntry.id
+                    )
+                )
+            ).all()
+        }
+    assert all(
+        link.review_status == "proposed" and link.origin == "term_match" and link.slot_name is None
+        for link in links
+    )
+    assert "likert_5_point" in codes
+
+    # Proposals stay hidden until approved.
+    client = await _key(session_factory, "client")
+    hidden = await api_client.get(
+        f"/v1/measurements/pattern-measurements?pattern_id={links[0].pattern_id}",
+        headers=client,
+    )
+    assert hidden.json()["items"] == []
+
+    # A rejected proposal is never recreated; a rerun creates nothing new.
+    await api_client.post(
+        f"/v1/admin/measurements/slot-links/{links[0].id}/review",
+        headers=curator,
+        json={"decision": "rejected"},
+    )
+    async with session_factory() as session:
+        second = await propose_links(session, policy, request_id="t-2")
+    assert second["created"] == 0
+    assert second["already_linked"] == first["created"]
+
+
+@pytest.mark.asyncio
+async def test_pattern_link_migration_round_trip(postgres_test_engine):
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import text
+
+    root = Path(__file__).resolve().parents[3]
+    async with postgres_test_engine.begin() as connection:
+        schema = await connection.scalar(text("SELECT current_schema()"))
+
+        def migrate(sync, target: str, *, up: bool) -> None:
+            config = Config(str(root / "alembic.ini"))
+            config.set_main_option("script_location", str(root / "migrations"))
+            config.attributes["connection"] = sync
+            config.attributes["version_table_schema"] = schema
+            (command.upgrade if up else command.downgrade)(config, target)
+
+        async def column(name: str) -> str | None:
+            return await connection.scalar(
+                text(
+                    "SELECT is_nullable FROM information_schema.columns "
+                    "WHERE table_schema = current_schema() "
+                    "AND table_name = 'measurement_slot_links' AND column_name = :name"
+                ),
+                {"name": name},
+            )
+
+        assert await column("slot_name") == "YES" and await column("origin") == "NO"
+        await connection.run_sync(migrate, "0021_apb_offline_proposals", up=False)
+        assert await column("slot_name") == "NO" and await column("origin") is None
+        await connection.run_sync(migrate, "head", up=True)
+        assert await column("slot_name") == "YES"

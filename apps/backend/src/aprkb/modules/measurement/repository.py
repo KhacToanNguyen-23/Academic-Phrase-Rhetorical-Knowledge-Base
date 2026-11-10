@@ -6,6 +6,10 @@ from sqlalchemy import String, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from aprkb.modules.academic_phrase_bank.models import (
+    CommunicativeFunction,
+    PatternVersionFunction,
+)
 from aprkb.modules.measurement.metric_check import MetricTerms
 from aprkb.modules.measurement.models import (
     MeasurementEntry,
@@ -123,13 +127,18 @@ async def current_slots(session: AsyncSession, pattern_id: UUID) -> dict[str, ob
 
 
 async def find_link(
-    session: AsyncSession, *, entry_id: UUID, pattern_id: UUID, slot_name: str
+    session: AsyncSession, *, entry_id: UUID, pattern_id: UUID, slot_name: str | None
 ) -> MeasurementSlotLink | None:
+    slot_filter = (
+        MeasurementSlotLink.slot_name.is_(None)
+        if slot_name is None
+        else MeasurementSlotLink.slot_name == slot_name
+    )
     return await session.scalar(
         select(MeasurementSlotLink).where(
             MeasurementSlotLink.entry_id == entry_id,
             MeasurementSlotLink.pattern_id == pattern_id,
-            MeasurementSlotLink.slot_name == slot_name,
+            slot_filter,
         )
     )
 
@@ -144,3 +153,33 @@ async def metric_terms(session: AsyncSession) -> list[MetricTerms]:
     return [
         MetricTerms(code=entry.code, name=entry.name, terms=tuple(entry.aliases)) for entry in rows
     ]
+
+
+async def entry_terms(session: AsyncSession) -> list[MetricTerms]:
+    """Names and aliases of every catalog entry, for the link proposer."""
+    rows = await session.scalars(select(MeasurementEntry).order_by(MeasurementEntry.code))
+    return [
+        MetricTerms(code=entry.code, name=entry.name, terms=tuple(entry.aliases)) for entry in rows
+    ]
+
+
+async def method_pattern_frames(
+    session: AsyncSession, function_codes: list[str]
+) -> list[tuple[UUID, str]]:
+    """Current frames of patterns whose current version carries one of the APB functions."""
+    rows = await session.execute(
+        select(PhrasePattern.id, PatternVersion.canonical_frame)
+        .join(PatternVersion, PatternVersion.id == PhrasePattern.current_version_id)
+        .join(
+            PatternVersionFunction,
+            PatternVersionFunction.pattern_version_id == PatternVersion.id,
+        )
+        .join(
+            CommunicativeFunction,
+            CommunicativeFunction.id == PatternVersionFunction.function_id,
+        )
+        .where(CommunicativeFunction.code.in_(function_codes))
+        .distinct()
+        .order_by(PhrasePattern.id)
+    )
+    return [(pattern_id, frame) for pattern_id, frame in rows.all()]

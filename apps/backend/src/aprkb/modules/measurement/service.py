@@ -13,7 +13,9 @@ from aprkb.modules.measurement.schemas import (
     MeasurementDetail,
     MeasurementListResponse,
     MeasurementSummary,
+    PatternMeasurementsResponse,
     RelatedMeasurement,
+    RelatedMeasurementForPattern,
     SlotLinkListResponse,
     SlotLinkProposal,
     SlotLinkRead,
@@ -32,6 +34,7 @@ def _link_read(
         pattern_id=link.pattern_id,
         canonical_frame=frame,
         slot_name=link.slot_name,
+        origin=link.origin,  # type: ignore[arg-type]
         review_status=link.review_status,  # type: ignore[arg-type]
         note=link.note,
         created_at=link.created_at,
@@ -106,6 +109,26 @@ async def slot_suggestions(
     )
 
 
+async def pattern_measurements(
+    session: AsyncSession, *, pattern_id: UUID
+) -> PatternMeasurementsResponse:
+    """Approved measures for a pattern, slot-level and pattern-level, for display only."""
+    rows = await repository.links(session, pattern_id=pattern_id, status="approved")
+    return PatternMeasurementsResponse(
+        pattern_id=pattern_id,
+        items=[
+            RelatedMeasurementForPattern(
+                code=entry.code,
+                kind=entry.kind,  # type: ignore[arg-type]
+                name=entry.name,
+                definition=entry.definition,
+                slot_name=link.slot_name,
+            )
+            for link, entry, _ in rows
+        ],
+    )
+
+
 async def list_links(session: AsyncSession, *, status: str | None) -> SlotLinkListResponse:
     rows = await repository.links(session, status=status)
     return SlotLinkListResponse(items=[_link_read(*row) for row in rows])
@@ -120,7 +143,7 @@ async def propose_link(
     slots = await repository.current_slots(session, payload.pattern_id)
     if slots is None:
         raise HTTPException(status_code=404, detail="Pattern not found")
-    if payload.slot_name not in slots:
+    if payload.slot_name is not None and payload.slot_name not in slots:
         raise HTTPException(status_code=422, detail="Slot does not exist in the current version")
     if await repository.find_link(
         session, entry_id=entry.id, pattern_id=payload.pattern_id, slot_name=payload.slot_name
@@ -131,6 +154,7 @@ async def propose_link(
         pattern_id=payload.pattern_id,
         slot_name=payload.slot_name,
         review_status="proposed",
+        origin="manual",
         proposed_by=actor_id,
         note=payload.note,
     )

@@ -3767,6 +3767,28 @@
         "title": "PatternDisciplineAffinityRead",
         "type": "object"
       },
+      "PatternMeasurementsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedMeasurementForPattern"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "pattern_id": {
+            "format": "uuid",
+            "title": "Pattern Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern_id",
+          "items"
+        ],
+        "title": "PatternMeasurementsResponse",
+        "type": "object"
+      },
       "PatternSlotDefinition": {
         "description": "Typed writer slot metadata; string values remain valid for older versions.",
         "properties": {
@@ -5479,6 +5501,51 @@
         "title": "RelatedMeasurement",
         "type": "object"
       },
+      "RelatedMeasurementForPattern": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "definition": {
+            "title": "Definition",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "metric",
+              "method",
+              "protocol"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slot_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot Name"
+          }
+        },
+        "required": [
+          "code",
+          "kind",
+          "name",
+          "definition",
+          "slot_name"
+        ],
+        "title": "RelatedMeasurementForPattern",
+        "type": "object"
+      },
       "ReleaseSummary": {
         "properties": {
           "id": {
@@ -6207,16 +6274,23 @@
             "type": "string"
           },
           "slot_name": {
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Slot Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omit for a pattern-level link (the pattern describes this measure).",
+            "title": "Slot Name"
           }
         },
         "required": [
           "entry_code",
-          "pattern_id",
-          "slot_name"
+          "pattern_id"
         ],
         "title": "SlotLinkProposal",
         "type": "object"
@@ -6259,6 +6333,14 @@
             ],
             "title": "Note"
           },
+          "origin": {
+            "enum": [
+              "manual",
+              "term_match"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
           "pattern_id": {
             "format": "uuid",
             "title": "Pattern Id",
@@ -6286,8 +6368,16 @@
             "title": "Reviewed At"
           },
           "slot_name": {
-            "title": "Slot Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None for a pattern-level link.",
+            "title": "Slot Name"
           }
         },
         "required": [
@@ -6296,6 +6386,7 @@
           "pattern_id",
           "canonical_frame",
           "slot_name",
+          "origin",
           "review_status",
           "note",
           "created_at",
@@ -11575,6 +11666,65 @@
           }
         },
         "summary": "List Measurements",
+        "tags": [
+          "measurement"
+        ]
+      }
+    },
+    "/v1/measurements/pattern-measurements": {
+      "get": {
+        "operationId": "pattern_measurements_v1_measurements_pattern_measurements_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pattern_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pattern Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternMeasurementsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pattern Measurements",
         "tags": [
           "measurement"
         ]

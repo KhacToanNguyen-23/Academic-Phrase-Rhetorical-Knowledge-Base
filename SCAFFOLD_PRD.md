@@ -745,4 +745,5 @@ review under `/v1/admin/measurements`, and a `/measurements` page. Approved slot
 suggest values for a pattern slot (FR-07.5/AT-08: never auto-filled). While enabled,
 `/v1/validate` adds report-only `metric_warnings` (FR-08.2) without changing severity. It does
 not change ranking, render or pack export, and it adds no NLP extractor. `measurement-purge`
-removes the catalog. See ADR-0015.
+removes the catalog. Pattern-level links connect slot-less APB Methods templates;
+`measurement-propose-links` only proposes them for curator review. See ADR-0015.

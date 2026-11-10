@@ -171,6 +171,7 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         # ADR-0015 Metric & Measurement catalog (off unless MEASUREMENT_ENABLED).
         ("/v1/measurements", "get"),
         ("/v1/measurements/slot-suggestions", "get"),
+        ("/v1/measurements/pattern-measurements", "get"),
         ("/v1/measurements/{id}", "get"),
         ("/v1/admin/measurements/imports", "post"),
         ("/v1/admin/measurements/slot-links", "get"),

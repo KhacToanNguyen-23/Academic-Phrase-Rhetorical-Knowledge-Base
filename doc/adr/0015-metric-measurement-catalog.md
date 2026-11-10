@@ -43,11 +43,27 @@ requirements:
    than `metric_check_min_term_length` are ignored. It cannot detect metrics missing from
    the catalog, and common-word names such as "precision" can raise false warnings.
 
+7. Methods patterns from the Academic Phrase Bank (APB) have no typed slots, so a link
+   may omit `slot_name`. Such a pattern-level link means "this pattern describes or
+   reports this measure". Approved pattern-level links appear in a "Measurement context"
+   card on the APB and Phrasebank pattern pages and in
+   `/v1/measurements/pattern-measurements`.
+8. `measurement-propose-links` (CLI) scans the current versions linked to the APB
+   functions in `link_proposal_function_codes` (DEFINE_METRIC, STATE_PROTOCOL,
+   questionnaire, statistical-procedure, design and procedure functions). A catalog name
+   or alias in the frame creates a **proposed** pattern-level link with
+   `origin="term_match"`. Nothing is public until a curator approves it, on the entry page
+   or through the admin API. An existing link, including a rejected one, is never
+   recreated. The run writes one content-free audit event.
+
 ## Deferred
 
-- Mining measurement mentions from `METHODS` sections. If added later, it must be
+- Mining measurement mentions from corpus `METHODS` sections. If added later, it must be
   rule-based, run in shadow mode, be license-gated before blob reads, and produce
   draft provenance only. There is no provenance table until that producer exists.
+- Repairing the APB seed text. Some records carry U+FFFD replacement characters
+  (e.g. "Cronbach�s alpha"), so their terms cannot match until the APB owner
+  fixes the seed.
 - Discipline-specific catalogs.
 
 ## Consequences

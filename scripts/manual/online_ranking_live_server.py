@@ -67,7 +67,7 @@ async def isolated_lifespan(application):
                 version_no=1,
                 canonical_frame="We suggest {topic}.",
                 slots={"topic": "noun_phrase"},
-                epistemic_strength="low",
+                epistemic_strength="absolute",
                 claim_type="descriptive",
             )
             session.add(version)
@@ -76,7 +76,6 @@ async def isolated_lifespan(application):
             session.add(
                 UsageConstraint(
                     pattern_version_id=version.id,
-                    evidence_min="multiple_consistent",
                     allowed_sections=["INTRO"],
                     allowed_genres=["RESEARCH_ARTICLE"],
                 )
@@ -84,6 +83,35 @@ async def isolated_lifespan(application):
             session.add(
                 EvidenceProvenance(
                     pattern_version_id=version.id,
+                    source_type="authored",
+                    sentence_ids=[],
+                )
+            )
+
+            writer_pattern = PhrasePattern(intent_id=intent.id, status="approved")
+            session.add(writer_pattern)
+            await session.flush()
+            writer_version = PatternVersion(
+                pattern_id=writer_pattern.id,
+                version_no=1,
+                canonical_frame="The role of {topic} in {context} remains underexplored.",
+                slots={"topic": "noun_phrase", "context": "noun_phrase"},
+                epistemic_strength="low",
+                claim_type="descriptive",
+            )
+            session.add(writer_version)
+            await session.flush()
+            writer_pattern.current_version_id = writer_version.id
+            session.add(
+                UsageConstraint(
+                    pattern_version_id=writer_version.id,
+                    allowed_sections=["INTRO", "DISCUSSION"],
+                    allowed_genres=["RESEARCH_ARTICLE"],
+                )
+            )
+            session.add(
+                EvidenceProvenance(
+                    pattern_version_id=writer_version.id,
                     source_type="authored",
                     sentence_ids=[],
                 )

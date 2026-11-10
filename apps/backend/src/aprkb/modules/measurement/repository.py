@@ -10,7 +10,7 @@ from aprkb.modules.academic_phrase_bank.models import (
     CommunicativeFunction,
     PatternVersionFunction,
 )
-from aprkb.modules.measurement.metric_check import MetricTerms
+from aprkb.modules.measurement.metric_check import MetricTerms, fold_typography
 from aprkb.modules.measurement.models import (
     MeasurementEntry,
     MeasurementImportRun,
@@ -43,7 +43,8 @@ async def search_entries(
     if kind is not None:
         statement = statement.where(MeasurementEntry.kind == kind)
     if query:
-        pattern = _like(query)
+        # Same typographic folding as term matching: "Cronbach’s" finds "Cronbach's".
+        pattern = _like(fold_typography(query))
         statement = statement.where(
             or_(
                 MeasurementEntry.code.ilike(pattern, escape="\\"),

@@ -63,6 +63,13 @@ requirements:
     `apps/web/e2e/measurement.spec.ts` covers the catalog, curator review, the
     switched-off state, the APB context card and the Writer suggestions.
 
+11. Concurrency: catalog import and purge take a transaction-scoped PostgreSQL advisory
+    lock, so a parallel import of the same file reports `unchanged` instead of writing a
+    second run. A manual proposal that loses a race to an identical one returns 409, not
+    500. `measurement-propose-links` inserts with `ON CONFLICT DO NOTHING`, so parallel
+    runs or a parallel manual proposal never duplicate a link or fail. Catalog search
+    applies the same typographic folding as term matching.
+
 ## Deferred
 
 - Mining measurement mentions from corpus `METHODS` sections. If added later, it must be

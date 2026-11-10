@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.audit.service import record_event
@@ -159,7 +160,12 @@ async def propose_link(
         note=payload.note,
     )
     session.add(link)
-    await session.flush()
+    try:
+        await session.flush()
+    except IntegrityError as error:
+        # A concurrent request inserted the same (entry, pattern, slot) first.
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="Slot link already exists") from error
     await record_event(
         session,
         actor_id=actor_id,

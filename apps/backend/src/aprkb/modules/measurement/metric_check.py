@@ -44,7 +44,8 @@ _FOLD = str.maketrans(
 )
 
 
-def _fold(value: str) -> str:
+def fold_typography(value: str) -> str:
+    """Fold curly apostrophes, typographic dashes and NBSP to ASCII, one char each."""
     return value.translate(_FOLD)
 
 
@@ -55,7 +56,7 @@ def _pattern(term: str) -> re.Pattern[str]:
 
 
 def _usable(terms: tuple[str, ...], min_length: int) -> list[re.Pattern[str]]:
-    unique = {_fold(term.strip()) for term in terms if len(term.strip()) >= min_length}
+    unique = {fold_typography(term.strip()) for term in terms if len(term.strip()) >= min_length}
     return [_pattern(term) for term in sorted(unique)]
 
 
@@ -63,7 +64,7 @@ def find_mentions(
     text: str, entries: list[MetricTerms], *, min_term_length: int
 ) -> list[UndeclaredMetric]:
     """Return each entry whose name or alias occurs in ``text``, with its first span."""
-    text = _fold(text)
+    text = fold_typography(text)
     found: list[UndeclaredMetric] = []
     for entry in entries:
         patterns = _usable((entry.name, *entry.terms), min_term_length)

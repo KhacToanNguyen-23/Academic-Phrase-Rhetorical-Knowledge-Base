@@ -6,8 +6,9 @@ a curator approves it, and an existing link (including a rejected one) is never 
 """
 
 from dataclasses import dataclass
-from uuid import UUID
+from uuid import UUID, uuid4
 
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.audit.service import record_event
@@ -49,22 +50,33 @@ async def propose_links(
         entry = await repository.entry_by_code(session, candidate.entry_code)
         if entry is None:
             continue
-        if await repository.find_link(
-            session, entry_id=entry.id, pattern_id=candidate.pattern_id, slot_name=None
-        ):
-            existing += 1
+        if dry_run:
+            if await repository.find_link(
+                session, entry_id=entry.id, pattern_id=candidate.pattern_id, slot_name=None
+            ):
+                existing += 1
+            else:
+                created += 1
             continue
-        created += 1
-        if not dry_run:
-            session.add(
-                MeasurementSlotLink(
-                    entry_id=entry.id,
-                    pattern_id=candidate.pattern_id,
-                    slot_name=None,
-                    review_status="proposed",
-                    origin="term_match",
-                )
+        # ON CONFLICT DO NOTHING: a concurrent run or a manual proposal for the same
+        # (entry, pattern, no slot) wins without failing this run.
+        inserted = await session.scalar(
+            insert(MeasurementSlotLink)
+            .values(
+                id=uuid4(),
+                entry_id=entry.id,
+                pattern_id=candidate.pattern_id,
+                slot_name=None,
+                review_status="proposed",
+                origin="term_match",
             )
+            .on_conflict_do_nothing()
+            .returning(MeasurementSlotLink.id)
+        )
+        if inserted is None:
+            existing += 1
+        else:
+            created += 1
     counts = {
         "patterns_scanned": len(frames),
         "matches": len(candidates),

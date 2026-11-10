@@ -466,3 +466,108 @@ async def test_pattern_link_migration_round_trip(postgres_test_engine):
         assert await column("slot_name") == "NO" and await column("origin") is None
         await connection.run_sync(migrate, "head", up=True)
         assert await column("slot_name") == "YES"
+
+
+@pytest.mark.asyncio
+async def test_proposal_losing_the_race_returns_409_not_500(
+    api_client, session_factory, monkeypatch
+):
+    """Simulate a concurrent insert: the existence check passes but the row already exists."""
+    from aprkb.modules.measurement import repository
+
+    curator = await _key(session_factory, "curator")
+    await _import_seed(api_client, curator)
+    pattern_id, _ = await _pattern_with_slot(session_factory)
+    body = {"entry_code": "accuracy", "pattern_id": pattern_id}
+    first = await api_client.post("/v1/admin/measurements/slot-links", headers=curator, json=body)
+    assert first.status_code == 201
+
+    async def no_existing_link(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(repository, "find_link", no_existing_link)
+    raced = await api_client.post("/v1/admin/measurements/slot-links", headers=curator, json=body)
+    assert raced.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_catalog_import_waits_for_the_catalog_lock(api_client, session_factory):
+    """A second writer blocks while another transaction holds the catalog lock."""
+    import asyncio
+
+    from sqlalchemy import text
+
+    from aprkb.modules.measurement.importer import _CATALOG_LOCK, import_catalog, load_catalog
+    from aprkb.modules.measurement.models import MeasurementImportRun
+
+    catalog = load_catalog(SEED, load_policy_bundle().measurement)
+    async with session_factory() as holder:
+        await holder.execute(_CATALOG_LOCK)
+
+        async def second_writer():
+            async with session_factory() as session:
+                return await import_catalog(session, catalog, actor_id=None, request_id="t-lock")
+
+        task = asyncio.create_task(second_writer())
+        waiting = 0
+        async with session_factory() as probe:
+            for _ in range(100):
+                waiting = await probe.scalar(
+                    text(
+                        "SELECT count(*) FROM pg_stat_activity "
+                        "WHERE wait_event_type = 'Lock' AND wait_event = 'advisory' "
+                        "AND datname = current_database()"
+                    )
+                )
+                if waiting or task.done():
+                    break
+                await asyncio.sleep(0.1)
+        assert waiting == 1, "the second import must block on the catalog advisory lock"
+        assert not task.done()
+        await holder.commit()  # releases the transaction-scoped lock
+    result = await asyncio.wait_for(task, timeout=30)
+    assert result["status"] == "imported"
+    again = await _import_seed(api_client, await _key(session_factory, "curator"))
+    assert again.json()["status"] == "unchanged"
+    async with session_factory() as session:
+        assert await session.scalar(select(func.count()).select_from(MeasurementImportRun)) == 1
+
+
+@pytest.mark.asyncio
+async def test_link_proposer_ignores_rows_inserted_after_its_check(
+    api_client, session_factory, monkeypatch
+):
+    """A concurrent proposer or manual link must not make a run fail or duplicate rows."""
+    from aprkb.modules.measurement import repository
+    from aprkb.modules.measurement.link_proposer import propose_links
+    from aprkb.modules.measurement.models import MeasurementSlotLink
+
+    curator = await _key(session_factory, "curator")
+    await _import_seed(api_client, curator)
+    policy = load_policy_bundle().measurement
+    async with session_factory() as session:
+        first = await propose_links(session, policy, request_id="p-1")
+    assert first["created"] > 0
+
+    async def no_existing_link(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(repository, "find_link", no_existing_link)
+    async with session_factory() as session:
+        second = await propose_links(session, policy, request_id="p-2")
+    assert second["created"] == 0
+    assert second["already_linked"] == first["created"]
+    async with session_factory() as session:
+        total = await session.scalar(select(func.count()).select_from(MeasurementSlotLink))
+    assert total == first["created"]
+
+
+@pytest.mark.asyncio
+async def test_search_folds_typographic_apostrophes(api_client, session_factory):
+    curator = await _key(session_factory, "curator")
+    client = await _key(session_factory, "client")
+    await _import_seed(api_client, curator)
+    found = await api_client.get(
+        "/v1/measurements", params={"q": "Cronbach\u2019s"}, headers=client
+    )
+    assert [item["code"] for item in found.json()["items"]] == ["cronbachs_alpha"]

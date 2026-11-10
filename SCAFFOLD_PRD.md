@@ -758,7 +758,7 @@ nguồn tới AI, ví dụ trong workbook tắt theo mặc định (`TODO(owner,
 
 Task 3 adds a separate, self-authored catalog of metrics, measurement methods and protocols,
 answering "how to measure" alongside the phrase core's "how to write". It is behind
-`MEASUREMENT_ENABLED`, which the production compose file turns on; the seed initializer imports it. It adds `/v1/measurements` read routes, curator import and slot-link
+`MEASUREMENT_ENABLED`, which is on by default (code and production compose); the seed initializer imports it. It adds `/v1/measurements` read routes, curator import and slot-link
 review under `/v1/admin/measurements`, and a `/measurements` page. Approved slot links only
 suggest values for a pattern slot (FR-07.5/AT-08: never auto-filled). While enabled,
 `/v1/validate` adds report-only `metric_warnings` (FR-08.2) without changing severity. It does

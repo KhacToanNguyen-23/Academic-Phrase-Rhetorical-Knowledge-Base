@@ -178,8 +178,14 @@ For local or deployed Online initialization, apply migrations and run `python -m
 kinds of entry: metrics (for example accuracy and Cohen's kappa), measurement methods (for example
 a 5-point Likert questionnaire) and data-collection protocols (for example a pre-test/post-test
 design). It complements the phrase core, which answers "how to write". The catalog lives in its own
-`measurement_*` tables and never enters ranking, render or pack export. The code default for
-`MEASUREMENT_ENABLED` is off, but `.env.example` and `docker-compose.prod.yml` turn it on.
+`measurement_*` tables and never enters ranking, render or pack export. `MEASUREMENT_ENABLED` is on
+by default (an empty value also means on); set `MEASUREMENT_ENABLED=false` to hide it.
+
+To try it after pulling: run `.\dev.ps1 be` (or `make dev`), which applies migrations and seeds the
+catalog, then `.\dev.ps1 fe` and open <http://localhost:5173/measurements>. On an existing
+database, `make migrate` then `make seed` is enough; no `.env` change is needed. Seeded links to
+Academic Phrase Bank templates start as proposals: approve them as a curator on
+`/measurements/<code>` to see them on the phrase pages.
 
 The link to phrases is a curator-reviewed slot link, for example `likert_5_point` for the
 `{instrument}` slot of a Methods pattern. Only approved links are shown, and only as

@@ -1,6 +1,6 @@
 # ADR-0015: Metric & Measurement catalog
 
-Status: accepted for deployment. The code default for `MEASUREMENT_ENABLED` is off, but `docker-compose.prod.yml` and `.env.example` turn it on.
+Status: accepted for deployment. `MEASUREMENT_ENABLED` defaults to on in code, `.env.example` and `docker-compose.prod.yml`, so a fresh checkout and a deploy both serve the catalog after migrate and seed.
 
 ## Context
 

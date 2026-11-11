@@ -114,7 +114,7 @@ CR-06 changed the current weights; they remain provisional pending owner review.
 
 ## Deployment
 
-Production uses Docker Compose for the API, worker, and web app, with persistent PostgreSQL and blob volumes and manually applied migrations. It does not run the development data initializer. Follow the [manual Docker Compose deployment runbook](deploy/README.md) before starting services on the server.
+Production uses Docker Compose for the API, worker, and web app, with persistent PostgreSQL and blob volumes and manually applied migrations. It does not run the development data initializer. Follow the [manual Docker Compose deployment runbook](deploy/README.md) before starting services on the server. After the server is prepared, each deploy is `git checkout --detach <sha> && ./deploy/deploy.sh <sha>`. The script backs up the database, migrates and seeds in a one-shot `init` container, and replaces the running containers only if that succeeded.
 
 ## Continuous integration
 

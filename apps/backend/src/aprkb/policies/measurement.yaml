@@ -1,4 +1,4 @@
-version: 0.2.0
+version: 0.3.0
 # TODO(owner, Task-3): confirm the measurement vocabularies with the methods reviewer.
 kinds: [metric, method, protocol]
 relations:
@@ -12,3 +12,13 @@ max_import_bytes: 1048576
 # FR-08.2 report-only check in /v1/validate: ignore catalog terms shorter than this,
 # e.g. the alias "M", to avoid matching initials. TODO(owner, FR-08.2): review.
 metric_check_min_term_length: 2
+# measurement-propose-links: scan current versions linked to these APB communicative
+# functions and propose pattern-level links for catalog terms they name. Proposals stay
+# hidden until a curator approves them. TODO(owner, Task-3): confirm the function list.
+link_proposal_function_codes:
+  - DESCRIBE_DESIGN
+  - DESCRIBE_QUESTIONNAIRE_DESIGN
+  - DESCRIBE_PROCEDURE
+  - DESCRIBE_STATISTICAL_PROCEDURES
+  - DEFINE_METRIC
+  - STATE_PROTOCOL

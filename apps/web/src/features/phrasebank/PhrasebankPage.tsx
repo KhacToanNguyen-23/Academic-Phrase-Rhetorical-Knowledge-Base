@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/domain/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { MeasurementSlotSuggestions } from "@/features/measurement";
+import { MeasurementPatternContext, MeasurementSlotSuggestions } from "@/features/measurement";
 import { ApiError } from "@/features/slr-import/api/client";
 import { AcademicPhraseBankFilters, type APBFilterState } from "./AcademicPhraseBank";
 import { isReferenceDisabled, taxonomyIntents, UnifiedResults } from "./UnifiedResults";
@@ -544,6 +544,7 @@ export function PhrasebankPatternDetail({ id }: { id: string }) {
           </Button>
         </CardContent>
       </Card>
+      <MeasurementPatternContext patternId={id} />
       {slots.length ? <Card>
         <CardHeader>
           <CardTitle>Slots</CardTitle>

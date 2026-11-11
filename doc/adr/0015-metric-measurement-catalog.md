@@ -1,6 +1,6 @@
 # ADR-0015: Metric & Measurement catalog
 
-Status: proposed; implemented locally behind `MEASUREMENT_ENABLED` (default off).
+Status: accepted for deployment. `MEASUREMENT_ENABLED` defaults to on in code, `.env.example` and `docker-compose.prod.yml`, so a fresh checkout and a deploy both serve the catalog after migrate and seed.
 
 ## Context
 
@@ -43,9 +43,44 @@ requirements:
    than `metric_check_min_term_length` are ignored. It cannot detect metrics missing from
    the catalog, and common-word names such as "precision" can raise false warnings.
 
+7. Methods patterns from the Academic Phrase Bank (APB) have no typed slots, so a link
+   may omit `slot_name`. Such a pattern-level link means "this pattern describes or
+   reports this measure". Approved pattern-level links appear in a "Measurement context"
+   card on the APB and Phrasebank pattern pages and in
+   `/v1/measurements/pattern-measurements`.
+8. `measurement-propose-links` (CLI) scans the current versions linked to the APB
+   functions in `link_proposal_function_codes` (DEFINE_METRIC, STATE_PROTOCOL,
+   questionnaire, statistical-procedure, design and procedure functions). A catalog name
+   or alias in the frame creates a **proposed** pattern-level link with
+   `origin="term_match"`. Nothing is public until a curator approves it, on the entry page
+   or through the admin API. An existing link, including a rejected one, is never
+   recreated. The run writes one content-free audit event.
+9. Term matching folds typographic apostrophes, dashes and non-breaking spaces to ASCII
+   one character at a time, so "Cronbach’s alpha" matches "Cronbach's alpha" and spans
+   still point into the original text.
+10. The public Writer shows approved slot suggestions under each slot in "Complete the
+    pattern" as plain text (no catalog link, never filled in). The e2e spec
+    `apps/web/e2e/measurement.spec.ts` covers the catalog, curator review, the
+    switched-off state, the APB context card and the Writer suggestions.
+
+11. Concurrency: catalog import and purge take a transaction-scoped PostgreSQL advisory
+    lock, so a parallel import of the same file reports `unchanged` instead of writing a
+    second run. A manual proposal that loses a race to an identical one returns 409, not
+    500. `measurement-propose-links` inserts with `ON CONFLICT DO NOTHING`, so parallel
+    runs or a parallel manual proposal never duplicate a link or fail. Catalog search
+    applies the same typographic folding as term matching.
+
+12. Deployment: the backend image ships `data/seed/measurement_catalog.json`, and
+    `python -m aprkb.seeds.load` (the existing deploy step) imports it idempotently and
+    proposes APB Methods links. Tests call `run_seed` and therefore stay unaffected.
+    A one-shot `init` Compose service runs migrations and this seed, and
+    `deploy/deploy.sh` runs it before it replaces `api`/`worker`/`web`, so a deploy
+    cannot skip the catalog step and a failed seed leaves the live site unchanged.
+    See `deploy/README.md`.
+
 ## Deferred
 
-- Mining measurement mentions from `METHODS` sections. If added later, it must be
+- Mining measurement mentions from corpus `METHODS` sections. If added later, it must be
   rule-based, run in shadow mode, be license-gated before blob reads, and produce
   draft provenance only. There is no provenance table until that producer exists.
 - Discipline-specific catalogs.

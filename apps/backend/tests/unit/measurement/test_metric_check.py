@@ -39,3 +39,37 @@ def test_short_terms_below_minimum_are_ignored():
 def test_no_catalog_or_no_mention_gives_no_warning():
     assert find_undeclared_metrics("Accuracy rose.", (), [], min_term_length=2) == []
     assert check("Participants completed the task.") == []
+
+
+def test_link_proposer_matches_each_entry_once_per_frame():
+    from uuid import uuid4
+
+    from aprkb.modules.measurement.link_proposer import match_frames
+
+    first, second = uuid4(), uuid4()
+    frames = [
+        (first, "Items were rated on a 5-point Likert scale; F1 and F1 score are reported."),
+        (second, "Participants completed the task."),
+    ]
+    entries = [*METRICS, MetricTerms("likert_5_point", "5-point Likert scale", ("5-point Likert",))]
+    found = {(c.pattern_id, c.entry_code) for c in match_frames(frames, entries, min_term_length=2)}
+    assert found == {(first, "likert_5_point"), (first, "f1_score")}
+
+
+def test_typographic_apostrophes_and_dashes_match_ascii_terms_with_same_span():
+    text = "Reliability was calculated using Cohen\u2019s kappa and a Mann\u2013Whitney U test."
+    entries = [
+        *METRICS,
+        MetricTerms("non_parametric_test", "Non-parametric test", ("Mann-Whitney U test",)),
+    ]
+    found = find_undeclared_metrics(text, (), entries, min_term_length=2)
+    assert [(item.code, text[slice(*item.span)]) for item in found] == [
+        ("cohens_kappa", "Cohen\u2019s kappa"),
+        ("non_parametric_test", "Mann\u2013Whitney U test"),
+    ]
+    assert (
+        find_undeclared_metrics(
+            text, ("Cohen's kappa, Mann-Whitney U test",), entries, min_term_length=2
+        )
+        == []
+    )

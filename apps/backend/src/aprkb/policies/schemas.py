@@ -1349,11 +1349,19 @@ class MeasurementPolicy(VersionedPolicy):
     link_statuses: list[Literal["proposed", "approved", "rejected"]] = Field(min_length=3)
     max_import_bytes: int = Field(gt=0)
     metric_check_min_term_length: int = Field(ge=1, le=20)
+    link_proposal_function_codes: list[str] = Field(min_length=1)
 
     @model_validator(mode="after")
     def consistent_vocabularies(self) -> "MeasurementPolicy":
         if len(set(self.kinds)) != len(self.kinds):
             raise ValueError("measurement kinds must be unique")
+        if len(set(self.link_proposal_function_codes)) != len(
+            self.link_proposal_function_codes
+        ) or not all(
+            re.fullmatch(r"[A-Z][A-Z0-9_]{1,63}", code)
+            for code in self.link_proposal_function_codes
+        ):
+            raise ValueError("link_proposal_function_codes must be unique upper-case codes")
         if set(self.link_statuses) != {"proposed", "approved", "rejected"}:
             raise ValueError("link_statuses must be exactly proposed, approved, rejected")
         for name, rule in self.relations.items():

@@ -34,12 +34,16 @@ class RelatedMeasurement(BaseModel):
     name: str
 
 
+LinkOrigin = Literal["manual", "term_match"]
+
+
 class SlotLinkRead(BaseModel):
     id: UUID
     entry_code: str
     pattern_id: UUID
     canonical_frame: str | None
-    slot_name: str
+    slot_name: str | None = Field(description="None for a pattern-level link.")
+    origin: LinkOrigin
     review_status: LinkStatus
     note: str | None
     created_at: datetime
@@ -89,7 +93,12 @@ class SlotLinkProposal(BaseModel):
 
     entry_code: str = Field(min_length=1, max_length=64)
     pattern_id: UUID
-    slot_name: str = Field(min_length=1, max_length=64)
+    slot_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=64,
+        description="Omit for a pattern-level link (the pattern describes this measure).",
+    )
     note: str | None = Field(default=None, max_length=1000)
 
 
@@ -102,3 +111,16 @@ class SlotLinkReview(BaseModel):
 
 class SlotLinkListResponse(BaseModel):
     items: list[SlotLinkRead]
+
+
+class RelatedMeasurementForPattern(BaseModel):
+    code: str
+    kind: Kind
+    name: str
+    definition: str
+    slot_name: str | None
+
+
+class PatternMeasurementsResponse(BaseModel):
+    pattern_id: UUID
+    items: list[RelatedMeasurementForPattern]

@@ -17,6 +17,7 @@ from aprkb.modules.measurement.schemas import (
     MeasurementDetail,
     MeasurementImportResult,
     MeasurementListResponse,
+    PatternMeasurementsResponse,
     SlotLinkListResponse,
     SlotLinkProposal,
     SlotLinkRead,
@@ -58,6 +59,11 @@ async def slot_suggestions(
     slot: Annotated[str, Query(min_length=1, max_length=64)],
 ) -> SlotSuggestionsResponse:
     return await service.slot_suggestions(session, pattern_id=pattern_id, slot_name=slot)
+
+
+@router.get("/pattern-measurements", response_model=PatternMeasurementsResponse)
+async def pattern_measurements(session: Session, pattern_id: UUID) -> PatternMeasurementsResponse:
+    return await service.pattern_measurements(session, pattern_id=pattern_id)
 
 
 @router.get("/{code}", response_model=MeasurementDetail)

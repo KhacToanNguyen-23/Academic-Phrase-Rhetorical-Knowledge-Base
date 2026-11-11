@@ -1,129 +1,445 @@
 {
-  "catalog_version": "0.1.0",
+  "catalog_version": "0.2.0",
   "entries": [
-    {"code": "accuracy", "kind": "metric", "name": "Accuracy", "aliases": ["ACC"],
-     "definition": "Share of all predictions or judgements that match the reference label.",
-     "formula": "(TP + TN) / (TP + TN + FP + FN)", "value_range": "0 to 1",
-     "usage_note": "Misleading when classes are imbalanced; report alongside class-wise metrics.",
-     "example": "classification accuracy on the held-out test set"},
-    {"code": "precision", "kind": "metric", "name": "Precision", "aliases": ["positive predictive value", "PPV"],
-     "definition": "Share of items labelled positive that are truly positive.",
-     "formula": "TP / (TP + FP)", "value_range": "0 to 1",
-     "example": "precision of the extracted phrase candidates"},
-    {"code": "recall", "kind": "metric", "name": "Recall", "aliases": ["sensitivity", "true positive rate"],
-     "definition": "Share of truly positive items that the procedure labels positive.",
-     "formula": "TP / (TP + FN)", "value_range": "0 to 1",
-     "example": "recall against the annotated reference set"},
-    {"code": "f1_score", "kind": "metric", "name": "F1 score", "aliases": ["F1", "F-measure"],
-     "definition": "Harmonic mean of precision and recall, giving both equal weight.",
-     "formula": "2 * precision * recall / (precision + recall)", "value_range": "0 to 1",
-     "usage_note": "State whether it is macro-, micro- or weighted-averaged across classes.",
-     "example": "macro-averaged F1 score"},
-    {"code": "cohens_kappa", "kind": "metric", "name": "Cohen's kappa", "aliases": ["kappa"],
-     "definition": "Agreement between two raters on categorical labels, corrected for agreement expected by chance.",
-     "formula": "(p_o - p_e) / (1 - p_e)", "value_range": "-1 to 1",
-     "usage_note": "Use for exactly two raters; report the number of items rated.",
-     "example": "inter-rater agreement measured with Cohen's kappa"},
-    {"code": "cronbachs_alpha", "kind": "metric", "name": "Cronbach's alpha", "aliases": ["coefficient alpha"],
-     "definition": "Internal consistency of a set of items intended to measure the same construct.",
-     "value_range": "typically 0 to 1",
-     "usage_note": "Report per subscale, not only for the whole questionnaire.",
-     "example": "internal consistency of the satisfaction subscale"},
-    {"code": "rmse", "kind": "metric", "name": "Root mean square error", "aliases": ["RMSE"],
-     "definition": "Square root of the mean squared difference between predicted and observed values, in the outcome's unit.",
-     "formula": "sqrt(mean((y_pred - y_obs)^2))", "value_range": "0 or greater",
-     "example": "prediction error expressed as RMSE in minutes"},
-    {"code": "mean_score", "kind": "metric", "name": "Mean score", "aliases": ["average score", "M"],
-     "definition": "Arithmetic mean of item or scale scores across respondents.",
-     "usage_note": "Report with a spread measure such as the standard deviation.",
-     "example": "mean satisfaction score (M) with standard deviation (SD)"},
-    {"code": "effect_size_d", "kind": "metric", "name": "Cohen's d", "aliases": ["standardised mean difference"],
-     "definition": "Difference between two group means divided by a pooled standard deviation.",
-     "formula": "(M1 - M2) / SD_pooled",
-     "example": "the size of the difference between groups, expressed as Cohen's d"},
-    {"code": "response_rate", "kind": "metric", "name": "Response rate", "aliases": [],
-     "definition": "Share of invited participants who returned a usable response.",
-     "value_range": "0 to 100 percent",
-     "example": "a response rate of the invited sample"},
-
-    {"code": "likert_5_point", "kind": "method", "name": "5-point Likert scale questionnaire",
-     "aliases": ["five-point Likert scale", "5-point Likert"],
-     "definition": "Respondents rate agreement with statements on five ordered options, usually from strongly disagree to strongly agree.",
-     "scale": "5 ordered options", "value_range": "1 to 5",
-     "usage_note": "Ordinal data; state how items were combined into scale scores.",
-     "example": "a questionnaire rated on a five-point Likert scale"},
-    {"code": "likert_7_point", "kind": "method", "name": "7-point Likert scale questionnaire",
-     "aliases": ["seven-point Likert scale", "7-point Likert"],
-     "definition": "Respondents rate agreement on seven ordered options, giving finer gradation than five points.",
-     "scale": "7 ordered options", "value_range": "1 to 7",
-     "example": "items rated on a seven-point scale"},
-    {"code": "semi_structured_interview", "kind": "method", "name": "Semi-structured interview",
-     "aliases": ["semi-structured interviews"],
-     "definition": "Interview that follows a prepared guide of open questions while allowing follow-up questions.",
-     "usage_note": "Describe the guide, duration and how responses were recorded and coded.",
-     "example": "semi-structured interviews with course instructors"},
-    {"code": "expert_annotation", "kind": "method", "name": "Expert annotation",
-     "aliases": ["manual annotation", "human labelling"],
-     "definition": "Trained annotators assign labels to items using a written guideline.",
-     "usage_note": "Report annotator training, guideline version and agreement.",
-     "example": "manual annotation by two trained linguists"},
-    {"code": "timed_task", "kind": "method", "name": "Timed task",
-     "aliases": ["task completion time"],
-     "definition": "Participants complete a defined task while the time to completion is recorded.",
-     "scale": "seconds or minutes",
-     "example": "a timed usability task"},
-    {"code": "ab_test", "kind": "method", "name": "A/B test",
-     "aliases": ["split test", "online controlled experiment"],
-     "definition": "Users are assigned at random to two variants and an outcome is compared between them.",
-     "example": "an A/B test of two recommendation layouts"},
-    {"code": "held_out_evaluation", "kind": "method", "name": "Held-out evaluation",
-     "aliases": ["test set evaluation"],
-     "definition": "A model or procedure is scored on data that was not used to build or tune it.",
-     "example": "evaluation on a held-out test split"},
-
-    {"code": "pre_post_test", "kind": "protocol", "name": "Pre-test/post-test design",
-     "aliases": ["pretest-posttest", "before-and-after design"],
-     "definition": "The same measure is applied before and after an intervention to estimate change.",
-     "usage_note": "Without a control group, change cannot be attributed to the intervention alone.",
-     "example": "a pre-test/post-test design with a comparison group"},
-    {"code": "randomised_assignment", "kind": "protocol", "name": "Randomised assignment",
-     "aliases": ["random assignment", "randomisation"],
-     "definition": "Participants are allocated to conditions by a random procedure so groups are comparable on average.",
-     "example": "participants were randomly assigned to two conditions"},
-    {"code": "standardised_collection", "kind": "protocol", "name": "Standardised data collection",
-     "aliases": ["uniform procedure"],
-     "definition": "Every participant is measured with the same instructions, materials, order and setting.",
-     "usage_note": "Report the instructions and setting so the procedure can be repeated.",
-     "example": "data were collected from all participants following the same procedure"},
-    {"code": "double_annotation_adjudication", "kind": "protocol", "name": "Double annotation with adjudication",
-     "aliases": ["dual annotation"],
-     "definition": "Two annotators label each item independently; disagreements are resolved by a third reviewer.",
-     "example": "each item was labelled by two annotators and disagreements were adjudicated"},
-    {"code": "train_dev_test_split", "kind": "protocol", "name": "Train/development/test split",
-     "aliases": ["data split"],
-     "definition": "Data are divided before modelling into separate sets for fitting, tuning and final scoring.",
-     "usage_note": "Split by document or group when items from one source are correlated.",
-     "example": "an article-level split into training, development and test sets"}
+    {
+      "code": "accuracy",
+      "kind": "metric",
+      "name": "Accuracy",
+      "aliases": [
+        "ACC"
+      ],
+      "definition": "Share of all predictions or judgements that match the reference label.",
+      "formula": "(TP + TN) / (TP + TN + FP + FN)",
+      "value_range": "0 to 1",
+      "usage_note": "Misleading when classes are imbalanced; report alongside class-wise metrics.",
+      "example": "classification accuracy on the held-out test set"
+    },
+    {
+      "code": "precision",
+      "kind": "metric",
+      "name": "Precision",
+      "aliases": [
+        "positive predictive value",
+        "PPV"
+      ],
+      "definition": "Share of items labelled positive that are truly positive.",
+      "formula": "TP / (TP + FP)",
+      "value_range": "0 to 1",
+      "example": "precision of the extracted phrase candidates"
+    },
+    {
+      "code": "recall",
+      "kind": "metric",
+      "name": "Recall",
+      "aliases": [
+        "sensitivity",
+        "true positive rate"
+      ],
+      "definition": "Share of truly positive items that the procedure labels positive.",
+      "formula": "TP / (TP + FN)",
+      "value_range": "0 to 1",
+      "example": "recall against the annotated reference set"
+    },
+    {
+      "code": "f1_score",
+      "kind": "metric",
+      "name": "F1 score",
+      "aliases": [
+        "F1",
+        "F-measure"
+      ],
+      "definition": "Harmonic mean of precision and recall, giving both equal weight.",
+      "formula": "2 * precision * recall / (precision + recall)",
+      "value_range": "0 to 1",
+      "usage_note": "State whether it is macro-, micro- or weighted-averaged across classes.",
+      "example": "macro-averaged F1 score"
+    },
+    {
+      "code": "cohens_kappa",
+      "kind": "metric",
+      "name": "Cohen's kappa",
+      "aliases": [
+        "kappa"
+      ],
+      "definition": "Agreement between two raters on categorical labels, corrected for agreement expected by chance.",
+      "formula": "(p_o - p_e) / (1 - p_e)",
+      "value_range": "-1 to 1",
+      "usage_note": "Use for exactly two raters; report the number of items rated.",
+      "example": "inter-rater agreement measured with Cohen's kappa"
+    },
+    {
+      "code": "cronbachs_alpha",
+      "kind": "metric",
+      "name": "Cronbach's alpha",
+      "aliases": [
+        "coefficient alpha",
+        "Cronbach alpha",
+        "Cronbachs alpha"
+      ],
+      "definition": "Internal consistency of a set of items intended to measure the same construct.",
+      "value_range": "typically 0 to 1",
+      "usage_note": "Report per subscale, not only for the whole questionnaire.",
+      "example": "internal consistency of the satisfaction subscale"
+    },
+    {
+      "code": "rmse",
+      "kind": "metric",
+      "name": "Root mean square error",
+      "aliases": [
+        "RMSE"
+      ],
+      "definition": "Square root of the mean squared difference between predicted and observed values, in the outcome's unit.",
+      "formula": "sqrt(mean((y_pred - y_obs)^2))",
+      "value_range": "0 or greater",
+      "example": "prediction error expressed as RMSE in minutes"
+    },
+    {
+      "code": "mean_score",
+      "kind": "metric",
+      "name": "Mean score",
+      "aliases": [
+        "average score",
+        "M"
+      ],
+      "definition": "Arithmetic mean of item or scale scores across respondents.",
+      "usage_note": "Report with a spread measure such as the standard deviation.",
+      "example": "mean satisfaction score (M) with standard deviation (SD)"
+    },
+    {
+      "code": "effect_size_d",
+      "kind": "metric",
+      "name": "Cohen's d",
+      "aliases": [
+        "standardised mean difference"
+      ],
+      "definition": "Difference between two group means divided by a pooled standard deviation.",
+      "formula": "(M1 - M2) / SD_pooled",
+      "example": "the size of the difference between groups, expressed as Cohen's d"
+    },
+    {
+      "code": "response_rate",
+      "kind": "metric",
+      "name": "Response rate",
+      "aliases": [],
+      "definition": "Share of invited participants who returned a usable response.",
+      "value_range": "0 to 100 percent",
+      "example": "a response rate of the invited sample"
+    },
+    {
+      "code": "likert_5_point",
+      "kind": "method",
+      "name": "5-point Likert scale questionnaire",
+      "aliases": [
+        "five-point Likert scale",
+        "5-point Likert"
+      ],
+      "definition": "Respondents rate agreement with statements on five ordered options, usually from strongly disagree to strongly agree.",
+      "scale": "5 ordered options",
+      "value_range": "1 to 5",
+      "usage_note": "Ordinal data; state how items were combined into scale scores.",
+      "example": "a questionnaire rated on a five-point Likert scale"
+    },
+    {
+      "code": "likert_7_point",
+      "kind": "method",
+      "name": "7-point Likert scale questionnaire",
+      "aliases": [
+        "seven-point Likert scale",
+        "7-point Likert"
+      ],
+      "definition": "Respondents rate agreement on seven ordered options, giving finer gradation than five points.",
+      "scale": "7 ordered options",
+      "value_range": "1 to 7",
+      "example": "items rated on a seven-point scale"
+    },
+    {
+      "code": "semi_structured_interview",
+      "kind": "method",
+      "name": "Semi-structured interview",
+      "aliases": [
+        "semi-structured interviews"
+      ],
+      "definition": "Interview that follows a prepared guide of open questions while allowing follow-up questions.",
+      "usage_note": "Describe the guide, duration and how responses were recorded and coded.",
+      "example": "semi-structured interviews with course instructors"
+    },
+    {
+      "code": "expert_annotation",
+      "kind": "method",
+      "name": "Expert annotation",
+      "aliases": [
+        "manual annotation",
+        "human labelling"
+      ],
+      "definition": "Trained annotators assign labels to items using a written guideline.",
+      "usage_note": "Report annotator training, guideline version and agreement.",
+      "example": "manual annotation by two trained linguists"
+    },
+    {
+      "code": "timed_task",
+      "kind": "method",
+      "name": "Timed task",
+      "aliases": [
+        "task completion time"
+      ],
+      "definition": "Participants complete a defined task while the time to completion is recorded.",
+      "scale": "seconds or minutes",
+      "example": "a timed usability task"
+    },
+    {
+      "code": "ab_test",
+      "kind": "method",
+      "name": "A/B test",
+      "aliases": [
+        "split test",
+        "online controlled experiment"
+      ],
+      "definition": "Users are assigned at random to two variants and an outcome is compared between them.",
+      "example": "an A/B test of two recommendation layouts"
+    },
+    {
+      "code": "held_out_evaluation",
+      "kind": "method",
+      "name": "Held-out evaluation",
+      "aliases": [
+        "test set evaluation"
+      ],
+      "definition": "A model or procedure is scored on data that was not used to build or tune it.",
+      "example": "evaluation on a held-out test split"
+    },
+    {
+      "code": "pre_post_test",
+      "kind": "protocol",
+      "name": "Pre-test/post-test design",
+      "aliases": [
+        "pretest-posttest",
+        "before-and-after design"
+      ],
+      "definition": "The same measure is applied before and after an intervention to estimate change.",
+      "usage_note": "Without a control group, change cannot be attributed to the intervention alone.",
+      "example": "a pre-test/post-test design with a comparison group"
+    },
+    {
+      "code": "randomised_assignment",
+      "kind": "protocol",
+      "name": "Randomised assignment",
+      "aliases": [
+        "random assignment",
+        "randomisation"
+      ],
+      "definition": "Participants are allocated to conditions by a random procedure so groups are comparable on average.",
+      "example": "participants were randomly assigned to two conditions"
+    },
+    {
+      "code": "standardised_collection",
+      "kind": "protocol",
+      "name": "Standardised data collection",
+      "aliases": [
+        "uniform procedure"
+      ],
+      "definition": "Every participant is measured with the same instructions, materials, order and setting.",
+      "usage_note": "Report the instructions and setting so the procedure can be repeated.",
+      "example": "data were collected from all participants following the same procedure"
+    },
+    {
+      "code": "double_annotation_adjudication",
+      "kind": "protocol",
+      "name": "Double annotation with adjudication",
+      "aliases": [
+        "dual annotation"
+      ],
+      "definition": "Two annotators label each item independently; disagreements are resolved by a third reviewer.",
+      "example": "each item was labelled by two annotators and disagreements were adjudicated"
+    },
+    {
+      "code": "train_dev_test_split",
+      "kind": "protocol",
+      "name": "Train/development/test split",
+      "aliases": [
+        "data split"
+      ],
+      "definition": "Data are divided before modelling into separate sets for fitting, tuning and final scoring.",
+      "usage_note": "Split by document or group when items from one source are correlated.",
+      "example": "an article-level split into training, development and test sets"
+    },
+    {
+      "code": "significance_level",
+      "kind": "metric",
+      "name": "Significance level",
+      "aliases": [
+        "alpha level",
+        "p value",
+        "p-value",
+        "significance levels"
+      ],
+      "definition": "Threshold probability below which a test result is treated as statistically significant, fixed before the analysis.",
+      "value_range": "commonly 0.05 or 0.01",
+      "usage_note": "State the threshold and whether tests were one- or two-sided; report exact p values where possible.",
+      "example": "a significance level of 0.05 (two-sided)"
+    },
+    {
+      "code": "independent_samples_t_test",
+      "kind": "method",
+      "name": "Independent-samples t-test",
+      "aliases": [
+        "independent sample t-test",
+        "independent sample t-tests",
+        "independent samples t-test",
+        "Student's t-test",
+        "student t-test",
+        "t-test",
+        "t-tests"
+      ],
+      "definition": "Compares the means of one continuous outcome between two unrelated groups.",
+      "usage_note": "Report group means, standard deviations, the t statistic, degrees of freedom and an effect size.",
+      "example": "an independent-samples t-test comparing the two groups"
+    },
+    {
+      "code": "non_parametric_test",
+      "kind": "method",
+      "name": "Non-parametric test",
+      "aliases": [
+        "non-parametric tests",
+        "nonparametric test",
+        "nonparametric tests",
+        "Mann-Whitney U test"
+      ],
+      "definition": "Hypothesis test that does not assume a particular distribution, usually working on ranks.",
+      "usage_note": "Name the specific test and say why a parametric test was not used.",
+      "example": "a Mann-Whitney U test, because the scores were not normally distributed"
+    },
+    {
+      "code": "descriptive_statistics",
+      "kind": "method",
+      "name": "Descriptive statistics",
+      "aliases": [
+        "descriptive data",
+        "descriptive analysis"
+      ],
+      "definition": "Summaries of the collected data, such as counts, means, medians and spreads, before any inferential test.",
+      "example": "descriptive statistics for all variables"
+    }
   ],
   "relations": [
-    {"from": "accuracy", "relation": "uses_method", "to": "held_out_evaluation"},
-    {"from": "precision", "relation": "uses_method", "to": "held_out_evaluation"},
-    {"from": "recall", "relation": "uses_method", "to": "held_out_evaluation"},
-    {"from": "f1_score", "relation": "uses_method", "to": "held_out_evaluation"},
-    {"from": "f1_score", "relation": "related_to", "to": "precision"},
-    {"from": "f1_score", "relation": "related_to", "to": "recall"},
-    {"from": "cohens_kappa", "relation": "uses_method", "to": "expert_annotation"},
-    {"from": "cronbachs_alpha", "relation": "uses_method", "to": "likert_5_point"},
-    {"from": "cronbachs_alpha", "relation": "uses_method", "to": "likert_7_point"},
-    {"from": "mean_score", "relation": "uses_method", "to": "likert_5_point"},
-    {"from": "effect_size_d", "relation": "uses_method", "to": "ab_test"},
-    {"from": "rmse", "relation": "uses_method", "to": "held_out_evaluation"},
-    {"from": "likert_7_point", "relation": "variant_of", "to": "likert_5_point"},
-    {"from": "likert_5_point", "relation": "part_of", "to": "standardised_collection"},
-    {"from": "timed_task", "relation": "part_of", "to": "standardised_collection"},
-    {"from": "expert_annotation", "relation": "part_of", "to": "double_annotation_adjudication"},
-    {"from": "held_out_evaluation", "relation": "part_of", "to": "train_dev_test_split"},
-    {"from": "ab_test", "relation": "part_of", "to": "randomised_assignment"},
-    {"from": "timed_task", "relation": "part_of", "to": "pre_post_test"}
+    {
+      "from": "accuracy",
+      "relation": "uses_method",
+      "to": "held_out_evaluation"
+    },
+    {
+      "from": "precision",
+      "relation": "uses_method",
+      "to": "held_out_evaluation"
+    },
+    {
+      "from": "recall",
+      "relation": "uses_method",
+      "to": "held_out_evaluation"
+    },
+    {
+      "from": "f1_score",
+      "relation": "uses_method",
+      "to": "held_out_evaluation"
+    },
+    {
+      "from": "f1_score",
+      "relation": "related_to",
+      "to": "precision"
+    },
+    {
+      "from": "f1_score",
+      "relation": "related_to",
+      "to": "recall"
+    },
+    {
+      "from": "cohens_kappa",
+      "relation": "uses_method",
+      "to": "expert_annotation"
+    },
+    {
+      "from": "cronbachs_alpha",
+      "relation": "uses_method",
+      "to": "likert_5_point"
+    },
+    {
+      "from": "cronbachs_alpha",
+      "relation": "uses_method",
+      "to": "likert_7_point"
+    },
+    {
+      "from": "mean_score",
+      "relation": "uses_method",
+      "to": "likert_5_point"
+    },
+    {
+      "from": "effect_size_d",
+      "relation": "uses_method",
+      "to": "ab_test"
+    },
+    {
+      "from": "rmse",
+      "relation": "uses_method",
+      "to": "held_out_evaluation"
+    },
+    {
+      "from": "likert_7_point",
+      "relation": "variant_of",
+      "to": "likert_5_point"
+    },
+    {
+      "from": "likert_5_point",
+      "relation": "part_of",
+      "to": "standardised_collection"
+    },
+    {
+      "from": "timed_task",
+      "relation": "part_of",
+      "to": "standardised_collection"
+    },
+    {
+      "from": "expert_annotation",
+      "relation": "part_of",
+      "to": "double_annotation_adjudication"
+    },
+    {
+      "from": "held_out_evaluation",
+      "relation": "part_of",
+      "to": "train_dev_test_split"
+    },
+    {
+      "from": "ab_test",
+      "relation": "part_of",
+      "to": "randomised_assignment"
+    },
+    {
+      "from": "timed_task",
+      "relation": "part_of",
+      "to": "pre_post_test"
+    },
+    {
+      "from": "significance_level",
+      "relation": "uses_method",
+      "to": "independent_samples_t_test"
+    },
+    {
+      "from": "significance_level",
+      "relation": "uses_method",
+      "to": "non_parametric_test"
+    },
+    {
+      "from": "non_parametric_test",
+      "relation": "related_to",
+      "to": "independent_samples_t_test"
+    },
+    {
+      "from": "mean_score",
+      "relation": "uses_method",
+      "to": "descriptive_statistics"
+    },
+    {
+      "from": "effect_size_d",
+      "relation": "uses_method",
+      "to": "independent_samples_t_test"
+    }
   ]
 }

@@ -6,6 +6,29 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # One-shot initializer: migrations, then the idempotent production seed (taxonomy,
+  # reference enums, Phrasebank Basic, Academic Phrase Bank, measurement catalog). api and
+  # worker start only after it exits 0, so a failed migration or seed never replaces the
+  # running containers. Re-running it on every `up` is safe.
+  init:
+    image: aprkb-backend:${IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    env_file:
+      - runtime.conf
+    environment:
+      MEASUREMENT_ENABLED: ${MEASUREMENT_ENABLED:-true}
+    command: ["sh", "-c", "alembic -c alembic.ini upgrade head && python -m aprkb.seeds.load"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   api:
     image: aprkb-backend:${IMAGE_TAG:-local}
     build:
@@ -13,6 +36,10 @@ services:
       dockerfile: apps/backend/Dockerfile
     env_file:
       - runtime.conf
+    environment:
+      # ADR-0015 Metric & Measurement catalog. On by default in production; set
+      # MEASUREMENT_ENABLED=false in runtime.conf to hide its pages and API again.
+      MEASUREMENT_ENABLED: ${MEASUREMENT_ENABLED:-true}
     command: ["uvicorn", "aprkb.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "127.0.0.1:${API_HOST_PORT:-18080}:8000"
@@ -21,6 +48,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      init:
+        condition: service_completed_successfully
     restart: unless-stopped
     logging:
       options:
@@ -46,6 +75,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      init:
+        condition: service_completed_successfully
     restart: unless-stopped
     logging:
       options:

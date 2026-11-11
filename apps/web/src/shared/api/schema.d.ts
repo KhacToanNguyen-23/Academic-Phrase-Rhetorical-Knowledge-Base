@@ -1034,6 +1034,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/measurements/pattern-measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pattern Measurements */
+        get: operations["pattern_measurements_v1_measurements_pattern_measurements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/measurements/slot-suggestions": {
         parameters: {
             query?: never;
@@ -2970,6 +2987,16 @@ export interface components {
             /** Score */
             score: number;
         };
+        /** PatternMeasurementsResponse */
+        PatternMeasurementsResponse: {
+            /** Items */
+            items: components["schemas"]["RelatedMeasurementForPattern"][];
+            /**
+             * Pattern Id
+             * Format: uuid
+             */
+            pattern_id: string;
+        };
         /**
          * PatternSlotDefinition
          * @description Typed writer slot metadata; string values remain valid for older versions.
@@ -3525,6 +3552,22 @@ export interface components {
             /** Relation */
             relation: string;
         };
+        /** RelatedMeasurementForPattern */
+        RelatedMeasurementForPattern: {
+            /** Code */
+            code: string;
+            /** Definition */
+            definition: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "metric" | "method" | "protocol";
+            /** Name */
+            name: string;
+            /** Slot Name */
+            slot_name: string | null;
+        };
         /** ReleaseSummary */
         ReleaseSummary: {
             /**
@@ -3758,8 +3801,11 @@ export interface components {
              * Format: uuid
              */
             pattern_id: string;
-            /** Slot Name */
-            slot_name: string;
+            /**
+             * Slot Name
+             * @description Omit for a pattern-level link (the pattern describes this measure).
+             */
+            slot_name?: string | null;
         };
         /** SlotLinkRead */
         SlotLinkRead: {
@@ -3780,6 +3826,11 @@ export interface components {
             /** Note */
             note: string | null;
             /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "manual" | "term_match";
+            /**
              * Pattern Id
              * Format: uuid
              */
@@ -3791,8 +3842,11 @@ export interface components {
             review_status: "proposed" | "approved" | "rejected";
             /** Reviewed At */
             reviewed_at: string | null;
-            /** Slot Name */
-            slot_name: string;
+            /**
+             * Slot Name
+             * @description None for a pattern-level link.
+             */
+            slot_name: string | null;
         };
         /** SlotLinkReview */
         SlotLinkReview: {
@@ -6432,6 +6486,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeasurementListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pattern_measurements_v1_measurements_pattern_measurements_get: {
+        parameters: {
+            query: {
+                pattern_id: string;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternMeasurementsResponse"];
                 };
             };
             /** @description Validation Error */

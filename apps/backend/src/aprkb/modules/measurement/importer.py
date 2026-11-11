@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aprkb.modules.audit.service import record_event
@@ -21,6 +21,9 @@ from aprkb.modules.measurement.models import (
 from aprkb.policies.schemas import MeasurementPolicy
 
 _CODE = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
+# Serialises catalog writers (import, purge) for the length of their transaction, so a
+# parallel import of the same file sees the first run's sha256 and reports "unchanged".
+_CATALOG_LOCK = text("SELECT pg_advisory_xact_lock(hashtext('aprkb.measurement.catalog'))")
 _ROOT_FIELDS = {"catalog_version", "entries", "relations"}
 _REQUIRED = {"code", "kind", "name", "definition"}
 _OPTIONAL_TEXT = ("formula", "scale", "value_range", "usage_note", "example")
@@ -152,6 +155,7 @@ async def import_catalog(
     Entries missing from the new catalog are kept because approved slot links may
     reference them; they are reported so a curator can decide.
     """
+    await session.execute(_CATALOG_LOCK)
     last_run = await session.scalar(
         select(MeasurementImportRun).order_by(MeasurementImportRun.imported_at.desc()).limit(1)
     )
@@ -243,6 +247,7 @@ async def import_catalog(
 
 async def purge_catalog(session: AsyncSession, *, request_id: str) -> dict[str, int]:
     """Remove every catalog row, slot link and import run in one audited transaction."""
+    await session.execute(_CATALOG_LOCK)
     counts: dict[str, int] = {}
     for name, model in (
         ("slot_links", MeasurementSlotLink),

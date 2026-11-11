@@ -85,11 +85,11 @@ export function MeasurementPage() {
       ) : list.data.items.length === 0 ? (
         <DataState
           state="empty"
-          emptyTitle="No entries match"
+          emptyTitle={list.data.catalog_version ? "No entries match" : "The catalog is not imported yet"}
           emptyDescription={
             list.data.catalog_version
               ? "Try another search or kind."
-              : "The catalog has not been imported yet (measurement-import)."
+              : "Run `make migrate` and `make seed` (or the deploy initializer `python -m aprkb.seeds.load`) to import it."
           }
         />
       ) : (

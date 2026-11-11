@@ -73,6 +73,9 @@ requirements:
 12. Deployment: the backend image ships `data/seed/measurement_catalog.json`, and
     `python -m aprkb.seeds.load` (the existing deploy step) imports it idempotently and
     proposes APB Methods links. Tests call `run_seed` and therefore stay unaffected.
+    A one-shot `init` Compose service runs migrations and this seed, and
+    `deploy/deploy.sh` runs it before it replaces `api`/`worker`/`web`, so a deploy
+    cannot skip the catalog step and a failed seed leaves the live site unchanged.
     See `deploy/README.md`.
 
 ## Deferred

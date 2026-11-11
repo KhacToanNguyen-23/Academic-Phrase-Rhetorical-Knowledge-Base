@@ -1,5 +1,5 @@
 # DRAFT lexicon; TODO(owner, FR-06.2): approve markers before production use.
-version: 0.3.0
+version: 0.4.0
 # Shared by mining and V02. Changing this block changes both consumers; use the two
 # *_only blocks below for a change that must stay on one side.
 markers:
@@ -8,8 +8,7 @@ markers:
   high: [demonstrate, demonstrates, demonstrated, confirm, confirms, confirmed]
   absolute: [prove, proves, proved, proven, establish beyond doubt, always]
 
-# V02 only: writer-claim evidence policy. `show` stays a strong claim for a writer even
-# though mining treats it as neutral (see neutral_verbs and ADR-0012).
+# V02 only: writer-claim evidence policy.
 validator_only_markers:
   high: [show, shows, showed]
 
@@ -24,11 +23,16 @@ irregular_forms:
   prove: [proven]
   show: [shown]
 
-# Mining only: neutral status leaves strength unset. TODO(owner, FR-06.2): review reporting class.
-# Assume is an assumption, not evidence reporting, and may leave this class later.
+# Mining only: syntax-valid OOV matches in this set are held from automatic AI activation.
+# The set remains subject to the owner review noted in the file header.
 neutral_verbs:
-  [show, shows, showed, shown, find, finds, found, observe, observes, observed,
-   note, notes, noted, assume, assumes, assumed]
+  [observe, observes, observed, note, notes, noted, assume, assumes, assumed, select, selects, selected, evaluate,
+   evaluates, evaluated, send, sends, sent, use, uses, used, provide, provides, provided,
+   illustrate, illustrates, illustrated, design, designs, designed, base, bases, based,
+   compose, composes, composed, discuss, discusses, discussed, give, gives, gave, given,
+   present, presents, presented, introduce, introduces, introduced, defer, defers, deferred,
+   summarize, summarizes, summarized, implement, implements, implemented, set, sets, reflect,
+   reflects, reflected]
 
 # Markers that are not verbs keep exact matching and are never inflected.
 non_inflecting: [always, could, is likely, may, might, possibly]

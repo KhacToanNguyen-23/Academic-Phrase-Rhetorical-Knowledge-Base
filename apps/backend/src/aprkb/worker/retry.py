@@ -34,6 +34,9 @@ def retry_after_seconds(value: str | None, *, now: datetime | None = None) -> fl
 
 
 def classify_failure(error: Exception) -> Failure:
+    safe_code = getattr(error, "safe_code", None)
+    if isinstance(safe_code, str) and safe_code.startswith("epistemic_"):
+        return Failure(safe_code, False)
     if isinstance(error, httpx.HTTPStatusError):
         status = error.response.status_code
         retryable = status in {408, 429, 500, 502, 503, 504}

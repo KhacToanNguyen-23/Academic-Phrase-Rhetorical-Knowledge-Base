@@ -588,6 +588,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/mining/epistemic-lexicon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Epistemic Lexicon Entries */
+        get: operations["list_epistemic_lexicon_entries_v1_admin_mining_epistemic_lexicon_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/mining/epistemic-lexicon/{entry_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Epistemic Lexicon Audit */
+        get: operations["get_epistemic_lexicon_audit_v1_admin_mining_epistemic_lexicon__entry_id__audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/mining/epistemic-lexicon/{entry_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Epistemic Lexicon Entry */
+        post: operations["review_epistemic_lexicon_entry_v1_admin_mining_epistemic_lexicon__entry_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/mining/frames": {
         parameters: {
             query?: never;
@@ -1810,6 +1861,118 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** EpistemicLexiconAuditRead */
+        EpistemicLexiconAuditRead: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "activate" | "reject" | "deactivate";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** New Status */
+            new_status: string;
+            /** Previous Status */
+            previous_status: string;
+        };
+        /** EpistemicLexiconEntryRead */
+        EpistemicLexiconEntryRead: {
+            /** Confidence */
+            confidence: number | null;
+            /** Construction Family */
+            construction_family: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Lemma */
+            lemma: string;
+            /** Model */
+            model: string;
+            /** Pos */
+            pos: string;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Provenance */
+            provenance: string;
+            /** Provider */
+            provider: string;
+            /** Review Reason */
+            review_reason: string | null;
+            /** Reviewed At */
+            reviewed_at: string | null;
+            /** Revision */
+            revision: number;
+            /** Run1 Confidence */
+            run1_confidence: number | null;
+            /** Run1 Rationale */
+            run1_rationale: string | null;
+            /** Run1 Tier */
+            run1_tier: ("low" | "moderate" | "high" | "absolute") | null;
+            /** Run2 Confidence */
+            run2_confidence: number | null;
+            /** Run2 Rationale */
+            run2_rationale: string | null;
+            /** Run2 Tier */
+            run2_tier: ("low" | "moderate" | "high" | "absolute") | null;
+            /** Score */
+            score: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "active" | "needs_review" | "policy_conflict_hold" | "rejected" | "superseded";
+            /**
+             * Tier
+             * @enum {string}
+             */
+            tier: "low" | "moderate" | "high" | "absolute";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** EpistemicLexiconPage */
+        EpistemicLexiconPage: {
+            /** Active Coverage */
+            active_coverage: number;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Failed Enrichment Jobs */
+            failed_enrichment_jobs: number;
+            /** Fallback Candidate Count */
+            fallback_candidate_count: number;
+            /** Items */
+            items: components["schemas"]["EpistemicLexiconEntryRead"][];
+            /** Jobs By Status */
+            jobs_by_status: {
+                [key: string]: number;
+            };
+            /** Prompt Disagreement Entries */
+            prompt_disagreement_entries: number;
+            /** Total */
+            total: number;
+        };
+        /** EpistemicLexiconReview */
+        EpistemicLexiconReview: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "activate" | "reject" | "deactivate";
         };
         /** ExplanationDetail */
         ExplanationDetail: {
@@ -5436,6 +5599,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SlotLinkRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_epistemic_lexicon_entries_v1_admin_mining_epistemic_lexicon_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EpistemicLexiconPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_epistemic_lexicon_audit_v1_admin_mining_epistemic_lexicon__entry_id__audit_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EpistemicLexiconAuditRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_epistemic_lexicon_entry_v1_admin_mining_epistemic_lexicon__entry_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EpistemicLexiconReview"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EpistemicLexiconEntryRead"];
                 };
             };
             /** @description Validation Error */

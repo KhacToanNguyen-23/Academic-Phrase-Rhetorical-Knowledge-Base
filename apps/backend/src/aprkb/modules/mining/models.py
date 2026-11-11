@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import (
     ARRAY,
@@ -11,11 +11,14 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     Uuid,
+    func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -66,6 +69,88 @@ class CandidateLabel(MutableEntityMixin, Base):
     proposed_by_run: Mapped[str | None] = mapped_column(String(64), nullable=True)
     reviewer_id: Mapped[UUID | None] = mapped_column(ForeignKey("api_clients.id"), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class EpistemicLexiconEntry(MutableEntityMixin, Base):
+    """Versioned lexical assessment with no source-sentence payload."""
+
+    __tablename__ = "epistemic_lexicon_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "lemma",
+            "pos",
+            "construction_family",
+            "revision",
+            name="uq_epistemic_lexicon_revision_key",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'active', 'needs_review', 'policy_conflict_hold', "
+            "'rejected', 'superseded')",
+            name="ck_epistemic_lexicon_status",
+        ),
+        CheckConstraint(
+            "tier IN ('low', 'moderate', 'high', 'absolute')",
+            name="ck_epistemic_lexicon_tier",
+        ),
+        CheckConstraint(
+            "confidence IS NULL OR (confidence >= 0 AND confidence <= 1)",
+            name="ck_epistemic_lexicon_confidence",
+        ),
+        CheckConstraint(
+            "review_reason IS NULL OR review_reason IN "
+            "('low_confidence', 'tier_disagreement', 'locked_neutral_policy')",
+            name="ck_epistemic_lexicon_review_reason",
+        ),
+        Index(
+            "uq_epistemic_lexicon_active_key",
+            "lemma",
+            "pos",
+            "construction_family",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+        Index("ix_epistemic_lexicon_status", "status"),
+    )
+
+    lemma: Mapped[str] = mapped_column(String(96))
+    pos: Mapped[str] = mapped_column(String(16))
+    construction_family: Mapped[str] = mapped_column(String(96))
+    revision: Mapped[int] = mapped_column(Integer)
+    tier: Mapped[str] = mapped_column(String(16))
+    score: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    run1_tier: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    run1_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    run1_rationale: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    run2_tier: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    run2_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    run2_rationale: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    review_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    provider: Mapped[str] = mapped_column(String(32), default="null")
+    model: Mapped[str] = mapped_column(String(128), default="")
+    prompt_version: Mapped[str] = mapped_column(String(32), default="")
+    provenance: Mapped[str] = mapped_column(String(64), default="ai_assessment_pending")
+    reviewed_by: Mapped[UUID | None] = mapped_column(ForeignKey("api_clients.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class EpistemicLexiconAudit(Base):
+    """Append-only curator actions for epistemic lexicon revisions."""
+
+    __tablename__ = "epistemic_lexicon_audit"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    entry_id: Mapped[UUID] = mapped_column(
+        ForeignKey("epistemic_lexicon_entries.id", ondelete="CASCADE"), index=True
+    )
+    actor_id: Mapped[UUID] = mapped_column(ForeignKey("api_clients.id"))
+    action: Mapped[str] = mapped_column(String(16))
+    previous_status: Mapped[str] = mapped_column(String(32))
+    new_status: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
 
 class Job(MutableEntityMixin, Base):

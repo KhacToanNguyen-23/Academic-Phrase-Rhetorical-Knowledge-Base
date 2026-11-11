@@ -51,7 +51,10 @@ def build_stages(
             if hybrid_enabled
             else None,
         ),
-        EpistemicTagger(policy_bundle.epistemic_scoring, epistemic_scorer),
+        EpistemicTagger(
+            policy_bundle.epistemic_scoring,
+            epistemic_scorer,
+        ),
         FrameNormalizer(),
         Clusterer(policy_bundle),
         TodoMiningStage("dedup_matcher", "FR-06.2"),

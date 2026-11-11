@@ -111,6 +111,7 @@ async def record_failure(
                 "import_articles",
                 "ingest_article",
                 "mine_article",
+                "enrich_epistemic_lexicon",
             }
             and job.attempts < job.max_attempts
         )

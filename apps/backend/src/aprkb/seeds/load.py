@@ -88,6 +88,7 @@ async def _seed_reference_enums(session: AsyncSession, *, include_dev_license: b
         if code == "DEV-UNVERIFIED" and not include_dev_license:
             continue
         allows_mining, allows_display = entry.allows_mining, entry.allows_display
+        allows_external_processing = entry.allows_external_processing
         license_row = await session.scalar(select(License).where(License.code == code))
         if license_row is None:
             session.add(
@@ -97,12 +98,14 @@ async def _seed_reference_enums(session: AsyncSession, *, include_dev_license: b
                     name=name,
                     allows_mining=allows_mining,
                     allows_display=allows_display,
+                    allows_external_processing=allows_external_processing,
                 )
             )
         else:
             license_row.name = name
             license_row.allows_mining = allows_mining
             license_row.allows_display = allows_display
+            license_row.allows_external_processing = allows_external_processing
     await session.flush()
 
 

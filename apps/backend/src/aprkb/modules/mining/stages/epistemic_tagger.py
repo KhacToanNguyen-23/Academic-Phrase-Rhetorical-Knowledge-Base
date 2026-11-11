@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from aprkb.modules.mining.stages.base import MiningItem, MiningStage
 from aprkb.modules.mining.stages.epistemic_scorer import (
     NO_SPACY_PROVENANCE,
-    SCORER_PROVENANCE,
+    SCORED_PROVENANCES,
     EpistemicScorer,
 )
 
@@ -21,14 +21,16 @@ class EpistemicTagger(MiningStage):
     requirement_id = "FR-06.2"
 
     def __init__(
-        self, policy: EpistemicScoringPolicy, scorer: EpistemicScorer | None = None
+        self,
+        policy: EpistemicScoringPolicy,
+        scorer: EpistemicScorer | None = None,
     ) -> None:
         self._scorer = scorer or EpistemicScorer(policy)
 
     def process(self, batch: list[MiningItem]) -> list[MiningItem]:
         tagged = []
         for item in batch:
-            if item.epistemic_provenance == SCORER_PROVENANCE:
+            if item.epistemic_provenance in SCORED_PROVENANCES:
                 tagged.append(item)
                 continue
             if item.epistemic_doc is None:
@@ -48,14 +50,24 @@ class EpistemicTagger(MiningStage):
                 replace(
                     item,
                     epistemic_strength=(
-                        None if result.label == "negative_refuted" else result.label
+                        None
+                        if result.label in {"negative_refuted", "not_applicable"}
+                        else result.label
                     ),
                     epistemic_status=(
-                        "refuted" if result.label == "negative_refuted" else "assigned"
+                        "refuted"
+                        if result.label == "negative_refuted"
+                        else "neutral"
+                        if result.label == "not_applicable"
+                        else "assigned"
                     ),
                     epistemic_score=result.score,
-                    epistemic_provenance=SCORER_PROVENANCE,
+                    epistemic_provenance=result.provenance,
                     epistemic_modifiers=result.detected_modifiers,
+                    epistemic_lemma=result.lemma,
+                    epistemic_pos=result.pos,
+                    epistemic_construction_family=result.construction_family,
+                    epistemic_lexicon_revision=result.lexicon_revision,
                 )
             )
         return tagged

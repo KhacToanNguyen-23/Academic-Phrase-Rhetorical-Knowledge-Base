@@ -26,14 +26,7 @@ def test_default_lexicon_declares_inflection_metadata(policy_bundle):
 
     assert markers.irregular_forms["prove"] == ["proven"]
     assert markers.irregular_forms["show"] == ["shown"]
-    assert set(markers.neutral_verbs) == {
-        "show",
-        "shows",
-        "showed",
-        "shown",
-        "find",
-        "finds",
-        "found",
+    assert {
         "observe",
         "observes",
         "observed",
@@ -43,7 +36,10 @@ def test_default_lexicon_declares_inflection_metadata(policy_bundle):
         "assume",
         "assumes",
         "assumed",
-    }
+    } <= set(markers.neutral_verbs)
+    assert not {"show", "shows", "showed", "shown", "find", "finds", "found"} & set(
+        markers.neutral_verbs
+    )
     assert "may" in markers.non_inflecting
     assert "always" in markers.non_inflecting
 

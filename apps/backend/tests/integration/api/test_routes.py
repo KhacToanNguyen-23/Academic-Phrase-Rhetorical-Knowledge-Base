@@ -156,6 +156,9 @@ def test_openapi_matches_prd_routes_and_pattern_versions_are_append_only():
         ("/v1/admin/mining/frames", "get"),
         ("/v1/admin/mining/frames/label", "post"),
         ("/v1/admin/mining/frames/decisions", "post"),
+        ("/v1/admin/mining/epistemic-lexicon", "get"),
+        ("/v1/admin/mining/epistemic-lexicon/{id}/review", "post"),
+        ("/v1/admin/mining/epistemic-lexicon/{id}/audit", "get"),
         ("/v1/admin/jobs/{id}", "get"),
         ("/v1/admin/jobs", "get"),
         ("/v1/admin/jobs/{id}/attempts", "get"),
@@ -1012,7 +1015,7 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
         "validation_rules": "0.2.0",
-        "epistemic_markers": "0.3.0",
+        "epistemic_markers": "0.4.0",
         "taxonomy_release": "0.2.0",
     }
 

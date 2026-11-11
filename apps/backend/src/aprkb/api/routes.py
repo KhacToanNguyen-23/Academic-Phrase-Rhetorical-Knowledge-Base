@@ -14,6 +14,7 @@ from aprkb.modules.identity.router import router as identity
 from aprkb.modules.journals.router import router as journals
 from aprkb.modules.measurement.router import admin_router as measurement_admin
 from aprkb.modules.measurement.router import router as measurement
+from aprkb.modules.mining.epistemic_lexicon_router import router as epistemic_lexicon
 from aprkb.modules.mining.router import router as frame_labels
 from aprkb.modules.patterns.router import router as patterns
 from aprkb.modules.recommendation.router import router as recommendation
@@ -44,6 +45,7 @@ api_router.include_router(reference_library, prefix="/reference-library")
 api_router.include_router(vocabulary)
 api_router.include_router(vocabulary_admin, prefix="/admin")
 api_router.include_router(frame_labels)
+api_router.include_router(epistemic_lexicon)
 api_router.include_router(academic_phrases, prefix="/academic-phrases")
 api_router.include_router(academic_phrase_admin, prefix="/admin")
 api_router.include_router(measurement, prefix="/measurements")

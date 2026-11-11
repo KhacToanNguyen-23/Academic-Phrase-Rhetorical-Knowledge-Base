@@ -1358,6 +1358,331 @@
         "title": "EmailLogin",
         "type": "object"
       },
+      "EpistemicLexiconAuditRead": {
+        "properties": {
+          "action": {
+            "enum": [
+              "activate",
+              "reject",
+              "deactivate"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "new_status": {
+            "title": "New Status",
+            "type": "string"
+          },
+          "previous_status": {
+            "title": "Previous Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "previous_status",
+          "new_status",
+          "created_at"
+        ],
+        "title": "EpistemicLexiconAuditRead",
+        "type": "object"
+      },
+      "EpistemicLexiconEntryRead": {
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "construction_family": {
+            "title": "Construction Family",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lemma": {
+            "title": "Lemma",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "pos": {
+            "title": "Pos",
+            "type": "string"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "provenance": {
+            "title": "Provenance",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "review_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Reason"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "run1_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run1 Confidence"
+          },
+          "run1_rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run1 Rationale"
+          },
+          "run1_tier": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "moderate",
+                  "high",
+                  "absolute"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run1 Tier"
+          },
+          "run2_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run2 Confidence"
+          },
+          "run2_rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run2 Rationale"
+          },
+          "run2_tier": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "moderate",
+                  "high",
+                  "absolute"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run2 Tier"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "active",
+              "needs_review",
+              "policy_conflict_hold",
+              "rejected",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              "low",
+              "moderate",
+              "high",
+              "absolute"
+            ],
+            "title": "Tier",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "lemma",
+          "pos",
+          "construction_family",
+          "revision",
+          "tier",
+          "score",
+          "status",
+          "confidence",
+          "run1_tier",
+          "run1_confidence",
+          "run1_rationale",
+          "run2_tier",
+          "run2_confidence",
+          "run2_rationale",
+          "review_reason",
+          "provider",
+          "model",
+          "prompt_version",
+          "provenance",
+          "reviewed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "EpistemicLexiconEntryRead",
+        "type": "object"
+      },
+      "EpistemicLexiconPage": {
+        "properties": {
+          "active_coverage": {
+            "title": "Active Coverage",
+            "type": "number"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "failed_enrichment_jobs": {
+            "title": "Failed Enrichment Jobs",
+            "type": "integer"
+          },
+          "fallback_candidate_count": {
+            "title": "Fallback Candidate Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EpistemicLexiconEntryRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "jobs_by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Jobs By Status",
+            "type": "object"
+          },
+          "prompt_disagreement_entries": {
+            "title": "Prompt Disagreement Entries",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "counts",
+          "jobs_by_status",
+          "failed_enrichment_jobs",
+          "prompt_disagreement_entries",
+          "fallback_candidate_count",
+          "active_coverage"
+        ],
+        "title": "EpistemicLexiconPage",
+        "type": "object"
+      },
+      "EpistemicLexiconReview": {
+        "properties": {
+          "action": {
+            "enum": [
+              "activate",
+              "reject",
+              "deactivate"
+            ],
+            "title": "Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "EpistemicLexiconReview",
+        "type": "object"
+      },
       "ExplanationDetail": {
         "properties": {
           "available": {
@@ -11046,6 +11371,227 @@
         "summary": "Review Slot Link",
         "tags": [
           "measurement"
+        ]
+      }
+    },
+    "/v1/admin/mining/epistemic-lexicon": {
+      "get": {
+        "operationId": "list_epistemic_lexicon_entries_v1_admin_mining_epistemic_lexicon_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(pending|active|needs_review|policy_conflict_hold|rejected|superseded)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EpistemicLexiconPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Epistemic Lexicon Entries",
+        "tags": [
+          "epistemic lexicon"
+        ]
+      }
+    },
+    "/v1/admin/mining/epistemic-lexicon/{entry_id}/audit": {
+      "get": {
+        "operationId": "get_epistemic_lexicon_audit_v1_admin_mining_epistemic_lexicon__entry_id__audit_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EpistemicLexiconAuditRead"
+                  },
+                  "title": "Response Get Epistemic Lexicon Audit V1 Admin Mining Epistemic Lexicon  Entry Id  Audit Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Epistemic Lexicon Audit",
+        "tags": [
+          "epistemic lexicon"
+        ]
+      }
+    },
+    "/v1/admin/mining/epistemic-lexicon/{entry_id}/review": {
+      "post": {
+        "operationId": "review_epistemic_lexicon_entry_v1_admin_mining_epistemic_lexicon__entry_id__review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EpistemicLexiconReview"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EpistemicLexiconEntryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Epistemic Lexicon Entry",
+        "tags": [
+          "epistemic lexicon"
         ]
       }
     },

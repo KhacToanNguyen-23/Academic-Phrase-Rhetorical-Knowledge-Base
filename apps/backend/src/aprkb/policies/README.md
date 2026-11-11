@@ -27,8 +27,16 @@ and do not add mining-derived values. See [ADR-0012](../../../../../doc/adr/0012
 
 `slot_abstraction.yaml` contains provisional ownership tiers by determiner and head noun;
 its lists carry `TODO(owner, FR-06.2)`. `lexicon/epistemic_markers.yaml` separates strength
-markers from `neutral_verbs`: neutral means `epistemic_strength=None`, not a fifth strength
-level. The neutral verb list is provisional and carries `TODO(owner, FR-06.2)`.
+markers from `neutral_verbs`. The syntax-first scorer now decides applicability from the parsed
+claim complement or configured relational object; the old neutral list no longer vetoes a
+syntactically valid claim. Its mining-only `neutral_verbs` list now blocks automatic AI
+activation for matching OOV predicates; the list remains subject to owner review.
+
+Syntax-valid OOV predicates are assessed in two separate model passes. Automatic activation
+requires exact tier agreement and both confidence values at or above
+`epistemic_scoring.yaml:oov_activation_confidence_threshold` (0.90 by default). The confidence
+value is the model's estimate, not a statistically calibrated probability. Locked neutral verbs
+are held for curator review and are never auto-activated.
 
 `EVIDENCE_CONTRACT.md` is a broader, unapproved proposal. It is not loaded by
 the application and must not be treated as a second runtime policy. If the

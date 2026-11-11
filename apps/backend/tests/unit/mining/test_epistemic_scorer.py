@@ -56,8 +56,9 @@ def scorer() -> EpistemicScorer:
 def test_conclusively_proves_is_absolute(scorer: EpistemicScorer) -> None:
     root = ParsedToken("prove", "prove", "ROOT", 1)
     adverb = root.add(ParsedToken("conclusively", "conclusively", "advmod", 0))
+    root.add(ParsedToken("holds", "hold", "ccomp", 3))
 
-    result = scorer.score(_doc(root, adverb))
+    result = scorer.score(_doc(root, adverb, *root._children[1:]))
 
     assert (result.label, result.score, result.head_token) == ("absolute", 4.5, "prove")
     assert result.detected_modifiers == [
@@ -73,16 +74,17 @@ def test_clearly_demonstrates_is_high(scorer: EpistemicScorer) -> None:
 
     result = scorer.score(_doc(root, adverb, obj, modifier))
 
-    assert (result.label, result.score) == ("high", 3.0)
+    assert (result.label, result.score) == ("absolute", 3.0)
 
 
 def test_possibility_modal_caps_score_and_forces_low(scorer: EpistemicScorer) -> None:
     root = ParsedToken("prove", "prove", "ROOT", 1)
     modal = root.add(ParsedToken("may", "may", "aux", 0))
+    root.add(ParsedToken("hold", "hold", "ccomp", 3))
 
-    result = scorer.score(_doc(root, modal))
+    result = scorer.score(_doc(root, modal, *root._children[1:]))
 
-    assert (result.label, result.score) == ("low", 0.8)
+    assert (result.label, result.score) == ("low", 0.4)
     assert result.detected_modifiers[0] == {
         "kind": "modal_possibility",
         "token": "may",
@@ -90,10 +92,52 @@ def test_possibility_modal_caps_score_and_forces_low(scorer: EpistemicScorer) ->
     }
 
 
+def test_embedded_possibility_modal_has_light_penalty_without_matrix_cap(
+    scorer: EpistemicScorer,
+) -> None:
+    root = ParsedToken("shows", "show", "ROOT", 1)
+    complement = root.add(ParsedToken("improve", "improve", "ccomp", 5))
+    modal = complement.add(ParsedToken("can", "can", "aux", 4))
+
+    result = scorer.score(_doc(root, complement, modal))
+
+    assert (result.label, result.score) == ("moderate", 1.5)
+    assert result.detected_modifiers == [
+        {
+            "kind": "modal_possibility",
+            "token": "can",
+            "delta": -0.5,
+            "scope": "embedded_clause",
+        }
+    ]
+
+
+def test_embedded_modal_inside_nested_complement_does_not_cap_matrix_score(
+    scorer: EpistemicScorer,
+) -> None:
+    root = ParsedToken("shows", "show", "ROOT", 1)
+    complement = root.add(ParsedToken("report", "report", "ccomp", 4))
+    nested = complement.add(ParsedToken("improve", "improve", "xcomp", 7))
+    modal = nested.add(ParsedToken("can", "can", "aux", 6))
+
+    result = scorer.score(_doc(root, complement, nested, modal))
+
+    assert (result.label, result.score) == ("moderate", 1.5)
+    assert result.detected_modifiers == [
+        {
+            "kind": "modal_possibility",
+            "token": "can",
+            "delta": -0.5,
+            "scope": "embedded_clause",
+        }
+    ]
+
+
 def test_unmodified_suggests_is_moderate(scorer: EpistemicScorer) -> None:
     root = ParsedToken("suggests", "suggest", "ROOT", 0)
+    complement = root.add(ParsedToken("holds", "hold", "ccomp", 2))
 
-    result = scorer.score(_doc(root))
+    result = scorer.score(_doc(root, complement))
 
     assert (result.label, result.score) == ("moderate", 1.0)
 
@@ -106,7 +150,7 @@ def test_hedged_complement_is_low(scorer: EpistemicScorer) -> None:
 
     result = scorer.score(_doc(root, complement, modal, downtoner))
 
-    assert (result.label, result.score) == ("low", -4.5)
+    assert (result.label, result.score) == ("low", -2.5)
 
 
 def test_fails_to_confirm_is_negative_refuted(scorer: EpistemicScorer) -> None:
@@ -126,6 +170,7 @@ def test_fails_to_confirm_is_negative_refuted(scorer: EpistemicScorer) -> None:
 def test_cannot_be_concluded_is_negative_refuted(scorer: EpistemicScorer) -> None:
     root = ParsedToken("concluded", "conclude", "ROOT", 3)
     root.add(ParsedToken("cannot", "cannot", "auxpass", 1))
+    root.add(ParsedToken("hold", "hold", "ccomp", 5))
     result = scorer.score(_doc(root, *root._children))
 
     assert result.label == "negative_refuted"
@@ -155,14 +200,17 @@ def test_nested_negative_control_does_not_refute_matrix_assertion(
 def test_copular_predicate_and_doubt_quantification(scorer: EpistemicScorer) -> None:
     root = ParsedToken("evident", "evident", "ROOT", 2)
     root.add(ParsedToken("is", "be", "cop", 1))
+    root.add(ParsedToken("holds", "hold", "ccomp", 4))
     assert scorer.score(_doc(root, *root._children)).label == "high"
 
     doubt = ParsedToken("doubt", "doubt", "ROOT", 3)
     doubt.add(ParsedToken("no", "no", "det", 2))
+    doubt.add(ParsedToken("holds", "hold", "ccomp", 5))
     result = scorer.score(_doc(doubt, *doubt._children))
     assert (result.label, result.score) == ("absolute", 3.5)
 
     without_doubt = ParsedToken("doubt", "doubt", "ROOT", 3)
+    without_doubt.add(ParsedToken("remains", "remain", "ccomp", 5))
     without = without_doubt.add(ParsedToken("without", "without", "prep", 1))
     result = scorer.score(_doc(without_doubt, without))
     assert (result.label, result.score) == ("absolute", 3.5)
@@ -180,6 +228,7 @@ def test_default_mining_tag_is_null_without_a_parsed_doc() -> None:
 
 def test_tagger_uses_parsed_doc_and_exposes_score() -> None:
     root = ParsedToken("suggests", "suggest", "ROOT", 0)
+    root.add(ParsedToken("holds", "hold", "ccomp", 3))
     tagger = EpistemicTagger(load_policy_bundle().epistemic_scoring)
     item = MiningItem(
         text="[X] suggests that [Y]",
@@ -192,7 +241,85 @@ def test_tagger_uses_parsed_doc_and_exposes_score() -> None:
     assert result.epistemic_strength == "moderate"
     assert result.epistemic_status == "assigned"
     assert result.epistemic_score == 1.0
-    assert result.epistemic_provenance == "spacy_dependency_scorer"
+    assert result.epistemic_provenance == "epistemic_policy"
+
+
+def test_unfamiliar_predicate_with_clausal_complement_uses_moderate_oov_fallback(
+    scorer: EpistemicScorer,
+) -> None:
+    root = ParsedToken("records", "record", "ROOT", 1)
+    root.add(ParsedToken("holds", "hold", "ccomp", 4))
+
+    result = scorer.score(_doc(root, *root._children))
+
+    assert (result.label, result.score, result.provenance) == (
+        "moderate",
+        1.0,
+        "syntax_gate_oov_default",
+    )
+    assert result.construction_family == "ccomp"
+
+
+def test_active_ai_lexicon_entry_overrides_oov_fallback() -> None:
+    policy = load_policy_bundle().epistemic_scoring
+    scorer = EpistemicScorer(
+        policy,
+        active_lexicon={("record", "verb", "ccomp"): 2.0},
+        lexicon_revision="lex:test-revision",
+    )
+    root = ParsedToken("records", "record", "ROOT", 1)
+    root.add(ParsedToken("holds", "hold", "ccomp", 4))
+
+    result = scorer.score(_doc(root, *root._children))
+
+    assert (result.label, result.score) == ("high", 2.0)
+    assert result.provenance == "epistemic_ai_lexicon"
+    assert result.lexicon_revision == "lex:test-revision"
+
+
+def test_matrix_possibility_modal_on_claim_predicate_hits_low_ceiling(
+    scorer: EpistemicScorer,
+) -> None:
+    root = ParsedToken("observe", "observe", "ROOT", 2)
+    root.add(ParsedToken("can", "can", "aux", 1))
+    root.add(ParsedToken("holds", "hold", "ccomp", 5))
+
+    result = scorer.score(_doc(root, *root._children))
+
+    assert (result.label, result.score) == ("low", 0.0)
+
+
+def test_predicate_without_claim_complement_is_not_applicable(scorer: EpistemicScorer) -> None:
+    root = ParsedToken("observes", "observe", "ROOT", 1)
+
+    result = scorer.score(_doc(root))
+
+    assert (result.label, result.score) == ("not_applicable", None)
+
+
+def test_direct_relational_object_passes_syntax_gate(scorer: EpistemicScorer) -> None:
+    root = ParsedToken("show", "show", "ROOT", 1)
+    root.add(ParsedToken("correlation", "correlation", "obj", 2))
+
+    result = scorer.score(_doc(root, *root._children))
+
+    assert (result.label, result.score) == ("high", 2.0)
+
+
+def test_passive_artifact_location_is_rejected_but_claim_complement_is_kept(
+    scorer: EpistemicScorer,
+) -> None:
+    root = ParsedToken("shown", "show", "ROOT", 2)
+    root.add(ParsedToken("is", "be", "auxpass", 1))
+    prep = root.add(ParsedToken("in", "in", "prep", 3))
+    prep.add(ParsedToken("Figure", "figure", "pobj", 4))
+
+    rejected = scorer.score(_doc(root, *root._children, *prep._children))
+    assert (rejected.label, rejected.score) == ("not_applicable", None)
+
+    root.add(ParsedToken("holds", "hold", "ccomp", 6))
+    accepted = scorer.score(_doc(root, *root._children, *prep._children))
+    assert (accepted.label, accepted.score) == ("high", 2.0)
 
 
 def test_tagger_keeps_refutation_out_of_the_four_strength_tiers() -> None:

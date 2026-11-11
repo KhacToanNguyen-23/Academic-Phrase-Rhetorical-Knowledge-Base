@@ -280,6 +280,7 @@ class LicenseEntry(BaseModel):
     name: str = Field(min_length=1)
     allows_mining: bool
     allows_display: bool
+    allows_external_processing: bool = False
 
 
 class LicensesPolicy(VersionedPolicy):
@@ -1254,12 +1255,16 @@ class EpistemicScoringPolicy(VersionedPolicy):
     """Offline compositional scoring lexicons, weights, and category thresholds."""
 
     baseline_terms: dict[Literal["low", "moderate", "high", "absolute"], list[str]]
+    claim_complement_nouns: list[str] = Field(default_factory=list)
     baseline_scores: dict[Literal["low", "moderate", "high", "absolute"], float]
     default_score: float = 0.5
+    oov_fallback_score: float = 1.0
+    oov_activation_confidence_threshold: float = Field(default=0.90, ge=0, le=1)
     thresholds: dict[Literal["moderate", "high", "absolute"], float]
     modal_terms: dict[Literal["possibility", "assertive", "conditional"], list[str]]
     modal_deltas: dict[Literal["possibility", "assertive", "conditional"], float]
-    possibility_modal_cap: float = 0.8
+    embedded_possibility_modal_delta: float = -0.5
+    possibility_modal_cap: float = 0.4
     adverb_terms: dict[Literal["maximal", "strong", "downtoner"], list[str]]
     adverb_deltas: dict[Literal["maximal", "strong", "downtoner"], float]
     negation_terms: list[str]
@@ -1296,6 +1301,10 @@ class EpistemicScoringPolicy(VersionedPolicy):
             0 < self.thresholds["moderate"] < self.thresholds["high"] < self.thresholds["absolute"]
         ):
             raise ValueError("strength thresholds must be positive and strictly increasing")
+        if not isfinite(self.oov_fallback_score):
+            raise ValueError("oov_fallback_score must be finite")
+        if self.possibility_modal_cap >= self.thresholds["moderate"]:
+            raise ValueError("possibility_modal_cap must remain below the moderate threshold")
         if any(
             not values
             for values in (
@@ -1309,6 +1318,7 @@ class EpistemicScoringPolicy(VersionedPolicy):
             *self.baseline_terms.values(),
             *self.modal_terms.values(),
             *self.adverb_terms.values(),
+            self.claim_complement_nouns,
             self.negation_terms,
             self.negative_control_lemmas,
             self.doubt_quantifiers,

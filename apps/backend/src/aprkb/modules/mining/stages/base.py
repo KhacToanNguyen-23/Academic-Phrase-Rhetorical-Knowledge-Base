@@ -45,6 +45,10 @@ class MiningItem:
     epistemic_score: float | None = None
     epistemic_provenance: str = NO_SPACY_PROVENANCE
     epistemic_modifiers: list[dict[str, object]] = field(default_factory=list)
+    epistemic_lemma: str | None = None
+    epistemic_pos: str | None = None
+    epistemic_construction_family: str | None = None
+    epistemic_lexicon_revision: str | None = None
     cluster_key: str | None = None
     confidence: float | None = None
     construction_id: str | None = None

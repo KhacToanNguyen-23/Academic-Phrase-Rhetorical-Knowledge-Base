@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     slr_dev_fallback_license: str | None = None
     gold_labeler: str = "null"
     frame_labeler: str = "null"
+    epistemic_labeler: Literal["null", "groq"] = "null"
     groq_api_key: SecretStr | None = None
     groq_allow_external_processing: bool = False
 
@@ -109,6 +110,12 @@ class Settings(BaseSettings):
             raise ValueError("FRAME_LABELER must be null or groq")
         if self.frame_labeler == "groq" and self.app_env not in DEV_APP_ENVS:
             raise ValueError("FRAME_LABELER=groq is only allowed in local or test")
+        return self
+
+    @model_validator(mode="after")
+    def epistemic_labeler_dev_only(self) -> "Settings":
+        if self.epistemic_labeler == "groq" and self.app_env not in DEV_APP_ENVS:
+            raise ValueError("EPISTEMIC_LABELER=groq is only allowed in local or test")
         return self
 
     grobid_url: str = "http://localhost:8070"

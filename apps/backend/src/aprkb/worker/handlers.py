@@ -22,13 +22,20 @@ from aprkb.modules.corpus.sources import ArticleSource, build_article_source
 from aprkb.modules.corpus.sources.base import ImportOptions
 from aprkb.modules.corpus.sources.slr_source import SlrRepositorySource
 from aprkb.modules.mining.candidate_writer import CandidateDraft, CandidateWriter
+from aprkb.modules.mining.epistemic_lexicon_service import (
+    EPISTEMIC_ENRICHMENT_JOB_TYPE,
+    assess_epistemic_entries,
+    assess_epistemic_entry,
+    discover_epistemic_oov,
+    enqueue_epistemic_oov_batch,
+    load_active_epistemic_snapshot,
+)
 from aprkb.modules.mining.models import Candidate, Job
 from aprkb.modules.mining.pipeline import MiningPipeline
 from aprkb.modules.mining.stages import build_stages
 from aprkb.modules.mining.stages.base import MiningItem
 from aprkb.modules.mining.stages.epistemic_scorer import (
     NO_SPACY_PROVENANCE,
-    SCORER_PROVENANCE,
     EpistemicScorer,
 )
 from aprkb.nlp import NlpEngineInfo, SentenceAnalysis, SpacyEngine
@@ -168,6 +175,26 @@ async def handle_job(
             job_payload=job.payload,
             request_id=str(job.id),
         )
+        return None
+    if job.type == EPISTEMIC_ENRICHMENT_JOB_TYPE:
+        entry_values = job.payload.get("entry_ids")
+        if isinstance(entry_values, list):
+            if not entry_values or not all(isinstance(value, str) for value in entry_values):
+                return "Job payload contains an invalid entry_ids batch"
+            try:
+                entry_ids = [UUID(value) for value in entry_values]
+            except ValueError:
+                return "Job payload contains an invalid entry_id"
+            await assess_epistemic_entries(session, entry_ids=entry_ids)
+            return None
+        entry_value = job.payload.get("entry_id")
+        if not isinstance(entry_value, str):
+            return "Job payload is missing entry_id"
+        try:
+            entry_id = UUID(entry_value)
+        except ValueError:
+            return "Job payload contains an invalid entry_id"
+        await assess_epistemic_entry(session, entry_id=entry_id)
         return None
     article_value = job.payload.get("article_id")
     if not isinstance(article_value, str):
@@ -509,11 +536,17 @@ async def _mine(
     if not rows:
         return "Article has no parsed sentences"
     policies = load_policy_bundle()
+    snapshot = await load_active_epistemic_snapshot(session)
+    job_scorer = EpistemicScorer(
+        policies.epistemic_scoring,
+        active_lexicon=snapshot.entries,
+        lexicon_revision=snapshot.revision,
+    )
     pipeline = MiningPipeline(
         stages=build_stages(
             policy_bundle=policies,
             hybrid_enabled=settings.mining_hybrid_enabled,
-            epistemic_scorer=(nlp_runtime.epistemic_scorer if nlp_runtime else None),
+            epistemic_scorer=job_scorer,
         )
     )
     mining_rows: list[MiningItem] = []
@@ -535,15 +568,31 @@ async def _mine(
         )
         epistemic_provenance = NO_SPACY_PROVENANCE
         epistemic_modifiers: list[dict[str, object]] = []
+        epistemic_lemma = None
+        epistemic_pos = None
+        epistemic_construction_family = None
+        epistemic_lexicon_revision = None
         if nlp_runtime is not None and nlp_runtime.spacy_engine is not None:
             try:
                 parsed_doc = nlp_runtime.spacy_engine.parse(sentence.text)
-                result = nlp_runtime.epistemic_scorer.score(parsed_doc)
-                epistemic_strength = None if result.label == "negative_refuted" else result.label
+                result = job_scorer.score(parsed_doc)
+                epistemic_strength = (
+                    None if result.label in {"negative_refuted", "not_applicable"} else result.label
+                )
                 epistemic_score = result.score
-                epistemic_status = "refuted" if result.label == "negative_refuted" else "assigned"
-                epistemic_provenance = SCORER_PROVENANCE
+                epistemic_status = (
+                    "refuted"
+                    if result.label == "negative_refuted"
+                    else "neutral"
+                    if result.label == "not_applicable"
+                    else "assigned"
+                )
+                epistemic_provenance = result.provenance
                 epistemic_modifiers = result.detected_modifiers
+                epistemic_lemma = result.lemma
+                epistemic_pos = result.pos
+                epistemic_construction_family = result.construction_family
+                epistemic_lexicon_revision = result.lexicon_revision
             except Exception as error:
                 logger.warning(
                     "Sentence parse failed; epistemic scoring skipped reason=%s",
@@ -563,12 +612,40 @@ async def _mine(
                 epistemic_status=epistemic_status,
                 epistemic_provenance=epistemic_provenance,
                 epistemic_modifiers=epistemic_modifiers,
+                epistemic_lemma=epistemic_lemma,
+                epistemic_pos=epistemic_pos,
+                epistemic_construction_family=epistemic_construction_family,
+                epistemic_lexicon_revision=epistemic_lexicon_revision,
             )
         )
         previous_text = sentence.text
         previous_section = code
     await report_progress("extracting_phrases", 0, len(rows))
     items = pipeline.process(mining_rows)
+    oov_keys = {
+        (item.epistemic_lemma, item.epistemic_pos, item.epistemic_construction_family)
+        for item in items
+        if item.epistemic_provenance == "syntax_gate_oov_default"
+        and item.epistemic_lemma
+        and item.epistemic_pos
+        and item.epistemic_construction_family
+    }
+    oov_entries = []
+    for lemma, pos, construction_family in sorted(oov_keys):
+        oov_entries.append(
+            await discover_epistemic_oov(
+                session,
+                lemma=lemma,
+                pos=pos,
+                construction_family=construction_family,
+                rights_allow_external_processing=license_row.allows_external_processing,
+                enqueue_job=False,
+            )
+        )
+    if license_row.allows_external_processing:
+        await enqueue_epistemic_oov_batch(
+            session, oov_entries, rights_allow_external_processing=True
+        )
     candidates = _SessionCandidateRepository(session)
     await report_progress("saving_candidates", 0, len(items))
     writer = CandidateWriter(
@@ -609,6 +686,9 @@ async def _mine(
                         "sentence_start": occurrence.sentence_start,
                         "sentence_end": occurrence.sentence_end,
                         "slot_spans": occurrence.slot_spans,
+                        "epistemic_score": item.epistemic_score,
+                        "epistemic_provenance": item.epistemic_provenance,
+                        "epistemic_lexicon_revision": item.epistemic_lexicon_revision,
                     }
                     for occurrence in item.occurrences
                 ],

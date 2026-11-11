@@ -1,20 +1,26 @@
-version: 0.1.0
+version: 0.4.1
 # TODO(owner, FR-06.2): review the lexical classes, additive weights, and thresholds.
 baseline_terms:
   absolute: [prove, undeniable, conclusive, unequivocal, undisputed, incontestable]
-  high: [demonstrate, establish, confirm, reveal, validate, determine, evident, clear, evidence]
-  moderate: [suggest, indicate, imply, observe, find, point to, plausible, consistent with, doubt, conclude]
+  high: [show, demonstrate, establish, confirm, reveal, observe, note, validate, determine, evident, clear, evidence]
+  moderate: [conclude, suggest, indicate, imply, propose, argue, find, point to, plausible, consistent with, doubt]
   low: [speculate, hypothesize, assume, suspect, seem, appear, tentative, possible, questionable]
 baseline_scores:
   absolute: 3.0
   high: 2.0
   moderate: 1.0
-  low: -1.0
+  low: -0.5
 default_score: 0.5
+oov_fallback_score: 1.0
+oov_activation_confidence_threshold: 0.90
 thresholds:
   moderate: 0.5
   high: 1.8
-  absolute: 3.2
+  absolute: 3.0
+claim_complement_nouns:
+  [association, relationship, correlation, effect, result, finding, pattern, performance,
+   accuracy, validity, reliability, increase, decrease, improvement, reduction, difference,
+   impact, implication, trend, link, connection, outcome, evidence, possibility]
 modal_terms:
   possibility: [may, might, could, can]
   assertive: [must, will]
@@ -23,7 +29,8 @@ modal_deltas:
   possibility: -2.0
   assertive: 0.5
   conditional: -0.5
-possibility_modal_cap: 0.8
+embedded_possibility_modal_delta: -0.5
+possibility_modal_cap: 0.4
 adverb_terms:
   maximal: [undeniably, conclusively, unequivocally, definitely]
   strong: [strongly, clearly, substantially, firmly]

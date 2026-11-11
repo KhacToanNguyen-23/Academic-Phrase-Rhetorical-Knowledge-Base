@@ -18,6 +18,7 @@ class License(EntityMixin, Base):
     name: Mapped[str] = mapped_column(String(255))
     allows_mining: Mapped[bool] = mapped_column(Boolean, default=False)
     allows_display: Mapped[bool] = mapped_column(Boolean, default=False)
+    allows_external_processing: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class ImportProfile(MutableEntityMixin, Base):

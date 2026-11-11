@@ -108,3 +108,24 @@ applies workbook decisions through the same service with `--reviewer-id` and sup
 Imports create no pattern rows and do not change pattern lifecycle status/version. Workbook
 ordering prioritizes `needs_attention`; confirmation of final curation ordering remains
 `TODO(owner, FR-01)`.
+
+## Epistemic OOV lexicon
+
+The mining scorer gates applicability from `ccomp`, `xcomp`, and configured relational objects.
+Eligible unknown predicates receive the moderate fallback while a metadata-only enrichment job is
+pending. The job payload contains only lexicon entry IDs; the Groq request contains lemma, POS,
+construction family, and the closed strength vocabulary, never the source sentence.
+
+External assessment is disabled by default. It also requires the source license's explicit
+`allows_external_processing` policy flag; `allows_display` is not sufficient. Enable
+`EPISTEMIC_LABELER=groq`, `GROQ_ALLOW_EXTERNAL_PROCESSING=true`, and `GROQ_API_KEY` only in
+local/test after policy review.
+Each batch is assessed in two separate model passes. Entries activate automatically only when both
+passes return the same tier and each confidence is at least the configured 0.90 threshold. Low
+confidence or disagreement becomes `needs_review`; a locked neutral-policy match becomes
+`policy_conflict_hold`. Confidence is model-reported and is not a calibrated probability.
+
+Reviewers can list entries at `GET /v1/admin/mining/epistemic-lexicon`; curators can activate,
+reject, or deactivate revisions with `POST /v1/admin/mining/epistemic-lexicon/{entry_id}/review`.
+`GET /v1/admin/mining/epistemic-lexicon/{entry_id}/audit` returns the append-only decision history.
+Each mining job loads an immutable active-entry snapshot; later revisions affect later jobs only.

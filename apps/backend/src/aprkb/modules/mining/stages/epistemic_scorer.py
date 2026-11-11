@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
@@ -11,9 +11,59 @@ from aprkb.policies.schemas import EpistemicScoringPolicy
 if TYPE_CHECKING:
     from spacy.tokens import Doc, Span
 
-StrengthLabel = Literal["low", "moderate", "high", "absolute", "negative_refuted"]
+StrengthLabel = Literal["low", "moderate", "high", "absolute", "negative_refuted", "not_applicable"]
 SCORER_PROVENANCE = "spacy_dependency_scorer"
+POLICY_PROVENANCE = "epistemic_policy"
+AI_LEXICON_PROVENANCE = "epistemic_ai_lexicon"
+OOV_PROVENANCE = "syntax_gate_oov_default"
 NO_SPACY_PROVENANCE = "unscored_no_spacy_doc"
+SCORED_PROVENANCES = frozenset(
+    {SCORER_PROVENANCE, POLICY_PROVENANCE, AI_LEXICON_PROVENANCE, OOV_PROVENANCE}
+)
+
+RELATIONAL_OBJECTS = frozenset(
+    {
+        "link",
+        "correlation",
+        "difference",
+        "gap",
+        "improvement",
+        "reduction",
+        "effect",
+        "evidence",
+        "trend",
+        "relationship",
+        "association",
+        "result",
+        "finding",
+        "pattern",
+        "performance",
+        "accuracy",
+        "validity",
+        "reliability",
+        "increase",
+        "decrease",
+        "impact",
+        "implication",
+        "connection",
+        "outcome",
+    }
+)
+LOCATIVE_ARTIFACTS = frozenset(
+    {
+        "table",
+        "tabel",
+        "figure",
+        "fig",
+        "section",
+        "appendix",
+        "algorithm",
+        "equation",
+        "paper",
+        "literature",
+        "dataset",
+    }
+)
 
 
 class _Token(Protocol):
@@ -29,21 +79,40 @@ class _Token(Protocol):
 @dataclass(frozen=True)
 class EpistemicResult:
     label: StrengthLabel
-    score: float
+    score: float | None
     head_token: str
     detected_modifiers: list[dict[str, object]]
+    provenance: str = SCORER_PROVENANCE
+    lemma: str | None = None
+    pos: str | None = None
+    construction_family: str | None = None
+    lexicon_revision: str | None = None
 
 
 class EpistemicScorer:
     """Score one parsed sentence or span using its predicate and dependency modifiers."""
 
-    def __init__(self, policy: EpistemicScoringPolicy) -> None:
+    def __init__(
+        self,
+        policy: EpistemicScoringPolicy,
+        *,
+        active_lexicon: Mapping[tuple[str, str, str], float] | None = None,
+        lexicon_revision: str | None = None,
+    ) -> None:
         self._policy = policy
         self._baseline_scores = policy.baseline_scores
         self._baseline_terms = {
             tier: frozenset(term.casefold() for term in terms)
             for tier, terms in policy.baseline_terms.items()
         }
+        self._claim_complement_nouns = frozenset(
+            term.casefold() for term in policy.claim_complement_nouns
+        )
+        self._active_lexicon = {
+            (lemma.casefold(), pos.casefold(), family.casefold()): score
+            for (lemma, pos, family), score in (active_lexicon or {}).items()
+        }
+        self._lexicon_revision = lexicon_revision
         self._modal_terms = {
             group: frozenset(term.casefold() for term in terms)
             for group, terms in policy.modal_terms.items()
@@ -68,8 +137,48 @@ class EpistemicScorer:
         """Return the score, tier, assertion head, and applied modifier diagnostics."""
         root, input_tokens = _parsed_root(parsed)
         scope = _dependency_scope(root, input_tokens)
+        matrix_scope = _matrix_clause_scope(root, scope)
+        matrix_token_ids = {token.i for token in matrix_scope}
         head = _primary_predicate(root, scope, self._negative_control_lemmas)
-        score = self._baseline(head, scope)
+        claim_structure = _claim_structure(head, self._claim_complement_nouns)
+        if claim_structure is None and head is not root:
+            claim_structure = _claim_structure(root, self._claim_complement_nouns)
+        if claim_structure is None or _is_locative_artifact_passive(root, LOCATIVE_ARTIFACTS):
+            return EpistemicResult(
+                label="not_applicable",
+                score=None,
+                head_token=head.text,
+                detected_modifiers=[],
+                provenance=SCORER_PROVENANCE,
+                lemma=_lemma(head),
+                pos=head.pos_.casefold(),
+            )
+        construction_family = claim_structure
+        lemma = _lemma(head)
+        pos = head.pos_.casefold()
+        configured_lemma = any(lemma in terms for terms in self._baseline_terms.values())
+        if not configured_lemma and pos not in {"verb", "aux"}:
+            return EpistemicResult(
+                label="not_applicable",
+                score=None,
+                head_token=head.text,
+                detected_modifiers=[],
+                provenance=SCORER_PROVENANCE,
+                lemma=lemma,
+                pos=pos,
+                construction_family=construction_family,
+            )
+        active_key = (lemma, pos, construction_family.casefold())
+        active_score = self._active_lexicon.get(active_key)
+        if configured_lemma:
+            score = self._baseline(head, scope)
+            provenance = POLICY_PROVENANCE
+        elif active_score is not None:
+            score = active_score
+            provenance = AI_LEXICON_PROVENANCE
+        else:
+            score = self._policy.oov_fallback_score
+            provenance = OOV_PROVENANCE
         modifiers: list[dict[str, object]] = []
 
         for token in scope:
@@ -79,10 +188,20 @@ class EpistemicScorer:
                 continue
             modal_group = _modal_group(token, token_lemma, self._modal_terms)
             if modal_group is not None:
-                delta = self._policy.modal_deltas[modal_group]
+                embedded_clause_modal = token.i not in matrix_token_ids
+                delta = (
+                    self._policy.embedded_possibility_modal_delta
+                    if modal_group == "possibility" and embedded_clause_modal
+                    else self._policy.modal_deltas[modal_group]
+                )
                 score += delta
                 modifiers.append(
-                    {"kind": f"modal_{modal_group}", "token": token.text, "delta": delta}
+                    {
+                        "kind": f"modal_{modal_group}",
+                        "token": token.text,
+                        "delta": delta,
+                        **({"scope": "embedded_clause"} if embedded_clause_modal else {}),
+                    }
                 )
                 continue
 
@@ -144,11 +263,12 @@ class EpistemicScorer:
                             {"kind": "strong_evidence", "token": child.text, "delta": delta}
                         )
 
-        possibility_modal = any(
+        matrix_possibility_modal = any(
             _modal_group(token, _lemma(token), self._modal_terms) == "possibility"
+            and token.i in matrix_token_ids
             for token in scope
         )
-        if possibility_modal:
+        if matrix_possibility_modal:
             score = min(score, self._policy.possibility_modal_cap)
 
         refuted = _is_refuted(
@@ -158,7 +278,7 @@ class EpistemicScorer:
             score = -abs(score)
             modifiers.append({"kind": "negative_refutation", "token": head.text, "delta": None})
             label: StrengthLabel = "negative_refuted"
-        elif possibility_modal:
+        elif matrix_possibility_modal:
             # The spec's 0.8 ceiling overlaps the moderate band; its acceptance example
             # requires possibility-modaled claims to remain in low.
             label = "low"
@@ -170,6 +290,13 @@ class EpistemicScorer:
             score=round(score, 4),
             head_token=head.text,
             detected_modifiers=modifiers,
+            provenance=provenance,
+            lemma=lemma,
+            pos=pos,
+            construction_family=construction_family,
+            lexicon_revision=(
+                self._lexicon_revision if provenance == AI_LEXICON_PROVENANCE else None
+            ),
         )
 
     def _baseline(self, head: _Token, scope: list[_Token]) -> float:
@@ -226,6 +353,22 @@ def _dependency_scope(root: _Token, input_tokens: set[int]) -> list[_Token]:
     return scope
 
 
+def _matrix_clause_scope(root: _Token, scope: list[_Token]) -> list[_Token]:
+    clause_boundaries = {"acl", "advcl", "ccomp", "relcl", "xcomp"}
+    matrix_scope: list[_Token] = []
+    for token in scope:
+        ancestor = token
+        crosses_clause_boundary = False
+        while ancestor.i != root.i:
+            if ancestor.dep_.casefold() in clause_boundaries:
+                crosses_clause_boundary = True
+                break
+            ancestor = ancestor.head
+        if not crosses_clause_boundary:
+            matrix_scope.append(token)
+    return matrix_scope
+
+
 def _primary_predicate(
     root: _Token,
     scope: list[_Token],
@@ -247,6 +390,37 @@ def _primary_predicate(
         if predicate is not None:
             return predicate
     return root
+
+
+def _claim_structure(head: _Token, claim_nouns: frozenset[str]) -> str | None:
+    """Return a stable construction key only when the predicate governs claim content."""
+    for child in head.children:
+        dependency = child.dep_.casefold()
+        if dependency in {"ccomp", "xcomp"}:
+            return dependency
+        if dependency in {"dobj", "obj"} and _lemma(child) in claim_nouns | RELATIONAL_OBJECTS:
+            return f"object:{_lemma(child)}"
+    return None
+
+
+def _is_locative_artifact_passive(head: _Token, artifact_nouns: frozenset[str]) -> bool:
+    """Reject passive artifact references such as 'shown in Figure 1'."""
+    children = list(head.children)
+    passive = any(
+        child.dep_.casefold() in {"auxpass", "aux:pass", "nsubjpass", "nsubj:pass"}
+        for child in children
+    )
+    if not passive or any(child.dep_.casefold() in {"ccomp", "xcomp"} for child in children):
+        return False
+    for prep in children:
+        if prep.dep_.casefold() != "prep" or _lemma(prep) not in {"in", "at", "on", "within"}:
+            continue
+        for pobj in prep.children:
+            if _lemma(pobj) in artifact_nouns:
+                return True
+            if any(_lemma(child) in artifact_nouns for child in pobj.children):
+                return True
+    return False
 
 
 def _modal_group(

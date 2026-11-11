@@ -20,7 +20,7 @@ thresholds:
 claim_complement_nouns:
   [association, relationship, correlation, effect, result, finding, pattern, performance,
    accuracy, validity, reliability, increase, decrease, improvement, reduction, difference,
-   impact, implication, trend, link, connection, outcome, evidence, possibility]
+   impact, implication, trend, link, connection, outcome, evidence, possibility, claim]
 modal_terms:
   possibility: [may, might, could, can]
   assertive: [must, will]

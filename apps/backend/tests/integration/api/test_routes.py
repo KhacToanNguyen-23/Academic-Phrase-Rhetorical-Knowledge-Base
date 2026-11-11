@@ -1011,11 +1011,11 @@ async def test_recommendation_pipeline_filters_seed_and_persists_explainable_log
     assert body["policy_versions"] == {
         "ranking_weights": "0.3.0",
         "diversity": "0.1.0",
-        "license_policy": "0.2.0",
+        "license_policy": "0.1.0",
         "fallback_tiers": "0.1.0",
         "evidence_matrix": "0.1.0",
         "validation_rules": "0.2.0",
-        "epistemic_markers": "0.3.0",
+        "epistemic_markers": "0.4.0",
         "taxonomy_release": "0.2.0",
     }
 

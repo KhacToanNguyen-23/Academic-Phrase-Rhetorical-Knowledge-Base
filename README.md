@@ -2,10 +2,6 @@
 
 Academic Phrase & Rhetorical Knowledge Base is a runnable backend scaffold. It provides a REST API for approved phrase patterns, recommendations and claim validation, plus PostgreSQL-backed corpus jobs that produce reviewable, traceable candidates.
 
-## Deployed app
-
-Private Tailscale deployment: `http://<TAILSCALE_IP>:18081/` (replace with the server's Tailscale IP). The actual server address is not stored in this repository. See the [deployment runbook](https://github.com/KhacToanNguyen-23/Academic-Phrase-Rhetorical-Knowledge-Base/blob/main/deploy/README.md).
-
 ## Scope
 
 - Backend package: `apps/backend/src/aprkb`; tests: `apps/backend/tests`.
